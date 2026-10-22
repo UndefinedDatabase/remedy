@@ -13,7 +13,7 @@ Every other path answers 404 to a GET that carries the token, 403 to one without
 every other method. The old React cockpit this module once served — its app shell, its static
 assets, its auto-build, its token-gated read routes, its event stream and the dashboard builders
 behind them — was deleted with the old face (operator amendment amend1015-face-migration,
-DECISION amend1015f D19); the module keeps its name until F307 renames it (finding R-1330).
+DECISION amend1015f D19); F307 renamed the module from `ui_server.py` (R-1330, DECISION F307 D26).
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ def _resolve_evidence_dir(job_id: str) -> Path | None:
     viewer here and the F033 decision doors resolve by ONE rule. The name
     survives because callers import it, including
     `tests/orchestration/test_final_audit_evidence.py`, which imports it from
-    `ui_server` directly."""
+    `serve_http_handler` directly."""
     from packages.orchestration.evidence_index import resolve_job_evidence_dir
     return resolve_job_evidence_dir(job_id)
 

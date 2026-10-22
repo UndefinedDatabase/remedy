@@ -1,5 +1,5 @@
 """
-Domain tests: ui_server/test_command_channel.py
+Domain tests: serve_http_handler/test_command_channel.py
 
 Contract tests for F009 T001 — the single write channel. They pin the
 observable behaviour of POST `/api/jobs/<job_id>/commands`: which requests the
@@ -20,7 +20,7 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-from tests.ui_server.door_host import start_door_for_job
+from tests.serve_http_handler.door_host import start_door_for_job
 
 # The wire spelling is pinned here on purpose: a test that imports the constant
 # it is checking cannot catch a rename of the header the browser has to send.
@@ -236,7 +236,7 @@ class TestCommandChannelDoor:
     def test_unresolvable_job_id_answers_the_job_loaders_own_refusal(self):
         # The GET door this once matched was deleted with the old cockpit (amend1015f D19);
         # the answer it shared with the POST door was always the job loader's, read here.
-        from packages.orchestration.ui_server import _load_job
+        from packages.orchestration.serve_http_handler import _load_job
 
         port, token = self._start_server()
         missing = str(uuid4())
@@ -1260,7 +1260,7 @@ class TestCommandChannelDoor:
         return load_run_events(resolve_data_root(), self.job_id)
 
     def _accepted_events(self):
-        from packages.orchestration.ui_server import COMMAND_ACCEPTED_EVENT
+        from packages.orchestration.serve_http_handler import COMMAND_ACCEPTED_EVENT
         return [e for e in self._run_events()
                 if e.get("event") == COMMAND_ACCEPTED_EVENT]
 
@@ -1272,7 +1272,7 @@ class TestCommandChannelDoor:
         The half of this test that read the old cockpit's event stream went with that
         stream (amend1015f D19).
         """
-        from packages.orchestration.ui_server import COMMAND_ACCEPTED_EVENT
+        from packages.orchestration.serve_http_handler import COMMAND_ACCEPTED_EVENT
 
         port, token = self._start_server()
         status, body = self._request(
@@ -1373,9 +1373,9 @@ class TestCommandChannelDoor:
         import ast
         from pathlib import Path
 
-        from packages.orchestration import ui_server
+        from packages.orchestration import serve_http_handler
 
-        tree = ast.parse(Path(ui_server.__file__).read_text(encoding="utf-8"))
+        tree = ast.parse(Path(serve_http_handler.__file__).read_text(encoding="utf-8"))
         do_get = None
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name == "_RemedyHandler":
@@ -1547,7 +1547,7 @@ class TestCommandDoorImportGuard:
     its own false positives.
 
     Every import the door makes is function-scoped, so the scan is per method
-    and an import added anywhere else in `ui_server.py` is out of scope by
+    and an import added anywhere else in `serve_http_handler.py` is out of scope by
     construction.
     """
 
@@ -1695,9 +1695,9 @@ class TestCommandDoorImportGuard:
     def _server_source(self) -> str:
         from pathlib import Path
 
-        from packages.orchestration import ui_server
+        from packages.orchestration import serve_http_handler
 
-        return Path(ui_server.__file__).read_text(encoding="utf-8")
+        return Path(serve_http_handler.__file__).read_text(encoding="utf-8")
 
     def test_every_named_method_exists(self):
         """Without this the guard empties itself the first time a method is renamed."""
@@ -1939,7 +1939,7 @@ class TestCommandRateLimitConfigKey:
 
     def test_the_door_reads_the_limit_from_that_key(self):
         """The name is shared, so the door and the registry cannot drift apart."""
-        from packages.orchestration.ui_server import COMMAND_RATE_LIMIT_CONFIG_KEY
+        from packages.orchestration.serve_http_handler import COMMAND_RATE_LIMIT_CONFIG_KEY
         assert COMMAND_RATE_LIMIT_CONFIG_KEY == "ui.command_rate_limit_per_minute"
 
 
@@ -1947,24 +1947,24 @@ class TestTokenFingerprint:
     """DECISION F009 D7's fingerprint, introduced where it is first used."""
 
     def test_the_fingerprint_never_contains_the_raw_token(self):
-        from packages.orchestration.ui_server import token_fingerprint
+        from packages.orchestration.serve_http_handler import token_fingerprint
         token = "s3cret-token-value-do-not-leak"
         assert token not in token_fingerprint(token)
 
     def test_the_fingerprint_is_a_prefixed_truncated_sha256(self):
         import hashlib
 
-        from packages.orchestration.ui_server import token_fingerprint
+        from packages.orchestration.serve_http_handler import token_fingerprint
         token = "s3cret-token-value-do-not-leak"
         expected = hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
         assert token_fingerprint(token) == "tf:" + expected
 
     def test_different_tokens_get_different_fingerprints(self):
-        from packages.orchestration.ui_server import token_fingerprint
+        from packages.orchestration.serve_http_handler import token_fingerprint
         assert token_fingerprint("token-a") != token_fingerprint("token-b")
 
     def test_a_missing_token_does_not_raise(self):
-        from packages.orchestration.ui_server import token_fingerprint
+        from packages.orchestration.serve_http_handler import token_fingerprint
         assert token_fingerprint(None).startswith("tf:")
 
 
@@ -1978,11 +1978,11 @@ class TestCommandRateLimiter:
         so a test that reused a fingerprint would inherit another test's spent
         budget when the whole file runs in one pytest process.
         """
-        from packages.orchestration.ui_server import token_fingerprint
+        from packages.orchestration.serve_http_handler import token_fingerprint
         return token_fingerprint(f"token-{uuid4()}")
 
     def test_the_budget_is_per_fingerprint(self):
-        from packages.orchestration.ui_server import accept_command_under_rate_limit
+        from packages.orchestration.serve_http_handler import accept_command_under_rate_limit
         job = str(uuid4())
         spent, fresh = self._fingerprint(), self._fingerprint()
         assert accept_command_under_rate_limit(spent, job, 1) is True
@@ -1990,7 +1990,7 @@ class TestCommandRateLimiter:
         assert accept_command_under_rate_limit(fresh, job, 1) is True
 
     def test_the_budget_is_per_job(self):
-        from packages.orchestration.ui_server import accept_command_under_rate_limit
+        from packages.orchestration.serve_http_handler import accept_command_under_rate_limit
         fingerprint = self._fingerprint()
         spent, fresh = str(uuid4()), str(uuid4())
         assert accept_command_under_rate_limit(fingerprint, spent, 1) is True
@@ -1998,7 +1998,7 @@ class TestCommandRateLimiter:
         assert accept_command_under_rate_limit(fingerprint, fresh, 1) is True
 
     def test_the_window_rolls_on_the_injected_clock(self):
-        from packages.orchestration.ui_server import (
+        from packages.orchestration.serve_http_handler import (
             COMMAND_RATE_WINDOW_SECONDS,
             accept_command_under_rate_limit,
         )
@@ -2018,7 +2018,7 @@ class TestCommandRateLimiter:
 
     def test_an_expired_window_is_dropped_from_the_map(self):
         """Contract D: the map holds a live working set, not a growing history."""
-        from packages.orchestration.ui_server import (
+        from packages.orchestration.serve_http_handler import (
             _COMMAND_RATE_WINDOWS,
             COMMAND_RATE_WINDOW_SECONDS,
             accept_command_under_rate_limit,
@@ -2053,7 +2053,7 @@ class TestCommandRateLimiter:
         is called INSIDE the critical section, so a `now` that blocks there holds the lock
         while a second thread tries to enter. No production hook is added for it.
         """
-        from packages.orchestration.ui_server import accept_command_under_rate_limit
+        from packages.orchestration.serve_http_handler import accept_command_under_rate_limit
         fingerprint, job = self._fingerprint(), str(uuid4())
         a_inside = threading.Event()
         b_attempting = threading.Event()
@@ -2100,7 +2100,7 @@ class TestCommandRateLimiter:
         for that (finding R-0634). What it does cover is the arithmetic under real
         concurrency: the accepted total is exactly the budget, never more and never fewer.
         """
-        from packages.orchestration.ui_server import accept_command_under_rate_limit
+        from packages.orchestration.serve_http_handler import accept_command_under_rate_limit
         fingerprint, job = self._fingerprint(), str(uuid4())
         limit = 20
         accepted = []
@@ -2126,21 +2126,21 @@ class TestServerTokenMatches:
     """Unit coverage for the constant-time helper of contract A."""
 
     def test_equal_tokens_match(self):
-        from packages.orchestration.ui_server import server_token_matches
+        from packages.orchestration.serve_http_handler import server_token_matches
         assert server_token_matches("abc123", "abc123") is True
 
     def test_different_tokens_do_not_match(self):
-        from packages.orchestration.ui_server import server_token_matches
+        from packages.orchestration.serve_http_handler import server_token_matches
         assert server_token_matches("abc123", "abc124") is False
 
     def test_missing_supplied_token_does_not_raise(self):
-        from packages.orchestration.ui_server import server_token_matches
+        from packages.orchestration.serve_http_handler import server_token_matches
         assert server_token_matches(None, "abc123") is False
 
     def test_non_ascii_token_does_not_raise(self):
-        from packages.orchestration.ui_server import server_token_matches
+        from packages.orchestration.serve_http_handler import server_token_matches
         assert server_token_matches("tökén", "abc123") is False
 
     def test_equal_non_ascii_tokens_match(self):
-        from packages.orchestration.ui_server import server_token_matches
+        from packages.orchestration.serve_http_handler import server_token_matches
         assert server_token_matches("tökén", "tökén") is True

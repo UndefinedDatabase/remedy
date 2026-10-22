@@ -70,7 +70,7 @@ commit with no alias left behind, and changes the tests in their import lines on
   independent writes, the review subject, and the ordered chain of gates. Steps: (1) one task's
   evidence becomes a function of its own; (2) the review subject becomes a function of its own;
   (3) the gate chain becomes a function of its own, in exactly its present order.
-- `_RemedyHandler._handle_command_submission` (`packages/orchestration/ui_server.py`). Boundary:
+- `_RemedyHandler._handle_command_submission` (`packages/orchestration/serve_http_handler.py`). Boundary:
   the chain of command clauses after the shared checks, each repeating the same accept, refuse
   and fail tail. Steps: (1) the shared tail becomes one method, taken by one clause at a time;
   (2) the chain becomes a table from command to its handler; the clauses with a shape of their own
@@ -101,7 +101,7 @@ commit with no alias left behind, and changes the tests in their import lines on
 - `summarize_trust_report` (`packages/orchestration/trust_report.py`). Boundary: its ten numbered
   sections. Steps: (1) each section becomes a function that answers its lines, the patch intents
   and the artifacts first.
-- `_build_dashboard` (`packages/orchestration/ui_server.py`). Boundary: its commented sections that
+- `_build_dashboard` (`packages/orchestration/serve_http_handler.py`). Boundary: its commented sections that
   feed one answer. Steps: (1) the task list and the activity become a function each; (2) the
   lifecycle and the phases become a function; the proof chain is built once and passed in.
 - `main` (`scripts/build_review_zip.py`). Boundary: the three phases its comments name and the one
@@ -211,10 +211,10 @@ with the code that calls it.
   `ProviderAttempt`, the two stream hints, the attempt booking, the rate-limit wait and
   `_call_with_retry` — `packages/orchestration/pingpong_provider_call.py`; the failure status,
   the call identity and the post-mortem stay, beside the run that calls them.
-- `packages/orchestration/ui_server.py`: the command channel's checks, each to a module of its
+- `packages/orchestration/serve_http_handler.py`: the command channel's checks, each to a module of its
   own. The event stream, the dashboard builders, the launch helpers and the frontend's automatic
-  build with its T20 ignore were deleted with the old cockpit (amend1015f D19 and D3), and the
-  file's rename is registered for F307 (R-1330).
+  build with its T20 ignore were deleted with the old cockpit (amend1015f D19 and D3), and F307
+  renamed the file from `ui_server.py` for what it serves (R-1330).
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
   evidence view, and the manual-completion check, each to a module under `packages/`.
 - `apps/cli/command_catalog.py`: the types and the argument shorthands to
@@ -296,7 +296,7 @@ with the code that calls it.
 | 1262 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 887 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
-| 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
+| 455 | `packages/orchestration/serve_http_handler.py` | `_RemedyHandler._handle_command_submission` |
 | 352 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
@@ -369,7 +369,7 @@ with the code that calls it.
 | 142 | `packages/orchestration/stream_evidence.py` | `run_streamed_command` |
 | 142 | `packages/orchestration/worktree_resume.py` | `prepare_worktree_resume` |
 | 141 | `packages/orchestration/job_evidence.py` | `_write_run_manifest_export` |
-| 141 | `packages/orchestration/ui_server.py` | `_RemedyHandler._read_command_payload` |
+| 141 | `packages/orchestration/serve_http_handler.py` | `_RemedyHandler._read_command_payload` |
 | 140 | `apps/cli/commands/job.py` | `_cmd_plan_job_local` |
 | 140 | `packages/orchestration/builder_bridge.py` | `run_builder_bridge_loop` |
 | 140 | `packages/orchestration/change_set.py` | `derive_change_set` |
@@ -382,7 +382,7 @@ with the code that calls it.
 | 134 | `packages/orchestration/project_brain_aggregate.py` | `build_project_brain_aggregate` |
 | 134 | `packages/orchestration/token_cost_policy.py` | `build_token_cost_policy` |
 | 133 | `packages/orchestration/pingpong_provider.py` | `ClaudeCliProvider._call_reviewer_structured` |
-| 133 | `packages/orchestration/ui_server.py` | `_RemedyHandler._dispatch_decision_resolve` |
+| 133 | `packages/orchestration/serve_http_handler.py` | `_RemedyHandler._dispatch_decision_resolve` |
 | 131 | `packages/orchestration/failure_stats.py` | `collect_failures` |
 | 131 | `packages/orchestration/pingpong_loop.py` | `_aggregate_usage_actuals` |
 | 131 | `packages/orchestration/review_scope.py` | `build_review_scope_packet` |
@@ -451,7 +451,7 @@ with the code that calls it.
 | 6207 | `packages/orchestration/run_manifest.py` |
 | 4943 | `packages/orchestration/pingpong_job.py` |
 | 4921 | `packages/orchestration/pingpong_loop.py` |
-| 1824 | `packages/orchestration/ui_server.py` |
+| 1824 | `packages/orchestration/serve_http_handler.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2255 | `apps/cli/command_catalog.py` |

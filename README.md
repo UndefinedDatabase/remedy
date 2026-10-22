@@ -117,7 +117,7 @@ F274 one world completion, part two (the prototype-cluster deletion map,
 GENERATED from the live import graph rather than typed and held against it
 in BOTH directions, so a re-inserted edge reddens a test instead of passing
 unnoticed; the import-reachability ratchet, ruled a ratchet rather than a
-one-shot gate; the cockpit and command-layer edge cuts, with `ui_server.py`
+one-shot gate; the cockpit and command-layer edge cuts, with `serve_http_handler.py`
 losing 458 lines and gaining none and the `feature` command group deleted
 whole; and the retirement of `worker_recommend`. Nothing was deleted from
 the prototype cluster here, only made SAFE to delete: that deletion, the

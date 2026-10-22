@@ -4,7 +4,7 @@ Writes and reads the EXISTING index at ``<REMEDY_DATA_DIR>/job_evidence_index/``
 (one ``<job_id>.json`` per job). No second index format is introduced: this
 module only centralizes the record shape and adds the repository/branch/commit
 fields review-zip selection needs, while preserving the keys older writers and
-``ui_server`` already rely on (``evidence_dir_local``, ``created_at``, ...).
+``serve_http_handler`` already rely on (``evidence_dir_local``, ``created_at``, ...).
 
 Selection rules (used by the review-zip selector):
 
@@ -34,7 +34,7 @@ def _now() -> str:
 def _git(repo: str | Path, *args: str) -> str:
     # WHY: imported here, not at module level, so importing this module carries no
     # shell capability into the command door (R-0745; pinned by
-    # TestCommandDoorImportGuard in tests/ui_server/test_command_channel.py).
+    # TestCommandDoorImportGuard in tests/serve_http_handler/test_command_channel.py).
     import subprocess
 
     try:
@@ -151,7 +151,7 @@ def write_index_record(
     record: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "job_id": job_id,
-        # Preserved legacy keys (ui_server and older writers read these).
+        # Preserved legacy keys (serve_http_handler and older writers read these).
         "evidence_dir_local": str(ev),
         "has_agent_run_trace": (ev / "agent_run_trace.jsonl").exists(),
         "has_job_flow_json": (ev / "job_flow.json").exists(),
@@ -210,7 +210,7 @@ def resolve_job_evidence_dir(job_id: str, index_dir: Path | None = None) -> Path
     record written without that key resolves here and would stop resolving
     through ``find_record``.
 
-    ``packages/orchestration/ui_server.py``'s ``_resolve_evidence_dir`` is now a
+    ``packages/orchestration/serve_http_handler.py``'s ``_resolve_evidence_dir`` is now a
     delegation to this function, kept only because callers import that name.
     """
     try:

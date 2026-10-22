@@ -31,7 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 _SEED_GIT_IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
                       "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 #: A deadline already in the past: the run's budget stops it before any task runs, raising the
-#: one decision a fake run raises on its own (as tests/ui_server/test_public_api.py's
+#: one decision a fake run raises on its own (as tests/serve_http_handler/test_public_api.py's
 #: `_seed_project_job_and_decision` does; copied below rather than imported from that test module).
 _SEED_PAST_DEADLINE = "2000-01-01T00:00:00+00:00"
 
@@ -46,7 +46,7 @@ def root(tmp_path_factory, monkeypatch) -> Path:
 def _seed_project_job_and_decision(tmp_path: Path) -> str:
     """Put one project, one job and one open decision on the current data root; the job id.
 
-    Copied from `tests/ui_server/test_public_api.py`'s `_seed_project_job_and_decision`: an order
+    Copied from `tests/serve_http_handler/test_public_api.py`'s `_seed_project_job_and_decision`: an order
     file whose deadline has already passed stops the run before any task runs and raises the
     budget decision, so `remedy do` exits 1 and leaves one job with one open decision behind.
     """

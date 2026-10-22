@@ -1,7 +1,7 @@
 """F025 R4 T2 — job.pause and job.unpause through the REAL write door, live.
 
 Every class below drives a fake-provider job through the real HTTP door
-(`packages/orchestration/ui_server.py`'s command channel), the way an operator's
+(`packages/orchestration/serve_http_handler.py`'s command channel), the way an operator's
 browser would. `TestJobScopeLiveDoor` and `TestTaskScopeLiveDoor` run that job in
 ITS OWN PROCESS — the live-runner pattern `tests/orchestration/test_job_stop_integration.py`
 established for the kill switch — because only a real, separate process can prove
@@ -10,7 +10,7 @@ that a pause taking effect mid-call lets that call finish and starts no next one
 and a withdrawal are both decided before any provider call would begin.
 
 The UI server itself runs IN this test process, in a background thread
-(`tests/ui_server/test_command_dispatch.py`'s own pattern) — REMEDY_DATA_DIR is
+(`tests/serve_http_handler/test_command_dispatch.py`'s own pattern) — REMEDY_DATA_DIR is
 the same directory the subprocess runner writes into, so both see the same
 control files and the same job record.
 """
@@ -30,7 +30,7 @@ import psutil
 import pytest
 
 from packages.orchestration.data_paths import job_record_path
-from tests.ui_server.door_host import start_door_for_job
+from tests.serve_http_handler.door_host import start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -150,7 +150,7 @@ def _test_owned_children(baseline_pids: set[int], tmp_path: Path) -> list[psutil
 
 def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
     """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
-    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    own handler on a loopback port (`tests/serve_http_handler/door_host.py`, DECISION amend1015f D27)."""
     return start_door_for_job(job_id, tmp_path)
 
 

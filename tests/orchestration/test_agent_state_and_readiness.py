@@ -1,6 +1,6 @@
 """The agent state files, the job summary section and the autonomy readiness assessment.
 
-These checks moved here from `tests/ui_server/test_dashboard_contract.py` when the old cockpit's
+These checks moved here from `tests/serve_http_handler/test_dashboard_contract.py` when the old cockpit's
 dashboard was deleted (amend1015f D27): their subjects (the `.agent/` state files, `remedy job`'s
 summary section, the shell-free subprocess rule and `autonomy_readiness`) all stay.
 """

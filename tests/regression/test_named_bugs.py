@@ -151,7 +151,7 @@ class TestSmokeOriginCheckAndUnload:
         """No 0.0.0.0 binding in smoke or UI code."""
         for path in [
             "scripts/remedy_smoke.sh",
-            "packages/orchestration/ui_server.py",
+            "packages/orchestration/serve_http_handler.py",
             "apps/cli/commands/ui.py",
         ]:
             content = Path(path).read_text()
@@ -255,14 +255,14 @@ class TestDevStatusCommandSchema:
 
     def test_no_0000_binding(self):
         for path in [
-            "packages/orchestration/ui_server.py",
+            "packages/orchestration/serve_http_handler.py",
             "apps/cli/commands/ui.py",
         ]:
             content = Path(path).read_text()
             assert "0.0.0.0" not in content
 
     def test_no_mutation_endpoints(self):
-        content = Path("packages/orchestration/ui_server.py").read_text()
+        content = Path("packages/orchestration/serve_http_handler.py").read_text()
         assert "do_POST" in content  # exists
         assert "405" in content  # but returns method not allowed
         assert "do_PUT" in content

@@ -1,5 +1,5 @@
 """
-Domain tests: ui_server/test_auth_redaction.py
+Domain tests: serve_http_handler/test_auth_redaction.py
 Migrated from step-numbered test files.
 """
 

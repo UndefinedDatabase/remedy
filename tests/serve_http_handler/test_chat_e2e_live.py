@@ -27,7 +27,7 @@ import pytest
 
 from apps.cli.grouped import main as grouped_main
 from packages.orchestration.data_paths import job_record_path
-from tests.ui_server.door_host import SupervisorThread
+from tests.serve_http_handler.door_host import SupervisorThread
 
 _THREE_TASK_JOB = """\
 # Job: Chat E2E Test

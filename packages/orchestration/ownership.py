@@ -7,7 +7,7 @@ times would be a guess this ledger may not make.
 
 This module READS every record it draws on and WRITES none of them: building the ledger twice
 over the same records answers equal dicts, so the file it is eventually saved to (round 2) is
-regenerable and never a second truth. It imports nothing from `pingpong_job`, `ui_server` or
+regenerable and never a second truth. It imports nothing from `pingpong_job`, `serve_http_handler` or
 `apps` — every class it reads is read through the module that owns that record's shape.
 Round 1 lands the classes whose records already name an actor: vetoes, veto answers,
 injections, subtree reruns, plan and task edits, steering messages and notes, and the pause,

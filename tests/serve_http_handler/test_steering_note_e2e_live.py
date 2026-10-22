@@ -39,7 +39,7 @@ import pytest
 
 from packages.orchestration.data_paths import job_record_path, run_dir
 from packages.orchestration.prompt_segments import SegmentStabilityRank
-from tests.ui_server.door_host import run_log_frames, start_door_for_job
+from tests.serve_http_handler.door_host import run_log_frames, start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -119,7 +119,7 @@ print("FINAL:" + final.state, flush=True)
 
 def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
     """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
-    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    own handler on a loopback port (`tests/serve_http_handler/door_host.py`, DECISION amend1015f D27)."""
     return start_door_for_job(job_id, tmp_path)
 
 

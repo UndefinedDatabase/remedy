@@ -34,8 +34,8 @@ def _make_run(evidence_dir: Path, task_id: str, *, diff: str = "", tests: str = 
     return run
 
 
-SINGLE_FILE_DIFF = """--- a/packages/orchestration/ui_server.py
-+++ b/packages/orchestration/ui_server.py
+SINGLE_FILE_DIFF = """--- a/packages/orchestration/serve_http_handler.py
++++ b/packages/orchestration/serve_http_handler.py
 @@ -45,0 +46,3 @@
 +def _build_prompt_trace():
 +    pass
@@ -50,9 +50,9 @@ def test_hunk_only_single_file(tmp_path):
 
     assert pkt["schema_version"] == SCHEMA_VERSION
     assert pkt["task_id"] == "T001"
-    assert pkt["changed_files"] == ["packages/orchestration/ui_server.py"]
-    assert pkt["changed_line_ranges"]["packages/orchestration/ui_server.py"] == [[46, 48]]
-    assert "_build_prompt_trace" in pkt["changed_symbols"]["packages/orchestration/ui_server.py"]
+    assert pkt["changed_files"] == ["packages/orchestration/serve_http_handler.py"]
+    assert pkt["changed_line_ranges"]["packages/orchestration/serve_http_handler.py"] == [[46, 48]]
+    assert "_build_prompt_trace" in pkt["changed_symbols"]["packages/orchestration/serve_http_handler.py"]
     assert pkt["recommended_scope"] == "hunk_only"
     assert pkt["test_results"] == {"ran": True, "passed": 3, "failed": 0,
                                    "summary": "3 passed in 0.05s"}
@@ -311,7 +311,7 @@ def test_modified_file_not_tagged_new_file(tmp_path):
     ev = tmp_path / "evidence"
     _make_run(ev, "T001", diff=SINGLE_FILE_DIFF)
     pkt = build_review_scope_packet({"task_id": "T001"}, tmp_path, ev)
-    assert "new_file" not in pkt["risk_tags"]["packages/orchestration/ui_server.py"]
+    assert "new_file" not in pkt["risk_tags"]["packages/orchestration/serve_http_handler.py"]
 
 
 # ---------------------------------------------------------------------------
@@ -328,7 +328,7 @@ def test_render_markdown_contains_key_sections(tmp_path):
     assert md.startswith("# Review Scope — T001: Add trace")
     assert "**Recommended scope:** `hunk_only`" in md
     assert "## Changed Files" in md
-    assert "`packages/orchestration/ui_server.py`" in md
+    assert "`packages/orchestration/serve_http_handler.py`" in md
     assert "`_build_prompt_trace`" in md
     assert "## Related Tests" in md
     assert "## Open Findings" in md
@@ -546,7 +546,7 @@ TWO_FILE_DIFF = """--- a/src/a.py
 
 def test_split_diff_by_path_single_file_round_trip():
     sections = split_diff_by_path(SINGLE_FILE_DIFF)
-    path = "packages/orchestration/ui_server.py"
+    path = "packages/orchestration/serve_http_handler.py"
     assert list(sections) == [path]
     # The section is the whole diff back again, minus the trailing newline that
     # ``splitlines`` consumed.

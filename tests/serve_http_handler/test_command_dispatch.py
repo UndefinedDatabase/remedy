@@ -1,5 +1,5 @@
 """
-Domain tests: ui_server/test_command_dispatch.py
+Domain tests: serve_http_handler/test_command_dispatch.py
 
 Effect tests for F009 T003 — what an ACCEPTED command actually DID. Its sibling
 `test_command_channel.py` pins what the door ANSWERS; this file pins the three
@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-from tests.ui_server.door_host import start_door_for_job
+from tests.serve_http_handler.door_host import start_door_for_job
 
 # Pinned as a literal for the reason its sibling gives: a test that imports the
 # constant it checks cannot catch a rename of the header the browser must send.
@@ -42,7 +42,7 @@ def _make_job() -> JobPlan:
 
 def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
     """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
-    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    own handler on a loopback port (`tests/serve_http_handler/door_host.py`, DECISION amend1015f D27)."""
     return start_door_for_job(job_id, tmp_path)
 
 
@@ -704,7 +704,7 @@ class TestPlanEditDispatchEffects:
     ])
     def test_each_edit_is_applied_versioned_and_attributed_to_the_token(
             self, command, args, expected_ids):
-        from packages.orchestration.ui_server import token_fingerprint
+        from packages.orchestration.serve_http_handler import token_fingerprint
 
         port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-" + command.replace(".", "-"), command,
@@ -861,7 +861,7 @@ class TestEditTaskDispatchEffects:
 
     def test_accepted_edit_updates_the_entry_and_audits_the_tokens_fingerprint(self):
         from packages.orchestration.pingpong_job import load_job_plan
-        from packages.orchestration.ui_server import token_fingerprint
+        from packages.orchestration.serve_http_handler import token_fingerprint
 
         entry = self._entry_for("T1")
         port, token = _start_door_for_job(self.job_id, self.tmp_path)
@@ -1010,7 +1010,7 @@ class TestVetoTaskDispatchEffects:
 
     def test_accepted_veto_writes_the_control_file_and_its_event(self):
         from packages.orchestration import task_veto as tv
-        from packages.orchestration.ui_server import token_fingerprint
+        from packages.orchestration.serve_http_handler import token_fingerprint
 
         t1 = self._task_id("T1")
         port, token = _start_door_for_job(self.job_id, self.tmp_path)
@@ -1211,7 +1211,7 @@ class TestInjectionDispatchEffects:
     def test_a_drafted_injection_answers_200_and_writes_one_draft_file_naming_the_actor(
             self, monkeypatch):
         from packages.orchestration import task_injection as ti
-        from packages.orchestration.ui_server import token_fingerprint
+        from packages.orchestration.serve_http_handler import token_fingerprint
 
         monkeypatch.setattr(ti, "injection_call_fn", lambda: _FakeInjectCall(
             [_injection_draft_json()]))

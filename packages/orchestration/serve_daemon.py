@@ -112,7 +112,7 @@ def socket_handler_class(token: str, launcher: RunLauncher | None = None,
     answers a write under `/api/v1` through it (DECISION F253 D9). With ORDERS it also starts
     `POST /api/v1/orders` through it (DECISION F253 D14 (3)).
     """
-    from packages.orchestration.ui_server import (
+    from packages.orchestration.serve_http_handler import (
         COMMAND_EFFECT_FAILED_MESSAGE,
         _RemedyHandler,
         _safe_error,
@@ -394,7 +394,7 @@ def stop_supervisor(root: Path | None = None, *, timeout: float = 10.0) -> bool:
 def post_command(root: Path | None, job_id: str, envelope: dict[str, Any],
                  *, timeout: float = 30.0) -> tuple[int, dict[str, Any]]:
     """Send one F009 command envelope for JOB_ID to ROOT's supervisor; (status, body)."""
-    from packages.orchestration.ui_server import COMMAND_CSRF_HEADER
+    from packages.orchestration.serve_http_handler import COMMAND_CSRF_HEADER
 
     paths = serve_paths(root)
     token = paths.token_file.read_text(encoding="utf-8").strip()

@@ -11,7 +11,7 @@ for it with ``show_cost_usd = true`` in the ``[cockpit]`` table of ``.remedy/con
 the operator works on subscriptions and judges a run by its tokens (amend1015 Part 5).
 
 The dashboard's older, event-estimated reading (``event_token_usage``) moved here from
-``ui_server.py`` unchanged, so both token readings of a job live in one module.
+``serve_http_handler.py`` unchanged, so both token readings of a job live in one module.
 
 Public API::
 

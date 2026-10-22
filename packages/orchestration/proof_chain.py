@@ -211,7 +211,7 @@ def fold_task_apply_states(chain: Any) -> dict[str, TaskApplyState]:
 
     Lives here, beside the `ProofChange.apply_state` field it reads, because more than
     one reader needs the same answer: the cockpit's `_task_truth_maps` in
-    `packages/orchestration/ui_server.py` and the run report. A reader importing the
+    `packages/orchestration/serve_http_handler.py` and the run report. A reader importing the
     HTTP server module to learn a task's apply state would be the wrong dependency in
     the wrong direction. When *chain* is None the result is empty, and the caller
     reports "unknown".
@@ -225,7 +225,7 @@ def fold_task_apply_states(chain: Any) -> dict[str, TaskApplyState]:
     setdefault(...).append(...), so a task's list is never empty and the all() below
     cannot be vacuously true. ONLY the mixed case moved: the three unanimous inputs
     read exactly what the fold returned for them before the partial state existed, and
-    the move out of `ui_server.py` changed no answer at all.
+    the move out of `serve_http_handler.py` changed no answer at all.
     """
     folded: dict[str, TaskApplyState] = {}
     if chain is None:

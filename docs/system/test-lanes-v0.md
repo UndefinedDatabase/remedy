@@ -78,7 +78,7 @@ that varies between environments.
 
 ## UI contract lane
 
-**Script**: `scripts/remedy_pytest.sh tests/ui_contracts/ tests/ui_server/ -q`
+**Script**: `scripts/remedy_pytest.sh tests/ui_contracts/ tests/serve_http_handler/ -q`
 **Expected runtime**: 15-30 seconds
 **Tests**: ~300+
 

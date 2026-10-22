@@ -50,7 +50,7 @@ from packages.orchestration.job_plan import (
 from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.task_deliverables import record_llm_task_deliverables
-from tests.ui_server.door_host import run_log_frames, start_door_for_job
+from tests.serve_http_handler.door_host import run_log_frames, start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -118,7 +118,7 @@ def _save_approved_three_task_job(root: Path, repo_path: Path) -> str:
 
 def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
     """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
-    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    own handler on a loopback port (`tests/serve_http_handler/door_host.py`, DECISION amend1015f D27)."""
     return start_door_for_job(job_id, tmp_path)
 
 

@@ -23,7 +23,7 @@ here").
 
 DEVIATION FROM DECISION F035 D7's PROSE (declared in the round 7 handback): the decision's own
 words group "the veto and the message" together under one phrase, `You (browser, token #1)`.
-Measured at this branch's HEAD, `_dispatch_chat_send` in `packages/orchestration/ui_server.py`
+Measured at this branch's HEAD, `_dispatch_chat_send` in `packages/orchestration/serve_http_handler.py`
 hardcodes `channel="cockpit"` for `chat.send` rather than the token fingerprint
 `_dispatch_job_veto_task` passes — only `ownership_actor` calls carrying a `tf:`-prefixed
 `recorded_as` earn a token number (`build_ownership_ledger`'s own numbering rule), so the
@@ -46,7 +46,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.data_paths import job_evidence_export_dir, job_record_path
-from tests.ui_server.door_host import start_door_for_job
+from tests.serve_http_handler.door_host import start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -140,7 +140,7 @@ print("FINAL:" + final.state, flush=True)
 
 def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
     """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
-    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    own handler on a loopback port (`tests/serve_http_handler/door_host.py`, DECISION amend1015f D27)."""
     return start_door_for_job(job_id, tmp_path)
 
 

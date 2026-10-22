@@ -3,7 +3,7 @@
 The single write door deduplicates by client nonce: a client that retries after a network
 timeout must receive the answer the server already gave, not a second effect. This module
 owns that store and nothing else — it decides no status code, refuses no request and never
-reads a request. `packages/orchestration/ui_server.py` decides; this remembers what was
+reads a request. `packages/orchestration/serve_http_handler.py` decides; this remembers what was
 decided, so that "a replayed nonce is idempotent" is a property of the door rather than a
 promise.
 

@@ -21,7 +21,7 @@ from packages.orchestration.command_audit import AUDIT_FILENAME
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.serve_paths import serve_paths
-from tests.ui_server.door_host import SupervisorThread
+from tests.serve_http_handler.door_host import SupervisorThread
 
 
 @pytest.fixture(autouse=True)

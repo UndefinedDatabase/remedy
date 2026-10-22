@@ -4,7 +4,7 @@
 only numbers, vocabulary words and timestamps (DECISION F023 D3). The builder is tested
 directly for its shape and its refusals. The cockpit route that served it and its tests were
 deleted with the old face (amend1015f D27); these builder tests moved here from
-`tests/ui_server/test_task_run_rounds.py`.
+`tests/serve_http_handler/test_task_run_rounds.py`.
 """
 from __future__ import annotations
 

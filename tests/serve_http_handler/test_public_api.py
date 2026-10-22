@@ -36,10 +36,10 @@ from packages.orchestration.self_health import (
     run_health_checks,
 )
 from packages.orchestration.serve_daemon import UnixHTTPConnection, socket_handler_class
+from packages.orchestration.serve_http_handler import _RemedyHandler, token_fingerprint
 from packages.orchestration.serve_paths import serve_paths
 from packages.orchestration.structured_log import LOG_FILE_NAME, logs_dir
 from packages.orchestration.token_ledger import LEDGER_FILENAME
-from packages.orchestration.ui_server import _RemedyHandler, token_fingerprint
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SERVER_TOKEN = "f253-public-api-test-token"
@@ -1919,7 +1919,7 @@ def test_a_client_token_reads_a_route_like_the_servers_token_and_the_ledger_name
 
 
 def test_a_client_token_is_refused_by_the_cockpits_other_doors(tcp_server):
-    from packages.orchestration.ui_server import COMMAND_CSRF_HEADER
+    from packages.orchestration.serve_http_handler import COMMAND_CSRF_HEADER
 
     _write_clients([_client_entry()])
     status, _body, _headers = _tcp_request(tcp_server, "GET", f"/api/state?token={CLIENT_TOKEN}")

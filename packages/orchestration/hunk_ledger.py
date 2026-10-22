@@ -23,7 +23,7 @@ module is handed the attempt's full hunk list and walks IT. That list is also wh
 DELIBERATE ABSENCE — this module does NOT import ``packages/orchestration/hunk_apply.py``,
 and that is a constraint rather than an oversight. That module imports
 ``packages/orchestration/source_apply.py``, which is the first entry of ``FORBIDDEN_MODULES``
-in ``tests/ui_server/test_command_channel.py``: nothing reachable from the HTTP write door
+in ``tests/serve_http_handler/test_command_channel.py``: nothing reachable from the HTTP write door
 may drag the applier behind it. The ledger is precisely what the write door will write, so
 it must stay importable from anywhere. It therefore takes PLAIN VALUES — a bool and a list
 of ids — where a ``HunkApplyOutcome`` would otherwise have been the obvious argument. A

@@ -5,7 +5,7 @@ from pathlib import Path
 def test_no_step_numbered_test_files():
     """Step-numbered test files (test_step*.py) are retired.
 
-    Tests live in domain directories: orchestration/, ui_server/, cli/,
+    Tests live in domain directories: orchestration/, serve_http_handler/, cli/,
     ui_contracts/, storage/, regression/.  See tests/README.md.
     """
     tests_dir = Path(__file__).resolve().parent

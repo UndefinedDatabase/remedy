@@ -9,7 +9,7 @@ directory a job's diff is read out of: the by-name index read, the `is_dir()`
 check that stops a named-but-absent directory being returned, resolution of a
 record written WITHOUT a `job_id` key, a malformed record falling through
 rather than raising, the CWD-relative `remedy-job-evidence-<job_id>` fallback in
-both directions, and that `ui_server._resolve_evidence_dir` now answers exactly
+both directions, and that `serve_http_handler._resolve_evidence_dir` now answers exactly
 the same value.
 """
 from __future__ import annotations
@@ -116,7 +116,7 @@ class TestJobEvidenceCliDefaults:
         assert rec["commit"]
         assert rec["exported_at"]
         assert "job_status" in rec
-        # Legacy keys preserved (ui_server reads these).
+        # Legacy keys preserved (serve_http_handler reads these).
         assert rec["evidence_dir_local"] == str(expected.resolve())
         assert "created_at" in rec
 
@@ -495,12 +495,12 @@ class TestResolveJobEvidenceDir:
 
 
 class TestUiServerDelegatesToTheSameRule:
-    def test_ui_server_resolver_answers_the_same_directory(
+    def test_serve_http_handler_resolver_answers_the_same_directory(
         self, isolate_data_root, tmp_path, monkeypatch,
     ):
         """The F037 viewer's resolver and the shared rule must agree over a case
         that is NOT None — one answer, not two."""
-        from packages.orchestration.ui_server import _resolve_evidence_dir
+        from packages.orchestration.serve_http_handler import _resolve_evidence_dir
 
         monkeypatch.chdir(tmp_path)
         ev = _evidence(tmp_path / "ev_shared")

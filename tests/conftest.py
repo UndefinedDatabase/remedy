@@ -488,7 +488,7 @@ def _restore_cwd():
     RELATIVE path breaks:
 
         FileNotFoundError: 'scripts/remedy_smoke.sh'
-        FileNotFoundError: 'packages/orchestration/ui_server.py'
+        FileNotFoundError: 'packages/orchestration/serve_http_handler.py'
 
     Whether a victim runs before or after the offender depends on the xdist
     schedule, so it presents as flake. Restoring the directory after every test
@@ -564,7 +564,7 @@ def pytest_collection_modifyitems(items):
         parts = item.path.parts
         if "ui_contracts" in parts:
             item.add_marker(pytest.mark.ui_contract)
-        if "ui_server" in parts:
+        if "serve_http_handler" in parts:
             item.add_marker(pytest.mark.integration)
 
         # File-based marks

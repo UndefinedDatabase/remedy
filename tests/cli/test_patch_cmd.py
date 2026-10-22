@@ -578,7 +578,7 @@ class TestTheHunksCommandIsTheReadSide:
 
     Every test drives the real parser over a real job on an isolated data root. The parity
     tests compare the envelope with the cockpit's own two reads in
-    `packages/orchestration/ui_server.py`, `_build_diff_json` and `_build_hunk_decisions_json`
+    `packages/orchestration/serve_http_handler.py`, `_build_diff_json` and `_build_hunk_decisions_json`
     and their task-run twins, over the same job, so the command and the cockpit cannot drift
     apart without one of these tests going red.
     """

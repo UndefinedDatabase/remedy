@@ -299,8 +299,8 @@ def _detect_roadmap(items: list) -> None:
         (has("self_dogfood.py"),
          "Self-Dogfood Execution v0", "self_dogfood.py",
          "Self-dogfood planner exists; a guarded execution rail is the natural next step."),
-        (has("ui_server.py"),
-         "Operator Cockpit Mutations v0", "ui_server.py",
+        (has("serve_http_handler.py"),
+         "Operator Cockpit Mutations v0", "serve_http_handler.py",
          "Read-only cockpit truth exists; consider gated cockpit mutations."),
     ]
     for ok, title, ev, detail in rules:
