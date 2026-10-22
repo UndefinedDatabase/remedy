@@ -319,6 +319,12 @@
      "case": "a run on the fake providers",
      "before": "null: the fake reported no tokens",
      "after": "the fake's fixed figures; its cost stays unmeasured (F307, DECISION F307 D20)"
+    },
+    {
+     "field": "the story's `ended_at`",
+     "case": "a job a run left blocked",
+     "before": "its stop time or its newest run-log event: the job kept no finish time",
+     "after": "the time the run that blocked it ended (F307, DECISION F307 D21)"
     }
    ]
   }

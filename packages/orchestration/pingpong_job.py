@@ -30,11 +30,9 @@ from typing import TYPE_CHECKING, Any
 from packages.common.secure_fs import durable_write
 from packages.core.models import Artifact, Budget, JobFences, RunState
 
-# F260 D2: one minting function per KIND of id. This module names JOBs, TASKs and
-# EPISODEs, so it mints through data_paths rather than spelling uuid4 inline.
-# Module-level and not function-scoped: the default_factory of JobPlan and of
-# TaskEntry below is read when the class body runs, which a local import could
-# never reach.
+# F260 D2: one minting function per KIND of id. This module names JOBs, TASKs and EPISODEs, so it mints through
+# data_paths rather than spelling uuid4 inline. Module-level and not function-scoped: the default_factory of JobPlan
+# and of TaskEntry below is read when the class body runs, which a local import could never reach.
 from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id, mint_task_id
 from packages.orchestration.execution_config import (
     ExecutionConfig,
@@ -43,6 +41,7 @@ from packages.orchestration.execution_config import (
     resolve_job_execution_config,
 )
 from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
+from packages.orchestration.job_run_finish import stamp_blocked_job_finish
 from packages.orchestration.structured_log import bind_call_log_context
 from packages.orchestration.verified_repair import final_task_test_command
 
@@ -2440,6 +2439,7 @@ def _writes_ownership_ledger(fn):
 
 @_writes_ownership_ledger
 @bind_call_log_context(job_id="job_id")
+@stamp_blocked_job_finish
 def run_job(
     job_id: str,
     *,

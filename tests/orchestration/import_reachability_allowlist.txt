@@ -248,6 +248,7 @@ packages.orchestration.job_input_definition
 packages.orchestration.job_insight
 packages.orchestration.job_plan
 packages.orchestration.job_run_ending
+packages.orchestration.job_run_finish
 packages.orchestration.job_runner
 packages.orchestration.job_stop_now
 packages.orchestration.job_tokens
