@@ -1,18 +1,20 @@
-# Plan — F296 Evidence-triggered tier escalation (routing v2)
+# Plan — F113 Local models for side roles
 
 ## Goal
-A task that fails on a cheaper tier gets its next repair round on the next tier up, for reasons
-the evidence names and never for provider unavailability, recorded in evidence, report, events and
-ledger, off by default (docs/roadmap/features/T3_F296.md; DECISIONs F296 D1 to D5).
+Summaries stop costing API tokens: a named local endpoint serves the cheap-tier side roles only,
+core roles are refused by F058's "core never local" rule, an endpoint that is down or a role that
+fails its spot check falls back to the role's own model, and every call records its route and basis
+(docs/roadmap/features/T3_F113.md; DECISION F113 D1).
 
 ## Current Step
-Round 7 (session 1): the closing round — book round 6, the Built State, the ledger rotation, F296
-accepted in STATUS with the README sync and SU-074's consumed_by, and the pull request, left
-unmerged.
+Round 1 (session 1): claim F113, book F296's round 7, DECISION F113 D1 with the slice list, and
+T001 + T002 — the endpoint table and probe, the side-role table and its refusal, the fallback, the
+summary role's three call sites, the summary's route record, tests and the system page.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F296's pull request, then the
-   next feature's first commit books round 7's verdict, then Rule A5.
+1. T003a: the cost ledger records a side-role call with its basis.
+2. T003b: the spot-check set, the flip, the dwell rule and the status line.
+3. T003c: the end-to-end fixture and the page completed; then the closure sequence.
 
 ## Risks
-- R-1421, the closure suite's CPU cost, is open and owned by F314.
+- The open findings, R-1246 to R-1421, are owned by F314; F113 takes none of them.

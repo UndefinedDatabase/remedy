@@ -1,25 +1,26 @@
-# Live Review — F296 Evidence-triggered tier escalation (routing v2)
+# Live Review — F113 Local models for side roles
 
-> Round-by-round review record, re-headed at the F296 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F307, whose STATUS
-> line went `[x]` on its own branch at `b6c7b0457`; this session's Open PR Gate merged pull
-> request 377 into `main` as `eb7aa432b`, whose tree equals `b6c7b0457`'s. F307's round 32 was
+> Round-by-round review record, re-headed at the F113 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F296, whose STATUS
+> line went `[x]` on its own branch at `54bf5087b`; this session's Open PR Gate merged pull
+> request 378 into `main` as `3af211790`, whose tree equals `54bf5087b`'s. F296's round 7 was
 > reviewed after its own handback, so operator amendment amend0827-process-diet rule 1 books its
 > verdict here, in the first commit of the next round that is happening anyway; its gate entry is
 > appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
 > section below are rewritten; everything else from the Findings heading to the end of the file as
-> it stood at `eb7aa432b` is carried forward BYTE-IDENTICAL, and finding ids continue the
-> monotonic R-XXXX series across the re-head. The open set at `eb7aa432b`, computed with
-> `open_finding_ids` from `scripts/rotate_live_review.py`, holds 6 ids — R-1246, R-1281, R-1326,
-> R-1351, R-1353 and R-1418 — every one owned by F314, so F296 takes none of them.
+> it stood at `3af211790` is carried forward BYTE-IDENTICAL, and finding ids continue the
+> monotonic R-XXXX series across the re-head. The open set at `3af211790`, computed with
+> `open_finding_ids` from `scripts/rotate_live_review.py`, holds 7 ids — R-1246, R-1281, R-1326,
+> R-1351, R-1353, R-1418 and R-1421 — every one owned by F314, so F113 takes none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F296 D1's, which also writes the feature file's slice list. The first
-round claims F296, re-heads this record, books F307's round 32, and takes step (1) of
-`run_pingpong`'s boundary in the structure ledger, because the escalation is decided inside that
-function. Then T001b and T001c, the trigger and the step with the loop's call; T002a and T002b,
-the record; T003, the benchmark and the default; then the closure.
+THE ORDER BELOW IS DECISION F113 D1's, which also writes the feature file's slice list. The first
+round claims F113, re-heads this record, books F296's round 7, and lands T001 and T002 together:
+the named local endpoints with their probe, and the side-role table with the hard rule and the
+fallback, wired into the summary role's three call sites. Then T003a, the cost ledger's record of a
+side-role call with its basis; T003b, the spot check, the flip and the status line; T003c, the
+end-to-end fixture and the page; then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -186,3 +187,5 @@ Gate: F296 R5 — the F296 round 5 entry, the closure's integration gate, over `
 - R-1421 — Low, F296'S CLOSURE SUITE USED 12.0 PERCENT MORE CPU TIME THAN F307'S, ABOVE THE 10 PERCENT LIMIT OF THE CLOSURE PROTOCOL. Found by F296's closure, precondition 2 of `docs/roadmap/STATUS_closure_protocol.md`: `python3 scripts/closure_suite_cost.py --feature F296 --record ~/.remedy-loop/test_load.jsonl` exited 1 after round 5's one full suite, and the transcript `.agent/authored/f296-closure-suite.txt`, committed at `cce706535`, reads "This closure's suite used 1369.23 CPU seconds, 12.0 percent more than F307's 1222.15; that is above the 10 percent limit". SEARCHED BEFORE MINTING (checklist item 30): the open set at `a80252cde` is `['R-1246', 'R-1281', 'R-1326', 'R-1351', 'R-1353', 'R-1418']`, and none of them names the suite's CPU cost or the cost script; R-1137, the same reading at F200's closure, is resolved in the archive. MEASURED from the two committed transcripts: the suite collected 23259 tests at F296 against 23194 at F307, 65 more, and its wall time grew from 328.36 to 380.20 seconds; the ten modules whose CPU time rose most are none of the two F296 added, and lead with `tests/orchestration/test_review_zip_hygiene.py` (32.56 to 42.14 seconds), `tests/cli/test_do_scale_matrix.py` (33.47 to 41.57) and `tests/runtimes/test_supervisor_portability.py` (42.72 to 50.20), which F296 did not change. NOT MEASURED: the CPU time of F296's two new test modules, and whether the rise of unchanged modules is the machine's load during that run. THE REPAIR: measure the CPU time per test module at the paydown's base, one module at a time, against F307's closure tree, name the modules that grew, and cut their cost without losing an assertion, or record by DECISION why the added cost is the price of the feature, as F290 D3 did for R-1137. WHY LOW: every test passed; the cost is electricity and waiting time, not a wrong behaviour. Owner: F314 — Findings paydown v10 (amend0911-feedback rule A's default). OPEN.
 
 Gate: F296 R6 — the F296 round 6 entry, the closure's evidence round, over `a80252cde`..`1a714f353` (3 commits, each single-parent; insertions by `git show --shortstat`: `218933a46` 130, `0143b9e17` 292, `1a714f353` 50). VERDICT PASS. The reviewer's `verify.py` read every line `True` and the last line `ALL True`: C1's four files and C2's evidence script equal the prepared snapshots, the dry tree's selection over C1 having read `5396 passed, 5 skipped` with exit 0, and the handoff holds no machine path. The staging reclaim previewed nothing, so no apply ran. The evidence job `f296r6e1001` ran on `0143b9e17` with both ancestry counts 22, 11592 node ids collected and 251 deselected as the reviewer's collect-only precheck at `a80252cde` read them, no unsafe id, the planted red control caught, `11586 passed, 6 skipped` with exit 0, `validate_verification_tests` without problems and `is_valid_current_run True`. The review package `remedy-review-20261022-085320-READY_FOR_REVIEW.zip` reads `READY_FOR_REVIEW`; the reviewer read its SHA-256 `cc616314ffef4d468e3dcfa497b55011ec6b129005fead9927778f05f410fbe5`, `is_zipfile` True, `testzip()` None and its manifest's subject from `eb7aa432b` to `0143b9e17` over 22 commits itself. The integrity check read `fail_count` 0 and the open set 7 ids, R-1421 the newest.
+
+Gate: F296 R7 — the F296 round 7 entry, the closing round, over `1a714f353`..`54bf5087b` (3 commits, each single-parent; insertions by `git show --shortstat`: `41f3a6091` 244, `1f9b23ee7` 64, `54bf5087b` 68). VERDICT PASS, verified by dry run, bytes identical. The reviewer of F113's first session ran the round 7 reviewer's `verify.py` against the three commits and read every line `True` and the last line `ALL True`: each commit is single-parent and carries its `F296 R7 Cn` subject, each names exactly its ordered paths with the numstat its manifest states, C3 carries the handoff beside them, and every committed file equals the prepared snapshot byte for byte, among them both ledger files of C2's rotation. No commit of the round exceeds 500 insertions. The worker's one run of the selection had read `578 passed` with exit 0, so no selection was re-run. Pull request 378 had no hosted check, which operator amendment amend1011-manual-hosted-ci makes the normal state, and this session's Open PR Gate merged it into `main` as `3af211790`, whose tree equals `54bf5087b`'s; the open set there holds 7 ids.
