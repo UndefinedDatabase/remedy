@@ -344,11 +344,11 @@ class TaskTierLadder:
         raised = target if model_tier_rank(reviewer_tier) < model_tier_rank(target) else reviewer_tier
         pending: dict[str, tuple[str, str, Any]] = {}
         try:
-            for role, tier in (("builder", target), ("reviewer", raised)):
-                if tier != self.tiers[role]:
+            for role, tier, current in (("builder", target, builder_tier), ("reviewer", raised, reviewer_tier)):
+                if tier != current:
                     pair = self.policy.tiers[tier]
                     extra = {"write_mode": self._write_mode} if role == "builder" else {}
-                    call = EscalatedCall(escalated_from=self.tiers[role], tier=tier, reason=reason,
+                    call = EscalatedCall(escalated_from=current, tier=tier, reason=reason,
                                          round=len(rounds) + 1, provider=pair.provider, model=pair.model)
                     built = self._make(pair.provider, role=role, model=pair.model, **extra, **self._options)
                     pending[role] = (pair.provider, pair.model, EscalatedProvider(built, call))
