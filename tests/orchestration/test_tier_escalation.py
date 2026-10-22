@@ -19,14 +19,19 @@ from packages.orchestration.config_keys_model_routing import (
     ESCALATION_ENABLED_CONFIG_KEY,
     ESCALATION_TIERS_CONFIG_KEY,
 )
+from packages.orchestration.pingpong_call_record import parked_session_refs
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
 from packages.orchestration.tier_escalation import (
     ESCALATION_REASON_PREFIX,
     ESCALATION_TRIGGERS,
+    EscalatedCall,
+    EscalatedProvider,
     EscalationPolicy,
     EscalationTiersError,
     TaskTierLadder,
     TierModel,
+    escalated_call_of,
+    escalation_report_lines,
     escalation_trigger,
     is_escalation_trigger,
     next_model_tier,
@@ -190,7 +195,7 @@ class TestTheLadder:
         assert (step.round, step.reason, step.builder_from, step.builder_to, step.reviewer_from,
                 step.reviewer_to) == (3, "test_failed", "cheap", "mid", "cheap", "mid")
         assert built == [("builder", "fake", "mid-model"), ("reviewer", "fake", "mid-model")]
-        assert ladder.start_round("cheap-builder", "cheap-reviewer") == (
+        assert _unwrapped(ladder.start_round("cheap-builder", "cheap-reviewer")) == (
             "fake", "mid-model", "builder:mid-model", "fake", "mid-model", "reviewer:mid-model")
         assert ladder.resumes("builder", SimpleNamespace(supports_resume=True)) is False
         assert ladder.start_round("b", "r") is None
@@ -202,7 +207,7 @@ class TestTheLadder:
         step = ladder.after_review(_decision(), [_round(False), _round(False)], rounds_left=1)
         assert (step.reviewer_from, step.reviewer_to) == ("top", "top")
         assert built == [("builder", "fake", "mid-model")]
-        assert ladder.start_round("b", "top-reviewer") == (
+        assert _unwrapped(ladder.start_round("b", "top-reviewer")) == (
             "fake", "mid-model", "builder:mid-model", "fake", "top-model", "top-reviewer")
         assert ladder.resumes("reviewer", SimpleNamespace(supports_resume=True)) is True
         assert ladder.reviewer_raised is False
@@ -369,3 +374,109 @@ class TestARealRun:
                                     build_error="provider_unavailable: the endpoint refused the connection")
         assert result.final_status == "provider_unavailable"
         assert {p.model for p in made} == {"cheap-model"}
+
+
+def _unwrapped(fresh):
+    """`start_round`'s six values with each `EscalatedProvider` replaced by the provider it wraps."""
+    return tuple(value._inner if isinstance(value, EscalatedProvider) else value for value in fresh)
+
+
+class TestTheRecord:
+    """T002a, DECISION F296 D3: what an escalated call leaves in the run's record, its cost booking,
+    a relaunch's session guard, the run report and the job's event stream."""
+
+    _run = TestARealRun._run
+
+    def test_every_escalated_call_carries_its_tier_its_reason_and_its_round(self, monkeypatch, tmp_path):
+        result, _, record = self._run(monkeypatch, tmp_path)
+        entries = [(r.get("builder", {}).get("escalation"), r.get("reviewer", {}).get("escalation"))
+                   for r in record["rounds"]]
+        mid = {"escalated_from": "cheap", "tier": "mid", "reason": "test_failed", "round": 3,
+               "provider": "fake", "model": "mid-model"}
+        assert entries == [(None, None), (None, None), (mid, mid)]
+        assert list(record["rounds"][2]["builder"])[-1] == "escalation"
+        assert escalated_call_of(result.rounds[2].builder_output) == EscalatedCall(**mid)
+        assert escalated_call_of(result.rounds[0].builder_output) is None
+
+    def test_the_cost_booking_names_the_model_that_served_each_call(self, monkeypatch, tmp_path):
+        _, _, record = self._run(monkeypatch, tmp_path)
+        booked = [(a["role"], a["model"]) for a in record["provider_evidence"]["provider_attempts"]]
+        assert booked == [("builder", "cheap-model"), ("reviewer", "cheap-model")] * 2 + [
+            ("builder", "mid-model"), ("reviewer", "mid-model")]
+
+    def test_a_relaunch_never_offers_an_escalated_models_session(self, monkeypatch, tmp_path):
+        _, _, record = self._run(monkeypatch, tmp_path, supports_resume=True)
+        assert parked_session_refs(record) == {}
+        (tmp_path / "kept").mkdir()
+        _, _, kept = self._run(monkeypatch, tmp_path / "kept", supports_resume=True, reviewer_model="mid-model")
+        assert parked_session_refs(kept) == {"reviewer": "mid-model-session"}
+
+    def test_the_report_has_one_line_per_escalation(self, monkeypatch, tmp_path):
+        _, _, record = self._run(monkeypatch, tmp_path)
+        assert escalation_report_lines(record) == [
+            "Escalation: from round 3 the builder ran on the mid tier instead of cheap, because its tests kept "
+            "failing; the reviewer was raised to mid with it."]
+        (tmp_path / "kept").mkdir()
+        _, _, kept = self._run(monkeypatch, tmp_path / "kept", tests=("FAILED a", "FAILED a", None),
+                               reviewer_model="mid-model")
+        assert escalation_report_lines(kept) == [
+            "Escalation: from round 3 the builder ran on the mid tier instead of cheap, because its tests failed "
+            "twice with the same failure; the reviewer kept its tier."]
+        assert escalation_report_lines({"rounds": [{"builder": {"session_id": ""}}]}) == []
+
+    def test_run_show_prints_the_line_after_the_reviewer(self, monkeypatch, tmp_path, capsys):
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
+
+        result, _, record = self._run(monkeypatch, tmp_path)
+        _cmd_run_show(result.run_id, json_output=False)
+        lines = capsys.readouterr().out.splitlines()
+        reviewer_at = next(i for i, line in enumerate(lines) if line.startswith("Reviewer:"))
+        assert lines[reviewer_at + 1] == escalation_report_lines(record)[0]
+
+    def test_the_job_event_stream_carries_worker_escalated_before_the_round(self, monkeypatch, tmp_path):
+        from packages.orchestration.pingpong_job import _log_task_rounds
+
+        result, _, _ = self._run(monkeypatch, tmp_path)
+        events: list[tuple[str, dict]] = []
+        log = SimpleNamespace(log=lambda event, **fields: events.append((event, fields)))
+        _log_task_rounds(log, SimpleNamespace(task_id="T001"), result, "attempt-1")
+        names = [name for name, _ in events]
+        assert names.count("worker.escalated") == 1
+        at = names.index("worker.escalated")
+        assert names[at:at + 4] == ["worker.escalated", "task_round_repaired", "task_round_tested",
+                                    "task_round_completed"]
+        assert events[at + 1][1]["round_number"] == 3
+        assert events[at][1] == {"task_id": "T001", "attempt_id": "attempt-1", "escalated_from": "cheap",
+                                 "tier": "mid", "reason": "test_failed", "round": 3, "provider": "fake",
+                                 "model": "mid-model"}
+
+    def test_the_event_comes_once_per_escalation_not_once_per_escalated_round(self):
+        from packages.orchestration.pingpong_job import _log_task_rounds
+
+        call = EscalatedCall("cheap", "mid", "test_failed", 3, "fake", "mid-model")
+
+        def served(number, stamped):
+            out = BuilderOutput(summary="ok", provider="fake")
+            if stamped:
+                out.tier_escalation = call
+            return SimpleNamespace(round_number=number, kind="repair", test_passed=False, builder_output=out,
+                                   reviewer_output=SimpleNamespace(verdict="pass"))
+
+        events: list[str] = []
+        log = SimpleNamespace(log=lambda event, **fields: events.append(event))
+        rounds = [served(2, False), served(3, True), served(4, True)]
+        _log_task_rounds(log, SimpleNamespace(task_id="T001"), SimpleNamespace(rounds=rounds), "attempt-1")
+        assert events.count("worker.escalated") == 1
+        assert events.index("worker.escalated") == 3
+
+    def test_an_escalated_provider_hands_every_other_attribute_to_its_provider(self):
+        inner = _ScriptedProvider("fake", "mid-model", supports_resume=True)
+        call = EscalatedCall("cheap", "mid", "test_failed", 3, "fake", "mid-model")
+        wrapped = EscalatedProvider(inner, call)
+        assert (wrapped.name, wrapped.model, wrapped.supports_resume) == ("fake", "mid-model", True)
+        assert escalated_call_of(wrapped.build("p")) is call
+        assert escalated_call_of(wrapped.review("p")) is call
+        assert inner.resumes == [None, None]
+        assert escalated_call_of(SimpleNamespace(tier_escalation="a test double's attribute")) is None
+        with pytest.raises(AttributeError):
+            wrapped._private

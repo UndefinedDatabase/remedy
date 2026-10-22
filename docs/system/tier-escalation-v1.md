@@ -1,9 +1,10 @@
 # Tier escalation v1: a failing cheaper model hands its next round one tier up
 
-> Status (F296, 2026-10-22): the trigger, the step and the loop's call are built (T001); the record
-> in evidence, report, events and ledger (T002) and the benchmark that decides the default (T003)
-> are not yet. DECISIONs F296 D1 and D2 in `.agent/decisions.md`; the feature is
-> `docs/roadmap/features/T3_F296.md`.
+> Status (F296, 2026-10-22): the trigger, the step and the loop's call are built (T001), and so is
+> the record of an escalated call in the run's record, its cost booking, the run report and the
+> job's event stream (T002a); the outcome per task class and tier in the cost ledger (T002b) and the
+> benchmark that decides the default (T003) are not yet. DECISIONs F296 D1 to D3 in
+> `.agent/decisions.md`; the feature is `docs/roadmap/features/T3_F296.md`.
 
 A task runs in rounds: a builder changes the code, the project's tests run, a reviewer reads the
 change, and a repair round follows while the evidence asks for one. Without escalation every round
@@ -57,12 +58,24 @@ model = "sonnet"
 
 ## What changes in a run
 The escalated round's builder, and its reviewer when raised, are built new on the next tier's model
-and start a fresh session: the cheaper model's session is never resumed by another model. The
-prompt record of each call of the escalated round names the higher tier's provider and model. A run
-that escalated no longer reads as kept by one builder and one reviewer across its rounds, and a
-no-progress stop that became the escalated round records its repair decision with the reason
-`tier_escalation:no_progress`. The cost booking of each call still names the run's configured model
-until T002 lands.
+and start a fresh session: the cheaper model's session is never resumed by another model, and a task
+relaunched after an interruption starts again on its configured models without resuming a session
+an escalated model opened. A no-progress stop that became the escalated round records its repair
+decision with the reason `tier_escalation:no_progress`, and a run that escalated no longer reads as
+kept by one builder and one reviewer across its rounds.
+
+Every call an escalated provider served says so in four places:
+
+- the run's record: the call's entry under its round carries `escalation`, holding
+  `escalated_from` and `tier` (the tiers the role came from and ran on), `reason`, `round` (the
+  round the step began in), `provider` and `model`;
+- the cost booking: the call is booked under the escalated tier's model, not the run's configured
+  one;
+- the run report: `remedy run show` prints one line per escalation after the reviewer, such as
+  "Escalation: from round 3 the builder ran on the mid tier instead of cheap, because its tests kept
+  failing; the reviewer was raised to mid with it.";
+- the job's event stream: a `worker.escalated` event, carrying the same fields, comes before the
+  events of the round the step began in.
 
 The routing policy itself is not changed by this: its seed table, its hard rules and its benchmark
 rule for moving a task class to a cheaper tier still decide which tier a task class starts on;
