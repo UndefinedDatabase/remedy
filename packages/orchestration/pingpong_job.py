@@ -2888,7 +2888,7 @@ def run_job(
                         _job_budgets,
                         counters,
                         band=_derive_band(next_task, previous_summaries),
-                        config=_predictive_config,
+                        config=_predictive_config, task_class=next_task.task_class,
                     )
                     if _prediction.would_breach:
                         # The arithmetic is persisted BEFORE the stop so a human

@@ -124,6 +124,27 @@ STATS_COMMANDS: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    # ── stats — the estimate calibration (F074) ──────────────────────────
+    CommandEntry(
+        command_id="stats.calibration",
+        group_id="stats",
+        subcommand="calibration",
+        description=(
+            "The estimate calibration the cost estimates read: per task class and role, how many "
+            "tasks past runs measured and their P20, P50 and P80 of tokens and cost, which classes are "
+            "calibrated, the window, the floor and how old the measurement is. Read-only on the "
+            "ledger; measures it again when the saved calibration is old."
+        ),
+        action_class="read_only",
+        supports_json=True,
+        related=("stats.cost",),
+        args=(
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
     # ── stats — the cost report (F115) ───────────────────────────────────
     # Deliberately NO --all-projects, and the description says so where a
     # reader looks for it: `remedy stats --help` prints the description, and a

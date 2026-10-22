@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-157 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+158 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -39,7 +39,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 48 | 49 |
-| 3 | Full Token Economy & Autonomy | 15 | 29 |
+| 3 | Full Token Economy & Autonomy | 16 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -497,6 +497,16 @@ cases checks the server's summaries on request, moves the work back to the usual
 fails, and moves it back only after a later passing check; `remedy status` and `remedy doctor
 side-roles` show where each summary runs, and a job's evidence and cost records list each such call
 as free of paid tokens; the page `docs/system/local-side-roles-v1.md` describes it).
+
+F074 estimate calibration (once a kind of task has run often enough in a project, Remedy's cost
+estimates for it come from what those tasks really used, measured from the cost ledger, instead of
+a fixed guess per size; the band prices of a rehearsal, the check that stops a job before its next
+task would break the money limit, and the cost shown before a subtree rerun all read the same
+measurement, and each such estimate is labelled `calibrated(n)` with the number of tasks it rests
+on, while a kind of task measured too few times keeps its fixed guess and says so; `remedy stats
+calibration` shows the measurement and how old it is, and `remedy job plan-show` prints a measured
+kind's typical size beside its band; the page `docs/system/estimate-calibration-v1.md` describes
+it).
 
 Accepted in Tier 4 so far:
 F266 remedy study (a bounded, read-only repository comprehension pass —

@@ -1,0 +1,5 @@
+Entry ID: SU-076
+Entry Title: Narrow the excused handler at apps/cli/commands/worker_facade_cmd.py:397
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/worker_facade_cmd.py:1:except Exception as exc:  # noqa: BLE001 — a dead-model mismatch becomes an advisory, not a blocker)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f074-r3-selfuse/SU-076.md

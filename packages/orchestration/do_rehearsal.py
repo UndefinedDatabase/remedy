@@ -80,7 +80,8 @@ def _task_rows(job: Any, predictive_config: Any) -> list[dict[str, Any]]:
         plan_band = (plan or {}).get("est_tokens_band") or ""
         token_band = PLAN_BAND_TO_TOKEN_BAND.get(plan_band) if plan_band else None
         if token_band is not None:
-            estimate = estimate_cost_band(token_band, token_band, config=predictive_config)
+            estimate = estimate_cost_band(token_band, token_band, config=predictive_config,
+                                          task_class=getattr(task, "task_class", None))
             band_usd_low, band_usd_high, basis = (
                 estimate.band_usd_low, estimate.band_usd_high, estimate.basis)
         else:

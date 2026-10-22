@@ -49,6 +49,7 @@ from packages.orchestration.cost_preview import (
     resolve_confirm_above_usd,
 )
 from packages.orchestration.data_paths import job_evidence_dir
+from packages.orchestration.estimate_calibration import CALIBRATED_BASIS_PREFIX
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_PAUSED,
@@ -219,11 +220,14 @@ def subtree_rerun_cost_estimate(
     caller of that estimator uses. One task with no band, an unrecognised band
     (``XL`` maps to ``TokenBand.UNKNOWN``, which has no class default) or an
     unpriced config makes the WHOLE estimate unavailable, never half-guessed
-    (A9, same posture as ``estimate_cost_band`` itself).
+    (A9, same posture as ``estimate_cost_band`` itself). F074: a task whose
+    class is calibrated is priced from its class's measured range, and the
+    basis names each such task with its ``calibrated(n)`` label.
     """
     tasks_by_id = {t.task_id: t for t in job.tasks}
     tasks_meta: list[dict[str, str]] = []
     unpriced: list[str] = []
+    calibrated: list[str] = []
     low_total = 0.0
     high_total = 0.0
     available = True
@@ -236,7 +240,8 @@ def subtree_rerun_cost_estimate(
 
         token_band = PLAN_BAND_TO_TOKEN_BAND.get(band) if band else None
         task_estimate = (
-            estimate_cost_band(token_band, token_band, config=config)
+            estimate_cost_band(token_band, token_band, config=config,
+                               task_class=getattr(task, "task_class", None))
             if token_band is not None else None
         )
         if (task_estimate is None or task_estimate.band_usd_low is None
@@ -246,14 +251,20 @@ def subtree_rerun_cost_estimate(
             continue
         low_total += task_estimate.band_usd_low
         high_total += task_estimate.band_usd_high
+        if task_estimate.basis.startswith(CALIBRATED_BASIS_PREFIX):
+            calibrated.append(f"{task_id} {task_estimate.basis.split(' ', 1)[0]}")
 
     inputs: dict[str, Any] = {"tasks": tasks_meta, "unpriced": unpriced}
     if not available:
         return CostBandEstimate(None, None, ESTIMATE_UNAVAILABLE, inputs)
 
+    priced_by = "class defaults per plan band"
+    if calibrated:
+        rest = " and class defaults per plan band for the rest" if len(calibrated) < len(subtree_ids) else ""
+        priced_by = f"calibrated class ranges for {', '.join(calibrated)}{rest}"
     basis = (
-        f"sum over the {len(subtree_ids)} tasks of the subtree of class defaults per plan "
-        f"band x price_basis_usd_per_1k_tokens={config.price_basis_usd_per_1k_tokens}"
+        f"sum over the {len(subtree_ids)} tasks of the subtree of {priced_by} "
+        f"x price_basis_usd_per_1k_tokens={config.price_basis_usd_per_1k_tokens}"
     )
     return CostBandEstimate(round(low_total, 6), round(high_total, 6), basis, inputs)
 

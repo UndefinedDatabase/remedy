@@ -28,6 +28,11 @@ from uuid import UUID
 
 from packages.core.models import JobBudgets
 from packages.orchestration import token_economy
+from packages.orchestration.estimate_calibration import (
+    CALIBRATED_BASIS_PREFIX,
+    calibrated_class_tokens,
+    calibration_basis_label,
+)
 from packages.orchestration.token_economy import TokenBand
 
 if TYPE_CHECKING:  # import-light at runtime: the config type is duck-typed here
@@ -465,7 +470,9 @@ def evaluate_budget(
 
 # F104 predictive cost — the five labels a prediction may wear, and no others.
 # Every user-facing predicted number carries one of these; that is an acceptance
-# criterion of the feature, not decoration.
+# criterion of the feature, not decoration. F074 adds ONE label family beside
+# them: `calibrated(n)`, a prediction read from a task class calibrated on n
+# measured tasks, written by `estimate_calibration.calibration_basis_label`.
 VALID_ESTIMATE_BASES = frozenset({
     "class_default",
     "class_default_missing_band",
@@ -488,7 +495,8 @@ class BudgetPrediction:
     """What the NEXT task is expected to cost, and whether it would breach.
 
     An ESTIMATE, never a measurement: ``estimate_basis`` names where the number
-    came from and is always one of ``VALID_ESTIMATE_BASES``. ``arithmetic`` is
+    came from and is always one of ``VALID_ESTIMATE_BASES`` or a ``calibrated(n)``
+    label (F074). ``arithmetic`` is
     the one-line human-readable justification — a human must be able to see WHY
     a predictive stop happened without reading this module.
     """
@@ -562,13 +570,15 @@ def predict_next_task_cost(
     *,
     band: str | None,
     config: PredictiveBudgetConfig,
+    task_class: str | None = None,
 ) -> BudgetPrediction:
     """Estimate the next task's cost against the money limit.
 
     ``band`` is a ``TokenBand`` value. ``"unknown"``, None and any unrecognised
     string all mean the band could not be derived, and take the feature's A9
     path: the LARGEST class default, labelled ``class_default_missing_band``,
-    because over-stopping beats overspending.
+    because over-stopping beats overspending. F074: a ``task_class`` calibrated in
+    ``config.calibration`` is expected at its measured P50, labelled ``calibrated(n)``.
 
     ``would_breach`` is True ONLY when real numbers could be compared, and uses
     a strict ``>``: the exact-limit case belongs to the reactive check in
@@ -587,6 +597,9 @@ def predict_next_task_cost(
         resolved_band = TokenBand.UNKNOWN
         expected_tokens = max(class_defaults.values()) if class_defaults else None
         band_basis = "class_default_missing_band"
+    calibrated = calibrated_class_tokens(getattr(config, "calibration", None), task_class)
+    if calibrated is not None:
+        expected_tokens, band_basis = round(calibrated.p50), calibration_basis_label(calibrated.n)
 
     expected_cost_usd = token_economy.tokens_to_cost_usd(expected_tokens, price_basis)
 
@@ -614,7 +627,7 @@ def predict_next_task_cost(
         estimate_basis = band_basis
 
     comparable = (
-        estimate_basis in _PREDICTABLE_BASES
+        (estimate_basis in _PREDICTABLE_BASES or estimate_basis.startswith(CALIBRATED_BASIS_PREFIX))
         and expected_cost_usd is not None
         and spent is not None
         and limit is not None
