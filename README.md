@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-156 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+157 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -39,7 +39,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 48 | 49 |
-| 3 | Full Token Economy & Autonomy | 14 | 29 |
+| 3 | Full Token Economy & Autonomy | 15 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -488,6 +488,15 @@ run's record, its cost figures, `remedy run show` and the job's events say which
 from which round and why, and a job's evidence records what each tier did for each kind of task;
 it stays switched off until a measured comparison shows that starting cheap pays; the page
 `docs/system/tier-escalation-v1.md` describes it).
+
+F113 local models for side roles (an operator can name a model server on their own machine and send
+Remedy's summaries to it, so writing them stops costing paid tokens; Remedy refuses to send the work
+that builds, reviews or plans to such a server and names the rule it applied; when the server does
+not answer, the usual model writes the summary and the summary says why; a fixed set of small test
+cases checks the server's summaries on request, moves the work back to the usual model when it
+fails, and moves it back only after a later passing check; `remedy status` and `remedy doctor
+side-roles` show where each summary runs, and a job's evidence and cost records list each such call
+as free of paid tokens; the page `docs/system/local-side-roles-v1.md` describes it).
 
 Accepted in Tier 4 so far:
 F266 remedy study (a bounded, read-only repository comprehension pass —
