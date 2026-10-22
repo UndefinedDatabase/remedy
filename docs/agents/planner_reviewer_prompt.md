@@ -787,6 +787,20 @@ end the response with:
   ordered test could see broken, are item 18's reading of an ordered list of tests against the
   property it must establish, each found by the reviewer's mutations as the review loop already
   requires. The list stays at 34 items.
+  Consolidated again at F307's closure on 2026-10-22: nothing joined and no two items were merged,
+  because F307's one line in `.agent/prose_slips.md` names no lesson the list lacks. A block that
+  added a key to the order batch without reading the machine client interface's key trees is item
+  34's reading of the guards that bind the file the order changes. Seven of the eight findings it
+  raised were repaired inside the feature: R-1412 and R-1413, a scan that stopped at a line it took
+  for a header and a loader that raised against its own docstring, and R-1414, an answer key the
+  declared set left out, are item 34's reading of the code the order reaches; R-1415, two rules of a
+  decision that no ordered test could see broken, is item 18's reading of an ordered list of tests
+  against the property it must establish; R-1416 and R-1417, a move that left one test patch on the
+  old module and two page rows a byte-pinned test did not use, are item 34's reading of the tests
+  that already reach the code an order changes; and R-1419, a guard that read one level where its
+  record documents two, was found by the reviewer's own proof of another repair. The eighth,
+  R-1418, an order queued for a builder that cannot reach the network, is carried to the next
+  findings paydown. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
