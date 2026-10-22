@@ -7,7 +7,7 @@ R-1422 (failover booking during a hold), R-1423 (`used.minutes` of a running job
 for F314).
 
 ## Current Step
-Part 2, R-1423: red tests for `used.minutes` of a running job, committed alone.
+Part 2, R-1423: the `in_flight` fix committed; next contract 1.28, the kit seed and the record.
 
 ## Next Steps
 1. Part 2, R-1423: the `in_flight` keyword, contract 1.28, kit seed and re-record.

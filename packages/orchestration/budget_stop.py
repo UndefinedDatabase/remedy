@@ -71,9 +71,14 @@ def raise_remainder_for_final_job(job: Any) -> str | None:
 
 
 # WHY public: the budget stop and the insight (DECISION F311 D1) measure worked time alike.
-def budget_work_seconds(actuals: dict[str, Any], now: datetime) -> float:
-    """The seconds of work a decoded record holds: the moment it was last active, less the start and the waiting."""
-    return ((actuals["active_until"] or now) - actuals["started_at"]).total_seconds() - actuals["waited_s"]
+def budget_work_seconds(actuals: dict[str, Any], now: datetime, *, in_flight: bool = False) -> float:
+    """The seconds of work a decoded record holds: the moment it was last active, less the start and the waiting.
+
+    A job in flight is active now, so it is measured to `now`; one that does not run was last active
+    at `active_until` (R-1423).
+    """
+    until = now if in_flight else (actuals["active_until"] or now)
+    return (until - actuals["started_at"]).total_seconds() - actuals["waited_s"]
 
 
 def _exhausted_limits(job: Any, limits: Any, now: datetime) -> set[str]:
