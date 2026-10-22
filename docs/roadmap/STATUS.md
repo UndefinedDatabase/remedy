@@ -304,7 +304,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [~] F307 — Findings paydown v9
+- [x] F307 — Findings paydown v9 (T001–T021 complete; 49 claimed ids and 8 of its own resolved, R-1375's 33 operator repairs booked, R-1301 resolved by deletion; R-1246, R-1281, R-1326, R-1351, R-1353 and R-1418 open — owned by F314; accepted 2026-10-22 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f307r31e1001 · package remedy-review-20261022-061118-READY_FOR_REVIEW.zip · SHA-256 e49aa6fde92a4f6c69f5994c3a58e9b7734acef64713a9ee14d118db988dbfd8 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a100201f3a40b1f07ac02abd470836c336e843f1)
 
 ## Tier 3 — Routing v2: cheap first, evidence escalates (operator ruling amend1006-luna-control-plane)
 

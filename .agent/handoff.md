@@ -1,110 +1,131 @@
-# Handback — F307 round 31: book round 30 and R-1420, the evidence job and the review package
+# Handback — F307 round 32, the closing round: book round 31, re-assign six findings to F314, rotate the ledger, register F314, accept F307
 
 ## Session
 
-SESSION 7 of feature F307 · round 31 · rounds so far 31
+SESSION 7 of feature F307 · round 32 · rounds so far 32
 
-Context self-assessment: this worker verified every prepared digest before any write, copied each prepared file by a script that proved equality over bytes, ran the evidence job and the package once each through the launcher and each gate once; context is ample and nothing was lost.
+Context self-assessment: this worker verified every prepared digest before any write, copied each prepared file by a script and proved equality over bytes, ran the rotation and each gate once; context is ample and nothing was lost. The session ends here because F307 is closed and the next feature starts in a fresh session.
 
-Fortschritt: ~99 % (everything but the closing round is done) — Schätzung
+Fortschritt: 100 % (F307 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
 
 ## Range
 
-Review of `f3d693a87`..`HEAD` on `feature/f307-findings-paydown-v9`.
+Review of `857783258`..`HEAD` on `feature/f307-findings-paydown-v9`.
 
 ## Commits
 
-### 5a9030360 F307 R31 C1: book round 30 and R-1420, the plan, the block
+### 5540154ae F307 R32 C1: book round 31, re-assign six findings to F314, the Built State, the consolidation brought to nine findings, save the round 32 block and the PR body
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f307-r31.md` | new | NEW FILE, this round's block, byte copy (115 lines, sha256 `4ada4e14242fe8d537c3dfe9e72ee3f34b9747409020ccb0922a121f2e4b4ebb`) |
-| `.agent/live_review.md` | appended | prepared file copied (equals pre-image plus `append-live_review.txt`) |
-| `.agent/plan.md` | rewritten | prepared file copied |
+| `.agent/authored/f307-r32.md` | +137/-0 | NEW FILE, this round's block, byte copy |
+| `.agent/authored/f307-r32-pr_body.md` | +58/-0 | NEW FILE, the pull request body, byte copy |
+| `.agent/live_review.md` | +8/-0 | round 31 booked, six findings re-assigned to F314 |
+| `docs/roadmap/features/T2_F307.md` | +43/-0 | the Built State |
+| `docs/agents/planner_reviewer_prompt.md` | +6/-5 | the consolidation brought to nine findings |
+| `.agent/plan.md` | +7/-9 | rewritten |
 
-124 insertions, 8 deletions over 3 files (`git show --shortstat`).
-
-### a100201f3 F307 R31 C2: the evidence script
+### a4d05508a F307 R32 C2: rotate the finding ledger into its archive
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f307-r31-create_f307_evidence.py` | new | NEW FILE, byte copy of the prepared script |
+| `.agent/live_review.md` | +0/-663 | the rotation script's output |
+| `.agent/live_review_archive.md` | +681/-0 | the rotation script's output |
 
-293 insertions over 1 file (`git show --shortstat`).
+DECLARED OVERSIZE (681 insertions, F307's one such commit): inseparable, because the rotation script writes the ledger and the archive in one step and verifies every moved record by sha256 across both, so neither file can land without the other. No earlier commit of F307 passed 500 insertions.
 
-### (this commit) F307 R31 C3: handback
+### 2cd5ce062 F307 R32 C3: register F314 — Findings paydown v10 under amend0911-feedback rule B: feature file, STATUS line, pin 314, README counters
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | rewritten | this handback |
+| `docs/roadmap/features/T2_F314.md` | +49/-0 | NEW FILE, the feature file |
+| `docs/roadmap/STATUS.md` | +7/-0 | F314's line |
+| `README.md` | +2/-2 | counters |
+| `tests/docs/test_docs_consistency.py` | +5/-1 | the registered-count pin moves to 314 |
+
+### (this commit) F307 R32 C4: accept F307 in STATUS with its README sync and the self-use queue
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | +1/-1 | C4: F307's line becomes the accepted line (measured before this handoff joined) |
+| `README.md` | +15/-3 | C4: `155 of 314`, Tier 2 row `48 | 49`, F307's paragraph (measured before this handoff joined) |
+| `scripts/self_use_queue.json` | +1/-1 | C4: SU-073 `consumed_by` becomes `F307` (measured before this handoff joined) |
+| `.agent/handoff.md` | rewritten | C4: this handback (a handoff cannot table the commit that writes it) |
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | commit `5a9030360`, byte proofs held, ledger equals pre-image plus slice |
-| C2 | done | commit `a100201f3`, byte proof held, pushed |
-| A1 | done | preview read nothing reclaimable; apply skipped |
-| A2 | done | exit 0, wall 1816.5 s, `PASS_WITH_RISKS` as the script's own verdict line |
-| A3 | done | `READY_FOR_REVIEW`, exit 0, wall 62.1 s |
-| C3 | done | this handback commit |
-| Gate 1 | done | status empty; verify.py `ALL True` |
-| Gate 2 | done | A2 exit 0 and A3 exit 0 from the launcher's exit files |
-| Gate 3 | done | `fail_count` 0; open set of 6 ids as ordered; status empty |
+| C1 | done | commit `5540154ae`, byte proofs held, numstat equal to the manifest |
+| C2 | done | commit `a4d05508a`, rotation exit 0, output equal to the simulation, both files byte-equal to the prepared ones; declared oversize |
+| C3 | done | commit `2cd5ce062`, byte proofs held, numstat equal to the manifest |
+| C4 | done | this commit, byte proofs held, numstat equal to the manifest |
+| Push | pending | reported in the session reply |
+| Pull request | pending | created after the push; number and URL in the session reply |
+| Gate 1 | done | status showed only the three C4 files; `verify.py` last line `ALL True` |
+| Gate 2 | done | the STATUS line occurs once; no line begins `- [~]` |
+| Gate 3 | done | exit 0, `578 passed in 64.03s` |
+| Gate 4 | done | exit 0, six checks `pass`, `fail_count` 0 |
+| Gate 5 | done | the open set equals the six ordered ids |
 
 ## External actions
 
-`git push -u origin feature/f307-findings-paydown-v9` after C2: `f3d693a87..a100201f3`, accepted on the first try. The push after this commit is reported in the session reply. No `gh` command, no pull request, no fetch or pull, no provider call. The scratch folder `.remedy-wt/f307-r31-worker/` holds the digest checker, the copy scripts, the commit messages, the launcher logs and exit files.
+None before this commit. The push and the pull request follow it and are reported in the session reply. No fetch or pull, no merge, no provider call. The scratch folder `.remedy-wt/f307-r32-worker/` holds the digest checker, the copy and proof scripts, the commit messages and the gate scripts.
 
 ## Verification
 
-1. Digests before any write: `block.md` (115 lines), `verify.py` and `digests.txt` equal the prompt's; every file `digests.txt` lists matched (checker run with `python3 -I`).
-2. Preconditions: HEAD `f3d693a87` equal to `origin/feature/f307-findings-paydown-v9`, `git status --porcelain` empty, `.agent/STOP` absent. `git branch --show-current` read `feature/f307-findings-paydown-v9` before each of C1 to C3.
-3. Gate 1: `git status --porcelain` empty; `verify.py` printed `True` on every line, `absent` for C3, last line `ALL True`.
-4. Gate 2: see Evidence and package.
-5. Gate 3: `python3 -m apps.cli.main integrity check --json` exit 0, `fail_count` 0 (six checks, all pass). `open_finding_ids` printed `['R-1246', 'R-1281', 'R-1326', 'R-1351', 'R-1353', 'R-1418']`. `git status --porcelain` empty.
+1. Digests before any write: `block.md` (137 lines), `verify.py`, `manifest.tsv`, `status_line.txt` and `sim-rotation.txt` equal the prompt's; every prepared file `manifest.tsv` lists matched (checker run with `python3 -I`, last line `ALL OK`).
+2. Preconditions: HEAD `857783258` equal to `origin/feature/f307-findings-paydown-v9`, `git status --porcelain` empty, `.agent/STOP` absent. `git branch --show-current` read `feature/f307-findings-paydown-v9` before each commit.
+3. Rotation (C2), `python3 scripts/rotate_live_review.py` through a wrapper with cwd the repository root, exit 0, output whole (the home folder is written as `~`):
+
+```
+gate records moved: 70
+finding pairs moved: 133 (266 records)
+resolved-text records moved: 3
+old ledger size: 485937 bytes
+new ledger size: 161479 bytes
+old archive size: 6836056 bytes
+new archive size: 7160532 bytes
+open findings before: 6
+open findings after: 6
+gate headers matching neither known form (left in place): 1
+written: ~/Repos/remedy/.agent/live_review.md and ~/Repos/remedy/.agent/live_review_archive.md
+```
+
+   Ledger size before 485937 bytes, after 161479 bytes. Exit code and every line but the last equal `sim-rotation.txt`; both files equal their prepared C2 files over bytes.
+4. Gate 1: `git status --porcelain` showed `M  README.md`, `M  docs/roadmap/STATUS.md`, `M  scripts/self_use_queue.json` only. `python3 .remedy-wt/f307-r32/prep/verify.py` printed `True` on every line, `absent` for `C4 committed`, last line `ALL True`.
+5. Gate 2: count of the status line in the STATUS page 1; lines beginning `- [~]`: none.
+6. Gate 3: the ordered pytest selection, once, exit 0, `578 passed in 64.03s (0:01:04)`, no FAILED, ERROR or SKIPPED line.
+7. Gate 4: `python3 -m apps.cli.main integrity check --json` exit 0, six checks `pass` (`handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`, `repo_root_hygiene`, `high_blockers_open`), `"fail_count": 0`.
+8. Gate 5: `open_finding_ids` printed `['R-1246', 'R-1281', 'R-1326', 'R-1351', 'R-1353', 'R-1418']`.
 
 ## Authored-text proofs
 
-Applied this round, each proved equal over bytes by a copy script right after writing and again by `verify.py` against the committed blobs: `.agent/authored/f307-r31.md`, `.agent/live_review.md`, `.agent/plan.md` (C1) and the evidence script (C2). `.agent/live_review.md` equals its pre-image followed by `append-live_review.txt`.
-
-## Evidence and package
-
-Evidence job id `f307r31e1001`. `git reflog -n 3` before the run: `a100201f3 HEAD@{2026-10-22 05:40:44 +0200}: commit: F307 R31 C2: the evidence script`, then C1, then `f3d693a87` (R30 C4). A2 printed, exit `exit 0 wall 1816.5`:
-
-```
-head a100201f3a40b1f07ac02abd470836c336e843f1
-ancestry-path count 122
-plain count 122
-collected node ids 11507, deselected 251
-red control: unsafe among the real ids 0 []
-red control: planted id -> a local absolute path
-pytest exit 0, {'passed': 11501, 'failed': 0, 'skipped': 6}, output_hash 52c6cbc2d78282fbbfd1e717ff529ba8ef62453df83aa3bf3aa8032e38741a31
-validate_verification_tests problems [] passed 11501
-is_valid_current_run True
-validation_errors []
-```
-
-The script's JSON summary: `verdict` `PASS_WITH_RISKS`, `authority_count` 289, `commit_count` 122, `total_passed` 11501.
-
-A3 (exit 0, wall 62.1 s): `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`, `EVIDENCE_AUTHORITATIVE=true`. Package `remedy-review-20261022-061118-READY_FOR_REVIEW.zip`, SHA-256 `e49aa6fde92a4f6c69f5994c3a58e9b7734acef64713a9ee14d118db988dbfd8` (a Python sha256 over the file, equal to the tool's `final_sha256`), directory `~/Repos/remedy-history/zips`. `committed_review_subject` in `.review_zip_manifest.json` inside the package: base `eeed13064c44173c7565f6a8900d049b339176ab`, head `a100201f3a40b1f07ac02abd470836c336e843f1`, 122 commits. `zipfile.is_zipfile` True, `testzip()` None. The tool's closing lines: `Commit: a100201f3a40b1f07ac02abd470836c336e843f1`, `Included files: 2139`.
-
-## Staging reclaim
-
-`python3 -m apps.cli.main data reclaim --orphans` preview: `Reclaimable: nothing`, `Would free 0 B in 0 paths`; no refused path other than the durable classes the tool lists as not reclaimed. The apply was skipped as ordered; freed total 0 B.
+Applied this round, each proved equal over bytes by a script that only reads, against the prepared file: every file of C1, C3 and C4, and both ledger files of C2. The STATUS line in `docs/roadmap/STATUS.md` is byte-identical to the prep folder's `status_line.txt` without its trailing newline (count 1). It names the package folder as `~/Repos/remedy-history/zips` (the file carries the machine's absolute form of the same folder).
 
 ## Deviations & assumptions
 
-None. The commit sequence landed exactly as ordered (C1, C2, then this C3), each touching only its named paths. No amend, rebase, force-push or `--no-verify`, no pull request, `.data` never read by this worker, no second launch of any action, no suite run other than A2's evidence pytest.
+Gate 1's `verify.py` was run with the repository root as its argument, spelled as a full path, instead of `.`; the checked folder is the same. Nothing else differed: the commit sequence landed exactly as ordered (C1, C2, C3, then this C4), each touching only its named paths. No amend, rebase, force-push or `--no-verify`, `.data` never read by this worker, no second run of any copy script or gate.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP`.
-2. Rule 2: the Open PR Gate; no pull request is open for this branch yet.
-3. The reviewer reviews round 31 and books its verdict in the next round's first commit.
-4. The closing round: the Built State, the re-assigned findings, the rotation, the next findings paydown, SU-073's consumed_by, the STATUS flip with the README sync, and the pull request, left unmerged.
+2. Rule 2: the Open PR Gate, which merges F307's pull request in the NEXT session and never in this one.
+3. The reviewer's verdict on round 32 is booked in the next feature's first commit.
+4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`.
 
-Operator questions open: 0. Open findings gate 3 printed: `['R-1246', 'R-1281', 'R-1326', 'R-1351', 'R-1353', 'R-1418']`.
+Operator questions open: 0. Open findings: 6 (R-1246, R-1281, R-1326, R-1351, R-1353 and R-1418, owned by F314).
 
 ## For the operator, in plain sentences
 
-The evidence for this batch of repairs was collected and checked: the tests it covers all passed and nothing failed.
+This clean-up batch repaired fifty-seven small problems, and each repair has a test that fails without it. It also wrote down thirty-three repairs that the operator's own branches had already made.
 
-The review package was built and is ready for review; it sits in the history folder's zips directory under your home folder.
+What a person notices is that a job which stops because one of its steps could not be finished keeps its finish time and runs that step again when tried again, that an order naming one file by a plain word is read as that file, that a middle way of running an order now sits between the small and the full one, and that a settings file that cannot be read is answered with a clear refusal instead of a crash report.
+
+Several large pieces of code were split into smaller ones on the way.
+
+The paid run of Remedy on itself stopped at its approval gate, as it should.
+
+The whole test collection passed on the code that ships, after one repair.
+
+The review package is named remedy-review-20261022-061118-READY_FOR_REVIEW.zip and sits in the zips folder inside the history folder under your home folder.
+
+A pull request is open and will be merged at the start of the next session unless the operator merges it earlier.
+
+Six problems stay written down for the next clean-up batch, and that batch is registered here.
