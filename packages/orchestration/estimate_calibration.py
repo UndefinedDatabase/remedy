@@ -260,14 +260,12 @@ def build_calibration_table(
     from packages.orchestration.token_ledger import token_ledger_path_for
 
     window_start = now - timedelta(days=window_days)
-    table_args = {
-        "project_id": str(project_id), "updated_at": now.isoformat(), "window_days": window_days,
-        "sample_floor": sample_floor, "window_start": window_start.isoformat(),
-    }
     ledger_path = token_ledger_path_for(project_id, root)
     if not ledger_path.is_file():
-        return CalibrationTable(**table_args, ledger_present=False, entries=(), unclassified_tasks=0,
-                                unmeasured_tasks=0)
+        return CalibrationTable(
+            project_id=str(project_id), updated_at=now.isoformat(), window_days=window_days,
+            sample_floor=sample_floor, window_start=window_start.isoformat(),
+            ledger_present=False, entries=(), unclassified_tasks=0, unmeasured_tasks=0)
     conn = _connect_ledger_readonly(ledger_path)
     try:
         rows = conn.execute(_SAMPLE_QUERY).fetchall()
@@ -319,8 +317,10 @@ def build_calibration_table(
             cost_usd=damped_distribution(cost_values) if cost_values else None)
         for (task_class, role), (token_values, cost_values) in sorted(samples.items())
     )
-    return CalibrationTable(**table_args, ledger_present=True, entries=entries,
-                            unclassified_tasks=unclassified, unmeasured_tasks=unmeasured)
+    return CalibrationTable(
+        project_id=str(project_id), updated_at=now.isoformat(), window_days=window_days,
+        sample_floor=sample_floor, window_start=window_start.isoformat(),
+        ledger_present=True, entries=entries, unclassified_tasks=unclassified, unmeasured_tasks=unmeasured)
 
 
 def _distribution_from_json(raw: Any) -> CalibrationDistribution:
