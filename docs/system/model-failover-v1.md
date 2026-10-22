@@ -86,6 +86,8 @@ link that served, or `null` when the chain ran out or a backup answered with a f
 `attempts` (position, provider, model and error of each link tried). Every real call behind a
 failed-over call is booked as a provider attempt of its own, under the provider and model that
 served or failed it, so the call count, the cost coverage and the call budget see each one.
+That holds during a hold too: a backup that serves with a single call while the primary is
+held down is booked as its own, never as the primary's (R-1422, 2026-10-22).
 `remedy run show` prints one
 line, `Failover:`, built of these sentences: "1 call was served by a backup model because its usual
 provider could not be reached." (or "N calls were served by backup models because their usual

@@ -7,10 +7,10 @@ R-1422 (failover booking during a hold), R-1423 (`used.minutes` of a running job
 for F314).
 
 ## Current Step
-Part 1, R-1422: the `_with_calls` fix committed; next its record (docs, Built State, ledger).
+Part 2, R-1423: red tests for `used.minutes` of a running job, committed alone.
 
 ## Next Steps
-1. Part 2, R-1423: red tests, `in_flight` keyword, contract 1.28, kit seed and re-record.
+1. Part 2, R-1423: the `in_flight` keyword, contract 1.28, kit seed and re-record.
 2. Part 3, R-1424: red tests, the deadline refusal, the budget doc line.
 3. Part 4, R-1425: mypy before/after counts, repairs per module, ledger entry left OPEN.
 4. Part 5: CHANGELOG, decisions, handoff; the finish gates; PR, dispatched CI, merge.
