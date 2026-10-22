@@ -31159,3 +31159,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: on the operator's machine, a te
 ALTERNATIVES CONSIDERED: (a) excusing every change while a supervisor answers, REJECTED because the guard would then never fail on the operator's machine; (b) attributing each changed file to the process that wrote it, REJECTED because nothing on the machine records the writer of a file without root rights; (c) leaving R-1419 for later, REJECTED because the guard's two-level promise was false in every run.
 
 HOW TO REVERSE: delete `SUPERVISOR_OWN_CLASSES`, `_foreign_supervisor_answers`, `_data_root_guard_verdict` and their wiring, restore the comparison from git history, delete the `os.fspath` line and the tests; delete this paragraph.
+
+## DECISION F307 D26 — `ui_server.py` becomes `serve_http_handler.py` and `tests/ui_server/` becomes `tests/serve_http_handler/`, every live consumer re-pointed and no alias left; the records keep the old name (2026-10-22, R-1330)
+
+THE PROBLEM: R-1330: `packages/orchestration/ui_server.py` keeps a name from when Remedy served its own face; since amend1015f D19 it is the write door's request handler and the public HTTP API's, the one module `remedy serve start` binds to its sockets. `ui_server_launch.py`, which the finding also named, was deleted with the old cockpit. Read at `0301b82ad`: 66 live files name the module or its test folder, among them a pytest setting in `pyproject.toml`, the import-reachability allowlist and the structure ledger's file row.
+
+THE DECISION: (1) The module becomes `packages/orchestration/serve_http_handler.py` and its tests' folder `tests/serve_http_handler/`, both by `git mv`, in one commit with every live import, path, docstring and page re-pointed; the ledger's row is renamed with its count unchanged, which the ratchet allows, and the module stays at its 1,824 lines. (2) The records keep their words: `.agent/`, `docs/roadmap/` (whose `ROADMAP.md` agents never edit unasked, and whose feature files and ledger record what other features did), `docs/archive/`, the worked example in `docs/agents/planner_reviewer_prompt.md`, and the consumed items of `scripts/self_use_queue.json`, all thirteen of which are consumed. (3) The proof of a move: the old module and test package no longer import and the new ones do, `git grep ui_server` outside those records finds only the two sentences that say what was renamed, the round's selection reads green, and the nine live tests that import the test folder collect.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing a person sees; the part of Remedy that answers programs over the network now carries a name that says so.
+
+ALTERNATIVES CONSIDERED: (a) `public_api_server.py`, REJECTED because the module also answers the write door, which is not under `/api/v1`; (b) leaving the test folder's name, REJECTED because a folder named after a module that no longer exists sends a reader searching; (c) rewriting the records too, REJECTED because a record says what was true when it was written.
+
+HOW TO REVERSE: `git mv` both back, and re-apply the commit's reversed diff over the 66 files; delete this paragraph.

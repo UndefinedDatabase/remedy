@@ -3,16 +3,16 @@
 ## Goal
 Pay down the open findings F307 takes at its claim, each by the repair its own text names, with
 the evidence that discharged it, and carry R-1246, R-1351 and R-1353 by name to the next paydown
-(docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 to D25).
+(docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 to D26).
 
 ## Current Step
-Round 25 (session 6): book round 24 with R-1403; R-1419 registered; R-1411 and R-1419, the data
-root guard excuses a foreign supervisor's own folders and reads its two levels (DECISION F307 D25).
+Round 26 (session 6): book round 25 with R-1411 and R-1419; R-1330, the `ui_server` module and
+its test folder renamed for what they serve (DECISION F307 D26).
 
 ## Next Steps
-1. Book round 25 with R-1411 and R-1419; then R-1291, the two doctor report shapes, with
-   `doctor_core_report`'s boundary first.
-2. R-1326, the `[roles]` table; R-1330, the `ui_server` rename.
+1. Book round 26 with R-1330 (T019 and T020 closed); then R-1291, the two doctor report shapes,
+   with `doctor_core_report`'s boundary first.
+2. R-1326, the `[roles]` table, or its carry to the next paydown with the reason.
 3. T021, the closing structural step; then the closure sequence, which carries R-1281's rest.
 
 ## Risks
