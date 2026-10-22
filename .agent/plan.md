@@ -3,17 +3,17 @@
 ## Goal
 Pay down the open findings F307 takes at its claim, each by the repair its own text names, with
 the evidence that discharged it, and carry R-1246, R-1351 and R-1353 by name to the next paydown
-(docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 to D26).
+(docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 to D27).
 
 ## Current Step
-Round 26 (session 6): book round 25 with R-1411 and R-1419; R-1330, the `ui_server` module and
-its test folder renamed for what they serve (DECISION F307 D26).
+Round 27 (session 6): book round 26 with R-1330; step (1) of `doctor_core_report`, then R-1291,
+one check shape, one table and one scrubber for both doctor commands (DECISION F307 D27).
 
 ## Next Steps
-1. Book round 26 with R-1330 (T019 and T020 closed); then R-1291, the two doctor report shapes,
-   with `doctor_core_report`'s boundary first.
-2. R-1326, the `[roles]` table, or its carry to the next paydown with the reason.
-3. T021, the closing structural step; then the closure sequence, which carries R-1281's rest.
+1. Book round 27 with R-1291 (T007 closed); then R-1326, the `[roles]` table, or its carry to the
+   next paydown with the reason.
+2. T021, the closing structural step.
+3. The closure sequence, which carries R-1281's rest, R-1246, R-1351, R-1353 and R-1418.
 
 ## Risks
 - Several slices edit functions or files the structure ledger lists; each draws that row's
