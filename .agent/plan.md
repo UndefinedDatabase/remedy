@@ -7,7 +7,7 @@ R-1422 (failover booking during a hold), R-1423 (`used.minutes` of a running job
 for F314).
 
 ## Current Step
-Part 3, R-1424: red tests for `extend` without an answer on a deadline stop, committed alone.
+Part 3, R-1424: the deadline refusal committed; next its record. Part 4 repairs in progress.
 
 ## Next Steps
 1. Part 3, R-1424: the deadline refusal and the budget doc line.

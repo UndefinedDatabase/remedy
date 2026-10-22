@@ -53,6 +53,24 @@ def _stop_reason_limit(stop_reason: str) -> str:
     return stop_reason.rsplit(":", 1)[-1]
 
 
+# WHY: DECISION F310 D5, continuation 2026-10-22 (R-1424): a deadline is never doubled, so a stop that
+# names it needs an explicit deadline answer; the doubled limits are not read for it.
+def _doubled_answers(job: Any) -> list[str]:
+    """The doubled limits an answerless `extend` takes, or none when the stop names the deadline."""
+    if _stop_reason_limit(str(getattr(job, "stop_reason", "") or "")) == "deadline":
+        return []
+    return doubled_limit_answers(job)
+
+
+def _missing_answer_detail(job: Any) -> str:
+    """The `missing_argument` sentence: the deadline answer on a deadline stop, the generic one otherwise."""
+    if _stop_reason_limit(str(getattr(job, "stop_reason", "") or "")) == "deadline":
+        return ("the stop names deadline, which is never doubled: answer with "
+                "--answer deadline=<ISO-8601 UTC instant later than now>, "
+                "e.g. --answer deadline=2026-10-23T18:00:00+00:00")
+    return "at least one --answer is required, e.g. --answer max_cost_usd=2.5"
+
+
 def answer_budget_decision(
     job: Any, decision_id: str, option: str, answers: list[str], *, now: datetime,
 ) -> dict[str, Any]:
@@ -106,9 +124,9 @@ def answer_budget_decision(
         job.state = RunState.CANCELLED
         return {"outcome": "abandoned", "state": "cancelled", "record": record}
 
-    # DECISION F310 D5: with no answer, `extend` doubles every limit the stop exhausted.
-    if not (answers := list(answers) or doubled_limit_answers(job)):
-        return _refuse("missing_argument", "at least one --answer is required, e.g. --answer max_cost_usd=2.5")
+    # DECISION F310 D5: with no answer, `extend` doubles every limit the stop exhausted, never a deadline (R-1424).
+    if not (answers := list(answers) or _doubled_answers(job)):
+        return _refuse("missing_argument", _missing_answer_detail(job))
 
     stop_reason = str(getattr(job, "stop_reason", "") or "")
     stop_limit = _stop_reason_limit(stop_reason)
