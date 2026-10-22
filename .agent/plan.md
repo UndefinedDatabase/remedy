@@ -7,13 +7,12 @@ the shared estimator once a class has enough samples, labelled `calibrated(n)`, 
 stay on their defaults (docs/roadmap/features/T3_F074.md; DECISIONs F074 D1 and D2).
 
 ## Current Step
-Round 3 (session 1), the closure's integration gate: book round 2, the Acceptance on one project's
-calibration, the checklist's consolidation pass, the self-use item run to its approval gate, and the
-feature's one full suite with its CPU cost.
+Round 4 (session 1), the closure's evidence round: book round 3, save the evidence script, the
+staging reclaim, the evidence job `f074r4e1001` and the review package.
 
 ## Next Steps
-1. The evidence round: the evidence bundle and the review package.
-2. The closing round: the Built State, the rotation, the STATUS line, the README and the pull request.
+1. The closing round: the Built State, the rotation, SU-076's consumed_by, the STATUS flip with the
+   README sync, and the pull request, left unmerged.
 
 ## Risks
 - None of F074's own; the open findings, R-1246 to R-1421, are owned by F314.
