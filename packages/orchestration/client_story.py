@@ -166,6 +166,17 @@ def _found_files(plan: Any) -> dict[str, Any] | None:
     return _word("found_files", n=len(names), first=_repo_path(names[0]) if names else None)
 
 
+def _dirty_start(plan: Any) -> dict[str, Any] | None:
+    """`dirty_start` with how many dirty paths the job started from, or None when it started clean:
+    `captured` seeded its workspace, `preserved` were left alone (R-1328, DECISION F307 D23)."""
+    from packages.orchestration.dirty_baseline import job_dirty_start
+
+    start = job_dirty_start(plan)
+    if start is None:
+        return None
+    return _word("dirty_start", captured=len(start["captured"]), preserved=len(start["preserved"]))
+
+
 def _failure_reason(plan: Any, rounds: dict[str, int]) -> dict[str, Any]:
     """Why a job ended blocked or failed, as one closed reason."""
     tasks = list(plan.tasks)
@@ -464,6 +475,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
         "steps": _steps(plan, state, detail, changes, rounds,
                         {"in": summary["tokens_in"], "out": summary["tokens_out"]} if measured else None),
         "changes": changes,
+        "dirty_start": _dirty_start(plan),
         "verification": {key: value for key, value in job_verification(plan).items()
                          if key in ("status", "required")},
         "numbers": {

@@ -14,7 +14,8 @@ from typing import Any
 #: The top-level keys `remedy client story <job> --json` can answer beside the envelope's own:
 #: `build_client_story`'s keys, and `matches` of the `ambiguous_job_id` refusal.
 CLIENT_STORY_ANSWER_KEYS: tuple[str, ...] = (
-    "changes", "end", "ended_at", "job_id", "matches", "next", "note_open", "numbers", "order",
+    "changes", "dirty_start", "end", "ended_at", "job_id", "matches", "next", "note_open", "numbers",
+    "order",
     "started_at", "state", "state_detail", "steps", "updated_at", "verification",
 )
 
@@ -37,6 +38,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
     "steps": {"id": {}, "status": {}, "phrase": _WORD_TREE, "tokens": {"in": {}, "out": {}},
               "tasks": {"title": {}, "status": {}, "rounds": {}, "files": {}}},
     "changes": {"path": {}, "added": {}, "removed": {}},
+    "dirty_start": _WORD_TREE,
     "numbers": {"duration_s": {}, "tokens_in": {}, "tokens_out": {}, "calls": {}, "model_turns": {}, "rounds": {}},
     "verification": {"status": {}, "required": {}},
 }

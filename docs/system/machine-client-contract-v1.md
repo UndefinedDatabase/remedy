@@ -372,6 +372,7 @@ Story phrase `review_not_passed`: `rounds`.
 Story phrase `waiting_for_apply`: `n`.
 Story phrase `applied`: `n`.
 Story phrase `declined`: none.
+Story phrase `dirty_start`: `captured`, `preserved`.
 Story reason `provider_unavailable`: `provider`.
 Story reason `tests_failed`: `n`.
 Story reason `review_not_passed`: `rounds`.
@@ -504,11 +505,12 @@ Keys under the answer keys: see below.
   - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `job_window`: `ended_limit`, `left_out`
-  - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+  - `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
     - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
       - `blocking_criteria`: `id`, `status`, `text`
       - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
     - `cost`: `basis`, `value_usd`
+    - `dirty_start`: `captured`, `preserved`
     - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
     - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
   - `projects`: `cost_today`, `missions`, `project_id`, `slug`
@@ -969,11 +971,12 @@ Keys under the answer keys: see below.
 - `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
 - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
-- `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`
+  - `dirty_start`: `captured`, `preserved`
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
 - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `orders`, `project_id`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
@@ -1025,10 +1028,12 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
+Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
+- `dirty_start`: `args`, `key`
+  - `args`: `*`
 - `end`: `action`, `route`
   - `route`: `method`, `path`
 - `next`: `action`, `route`
@@ -1176,11 +1181,12 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
 - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `job_window`: `ended_limit`, `left_out`
-- `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`
+  - `dirty_start`: `captured`, `preserved`
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
 - `projects`: `cost_today`, `missions`, `project_id`, `slug`

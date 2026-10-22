@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration import dirty_baseline as DB
-from packages.orchestration.dirty_baseline import job_start_baseline
+from packages.orchestration.dirty_baseline import job_dirty_start, job_start_baseline
 from packages.orchestration.job_apply import (
     TARGET_CHANGED_DURING_RUN,
     apply_job,
@@ -106,6 +106,30 @@ def test_a_clean_target_records_no_baseline(repo, monkeypatch):
     job = _run(repo, monkeypatch, {})
     assert job.state == JOB_COMPLETED, job.error
     assert job_start_baseline(job) == {}
+    assert job_dirty_start(job) is None
+    assert _story_and_digest(job) == (None, None)
+
+
+def _story_and_digest(job) -> tuple[object, object]:
+    """The story's `dirty_start` and the digest job entry's, as a client reads them (R-1328)."""
+    from packages.orchestration.client_digest import build_client_digest
+    from packages.orchestration.client_story import build_client_story
+    from packages.orchestration.client_story_words import story_problems
+
+    story = build_client_story(job, events=[])
+    assert story_problems(story) == []
+    [entry] = [e for e in build_client_digest()["jobs"] if e["job_id"] == job.job_id]
+    return story["dirty_start"], entry["dirty_start"]
+
+
+def test_the_story_counts_and_the_digest_names_the_dirty_paths_the_job_started_from(dirty_repo, monkeypatch):
+    job = _run(dirty_repo, monkeypatch, {})
+    assert job.state == JOB_COMPLETED, job.error
+
+    assert job_dirty_start(job) == {"captured": ["README.md"], "preserved": ["notes.txt"]}
+    story, digest = _story_and_digest(job)
+    assert story == {"key": "dirty_start", "args": {"captured": 1, "preserved": 1}}
+    assert digest == {"captured": ["README.md"], "preserved": ["notes.txt"]}
 
 
 # --- 11. apply over an unchanged dirty baseline ---------------------------------------------

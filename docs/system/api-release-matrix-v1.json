@@ -276,7 +276,8 @@
    "branch": "feature/f307-findings-paydown-v9",
    "added": [
     "digest and changes mission key `orders` (`order_id`, `kind`, `created_at`, `source_path`, `source_sha256`, `job_ids`) and job key `order_id` (F307, DECISION F307 D19)",
-    "route `POST /api/v1/jobs/{job}/retry` and the `--retry` option of `remedy job run`, which put a blocked job's tasks that ended blocked or failed back to pending before its run (F307, DECISION F307 D22)"
+    "route `POST /api/v1/jobs/{job}/retry` and the `--retry` option of `remedy job run`, which put a blocked job's tasks that ended blocked or failed back to pending before its run (F307, DECISION F307 D22)",
+    "story key `dirty_start` with the phrase `dirty_start` (`captured`, `preserved`), and the digest's job key `dirty_start` (`captured`, `preserved`), the dirty paths a job started from (F307, DECISION F307 D23)"
    ],
    "value_changes": [
     {
@@ -447,6 +448,7 @@
    "changed_file_in_rounds": "1.17",
    "changed_files": "1.17",
    "declined": "1.17",
+   "dirty_start": "1.27",
    "found_files": "1.17",
    "no_file_changed": "1.17",
    "no_test_command": "1.17",
@@ -520,6 +522,7 @@
   },
   "story_keys": {
    "changes": "1.17",
+   "dirty_start": "1.27",
    "end": "1.21",
    "ended_at": "1.17",
    "job_id": "1.17",

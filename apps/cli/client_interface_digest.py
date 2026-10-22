@@ -20,7 +20,7 @@ TOKENS_BY_KIND_KEY_TREE: dict[str, Any] = {key: {} for key in (
 #: D13 the calls and tokens of each job and each project's day, D16 the `job_window`), as a tree:
 #: each key maps to the tree of the object under it, or of every element of the list under it,
 #: and a key with no keys under it maps to an empty tree (DECISION F298 D3). R-1282 adds each
-#: mission's `orders` and each job's `order_id`.
+#: mission's `orders` and each job's `order_id`, R-1328 each job's `dirty_start`.
 DIGEST_KEY_TREE: dict[str, Any] = {
     "version": {},
     "read_at": {},
@@ -84,6 +84,7 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "recommendation": {},
             "risk": {},
         },
+        "dirty_start": {"captured": {}, "preserved": {}},
     },
     "job_window": {"ended_limit": {}, "left_out": {}},
     "awaiting_apply": {},

@@ -295,6 +295,20 @@ def job_start_baseline(job: Any) -> dict[str, Any]:
     return (getattr(job, "target_last_known", None) or {}).get("start_baseline") or {}
 
 
+def job_dirty_start(job: Any) -> dict[str, list[str]] | None:
+    """The dirty paths JOB started from, by name, or None for a job that started clean (R-1328).
+
+    `captured` are the deliverables whose visible bytes seeded the job's workspace, `preserved`
+    every other dirty path, left where it was and never read; both repository-relative, in the
+    order the capture recorded them. Reads the job's record only.
+    """
+    start = job_start_baseline(job)
+    if not start:
+        return None
+    return {"captured": [str(entry.get("path")) for entry in start.get("entries") or []],
+            "preserved": [str(item.get("path")) for item in start.get("preserved") or []]}
+
+
 def job_deliverable_paths(job: Any) -> tuple[list[str], list[str]]:
     """``(declared, named)`` repository paths the job may change.
 

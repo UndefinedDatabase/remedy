@@ -46,7 +46,9 @@ walk reports what is now uncommitted. Add `--commit-auto` to commit.
   its name alone, never by `.gitignore`; an order that names one as a target is refused before any
   worktree or model call. Nothing is stashed, reset, checked out or committed in your repository. A
   state it cannot represent exactly (unresolved merge conflicts, a submodule or nested repository,
-  a very large dirty set) stops the walk before any step and names the cause.
+  a very large dirty set) stops the walk before any step and names the cause. The job's
+  story counts the dirty paths it started from (`dirty_start`) and the digest names them, the
+  captured ones and the preserved ones, from the moment the job has its workspace.
 - **Timeouts are ceilings.** An explicit timeout (flag, order file, persisted config) is never
   raised for Pi. The remaining job wall-clock budget and the job deadline cap one Pi call too, and
   the tightest ceiling wins; the call record keeps the configured value, the job ceiling and the

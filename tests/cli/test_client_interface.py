@@ -581,8 +581,8 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
-            "changes", "end", "ended_at", "job_id", "next", "note_open", "numbers", "order",
-            "started_at", "state", "state_detail", "steps", "updated_at", "verification",
+            "changes", "dirty_start", "end", "ended_at", "job_id", "next", "note_open", "numbers",
+            "order", "started_at", "state", "state_detail", "steps", "updated_at", "verification",
         }),
         "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
         "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",

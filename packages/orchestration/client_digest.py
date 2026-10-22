@@ -25,6 +25,7 @@ from typing import Any
 from packages.orchestration.budget_guard import BudgetCounterError, decode_persisted_budget_actuals
 from packages.orchestration.data_paths import job_dir, job_evidence_dir, resolve_data_root
 from packages.orchestration.decision_queue import HumanDecision, list_decisions
+from packages.orchestration.dirty_baseline import job_dirty_start
 from packages.orchestration.escalation import DECISION_TYPE_TASK_DECISION
 from packages.orchestration.job_apply import job_apply_landed, job_result_decline
 from packages.orchestration.job_digest import cost_exactness_basis
@@ -359,6 +360,12 @@ def _job_order_id(plan: Any, mission: Mission | None) -> str | None:
     return None
 
 
+def _job_dirty_start(plan: Any) -> dict[str, list[str]] | None:
+    """The dirty paths the job started from, by name, or None for a clean start (R-1328)."""
+    start = job_dirty_start(plan)
+    return None if start is None else {"captured": start["captured"], "preserved": start["preserved"]}
+
+
 def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
                cost: dict[str, Any] | None, calls: int | None, usage: CostRow | None,
                approval_card: dict[str, Any] | None) -> dict[str, Any]:
@@ -382,6 +389,7 @@ def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
         "tokens": _tokens_by_kind(usage),
         "evidence": _job_evidence(plan),
         "approval_card": approval_card,
+        "dirty_start": _job_dirty_start(plan),
     }
 
 
