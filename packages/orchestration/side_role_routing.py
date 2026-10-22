@@ -8,8 +8,9 @@ summary, teacher and study. Mapping any other role is refused with the hard rule
 `core_role_on_local_provider` ("core never local"), and the whole table is refused with it, so no role
 runs locally on a table Remedy could not accept (DECISION F113 D1).
 
-A mapped role runs on its endpoint while the endpoint answers its probe. When it does not, the role
-falls back to the path it takes unmapped, its own configured model, and the route says why. A route
+A mapped role runs on its endpoint while no failed spot check stands against it
+(`side_role_quality.py`) and the endpoint answers its probe. When either fails, the role falls back
+to the path it takes unmapped, its own configured model, and the route says why. A route
 travels on the call_fn as `side_role_route`, which is how the summary records what served it.
 """
 
@@ -32,6 +33,7 @@ from packages.orchestration.local_endpoints import (
 )
 from packages.orchestration.model_failover import FAILOVER_LOCAL_ROLES, RULE_CORE_ROLE_ON_LOCAL_PROVIDER
 from packages.orchestration.role_config import KNOWN_ROLES
+from packages.orchestration.side_role_quality import flip_reason
 from packages.orchestration.token_ledger import COST_BASIS_UNKNOWN
 
 #: The role ran on its local endpoint.
@@ -119,7 +121,11 @@ def resolve_side_role_routes() -> dict[str, LocalEndpoint]:
 
 
 def route_side_role(role: str, endpoint: LocalEndpoint, probes: LocalEndpointProbes) -> SideRoleRoute:
-    """The route of one call of a mapped role: its endpoint while the probe says it serves, else the fallback."""
+    """The route of one call of a mapped role: the fallback while a failed spot check stands, else its
+    endpoint while the probe says it serves, else the fallback."""
+    flipped = flip_reason(role, endpoint)
+    if flipped:
+        return SideRoleRoute(role, ROUTE_FALLBACK, endpoint.name, "", flipped)
     health = probes.health(endpoint)
     if health.available:
         return SideRoleRoute(role, ROUTE_LOCAL, endpoint.name, endpoint.model, "")

@@ -68,4 +68,21 @@ DOCTOR_COMMANDS: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("doctor.health",),
     ),
+    # ── doctor — the side roles on local model servers (F113) ───────────
+    CommandEntry(
+        command_id="doctor.side-roles",
+        group_id="doctor",
+        subcommand="side-roles",
+        description=("Where each side role mapped to a local model server runs and why; --check "
+                     "tests each against its fixed spot-check set, moves a role that fails back to "
+                     "its own model and exits 1 (writes the check and the move under the data root)."),
+        action_class="write_metadata",
+        args=(
+            ArgDef("--check", "Spot-check each mapped side role now and record the result",
+                   required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("doctor.health",),
+    ),
 )

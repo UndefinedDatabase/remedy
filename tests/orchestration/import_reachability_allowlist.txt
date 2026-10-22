@@ -43,6 +43,7 @@ apps.cli.commands.do_plan_prompt
 apps.cli.commands.do_rehearsal_refusals
 apps.cli.commands.doctor_health_cmd
 apps.cli.commands.doctor_logs_cmd
+apps.cli.commands.doctor_side_roles_cmd
 apps.cli.commands.event
 apps.cli.commands.failure_stats_cmd
 apps.cli.commands.file
@@ -428,6 +429,7 @@ packages.orchestration.toolchain
 packages.orchestration.trust_report
 packages.orchestration.serve_http_handler
 packages.orchestration.side_role_calls
+packages.orchestration.side_role_quality
 packages.orchestration.side_role_routing
 packages.orchestration.tier_escalation
 packages.orchestration.tier_outcomes

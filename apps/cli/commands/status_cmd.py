@@ -248,6 +248,16 @@ def _print_status_text(
         oldest = min(open_deferred_starts(), key=lambda r: r.get("at", ""))
         print(f"  Next: remedy mission run {oldest['mission_id']} --project {oldest['project_id']}")
 
+    # F113 (DECISION F113 D3): where each side role mapped to a local endpoint runs, and why.
+    from packages.orchestration.side_role_quality import side_role_status_lines
+    from packages.orchestration.side_role_routing import resolve_side_role_routes
+
+    side_role_lines = side_role_status_lines(resolve_side_role_routes())
+    if side_role_lines:
+        print("Side roles:")
+        for line in side_role_lines:
+            print(f"  {line}")
+
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "status.run": lambda args: _cmd_status(
