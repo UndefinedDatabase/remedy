@@ -59,6 +59,7 @@
 | model defaults / dead models | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | system |
 | model failover | [model-failover-v1.md](system/model-failover-v1.md) | system |
 | tier escalation | [tier-escalation-v1.md](system/tier-escalation-v1.md) | system |
+| local side roles | [local-side-roles-v1.md](system/local-side-roles-v1.md) | system |
 | project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
 | plan / roadmap mirror | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | system |
 | prompt cache ordering | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | system |
@@ -132,6 +133,7 @@ Specifications and design documents for the built system.
 | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | Built-in model alias table, the shipped dead-model list, and the `remedy doctor core` warning |
 | [model-failover-v1.md](system/model-failover-v1.md) | Model failover: a role's backup models, the hard rules every link obeys, when a call fails over, the cooldown, the session guard, and what the run record and report show |
 | [tier-escalation-v1.md](system/tier-escalation-v1.md) | Tier escalation: when a task's failing cheaper model hands its next repair round one tier up with its reviewer, what never moves a task, the three `model_escalation` keys, what a run's record, report and events show, and what each tier did per task class in the evidence and the cost ledger |
+| [local-side-roles-v1.md](system/local-side-roles-v1.md) | Local side roles: the model servers of the operator's own in `local_routing.endpoints`, the probe at first use, which roles `local_routing.side_roles` may send there and the core-never-local refusal, the fallback, and the route a summary records |
 | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | Main orchestrator brain (decision engine) |
 | [orchestrator-loop.md](system/orchestrator-loop.md) | Orchestrator loop contract |
 | [permission-matrix-v1.md](system/permission-matrix-v1.md) | What the work Remedy runs may do at each autonomy level: the eight actions by the levels L2 to L5, the one check every place asks, the push switch, the decision that approves a dependency change or a deletion, and the record of approvals |
