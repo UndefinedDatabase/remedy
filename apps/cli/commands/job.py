@@ -2197,7 +2197,7 @@ def _cmd_job_budget(
                     _prediction = predict_next_task_cost(
                         _budgets,
                         counters if counters is not None else BudgetCounters(),
-                        band=derive_next_task_token_band(_next_task, _prev_summaries),
+                        band=derive_next_task_token_band(_next_task, _prev_summaries), task_class=_next_task.task_class,
                         config=resolve_predictive_budget_config(
                             project_root=(getattr(_plan, "repo_path", "") or None)),
                     )

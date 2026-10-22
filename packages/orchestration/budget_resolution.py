@@ -117,6 +117,13 @@ _PREDICTIVE_CONFIG_KEYS = {
     TokenBand.HIGH: "budget.class_default_tokens_high",
 }
 
+# F074: the estimate calibration's three settings, resolved like the class defaults above.
+_CALIBRATION_CONFIG_KEYS = {
+    "sample_floor": "budget.calibration_sample_floor",
+    "window_days": "budget.calibration_window_days",
+    "max_age_seconds": "budget.calibration_snapshot_max_age_seconds",
+}
+
 _CLASS_DEFAULT_TOKENS_FALLBACK = {
     TokenBand.LOW: 8000,
     TokenBand.MEDIUM: 32000,
@@ -134,13 +141,18 @@ class PredictiveBudgetConfig:
     making up a number and labelling the fabrication honestly.
 
     ``class_default_tokens`` is keyed by ``TokenBand`` values — "low", "medium",
-    "high". These are DOCUMENTED CLASS DEFAULTS, not calibration from history;
-    calibration is explicitly out of scope for F104.
+    "high". These are DOCUMENTED CLASS DEFAULTS, not calibration from history.
+
+    ``calibration`` is F074's measurement from history: the project's
+    ``estimate_calibration.CalibrationTable``, or None when no registered project
+    owns the root. A task class it calibrates is priced from its own measured
+    range; every other class keeps its band's default above.
     """
 
     price_basis_usd_per_1k_tokens: float | None = None
     class_default_tokens: dict[str, int] = field(
         default_factory=lambda: dict(_CLASS_DEFAULT_TOKENS_FALLBACK))
+    calibration: Any = None
 
 
 _CONFIG_KEYS = {
@@ -272,6 +284,11 @@ def resolve_predictive_budget_config(
     is supplied (DECISION F104 D4). The class defaults DO have documented
     defaults, because a token count for a band is a stated assumption rather
     than a measurement claim, and they are provisional until calibration.
+
+    F074: with a ``project_root`` named, the registered project owning it is
+    measured from its cost ledger (``estimate_calibration``), and the table rides
+    on the config as ``calibration``; with none named, or no project owning it,
+    ``calibration`` stays None and every estimate keeps its class defaults.
     """
     from packages.orchestration.config import ConfigSource, load_config
 
@@ -299,7 +316,23 @@ def resolve_predictive_budget_config(
         resolved = _pos_int(name, _configured(name))
         class_defaults[band] = fallback if resolved is None else resolved
 
+    calibration = None
+    if project_root:
+        from packages.orchestration import estimate_calibration as calibration_source
+
+        fallbacks = {
+            "sample_floor": calibration_source.DEFAULT_CALIBRATION_SAMPLE_FLOOR,
+            "window_days": calibration_source.DEFAULT_CALIBRATION_WINDOW_DAYS,
+            "max_age_seconds": calibration_source.DEFAULT_CALIBRATION_SNAPSHOT_MAX_AGE_SECONDS,
+        }
+        settings: dict[str, int] = {}
+        for name, key in _CALIBRATION_CONFIG_KEYS.items():
+            resolved = _pos_int(key, _configured(key))
+            settings[name] = fallbacks[name] if resolved is None else resolved
+        calibration = calibration_source.resolve_calibration_for_root(project_root, **settings)
+
     return PredictiveBudgetConfig(
         price_basis_usd_per_1k_tokens=price_basis,
         class_default_tokens=class_defaults,
+        calibration=calibration,
     )

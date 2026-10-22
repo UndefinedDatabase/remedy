@@ -437,9 +437,9 @@ class TestBudgetExtensionReachesThePredictiveCheck:
         seen_limits: list[float | None] = []
         real_predict = budget_guard.predict_next_task_cost
 
-        def _recording_predict(budgets, counters, *, band, config):
+        def _recording_predict(budgets, counters, *, band, config, task_class=None):
             seen_limits.append(budgets.max_cost_usd if budgets is not None else None)
-            return real_predict(budgets, counters, band=band, config=config)
+            return real_predict(budgets, counters, band=band, config=config, task_class=task_class)
 
         monkeypatch.setattr(budget_guard, "predict_next_task_cost", _recording_predict)
 

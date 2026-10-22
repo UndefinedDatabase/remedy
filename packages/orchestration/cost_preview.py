@@ -1,7 +1,8 @@
 """F114 T001 — the shared cost-band estimator.
 
 Computes an upfront USD cost BAND (never a point) from the class-default
-token counts and price basis ``resolve_predictive_budget_config``
+token counts, or a calibrated class's measured range (F074), and the price
+basis ``resolve_predictive_budget_config``
 resolves (budget_resolution.py) — one estimator, shared with
 ``predict_next_task_cost`` (budget_guard.py) via
 ``token_economy.tokens_to_cost_usd``. Pure: no reads/writes/clock/prompt
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.orchestration.budget_resolution import PredictiveBudgetConfig
+from packages.orchestration.estimate_calibration import calibrated_class_tokens, calibration_basis_label
 from packages.orchestration.token_economy import TokenBand, tokens_to_cost_usd
 
 #: The estimate could not be computed - an unrecognised class, an unpriced
@@ -47,6 +49,7 @@ def estimate_cost_band(
     *,
     repeat_count: int = 1,
     config: PredictiveBudgetConfig,
+    task_class: str | None = None,
 ) -> CostBandEstimate:
     """Estimate a USD cost band spanning ``band_a`` and ``band_b``.
 
@@ -60,12 +63,30 @@ def estimate_cost_band(
     either band is unrecognised or has no configured class default,
     ``repeat_count`` is negative, or ``config`` has no price basis
     (A9: unknown is treated as expensive, never guessed here).
+
+    F074: when ``task_class`` is calibrated in ``config.calibration``, the band
+    is that class's own measured P20 to P80 token range instead of the two
+    bands' defaults, and the basis opens with ``calibrated(n)``. A class below
+    the sample floor, or no class named, keeps the defaults and their basis.
     """
     inputs: dict[str, Any] = {
         "band_a": band_a,
         "band_b": band_b,
         "repeat_count": repeat_count,
     }
+    calibrated = calibrated_class_tokens(getattr(config, "calibration", None), task_class)
+    if calibrated is not None and repeat_count >= 0:
+        inputs["task_class"] = task_class
+        price_basis = config.price_basis_usd_per_1k_tokens
+        usd_low = tokens_to_cost_usd(calibrated.p20 * repeat_count, price_basis)
+        usd_high = tokens_to_cost_usd(calibrated.p80 * repeat_count, price_basis)
+        if usd_low is None or usd_high is None:
+            return CostBandEstimate(None, None, ESTIMATE_UNAVAILABLE, inputs)
+        basis = (
+            f"{calibration_basis_label(calibrated.n)} ({task_class} measured P20-P80 tokens) x "
+            f"price_basis_usd_per_1k_tokens={price_basis}"
+        )
+        return CostBandEstimate(min(usd_low, usd_high), max(usd_low, usd_high), basis, inputs)
     class_defaults = config.class_default_tokens
     if (
         band_a not in _VALID_BANDS

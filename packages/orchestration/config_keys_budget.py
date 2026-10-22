@@ -96,6 +96,38 @@ BUDGET_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=120000,
     ),
+    # F074 estimate calibration (DECISION F074 D1 (3)): a class with this many measured tasks
+    # replaces the defaults above for its own tasks; the defaults equal
+    # `packages/orchestration/estimate_calibration.py`'s DEFAULT_CALIBRATION_* constants.
+    ConfigKeySpec(
+        key="budget.calibration_sample_floor",
+        env_var="REMEDY_BUDGET_CALIBRATION_SAMPLE_FLOOR",
+        description=(
+            "Measured tasks a task class needs in the cost ledger before its estimates are "
+            "calibrated from them instead of the class defaults (F074)"
+        ),
+        value_type=int,
+        default=20,
+    ),
+    ConfigKeySpec(
+        key="budget.calibration_window_days",
+        env_var="REMEDY_BUDGET_CALIBRATION_WINDOW_DAYS",
+        description=(
+            "Days of the cost ledger an estimate calibration reads; older tasks age out (F074)"
+        ),
+        value_type=int,
+        default=90,
+    ),
+    ConfigKeySpec(
+        key="budget.calibration_snapshot_max_age_seconds",
+        env_var="REMEDY_BUDGET_CALIBRATION_SNAPSHOT_MAX_AGE_SECONDS",
+        description=(
+            "Seconds a saved estimate calibration is used before the ledger is measured "
+            "again on the next read (F074)"
+        ),
+        value_type=int,
+        default=3600,
+    ),
     ConfigKeySpec(
         key="cost_preview.confirm_above_usd",
         env_var="REMEDY_COST_PREVIEW_CONFIRM_ABOVE_USD",
