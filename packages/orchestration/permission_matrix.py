@@ -273,10 +273,11 @@ def pin_job_level(
 def permission_status_rows(level: str | None, *, push_allowed: bool | None) -> list[dict[str, Any]]:
     rows = []
     for action in PERMISSION_ACTIONS:
-        if level is None or (action == "push" and push_allowed is None):
+        push = push_allowed if action == "push" else True
+        if level is None or push is None:
             now = None
         else:
-            now = permission_cell(action, level, push_allowed=push_allowed if action == "push" else True)
+            now = permission_cell(action, level, push_allowed=push)
         rows.append({
             "action": action,
             "words": PERMISSION_ACTION_WORDS[action],
@@ -399,6 +400,7 @@ def require_permissions(
             )
             continue
         approval = request.approval
+        assert approval is not None, "an asking cell without an approval was answered above"
         sentences.append(
             f"Autonomy level {level} asks before Remedy may {words} ({citation}), and this "
             f"instance was approved by {_approved_by(approval)}."
