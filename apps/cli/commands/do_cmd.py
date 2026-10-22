@@ -576,35 +576,13 @@ def _cmd_job_run(
             fail("invalid_budget", str(exc), json_output=json_output, exit_code=2)
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
-    from packages.orchestration.job_report import export_job_report
-    from packages.orchestration.pingpong_job import (
-        job_resume_refusal,
-        load_job_plan,
-        run_job,
-    )
-
-    # R-0913: a job whose recorded worktree cannot be continued is refused with
-    # resume_job_plan's own words, before anything runs or the record is touched.
-    _recorded = load_job_plan(job_id)
-    _refusal = job_resume_refusal(_recorded) if _recorded is not None else ""
-    if _refusal:
-        fail("job_not_resumable", _refusal, json_output=json_output)
-
-    # DECISION F295 D12 (3): a cancelled job never runs again, beside the
-    # R-0913 refusal above and before anything runs or is forwarded.
+    from apps.cli.commands.job_run_refusals import refuse_job_run_before_it_starts
     from packages.core.models import RunState
-    if _recorded is not None and _recorded.state == RunState.CANCELLED:
-        fail(
-            "job_not_resumable",
-            f"job {job_id} is cancelled and never runs again.",
-            json_output=json_output,
-        )
-    if _recorded is not None:
-        from apps.cli.commands.job_run_refusals import refuse_unapproved_job_run
-        refuse_unapproved_job_run(_recorded, job_id, json_output=json_output)
-        from packages.orchestration.do_rehearsal import rehearsal_staleness_warning
-        if (warning := rehearsal_staleness_warning(_recorded)):
-            print(warning, file=sys.stderr)
+    from packages.orchestration.job_report import export_job_report
+    from packages.orchestration.pingpong_job import run_job
+
+    # DECISION F307 D22: step (1) of this function's boundary, every refusal before anything runs.
+    _recorded = refuse_job_run_before_it_starts(job_id, json_output=json_output)
 
     # DECISION F200 D5: a plain `job run <job>` on a job that exists runs in the serve
     # supervisor while one answers, and this command follows it to its end; any other

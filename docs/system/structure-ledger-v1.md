@@ -160,7 +160,8 @@ commit with no alias left behind, and changes the tests in their import lines on
   (2) the budgets resolved from the flags become a function of their own; (3) the answer becomes a
   function of its own, once the client-interface tests, which key the answer's sites by this
   function, read them through the function that gives them. Until a step is taken, a feature's
-  edits of this function are line-neutral (DECISION F055 D3).
+  edits of this function are line-neutral (DECISION F055 D3). Step (1), done by F307: the
+  refusals, `refuse_job_run_before_it_starts` in `apps/cli/commands/job_run_refusals.py`.
 - `_cmd_status` (`apps/cli/commands/status_cmd.py`). Boundary: the scope and project it reads,
   the jobs grouped by state, the counts of open decisions and pending stops, the runtime's state,
   and its answer, the JSON document or the text lines. Steps: (1) the counts of open decisions and
@@ -325,7 +326,7 @@ with the code that calls it.
 | 211 | `packages/orchestration/pingpong_loop.py` | `compose_builder_prompt` |
 | 209 | `packages/orchestration/proof_chain.py` | `build_proof_chain` |
 | 206 | `apps/cli/commands/runtime_cmd.py` | `_serve_supervisor` |
-| 205 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
+| 183 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
 | 161 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
