@@ -6,14 +6,16 @@ the evidence that discharged it, and carry R-1246, R-1326, R-1351 and R-1353 by 
 paydown (docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 to D28).
 
 ## Current Step
-Round 28 (session 6): book round 27 with R-1291; T021, step (3) of `run_job` begun with the final
-job review (DECISION F307 D28).
+Round 29 (session 7): the closure's integration-gate round — book round 28, the checklist's
+consolidation pass, the closure's self-use item run to its approval gate, the one full suite and
+its CPU cost.
 
 ## Next Steps
-1. Book round 28 (T021 closed); then the closure sequence, per
-   `docs/roadmap/STATUS_closure_protocol.md`, in a session of its own: the one full suite, the
-   evidence package, the Built State, the next paydown registered with R-1246, R-1326, R-1351,
-   R-1353, R-1418 and R-1281's rest, the ledger rotation and the STATUS flip.
+1. The evidence bundle and the review package (a green suite), or a repair round naming every bad
+   node id (a red one).
+2. The closing round: the Built State, R-1246, R-1281, R-1326, R-1351, R-1353 and R-1418
+   re-assigned to the next findings paydown, the ledger rotation, that paydown registered, the
+   STATUS line, the README and the pull request.
 
 ## Risks
 - A round's selection is every test file that names a touched module by import or by path, and
