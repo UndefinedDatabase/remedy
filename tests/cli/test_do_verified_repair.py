@@ -213,4 +213,5 @@ def test_a_refused_repair_reads_review_not_passed_in_the_story(tmp_path, monkeyp
 
     assert story["state"] == "failed"
     assert story["state_detail"]["reason"] == {"key": "review_not_passed", "args": {"rounds": 2}}
-    assert (story["next"]["action"], story["end"]["action"]) == ("none", "abandon")
+    # R-1331 (DECISION F307 D22): a job a run left blocked at a task that ended blocked offers its retry.
+    assert (story["next"]["action"], story["end"]["action"]) == ("retry", "abandon")

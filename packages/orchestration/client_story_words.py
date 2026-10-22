@@ -29,8 +29,8 @@ STORY_STEP_IDS: tuple[str, ...] = ("reading", "planning", "building", "checking"
 STORY_STEP_STATUSES: tuple[str, ...] = ("waiting", "running", "done", "skipped", "failed")
 
 #: The one next step the story names; `decline` is offered beside `apply` by every client and is
-#: never the one next step on its own. `retry` is named by no state since amend1015c D3: no route
-#: re-attempts a task that ended blocked (R-1331), and the list only grows. `run` starts a queued job
+#: never the one next step on its own. `retry` retries a job a run left blocked at a task that ended
+#: blocked or failed, `POST /api/v1/jobs/{job}/retry` (R-1331). `run` starts a queued job
 #: that waits for nothing, `resume` a stopped one; both are `POST /api/v1/jobs/{job}/run` (exec-1017c).
 STORY_NEXT_ACTIONS: tuple[str, ...] = ("apply", "decline", "answer", "retry", "none", "run", "resume")
 #: How a job that has not ended is ended for good, the story's `end` (exec-1018b, R-1360): a completed

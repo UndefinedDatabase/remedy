@@ -33,6 +33,7 @@ from typing import Any
 from urllib.parse import quote
 
 from packages.orchestration.client_story_words import STORY_QUESTIONS
+from packages.orchestration.job_run_ending import job_is_retryable
 from packages.orchestration.order_verification import job_verification
 from packages.orchestration.task_lifecycle import task_lifecycle_or_empty
 
@@ -345,7 +346,8 @@ def _steps(plan: Any, state: str, detail: dict[str, Any], changes: list[dict[str
     ]
 
 
-def _next(job_id: str, state: str, detail: dict[str, Any], pending: dict[str, Any]) -> dict[str, Any]:
+def _next(job_id: str, state: str, detail: dict[str, Any], pending: dict[str, Any],
+          retryable: bool) -> dict[str, Any]:
     """The one next step and the documented HTTP operation that takes it."""
     base = f"/api/v1/jobs/{job_id}"
     if state == "done" and pending["result_applied"] is False:
@@ -359,9 +361,11 @@ def _next(job_id: str, state: str, detail: dict[str, Any], pending: dict[str, An
         return {"action": "run", "route": {"method": "POST", "path": f"{base}/run"}}
     if state == "stopped" and (detail.get("reason") or {}).get("key") == "stopped":
         return {"action": "resume", "route": {"method": "POST", "path": f"{base}/run"}}
-    # amend1015c D3 (R-1331): Remedy deliberately offers no `retry` for a failed job: a run of it
-    # re-attempts no task that ended blocked or failed and ends blocked again, and no route of the
-    # public API puts such a task back to pending yet. `retry` stays in the closed list for that route.
+    # R-1331 (DECISION F307 D22): a job a run left blocked at a task that ended blocked or failed is
+    # retried by its own route, which puts those tasks back to pending before the run; a plain run
+    # re-attempts none of them, and a job that failed for good offers nothing.
+    if state == "failed" and retryable:
+        return {"action": "retry", "route": {"method": "POST", "path": f"{base}/retry"}}
     return {"action": "none", "route": None}
 
 
@@ -455,7 +459,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
         "ended_at": _iso(ended),
         "state": state,
         "state_detail": detail,
-        "next": _next(str(plan.job_id), state, detail, pending),
+        "next": _next(str(plan.job_id), state, detail, pending, job_is_retryable(plan)),
         "end": _end(plan, state, declined is not None),
         "steps": _steps(plan, state, detail, changes, rounds,
                         {"in": summary["tokens_in"], "out": summary["tokens_out"]} if measured else None),

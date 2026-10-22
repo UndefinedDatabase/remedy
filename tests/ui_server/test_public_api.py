@@ -80,6 +80,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_run_poll_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/jobs/{job}/run"):
         "test_the_run_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/retry"):
+        "test_the_retry_route_is_pinned_with_its_body_and_its_options",
 }
 
 
@@ -2477,6 +2479,34 @@ def test_the_page_names_the_run_route_and_its_running_refusal():
     assert "## Runs" in hand_written
     assert "/api/v1/jobs/{job}/run" in hand_written
     assert "job_already_running" in hand_written
+
+
+RETRY_PATH = "/api/v1/jobs/{job}/retry"
+
+
+def test_the_retry_route_is_pinned_with_its_body_and_its_options():
+    """R-1331 (DECISION F307 D22): the route a story's `retry` names starts `remedy job run --retry`."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == RETRY_PATH)
+    assert (route.method, route.twin, route.starts_run) == ("POST", "job.run", True)
+    assert route.body == (("builder_provider", "string"), ("reviewer_provider", "string"))
+    assert (route.refusals, route.refusal_default) == ((), None)
+    assert route.run_options == ("--retry",)
+    assert {r.path for r in public_api.PUBLIC_API_ROUTES if r.run_options} == {RETRY_PATH}
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "/api/v1/jobs/{job}/retry" in page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+
+
+def test_a_retry_post_starts_the_run_with_retry_first_then_the_providers():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    _run_calls, run = _recording_runner()
+    raw = json.dumps({"builder_provider": "fake"}).encode("utf-8")
+    status, _answer, _headers = public_api.answer_public_api_post(
+        RETRY_PATH.replace("{job}", full[:8]), raw, run, start_run=start)
+    assert status == 202
+    assert calls == [(full, ["--retry", "--builder-provider=fake"])]
+    assert _post_run(full, {"builder_provider": "fake"}, start)[0] == 202
+    assert calls[1] == (full, ["--builder-provider=fake"])
 
 
 # -- a body string that holds a NUL character (R-1205) ---------------------------

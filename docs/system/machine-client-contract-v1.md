@@ -575,6 +575,7 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--max-wall-clock-minutes` | yes | no | yes | no | Maximum wall-clock minutes (F018 budget override) |
 | `--max-cost-usd` | yes | no | yes | no | Maximum cost in USD (F104 budget override) |
 | `--deadline` | yes | no | yes | no | UTC deadline as ISO 8601 string (F018 budget override) |
+| `--retry` | yes | no | no | no | Put the tasks that ended blocked or failed back to pending first, so they run again; a plain run re-attempts none of them |
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.

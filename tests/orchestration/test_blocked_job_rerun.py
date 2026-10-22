@@ -1,6 +1,6 @@
 """amend1015 Phase 1.2 — a run of a job whose task ended blocked ends blocked, never `running`.
 
-The run story's `retry` is `POST /api/v1/jobs/{job}/run`, which runs `remedy job run`. Before this
+A plain `remedy job run` re-attempts no such task, a retry with `--retry` does (R-1331). Before this
 repair, a run of a job whose task had ended blocked skipped that task, ran nothing, and left the
 job's record reading `running` with no run alive, so the story said "working" for ever. A job that
 runs nothing and still has a blocked task ends blocked again, keeping the reason it had.

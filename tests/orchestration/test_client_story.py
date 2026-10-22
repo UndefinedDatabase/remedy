@@ -156,16 +156,17 @@ def test_instructions_too_large_for_one_call_read_as_their_own_reason(data_root,
     assert story["state_detail"] == {"reason": {"key": "project_rules_too_large", "args": {}}}
     assert "40,000" not in json.dumps(story)            # a closed word, never Remedy's sentence
 
-def test_a_provider_failure_reads_failed_and_offers_no_retry(data_root, repo):
-    """amend1015c D3 (R-1331): a run of a job whose task ended blocked re-attempts nothing, so the
-    story offers no step that cannot succeed."""
+def test_a_provider_failure_reads_failed_and_offers_a_retry(data_root, repo):
+    """R-1331 (DECISION F307 D22): a job a run left blocked at a task that ended blocked offers its
+    retry route, which puts that task back to pending before the run."""
     job_id = _run(repo, builder_error="provider_unavailable: down")
     story = _story(job_id, data_root)
 
     assert story["state"] == "failed"
     assert story["state_detail"] == {"reason": {"key": "provider_unavailable",
                                                 "args": {"provider": "fake"}}}
-    assert story["next"] == {"action": "none", "route": None}
+    assert story["next"] == {"action": "retry",
+                             "route": {"method": "POST", "path": f"/api/v1/jobs/{job_id}/retry"}}
     building = _step(story, "building")
     assert building["status"] == "failed"
     assert [task["status"] for task in building["tasks"]] == ["failed"]
@@ -173,6 +174,15 @@ def test_a_provider_failure_reads_failed_and_offers_no_retry(data_root, repo):
     assert story["changes"] == []
     assert story["ended_at"] is not None
     assert "down" not in json.dumps(story)
+
+
+def test_a_job_that_failed_for_good_offers_no_retry(data_root, repo):
+    job_id = _run(repo, builder_error="provider_unavailable: down")
+    _save(job_id, state=RunState.FAILED)
+    story = _story(job_id, data_root)
+
+    assert story["state"] == "failed"
+    assert story["next"] == {"action": "none", "route": None}
 
 
 def test_a_budget_stop_asks_whether_to_extend(data_root, repo):

@@ -497,13 +497,10 @@ def _cmd_job_run(
     reviewer_model: str | None = None,
     reviewer_effort: str | None = None,
     repair_provider: str | None = None,
-    repair_model: str | None = None,
-    repair_effort: str | None = None,
-    max_total_tokens: str | None = None,
-    max_provider_calls: str | None = None,
-    max_wall_clock_minutes: str | None = None,
-    max_cost_usd: str | None = None,
-    deadline: str | None = None,
+    repair_model: str | None = None, repair_effort: str | None = None,
+    max_total_tokens: str | None = None, max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None, max_cost_usd: str | None = None,
+    deadline: str | None = None, retry: bool = False,
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
 
@@ -515,7 +512,7 @@ def _cmd_job_run(
     `job_blocked`, `job_failed` or `job_stopped_by_budget`, every key of its report
     beside the token, and exit 1; every other end — completed, paused at the operator's
     request or at `--tasks`, stopped at the operator's request — answers as before
-    (R-1184, DECISION F304 D8).
+    (R-1184, DECISION F304 D8). ``retry`` first puts a blocked job's stuck tasks back (R-1331).
     """
     from apps.cli.commands.run_invocation import RunInvocation
 
@@ -579,10 +576,13 @@ def _cmd_job_run(
     from apps.cli.commands.job_run_refusals import refuse_job_run_before_it_starts
     from packages.core.models import RunState
     from packages.orchestration.job_report import export_job_report
+    from packages.orchestration.job_retry import retry_blocked_job_tasks
     from packages.orchestration.pingpong_job import run_job
 
     # DECISION F307 D22: step (1) of this function's boundary, every refusal before anything runs.
     _recorded = refuse_job_run_before_it_starts(job_id, json_output=json_output)
+    if retry and _recorded is not None:    # R-1331: the stuck tasks go back to pending first.
+        retry_blocked_job_tasks(_recorded)
 
     # DECISION F200 D5: a plain `job run <job>` on a job that exists runs in the serve
     # supervisor while one answers, and this command follows it to its end; any other
@@ -945,6 +945,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
         max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
+        retry=bool(getattr(args, "retry", False)),
     ),
     "job.apply": lambda args: _cmd_job_apply(
         args.job_id,

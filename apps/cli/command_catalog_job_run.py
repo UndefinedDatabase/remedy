@@ -45,6 +45,8 @@ JOB_RUN_COMMANDS: tuple[CommandEntry, ...] = (
             ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes (F018 budget override)", required=False, is_option=True, default=None),
             ArgDef("--max-cost-usd", "Maximum cost in USD (F104 budget override)", required=False, is_option=True, default=None),
             ArgDef("--deadline", "UTC deadline as ISO 8601 string (F018 budget override)", required=False, is_option=True, default=None),
+            ArgDef("--retry", "Put the tasks that ended blocked or failed back to pending first, so they run "
+                   "again; a plain run re-attempts none of them", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         may_mutate_repo=False,

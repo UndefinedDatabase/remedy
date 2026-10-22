@@ -275,7 +275,8 @@
    "pr": null,
    "branch": "feature/f307-findings-paydown-v9",
    "added": [
-    "digest and changes mission key `orders` (`order_id`, `kind`, `created_at`, `source_path`, `source_sha256`, `job_ids`) and job key `order_id` (F307, DECISION F307 D19)"
+    "digest and changes mission key `orders` (`order_id`, `kind`, `created_at`, `source_path`, `source_sha256`, `job_ids`) and job key `order_id` (F307, DECISION F307 D19)",
+    "route `POST /api/v1/jobs/{job}/retry` and the `--retry` option of `remedy job run`, which put a blocked job's tasks that ended blocked or failed back to pending before its run (F307, DECISION F307 D22)"
    ],
    "value_changes": [
     {
@@ -325,6 +326,12 @@
      "case": "a job a run left blocked",
      "before": "its stop time or its newest run-log event: the job kept no finish time",
      "after": "the time the run that blocked it ended (F307, DECISION F307 D21)"
+    },
+    {
+     "field": "the story's `next`",
+     "case": "a job a run left blocked at a task that ended blocked or failed",
+     "before": "`none`, with no route",
+     "after": "`retry`, `POST /api/v1/jobs/{job}/retry` (F307, DECISION F307 D22)"
     }
    ]
   }
@@ -416,6 +423,7 @@
    "POST /api/v1/jobs/{job}/decisions/{decision}": "1.17",
    "POST /api/v1/jobs/{job}/decline": "1.17",
    "POST /api/v1/jobs/{job}/note": "1.25",
+   "POST /api/v1/jobs/{job}/retry": "1.27",
    "POST /api/v1/jobs/{job}/run": "1.17",
    "POST /api/v1/jobs/{job}/stop": "1.18",
    "POST /api/v1/orders": "1.17",

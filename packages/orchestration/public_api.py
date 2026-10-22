@@ -577,7 +577,8 @@ def _start_run_answer(
     The job is read with `lookup_job_id` and `load_job_plan_safe`: a value `lookup_job_id` refuses
     as invalid answers 404 `invalid_job_id`, one no job matches or whose record cannot be read
     answers 404 `job_not_found`, one that matches several answers 400 `ambiguous_job_id`. Then
-    START_RUN is called with the full job id and the options the body gives, the builder's
+    START_RUN is called with the full job id, the route's own `run_options` (DECISION F307 D22)
+    and the options the body gives, the builder's
     `--builder-provider=<value>` first and the reviewer's `--reviewer-provider=<value>` second;
     a `RunRefused` answers 409 with its own token and message, an `OSError` 500
     `api_command_failed`, and the run's record 202, read by `run_record_payload` as `GET
@@ -615,8 +616,9 @@ def _start_run_answer(
 
     if why := remote_provider_refusal(body):
         return 400, build_error(API_PROVIDER_NOT_OFFERED, why), {}
-    options = [f"--{key.replace('_', '-')}={body[key]}" for key in _RUN_PROVIDER_KEYS
-               if key in body]
+    route = next(r for r in PUBLIC_API_ROUTES if r.starts_run and _match_route_path(r.path, path) is not None)
+    options = [*route.run_options, *(f"--{key.replace('_', '-')}={body[key]}" for key in _RUN_PROVIDER_KEYS
+                                     if key in body)]
     try:
         record = start_run(job_id, options)
     except RunRefused as exc:

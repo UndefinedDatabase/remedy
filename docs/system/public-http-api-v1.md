@@ -219,7 +219,8 @@ together may both start, as two `remedy do` of one order file may.
 `ended_at`, which are `null` until the run ends, and `state` and `answer`, read as the poll below
 reads them. Its body takes `builder_provider` and
 `reviewer_provider`, each a string that names the model that builds or the one that reviews; either
-may be left out. No other option of `remedy job run` is offered over HTTP: each other one either
+may be left out. No other option of `remedy job run` but `--retry`, below, is offered over HTTP:
+each other one either
 raises a limit, which a client token's ceilings bound only at the order, or runs a command of the
 caller's choice. A job id prefix is accepted, and the run starts under the job's full id.
 
@@ -231,6 +232,14 @@ whose run has not ended answers 409 `job_already_running`, and a run that cannot
 `api_command_failed`. These refusals are the route's own: `remedy job run` does not read the job
 before its run starts, so no command answers them, and a test holds each of these answers whole
 (DECISION F297 D10).
+
+`POST /api/v1/jobs/{job}/retry` (since 1.27) retries a job a run left blocked. It starts the run
+as `remedy job run <job> --retry` does, which first puts every task of the job that ended blocked
+or failed back to pending, with the tasks after it that the block skipped, and clears the job's
+error and finish time, so those tasks run again; a plain run of such a job re-attempts none of them
+and ends blocked again. Its body, its answer, its poll and its refusals are the run route's own,
+and a job that is not blocked, or has no such task, runs as the run route runs it (DECISION F307
+D22).
 
 The route answers when the run has started, not when it ends. A client polls `GET
 /api/v1/jobs/{job}/run` until `state` is not `running`, and only then reads the digest or applies,
@@ -330,6 +339,7 @@ declined, failed or cancelled):
 | `answer` | `POST /api/v1/jobs/<job>/decisions/<decision>` |
 | `run` (since 1.19) | `POST /api/v1/jobs/<job>/run`, a queued job that waits for nothing |
 | `resume` (since 1.19) | `POST /api/v1/jobs/<job>/run`, a job stopped on request |
+| `retry` (since 1.27) | `POST /api/v1/jobs/<job>/retry`, a job a run left blocked at a task that ended blocked or failed |
 | `none` | `null` |
 
 Both `end` routes take the body `{"reason": "<why>"}`; `decline` refuses a missing or blank reason
@@ -337,9 +347,10 @@ with 400 `missing_argument`, `abandon` records `cancelled` when none is given. E
 story word and order phase is listed with the version that added it, and every value change of an
 existing field per version, in [api-release-matrix-v1.json](api-release-matrix-v1.json).
 
-`retry` is in the closed list but no state names it since version 1.16: a run of a job whose task
-ended blocked or failed re-attempts nothing and ends `blocked` again, and no route puts such a task
-back to pending yet, so a failed job's story offers `none` rather than a step that cannot succeed.
+`retry` names, since 1.27, a job a run left blocked at a task that ended blocked or failed: its
+route puts those tasks back to pending before the run, so they run again. A job that failed for
+good, which never runs again, still reads `none`. From 1.16 to 1.26 no state named `retry`,
+because no route re-attempted such a task.
 
 `steps` is always the five steps `reading`, `planning`, `building`, `checking` and `finished` in that
 order, each `{id, status, phrase, tokens}` with `status` one of `waiting`, `running`, `done`,
@@ -533,7 +544,8 @@ API version: `1.27`.
 | `GET` | `/api/v1/jobs/{job}/insight` | `lines=<value>` | `remedy client insight --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400 | no | One job's worker seen from outside, as `remedy client insight <job> --json` prints it (since 1.22): the job's entry of `GET /api/v1/now`, plus `stream`, the worker's last `lines` stream lines (default 40, at most 200, already redacted), and `advice`, the closed words for what the operator can do. Every word is in the `insight` key of `GET /api/v1/interface`. A job id prefix is accepted, and a client token reads only a job of one of its projects (403 `api_client_policy_refused`). |
 | `GET` | `/api/v1/jobs/{job}/diff` | — | `remedy client diff --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400, `diff_not_ready` 409, `diff_unavailable` 409 | no | One ended job's change as git prints it, as `remedy client diff <job> --json` does: `job`, `state` (`prepared`, `applied`, `declined`, `failed` or `conflict`), `files` with each file's `path`, `change` (`added`, `modified`, `deleted` or `renamed`), `added` and `removed` lines, its unified `patch` and `truncated`, and `truncated` when a patch or the list was cut. A result not yet applied is the job branch against its base commit, an applied one the commit its apply landed. A job that has not ended or waits for an answer answers 409 `diff_not_ready`, commits git no longer has 409 `diff_unavailable`. A job id prefix is accepted, and a client token reads only a job of one of its projects (403 `api_client_policy_refused`). |
 | `GET` | `/api/v1/jobs/{job}/run` | — | `remedy client run --json` | `run_not_found` 404 | no | Polls the run the `POST` to this path started, answering the run's record as `remedy client run <job> --json` does: the record's keys, `state` and `answer`. A client polls it until `state` is not `running`: `state` reads `running`, `ended` or `lost`; `exit_code` is `null` until the run ends and stays `null` for a run read `lost`; `answer` is `null` while the run is `running` and afterwards holds what `remedy job run --json` printed, or `null` when it printed no envelope. A job id prefix is accepted; a value that names no one job, or a job with no run, is refused with 404 `run_not_found`, and a client token reads only a job of one of its projects (403 `api_client_policy_refused`). |
-| `POST` | `/api/v1/jobs/{job}/run` | `builder_provider` (string), `reviewer_provider` (string) | the run's record, as the supervisor's `RunLauncher` writes it | — | no | Starts a job's run through the supervisor's own `RunLauncher`, as `remedy job run <job> <options> --json` would, and answers 202 with the run's record: `job_id`, `pid`, `started_at`, `out_log`, `err_log`, `exit_code` and `ended_at`, the last two `null` until the run ends, and `state` and `answer` as the route above reads them. `builder_provider` and `reviewer_provider` each pass `--builder-provider=<value>` and `--reviewer-provider=<value>`, a provider HTTP does not offer refused with 400 `api_provider_not_offered`; no other option of `remedy job run` is offered over HTTP. A job id prefix is accepted. A client waits for the run's end by polling the route above until `state` is not `running`. Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a record that cannot be read), `ambiguous_job_id` 400, `job_already_running` 409, `api_command_failed` 500 when the run cannot start, and `api_client_policy_refused` 403 for a client token's job outside its projects. |
+| `POST` | `/api/v1/jobs/{job}/run` | `builder_provider` (string), `reviewer_provider` (string) | the run's record, as the supervisor's `RunLauncher` writes it | — | no | Starts a job's run through the supervisor's own `RunLauncher`, as `remedy job run <job> <options> --json` would, and answers 202 with the run's record: `job_id`, `pid`, `started_at`, `out_log`, `err_log`, `exit_code` and `ended_at`, the last two `null` until the run ends, and `state` and `answer` as the route above reads them. `builder_provider` and `reviewer_provider` each pass `--builder-provider=<value>` and `--reviewer-provider=<value>`, a provider HTTP does not offer refused with 400 `api_provider_not_offered`; of the other options of `remedy job run` only `--retry` is offered over HTTP, by the route below. A job id prefix is accepted. A client waits for the run's end by polling the route above until `state` is not `running`. Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a record that cannot be read), `ambiguous_job_id` 400, `job_already_running` 409, `api_command_failed` 500 when the run cannot start, and `api_client_policy_refused` 403 for a client token's job outside its projects. |
+| `POST` | `/api/v1/jobs/{job}/retry` | `builder_provider` (string), `reviewer_provider` (string) | the run's record, as the supervisor's `RunLauncher` writes it | — | no | Retries a job a run left blocked: starts its run as `POST /api/v1/jobs/{job}/run` does, as `remedy job run <job> --retry <options> --json` would, so the job's tasks that ended blocked or failed, and the tasks the block skipped after them, go back to pending first and run again. The body, the answer, the poll and the refusals are the run route's own; a job that is not blocked, or has no such task, runs as that route runs it. The story's `retry` names this route. |
 
 ### Never published
 

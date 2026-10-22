@@ -245,6 +245,7 @@ packages.orchestration.job_certificate_verify
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
 packages.orchestration.job_report
+packages.orchestration.job_retry
 packages.orchestration.job_input_definition
 packages.orchestration.job_insight
 packages.orchestration.job_plan
