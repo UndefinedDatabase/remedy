@@ -2341,6 +2341,26 @@ def _check_target_mutation(
     return content, sorted(operational + noise)
 
 
+# WHY: the one record of a target snapshot check, which run_pingpong wrote out at four places
+# (step (1) of its boundary in docs/system/structure-ledger-v1.md, DECISION F296 D1).
+def _record_target_mutation(
+    result: PingPongResult, check: tuple[list[str], list[str]], error_prefix: str,
+) -> bool:
+    """Record the noise `check` found and, when it found a meaningful change, the blocked status,
+    the changed files and the error `error_prefix` opens; answer whether the run must stop."""
+    meaningful, noise = check
+    if noise:
+        result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
+        result.target_noise_detected = True
+    if not meaningful:
+        return False
+    result.final_status = "target_mutation_blocked"
+    result.target_mutated = True
+    result.changed_target_files = meaningful
+    result.error = f"{error_prefix}: {meaningful}"
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Fake staging mutation (for FakeProvider)
 # ---------------------------------------------------------------------------
@@ -3311,19 +3331,11 @@ def run_pingpong(
                 _apply_fake_builder_changes(staging, builder_out, goal)
 
             # --- Target snapshot check after Builder ---
-            meaningful, noise = _mutation_check()
-            if noise:
-                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
-                result.target_noise_detected = True
-            if meaningful:
+            if _record_target_mutation(result, _mutation_check(), "Builder mutated target repo"):
                 # Compute staged evidence before blocking
                 result.staged_files = _staged_now()
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
-                result.final_status = "target_mutation_blocked"
-                result.target_mutated = True
-                result.changed_target_files = meaningful
-                result.error = f"Builder mutated target repo: {meaningful}"
                 break
 
             # Track staged files
@@ -3356,17 +3368,9 @@ def run_pingpong(
                 # repair_rounds > 0: continue to reviewer with test failure evidence
 
             # --- Target snapshot check after tests ---
-            meaningful, noise = _mutation_check()
-            if noise:
-                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
-                result.target_noise_detected = True
-            if meaningful:
+            if _record_target_mutation(result, _mutation_check(), "Test execution mutated target repo"):
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
-                result.final_status = "target_mutation_blocked"
-                result.target_mutated = True
-                result.changed_target_files = meaningful
-                result.error = f"Test execution mutated target repo: {meaningful}"
                 break
 
             # --- Reviewer phase ---
@@ -3695,17 +3699,9 @@ def run_pingpong(
             rd.reviewer_output = reviewer_out
 
             # --- Target snapshot check after Reviewer ---
-            meaningful, noise = _mutation_check()
-            if noise:
-                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
-                result.target_noise_detected = True
-            if meaningful:
+            if _record_target_mutation(result, _mutation_check(), "Reviewer mutated target repo"):
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
-                result.final_status = "target_mutation_blocked"
-                result.target_mutated = True
-                result.changed_target_files = meaningful
-                result.error = f"Reviewer mutated target repo: {meaningful}"
                 break
 
             # Detect reviewer staging mutation
@@ -3850,15 +3846,7 @@ def run_pingpong(
     finally:
         # --- Final target snapshot check ---
         if not result.target_mutated:
-            meaningful, noise = _mutation_check()
-            if noise:
-                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
-                result.target_noise_detected = True
-            if meaningful:
-                result.final_status = "target_mutation_blocked"
-                result.target_mutated = True
-                result.changed_target_files = meaningful
-                result.error = f"Target mutated during run: {meaningful}"
+            _record_target_mutation(result, _mutation_check(), "Target mutated during run")
 
         # --- Staged evidence (always compute before discard, even on block) ---
         if not result.staged_files:
