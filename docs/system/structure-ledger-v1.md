@@ -89,7 +89,9 @@ commit with no alias left behind, and changes the tests in their import lines on
   (2) the context assembly becomes a function; (3) the safe point becomes a function.
 - `doctor_core_report` (`apps/cli/commands/worker_facade_cmd.py`). Boundary: its five banner
   sections. Steps: (1) the three nested helpers for dead model ids move to the module; (2) each
-  section becomes a function of its own, keeping the order of the checks it appends.
+  section becomes a function of its own, keeping the order of the checks it appends. Step (1),
+  done by F307: `_dead_origin`, `_dead_provenance_short` and `_dead_provenance`, which take the
+  shipped entries as an argument.
 - `_apply_from_workspace` (`packages/orchestration/job_apply.py`). Boundary: its banner phases —
   validation, refusals, the durable record before any write, the write, then verify, test, commit
   and push. Steps: (1) the steps after the write become a function each; (2) the validation phase
@@ -300,7 +302,7 @@ with the code that calls it.
 | 352 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
-| 355 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
+| 305 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
 | 346 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
 | 334 | `scripts/build_review_manifest.py` | `build_manifest_from_snapshot` |
 | 320 | `packages/orchestration/trust_report.py` | `summarize_trust_report` |

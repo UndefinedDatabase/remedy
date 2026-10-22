@@ -187,6 +187,58 @@ def last_day_test_load(environ=None, home: Path | None = None, now=None) -> dict
             "sentence": f"{runs} {noun} used {cpu_minutes:.1f} CPU minutes in the last 24 hours."}
 
 
+def _dead_origin(model_id: str, entries: dict[str, tuple[str, str]]) -> tuple[str, str, str]:
+    """Where the verdict came from, plus the entry's reason/successor; ENTRIES maps each id of
+    the shipped list to its recorded reason and successor (step (1) of `doctor_core_report`)."""
+    from packages.orchestration.dead_model_list import DEAD_MODEL_CONFIG_KEY, DEAD_MODEL_LIST_FILENAME
+
+    if model_id in entries:
+        reason, superseded = entries[model_id]
+        return (f"the shipped list scripts/{DEAD_MODEL_LIST_FILENAME}",
+                reason, superseded)
+    return (f"the operator's {DEAD_MODEL_CONFIG_KEY} config list", "", "")
+
+
+def _dead_provenance_short(model_id: str, entries: dict[str, tuple[str, str]]) -> str:
+    """The provenance clause for TEXT mode — shorter words, same claim.
+
+    Remedy does not know a model is retired; it knows an
+    operator-maintained file says so. Wording that implies live
+    provider knowledge would be a false live indicator, so this
+    clause appears in BOTH renderings and only its length differs.
+    What text mode drops is the entry's full recorded reason, never
+    the source of the verdict.
+    """
+    origin, _reason, _superseded = _dead_origin(model_id, entries)
+    return f"per {origin} — operator data, no provider queried"
+
+
+def _dead_provenance(model_id: str, entries: dict[str, tuple[str, str]]) -> str:
+    """The full provenance record for `--json`: source, reason, successor.
+
+    Says WHERE the "dead" verdict came from — data, never a probe —
+    and then everything the entry recorded, which is what an
+    operator reads once the compact line has caught their eye.
+    """
+    origin, reason, superseded = _dead_origin(model_id, entries)
+    parts = [
+        f"Remedy calls this id dead only because {origin} says so — "
+        f"that list is operator-maintained data, no provider was "
+        f"queried, so the verdict is exactly as current as the data.",
+    ]
+    if reason:
+        parts.append(f"Recorded reason: {reason}")
+    # State the successor only when saying it ADDS something: with a
+    # recorded reason in hand, "no replacement id is recorded" is
+    # already in that reason, and repeating it twice in one line was
+    # the noise this split exists to remove.
+    if superseded:
+        parts.append(f"Recorded replacement: {superseded}.")
+    elif not reason:
+        parts.append("No replacement id is recorded.")
+    return " ".join(parts)
+
+
 def doctor_core_report() -> DoctorCoreReport:
     """Build `doctor core`'s report: T5_F289.md T002, DECISION F289 D1.
 
@@ -312,60 +364,10 @@ def doctor_core_report() -> DoctorCoreReport:
     if dead_ids:
         try:
             from packages.orchestration.config import all_key_specs, get_config
-            from packages.orchestration.dead_model_list import (
-                DEAD_MODEL_CONFIG_KEY,
-                DEAD_MODEL_LIST_FILENAME,
-            )
             from packages.orchestration.model_aliases import (
                 MODEL_ALIASES,
                 builtin_model_ids,
             )
-
-            def _dead_origin(model_id: str) -> tuple[str, str, str]:
-                """Where the verdict came from, plus the entry's reason/successor."""
-                if model_id in dead_entry_by_id:
-                    reason, superseded = dead_entry_by_id[model_id]
-                    return (f"the shipped list scripts/{DEAD_MODEL_LIST_FILENAME}",
-                            reason, superseded)
-                return (f"the operator's {DEAD_MODEL_CONFIG_KEY} config list", "", "")
-
-            def _dead_provenance_short(model_id: str) -> str:
-                """The provenance clause for TEXT mode — shorter words, same claim.
-
-                Remedy does not know a model is retired; it knows an
-                operator-maintained file says so. Wording that implies live
-                provider knowledge would be a false live indicator, so this
-                clause appears in BOTH renderings and only its length differs.
-                What text mode drops is the entry's full recorded reason, never
-                the source of the verdict.
-                """
-                origin, _reason, _superseded = _dead_origin(model_id)
-                return f"per {origin} — operator data, no provider queried"
-
-            def _dead_provenance(model_id: str) -> str:
-                """The full provenance record for `--json`: source, reason, successor.
-
-                Says WHERE the "dead" verdict came from — data, never a probe —
-                and then everything the entry recorded, which is what an
-                operator reads once the compact line has caught their eye.
-                """
-                origin, reason, superseded = _dead_origin(model_id)
-                parts = [
-                    f"Remedy calls this id dead only because {origin} says so — "
-                    f"that list is operator-maintained data, no provider was "
-                    f"queried, so the verdict is exactly as current as the data.",
-                ]
-                if reason:
-                    parts.append(f"Recorded reason: {reason}")
-                # State the successor only when saying it ADDS something: with a
-                # recorded reason in hand, "no replacement id is recorded" is
-                # already in that reason, and repeating it twice in one line was
-                # the noise this split exists to remove.
-                if superseded:
-                    parts.append(f"Recorded replacement: {superseded}.")
-                elif not reason:
-                    parts.append("No replacement id is recorded.")
-                return " ".join(parts)
 
             # Built-in defaults: name the ALIAS, because that is the line an
             # operator repoints. Derived from the table, never hardcoded.
@@ -377,11 +379,11 @@ def doctor_core_report() -> DoctorCoreReport:
                 _warn("dead_builtin_model",
                       f"{model_id} — built-in default via alias {alias_text}; "
                       f"fix: repoint alias {alias_text}; "
-                      f"{_dead_provenance_short(model_id)}",
+                      f"{_dead_provenance_short(model_id, dead_entry_by_id)}",
                       f"{model_id} is a BUILT-IN default, reached through alias "
                       f"{alias_text} in packages/orchestration/model_aliases.py. "
                       f"Fix: repoint alias {alias_text} to a live id. "
-                      f"{_dead_provenance(model_id)}",
+                      f"{_dead_provenance(model_id, dead_entry_by_id)}",
                       subject=model_id, repair_path=MODEL_ALIAS_TABLE_PATH)
 
             # Configured ids: name the KEY it came from. Discovered from the
@@ -396,10 +398,10 @@ def doctor_core_report() -> DoctorCoreReport:
                 _warn("dead_configured_model",
                       f"{value} — from config key {spec.key}; "
                       f"fix: change {spec.key} to a live id; "
-                      f"{_dead_provenance_short(value)}",
+                      f"{_dead_provenance_short(value, dead_entry_by_id)}",
                       f"{value} is the resolved value of config key {spec.key} "
                       f"(env {spec.env_var}). Fix: change {spec.key} to a live "
-                      f"id. {_dead_provenance(value)}",
+                      f"id. {_dead_provenance(value, dead_entry_by_id)}",
                       subject=value)
         except Exception as exc:  # noqa: BLE001 — a dead-model mismatch becomes an advisory, not a blocker
             # Already compact, and there is no fuller record to hold back:
