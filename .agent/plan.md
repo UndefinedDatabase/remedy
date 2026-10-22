@@ -6,12 +6,13 @@ the evidence names and never for provider unavailability, recorded in evidence, 
 ledger, off by default (docs/roadmap/features/T3_F296.md; DECISIONs F296 D1 to D5).
 
 ## Current Step
-Round 6 (session 1): the closure's evidence round — book round 5 and register R-1421 (the suite's
-CPU cost, owned by F314), the staging reclaim, the evidence job and the review package.
+Round 7 (session 1): the closing round — book round 6, the Built State, the ledger rotation, F296
+accepted in STATUS with the README sync and SU-074's consumed_by, and the pull request, left
+unmerged.
 
 ## Next Steps
-1. The closing round: the Built State, the rotation, the STATUS line with the README sync and
-   SU-074's consumed_by, and the pull request, left unmerged.
+1. The next session: Phase 1 rule 1, then the Open PR Gate merges F296's pull request, then the
+   next feature's first commit books round 7's verdict, then Rule A5.
 
 ## Risks
-- A package that builds BLOCKED_EVIDENCE is a closure blocker; its validator errors name the fix.
+- R-1421, the closure suite's CPU cost, is open and owned by F314.
