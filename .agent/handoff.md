@@ -1,131 +1,92 @@
-# Handback — F307 round 32, the closing round: book round 31, re-assign six findings to F314, rotate the ledger, register F314, accept F307
+# Handback — F296 round 1: claim F296, book F307's round 32, write the slice list, take step (1) of `run_pingpong`'s boundary
 
 ## Session
 
-SESSION 7 of feature F307 · round 32 · rounds so far 32
+SESSION 1 of feature F296 · round 1 · rounds so far 1
 
-Context self-assessment: this worker verified every prepared digest before any write, copied each prepared file by a script and proved equality over bytes, ran the rotation and each gate once; context is ample and nothing was lost. The session ends here because F307 is closed and the next feature starts in a fresh session.
+Context self-assessment: this worker verified both prepared digests and every listed digest before any write, copied each prepared file by a script with a byte-for-byte proof, ran every gate once, and context stayed ample throughout.
 
-Fortschritt: 100 % (F307 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+Fortschritt: ~10 % (T001a landed · T001b to T003 open) — Schätzung
 
 ## Range
 
-Review of `857783258`..`HEAD` on `feature/f307-findings-paydown-v9`.
+Review of `eb7aa432b`..`HEAD` on `feature/f296-tier-escalation`.
 
 ## Commits
 
-### 5540154ae F307 R32 C1: book round 31, re-assign six findings to F314, the Built State, the consolidation brought to nine findings, save the round 32 block and the PR body
+### 8e7799850 F296 R1 C1: claim F296, book F307 R32, re-head the ledger, DECISION F296 D1, the slice list
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f307-r32.md` | +137/-0 | NEW FILE, this round's block, byte copy |
-| `.agent/authored/f307-r32-pr_body.md` | +58/-0 | NEW FILE, the pull request body, byte copy |
-| `.agent/live_review.md` | +8/-0 | round 31 booked, six findings re-assigned to F314 |
-| `docs/roadmap/features/T2_F307.md` | +43/-0 | the Built State |
-| `docs/agents/planner_reviewer_prompt.md` | +6/-5 | the consolidation brought to nine findings |
-| `.agent/plan.md` | +7/-9 | rewritten |
+| `.agent/authored/f296-r1.md` | +94/-0 | NEW FILE, this round's block, byte copy |
+| `.agent/context.md` | +7/-6 | rewritten for F296's scope |
+| `.agent/decisions.md` | +12/-0 | DECISION F296 D1 |
+| `.agent/live_review.md` | +21/-19 | re-headed to F296, F307 round 32 booked |
+| `.agent/plan.md` | +14/-13 | rewritten for F296's round 1 |
+| `docs/roadmap/STATUS.md` | +1/-1 | F296's line `[ ]` to `[~]` |
+| `docs/roadmap/features/T3_F296.md` | +19/-0 | the slice list |
 
-### a4d05508a F307 R32 C2: rotate the finding ledger into its archive
+### f3813280e F296 R1 C2: run_pingpong step (1) — the target snapshot check is one function its four places call
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +0/-663 | the rotation script's output |
-| `.agent/live_review_archive.md` | +681/-0 | the rotation script's output |
+| `docs/system/structure-ledger-v1.md` | +3/-2 | the function's and the file's rows fall by the step's measure |
+| `packages/orchestration/pingpong_loop.py` | +24/-36 | `_record_target_mutation` extracted, called at all four places |
+| `tests/test_structure_ratchet.py` | +2/-2 | the two pins lowered by the same counts |
 
-DECLARED OVERSIZE (681 insertions, F307's one such commit): inseparable, because the rotation script writes the ledger and the archive in one step and verifies every moved record by sha256 across both, so neither file can land without the other. No earlier commit of F307 passed 500 insertions.
-
-### 2cd5ce062 F307 R32 C3: register F314 — Findings paydown v10 under amend0911-feedback rule B: feature file, STATUS line, pin 314, README counters
+### (this commit) F296 R1 C3: handback
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/features/T2_F314.md` | +49/-0 | NEW FILE, the feature file |
-| `docs/roadmap/STATUS.md` | +7/-0 | F314's line |
-| `README.md` | +2/-2 | counters |
-| `tests/docs/test_docs_consistency.py` | +5/-1 | the registered-count pin moves to 314 |
-
-### (this commit) F307 R32 C4: accept F307 in STATUS with its README sync and the self-use queue
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | C4: F307's line becomes the accepted line (measured before this handoff joined) |
-| `README.md` | +15/-3 | C4: `155 of 314`, Tier 2 row `48 | 49`, F307's paragraph (measured before this handoff joined) |
-| `scripts/self_use_queue.json` | +1/-1 | C4: SU-073 `consumed_by` becomes `F307` (measured before this handoff joined) |
-| `.agent/handoff.md` | rewritten | C4: this handback (a handoff cannot table the commit that writes it) |
+| `.agent/handoff.md` | rewritten | C3: this handback (a handoff cannot table the commit that writes it) |
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | commit `5540154ae`, byte proofs held, numstat equal to the manifest |
-| C2 | done | commit `a4d05508a`, rotation exit 0, output equal to the simulation, both files byte-equal to the prepared ones; declared oversize |
-| C3 | done | commit `2cd5ce062`, byte proofs held, numstat equal to the manifest |
-| C4 | done | this commit, byte proofs held, numstat equal to the manifest |
-| Push | pending | reported in the session reply |
-| Pull request | pending | created after the push; number and URL in the session reply |
-| Gate 1 | done | status showed only the three C4 files; `verify.py` last line `ALL True` |
-| Gate 2 | done | the STATUS line occurs once; no line begins `- [~]` |
-| Gate 3 | done | exit 0, `578 passed in 64.03s` |
+| C0 | done | branch `feature/f296-tier-escalation` created from `main` at `eb7aa432b`, confirmed before any write |
+| C1 | done | commit `8e7799850`, byte proofs held for all seven paths, numstat matches |
+| C2 | done | commit `f3813280e`, byte proofs held for all three paths, self-review run before commit |
+| C3 | done | this commit, the handback |
+| Gate 1 | done | `git status --porcelain` empty; `verify.py` printed `True` on every line, `absent` for C3 (not yet committed when run), last line `ALL True` |
+| Gate 2 | done | exit 0, `All checks passed!` over the two touched Python files |
+| Gate 3 | done | exit 0, `7179 passed, 2 skipped in 81.14s`, no FAILED or ERROR line, no leftover-process line |
 | Gate 4 | done | exit 0, six checks `pass`, `fail_count` 0 |
-| Gate 5 | done | the open set equals the six ordered ids |
+| Gate 5 | done | printed `6`, matching the required count |
+| Push | pending | reported in the session reply |
 
 ## External actions
 
-None before this commit. The push and the pull request follow it and are reported in the session reply. No fetch or pull, no merge, no provider call. The scratch folder `.remedy-wt/f307-r32-worker/` holds the digest checker, the copy and proof scripts, the commit messages and the gate scripts.
+None before this commit. The push follows it and is reported in the session reply. No PR is opened this round (the block does not ask for one). No fetch, pull, merge or provider call. The scratch folder `.remedy-wt/f296-r1-worker/` holds the digest checkers, the copy and proof scripts, the commit-message files and this handback's supporting checks.
 
 ## Verification
 
-1. Digests before any write: `block.md` (137 lines), `verify.py`, `manifest.tsv`, `status_line.txt` and `sim-rotation.txt` equal the prompt's; every prepared file `manifest.tsv` lists matched (checker run with `python3 -I`, last line `ALL OK`).
-2. Preconditions: HEAD `857783258` equal to `origin/feature/f307-findings-paydown-v9`, `git status --porcelain` empty, `.agent/STOP` absent. `git branch --show-current` read `feature/f307-findings-paydown-v9` before each commit.
-3. Rotation (C2), `python3 scripts/rotate_live_review.py` through a wrapper with cwd the repository root, exit 0, output whole (the home folder is written as `~`):
-
-```
-gate records moved: 70
-finding pairs moved: 133 (266 records)
-resolved-text records moved: 3
-old ledger size: 485937 bytes
-new ledger size: 161479 bytes
-old archive size: 6836056 bytes
-new archive size: 7160532 bytes
-open findings before: 6
-open findings after: 6
-gate headers matching neither known form (left in place): 1
-written: ~/Repos/remedy/.agent/live_review.md and ~/Repos/remedy/.agent/live_review_archive.md
-```
-
-   Ledger size before 485937 bytes, after 161479 bytes. Exit code and every line but the last equal `sim-rotation.txt`; both files equal their prepared C2 files over bytes.
-4. Gate 1: `git status --porcelain` showed `M  README.md`, `M  docs/roadmap/STATUS.md`, `M  scripts/self_use_queue.json` only. `python3 .remedy-wt/f307-r32/prep/verify.py` printed `True` on every line, `absent` for `C4 committed`, last line `ALL True`.
-5. Gate 2: count of the status line in the STATUS page 1; lines beginning `- [~]`: none.
-6. Gate 3: the ordered pytest selection, once, exit 0, `578 passed in 64.03s (0:01:04)`, no FAILED, ERROR or SKIPPED line.
-7. Gate 4: `python3 -m apps.cli.main integrity check --json` exit 0, six checks `pass` (`handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`, `repo_root_hygiene`, `high_blockers_open`), `"fail_count": 0`.
-8. Gate 5: `open_finding_ids` printed `['R-1246', 'R-1281', 'R-1326', 'R-1351', 'R-1353', 'R-1418']`.
+1. Digests before any write: `block.md` (94 lines) and `digests.txt` matched the two hashes given in the delivering prompt; every one of the fifteen files listed in `digests.txt` matched its sha256 (checked with a script run under `python3 -I`, last line `ALL_OK True`).
+2. Preconditions: `git status --porcelain` empty, `git branch --show-current` read `main`, `git rev-parse HEAD` read `eb7aa432b15331cc8e777b34306bcb144fb5a8fe` before the branch was created. `gh pr list --state open ...` returned an empty list, so the Open PR Gate needed no merge.
+3. C1: all seven prepared files copied by a script, then compared byte-for-byte (`hashlib.sha256` and raw equality) against the prepared source; `.agent/authored/f296-r1.md` read 94 lines and sha256 `df2795839931b04b34abea678d42ddf79974e23d55555ff3c756f8e3dc62a567`, equal to `block.md`'s own.
+4. C2: all three prepared files copied and compared byte-for-byte the same way; `git diff --cached --stat` showed exactly the three named paths at 29 insertions and 40 deletions, read before committing as the self-review this round's block requires.
+5. Gate 1: `git status --porcelain` (through `git -C` on the primary checkout) printed nothing. `python3 .remedy-wt/f296-r1/prep/verify.py <repository root>` printed one `True` line per check (17 of them), one `absent` line for the not-yet-committed handback commit, and `ALL True` last.
+6. Gate 2: `python3 .remedy-wt/f296-r1/prep/ruff_touched.py <repository root>` printed `files: packages/orchestration/pingpong_loop.py tests/test_structure_ratchet.py`, `ruff over 2 files: exit 0`, `All checks passed!`.
+7. Gate 3: `python3 .remedy-wt/f296-r1/prep/run_selection.py <repository root> .remedy-wt/f296-r1-worker/selection-output.txt` ran pytest once over 176 paths (the round's selection plus every `tests/test_*.py`). Printed `paths 176`, `exit 0`, `7179 passed, 2 skipped in 81.14s (0:01:21)`. The two skipped lines read: an install-smoke test that is opt-in and needs network access, and an agent-tooling test quarantined under an earlier decision with its own backlog note. No FAILED, ERROR or leftover-process line appeared.
+8. Gate 4: `python3 -m apps.cli.main integrity check --json` (from the primary checkout) returned six checks, all `pass` (an import check, a review-verdict check, a plan-consistency check, an untracked-files check, a repository-hygiene check, and a check for open high-severity findings), with `"fail_count": 0`.
+9. Gate 5: the open-finding-id lookup over `.agent/live_review.md` printed `6`, matching the count the block requires.
 
 ## Authored-text proofs
 
-Applied this round, each proved equal over bytes by a script that only reads, against the prepared file: every file of C1, C3 and C4, and both ledger files of C2. The STATUS line in `docs/roadmap/STATUS.md` is byte-identical to the prep folder's `status_line.txt` without its trailing newline (count 1). It names the package folder as `~/Repos/remedy-history/zips` (the file carries the machine's absolute form of the same folder).
+Applied this round, each proved equal over bytes by a script that only reads, against the prepared file: all seven files of C1 and all three files of C2. `.agent/authored/f296-r1.md` additionally proved equal to the prompt's own `block.md` by line count and sha256.
 
 ## Deviations & assumptions
 
-Gate 1's `verify.py` was run with the repository root as its argument, spelled as a full path, instead of `.`; the checked folder is the same. Nothing else differed: the commit sequence landed exactly as ordered (C1, C2, C3, then this C4), each touching only its named paths. No amend, rebase, force-push or `--no-verify`, `.data` never read by this worker, no second run of any copy script or gate.
+None. The commit sequence landed exactly as ordered (C0, C1, C2, then this C3), each commit touching only its named paths. No amend, rebase, force-push or `--no-verify` was used. `.data` was never read by this worker. No mutation red-proof and no full-suite run were attempted; `REMEDY_TEST_MAX_WORKERS` was never set; each gate ran exactly once and never alongside another test command.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP`.
-2. Rule 2: the Open PR Gate, which merges F307's pull request in the NEXT session and never in this one.
-3. The reviewer's verdict on round 32 is booked in the next feature's first commit.
-4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`.
+2. Rule 2: the Open PR Gate.
+3. Book round 1's verdict in the next round's first commit.
+4. T001b and T001c: the escalation module, its configuration keys and the loop's call.
 
-Operator questions open: 0. Open findings: 6 (R-1246, R-1281, R-1326, R-1351, R-1353 and R-1418, owned by F314).
+Operator questions open: 0. Open findings: 6.
 
 ## For the operator, in plain sentences
 
-This clean-up batch repaired fifty-seven small problems, and each repair has a test that fails without it. It also wrote down thirty-three repairs that the operator's own branches had already made.
+This session started a new piece of work: teaching the system that runs a task's repair rounds to hand the next round to a stronger helper when a cheaper one keeps failing, instead of staying on the cheaper one forever. This first step did not change what a person sees. It took one small, repeated piece of internal bookkeeping that was written out four separate times inside the part of the code that runs those rounds, and turned it into a single shared piece, so the upcoming change can be added without that code growing any longer than it already is. The whole relevant set of automated checks passed after this step, and no outstanding problem was left behind by it.
 
-What a person notices is that a job which stops because one of its steps could not be finished keeps its finish time and runs that step again when tried again, that an order naming one file by a plain word is read as that file, that a middle way of running an order now sits between the small and the full one, and that a settings file that cannot be read is answered with a clear refusal instead of a crash report.
-
-Several large pieces of code were split into smaller ones on the way.
-
-The paid run of Remedy on itself stopped at its approval gate, as it should.
-
-The whole test collection passed on the code that ships, after one repair.
-
-The review package is named remedy-review-20261022-061118-READY_FOR_REVIEW.zip and sits in the zips folder inside the history folder under your home folder.
-
-A pull request is open and will be merged at the start of the next session unless the operator merges it earlier.
-
-Six problems stay written down for the next clean-up batch, and that batch is registered here.
+A pull request will be opened once more of this feature's work has landed; it is not opened yet.
