@@ -3,8 +3,10 @@
 > Status (F074, 2026-10-22): the distributions with their floor, their damping and their snapshot
 > (T001), the shared estimator's source swap with one seam test per consumer (T002), and the trust
 > view `remedy stats calibration` with the calibrated midpoint beside a band in
-> `remedy job plan-show` (T003) are built. DECISIONs F074 D1 and D2 in `.agent/decisions.md`; the
-> feature is `docs/roadmap/features/T3_F074.md`.
+> `remedy job plan-show` (T003) are built, and the feature's Acceptance is held on one project's
+> calibration, read by all three consumers and the trust view, by
+> `tests/regression/test_f074_acceptance.py`. DECISIONs F074 D1 and D2 in `.agent/decisions.md`;
+> the feature is `docs/roadmap/features/T3_F074.md`.
 
 Remedy estimates what a task will cost before it runs: the flight plan's band prices in a job's
 rehearsal, the predictive budget check that stops a job before its next task would break the money
