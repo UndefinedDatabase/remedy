@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-155 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+156 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -39,7 +39,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 48 | 49 |
-| 3 | Full Token Economy & Autonomy | 13 | 29 |
+| 3 | Full Token Economy & Autonomy | 14 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -478,6 +478,16 @@ claims about itself; a large diff or run log is named by its fingerprint instead
 how the run ended and then whether every file and every claim is intact, and names the file that is
 not; a certificate proves integrity, not who made it; the page `docs/system/job-certificate-v1.md`
 describes it).
+
+F296 evidence-triggered tier escalation (a task whose builder keeps failing on a cheaper model can
+hand its next repair round to the next stronger model, with its reviewer raised alongside so that it
+is never the weaker of the two: after two failing rounds in a row, after two red test runs with the
+same failure, or after a test run that was stopped at one of its limits; a provider that cannot be
+reached never moves a task, because that is model failover's, and a task never moves down; the
+run's record, its cost figures, `remedy run show` and the job's events say which model took over,
+from which round and why, and a job's evidence records what each tier did for each kind of task;
+it stays switched off until a measured comparison shows that starting cheap pays; the page
+`docs/system/tier-escalation-v1.md` describes it).
 
 Accepted in Tier 4 so far:
 F266 remedy study (a bounded, read-only repository comprehension pass —

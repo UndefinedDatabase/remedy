@@ -308,7 +308,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Routing v2: cheap first, evidence escalates (operator ruling amend1006-luna-control-plane)
 
-- [~] F296 — Evidence-triggered tier escalation (routing v2)
+- [x] F296 — Evidence-triggered tier escalation (routing v2) (T001a–T003 complete, the default kept off by the T003 Amendment; R-1421 open — owned by F314; accepted 2026-10-22 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f296r6e1001 · package remedy-review-20261022-085320-READY_FOR_REVIEW.zip · SHA-256 cc616314ffef4d468e3dcfa497b55011ec6b129005fead9927778f05f410fbe5 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 0143b9e17e05e2626602830340b25fef55479b04)
 - [ ] F113 — Local models for side roles
 - [ ] F074 — Estimate calibration
 
