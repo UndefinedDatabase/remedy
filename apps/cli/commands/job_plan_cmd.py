@@ -48,6 +48,22 @@ def _load(job_id_raw: str, *, json_output: bool) -> Any:
     return job
 
 
+def _calibrated_band_notes(job: Any) -> dict[str, str]:
+    """F074: beside each band whose task's class is calibrated, its measured midpoint, by job task id.
+
+    The band itself stays the plan's own word; a class below the floor gets no note, and a
+    malformed calibration setting leaves every band without one rather than failing the view.
+    """
+    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_predictive_budget_config
+    from packages.orchestration.estimate_calibration import calibrated_band_note
+
+    try:
+        calibration = resolve_predictive_budget_config(project_root=job.repo_path or None).calibration
+    except BudgetConfigError:
+        return {}
+    return {t.task_id: calibrated_band_note(calibration, t.task_class) for t in job.tasks}
+
+
 def _cmd_plan_show(job_id_raw: str, *, json_output: bool = False) -> None:
     """Print the job's stored plan as `plan_editing.plan_view` reads it, the read the
     cockpit's plan section serves too (DECISION F292 D1 (1)). Exits 3 when the job or its
@@ -69,9 +85,11 @@ def _cmd_plan_show(job_id_raw: str, *, json_output: bool = False) -> None:
               f"{version} on each edit.")
     else:
         print(f"The plan cannot be edited: {view['not_editable_because']}.")
+    notes = _calibrated_band_notes(job)
     for task in view["tasks"]:
         deps = ", ".join(task["depends_on"]) or "nothing"
-        print(f"\n{task['id']} — {task['title']} (band {task['est_tokens_band']}; "
+        note = notes.get(task["job_task_id"], "")
+        print(f"\n{task['id']} — {task['title']} (band {task['est_tokens_band']}{note}; "
               f"waits for {deps})")
         print(f"  goal: {task['goal']}")
         print(f"  spec version {task['spec_version']} · {task['status']}")

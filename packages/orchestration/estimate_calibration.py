@@ -172,6 +172,14 @@ def calibrated_class_tokens(calibration: Any, task_class: str | None) -> Calibra
     return calibration.calibrated_tokens(task_class)
 
 
+def calibrated_band_note(calibration: Any, task_class: str | None) -> str:
+    """What the plan view prints beside a band: the class's calibrated midpoint, or "" below the floor."""
+    tokens = calibrated_class_tokens(calibration, task_class)
+    if tokens is None:
+        return ""
+    return f", {task_class} {calibration_basis_label(tokens.n)} midpoint {round(tokens.p50):,} tokens"
+
+
 def _percentile(ordered: list[float], fraction: float) -> float:
     # Linear interpolation between the two nearest ranks, the inclusive method.
     if len(ordered) == 1:

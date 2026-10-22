@@ -269,6 +269,37 @@ def resolve_min_free_disk_bytes(
     return None if budgets is None else budgets.min_free_disk_bytes
 
 
+def _calibration_settings(cfg: Any) -> dict[str, int]:
+    """F074's three settings from a loaded config: env > TOML > the module's documented default."""
+    from packages.orchestration import estimate_calibration as calibration_source
+    from packages.orchestration.config import ConfigSource
+
+    fallbacks = {
+        "sample_floor": calibration_source.DEFAULT_CALIBRATION_SAMPLE_FLOOR,
+        "window_days": calibration_source.DEFAULT_CALIBRATION_WINDOW_DAYS,
+        "max_age_seconds": calibration_source.DEFAULT_CALIBRATION_SNAPSHOT_MAX_AGE_SECONDS,
+    }
+    settings: dict[str, int] = {}
+    for name, key in _CALIBRATION_CONFIG_KEYS.items():
+        cv = cfg.get_value(key)
+        raw = cv.value if cv is not None and cv.source != ConfigSource.DEFAULT else None
+        resolved = _pos_int(key, raw)
+        settings[name] = fallbacks[name] if resolved is None else resolved
+    return settings
+
+
+def resolve_calibration_settings(*, project_root: str | None = None) -> dict[str, int]:
+    """The calibration settings as ``resolve_predictive_budget_config`` reads them, for the trust view.
+
+    Keys ``sample_floor``, ``window_days`` and ``max_age_seconds``; raises
+    :class:`BudgetConfigError` for a malformed value, as the resolver does.
+    """
+    from packages.orchestration.config import load_config
+
+    cfg = load_config(project_path=Path(project_root) / "remedy.toml") if project_root else load_config()
+    return _calibration_settings(cfg)
+
+
 def resolve_predictive_budget_config(
     *,
     config_path: str | None = None,
@@ -318,18 +349,9 @@ def resolve_predictive_budget_config(
 
     calibration = None
     if project_root:
-        from packages.orchestration import estimate_calibration as calibration_source
+        from packages.orchestration.estimate_calibration import resolve_calibration_for_root
 
-        fallbacks = {
-            "sample_floor": calibration_source.DEFAULT_CALIBRATION_SAMPLE_FLOOR,
-            "window_days": calibration_source.DEFAULT_CALIBRATION_WINDOW_DAYS,
-            "max_age_seconds": calibration_source.DEFAULT_CALIBRATION_SNAPSHOT_MAX_AGE_SECONDS,
-        }
-        settings: dict[str, int] = {}
-        for name, key in _CALIBRATION_CONFIG_KEYS.items():
-            resolved = _pos_int(key, _configured(key))
-            settings[name] = fallbacks[name] if resolved is None else resolved
-        calibration = calibration_source.resolve_calibration_for_root(project_root, **settings)
+        calibration = resolve_calibration_for_root(project_root, **_calibration_settings(cfg))
 
     return PredictiveBudgetConfig(
         price_basis_usd_per_1k_tokens=price_basis,
