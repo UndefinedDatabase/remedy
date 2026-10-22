@@ -1,26 +1,25 @@
-# Live Review — F113 Local models for side roles
+# Live Review — F074 Estimate calibration
 
-> Round-by-round review record, re-headed at the F113 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F296, whose STATUS
-> line went `[x]` on its own branch at `54bf5087b`; this session's Open PR Gate merged pull
-> request 378 into `main` as `3af211790`, whose tree equals `54bf5087b`'s. F296's round 7 was
+> Round-by-round review record, re-headed at the F074 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F113, whose STATUS
+> line went `[x]` on its own branch at `16179975b`; this session's Open PR Gate merged pull
+> request 379 into `main` as `148a1c386`, whose tree equals `16179975b`'s. F113's round 6 was
 > reviewed after its own handback, so operator amendment amend0827-process-diet rule 1 books its
 > verdict here, in the first commit of the next round that is happening anyway; its gate entry is
 > appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
 > section below are rewritten; everything else from the Findings heading to the end of the file as
-> it stood at `3af211790` is carried forward BYTE-IDENTICAL, and finding ids continue the
-> monotonic R-XXXX series across the re-head. The open set at `3af211790`, computed with
+> it stood at `148a1c386` is carried forward BYTE-IDENTICAL, and finding ids continue the
+> monotonic R-XXXX series across the re-head. The open set at `148a1c386`, computed with
 > `open_finding_ids` from `scripts/rotate_live_review.py`, holds 7 ids — R-1246, R-1281, R-1326,
-> R-1351, R-1353, R-1418 and R-1421 — every one owned by F314, so F113 takes none of them.
+> R-1351, R-1353, R-1418 and R-1421 — every one owned by F314, so F074 takes none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F113 D1's, which also writes the feature file's slice list. The first
-round claims F113, re-heads this record, books F296's round 7, and lands T001 and T002 together:
-the named local endpoints with their probe, and the side-role table with the hard rule and the
-fallback, wired into the summary role's three call sites. Then T003a, the cost ledger's record of a
-side-role call with its basis; T003b, the spot check, the flip and the status line; T003c, the
-end-to-end fixture and the page; then the closure.
+THE ORDER BELOW IS DECISION F074 D1's, which also writes the feature file's slice list. The first
+round claims F074, re-heads this record, books F113's round 6, and lands T001 and T002 together:
+the distributions with their floor, their damping and their snapshot, and the shared estimator's
+source swap with one seam test per consumer. Then T003, the trust view `remedy stats calibration`
+and the plan's band annotation; then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -185,3 +184,5 @@ Gate: F113 R3 — the F113 round 3 entry, over `5fc80022b`..`531e22e00` (4 commi
 Gate: F113 R4 — the F113 round 4 entry, the closure's integration gate, over `531e22e00`..`96e23df48` (6 commits, each single-parent; insertions by `git show --shortstat`: `57e45e11f` 296, `c0a020b61` 186, `eed7db5be` 4, `908d30689` 134, `74dd07fe2` 28, `96e23df48` 148). VERDICT PASS. The reviewer's `verify.py` read every line `True` and the last line `ALL True`: C1's four files, C2's two and C3's checklist page equal the prepared snapshots, the dry tree's selection over them having read `3484 passed, 2 skipped` with exit 0; the tree of `eed7db5be` equals the reviewer's dry-run commit `e45149e1c`; C4 touches the queue and `.agent/selfuse_f113/` only, appends exactly one unconsumed entry, SU-075, and writes its ten files with no machine path; C5 carries the transcript alone. C2's `tests/regression/test_f113_acceptance.py` holds the four Acceptance lines on real runs of `run_pingpong`: the summary role served by the endpoint with the route and the basis `local_zero` in each summary, the evidence file and the ledger; a table mapping the builder refused through `remedy doctor side-roles` with `core_role_on_local_provider` named; a down endpoint giving the fallback with its `provider_unavailable` reason; and a failed spot check moving the next run's summaries to the role's own model, kept there by a passing re-check inside the dwell and moved back by one after it. The self-use item SU-075, "Narrow the excused handler at apps/cli/commands/worker_facade_cmd.py:352", ran as job `15154c7ee5cd42f7` to its approval gate: `completed`, T001 `applied_to_job_workspace` with the reviewer's `pass`, two calls, never applied; its branch narrows the handler to `(ImportError, RuntimeError)` and lowers the blind-handler ratchet to 281. `describe_self_use_run_defects` returned nothing, so the run raises no finding. The closure's one full suite read `23353 passed, 11 skipped, 1 warning in 361.64s (0:06:01)` with exit 0 on `908d30689`, no bad node id and no leftover process, the reflog unchanged during the run. The cost script exited 0 at 1347.63 CPU seconds, 1.6 percent below F296's 1369.23. The integrity check read `fail_count` 0 and the open set 7 ids.
 
 Gate: F113 R5 — the F113 round 5 entry, the closure's evidence round, over `96e23df48`..`28566ea83` (3 commits, each single-parent; insertions by `git show --shortstat`: `a13c7b4fa` 122, `a61bcfe1b` 295, `28566ea83` 60). VERDICT PASS. The reviewer's `verify.py` read every line `True` and the last line `ALL True`: C1's three files and C2's evidence script equal the prepared snapshots, and the handoff holds no machine path. The staging reclaim previewed nothing, so no apply ran. The evidence job `f113r5e1001` ran on `a61bcfe1b` with both ancestry counts 19, 11820 node ids collected and 251 deselected as the reviewer's collect-only precheck at `96e23df48` read them, no unsafe id, the planted red control caught, `11814 passed, 6 skipped` with exit 0, `validate_verification_tests` without problems and `is_valid_current_run True`. The review package `remedy-review-20261022-104538-READY_FOR_REVIEW.zip` reads `READY_FOR_REVIEW`; the reviewer read its SHA-256 `402704bec2c9610387f01c056f892a8e1c40aadd045d5a4ef37779bcea5e5104`, `is_zipfile` True, `testzip()` None and its manifest's subject from `3af211790` to `a61bcfe1b` over 19 commits and 51 files itself. The integrity check read `fail_count` 0 and the open set 7 ids.
+
+Gate: F113 R6 — the F113 round 6 entry, the closing round, over `28566ea83`..`16179975b` (3 commits, each single-parent; insertions by `git show --shortstat`: `326afc0ee` 246, `b09e331dd` 14, `16179975b` 64). VERDICT PASS, verified by dry run, bytes identical. The reviewer of F074's first session ran the round 6 reviewer's `verify.py` against the three commits and read every line `True` and the last line `ALL True`: each commit is single-parent and carries its `F113 R6 Cn` subject, each names exactly its ordered paths with the numstat its manifest states, C3 carries the handoff beside them, and every committed file equals the prepared snapshot byte for byte, among them both ledger files of C2's rotation. No commit of the round exceeds 500 insertions. The reviewer re-ran the round's gate 3 in the primary checkout at `16179975b` and read `587 passed` with exit 0 and the integrity check at six checks `pass` with `fail_count` 0. Pull request 379 had no hosted check, which operator amendment amend1011-manual-hosted-ci makes the normal state, and this session's Open PR Gate merged it into `main` as `148a1c386`, whose tree equals `16179975b`'s; the open set there holds 7 ids.
