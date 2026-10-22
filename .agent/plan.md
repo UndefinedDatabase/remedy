@@ -7,13 +7,12 @@ fails its spot check falls back to the role's own model, and every call records 
 (docs/roadmap/features/T3_F113.md; DECISIONs F113 D1 to D3).
 
 ## Current Step
-Round 4 (session 1), the closure's integration-gate round: book round 3, T003c — the Acceptance held
-on real runs in `tests/regression/test_f113_acceptance.py` — the checklist's consolidation pass, the
-closure's self-use item run to its approval gate, and the feature's one full suite with its cost.
+Round 5 (session 1), the closure's evidence round: book round 4, save the evidence script, the
+staging reclaim, the evidence job `f113r5e1001` and the review package.
 
 ## Next Steps
-1. The evidence bundle and the review package (or a repair round naming every bad node id).
-2. The closing round: the Built State, the rotation, the STATUS line, the README and the pull request.
+1. The closing round: the Built State, the rotation, SU-075's consumed_by, the STATUS flip with the
+   README sync, and the pull request, left unmerged.
 
 ## Risks
 - The open findings, R-1246 to R-1421, are owned by F314; F113 takes none of them.
