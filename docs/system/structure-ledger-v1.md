@@ -53,7 +53,8 @@ commit with no alias left behind, and changes the tests in their import lines on
   task's result becomes a function of its own; (5) the budget helpers become one object in a
   module of their own, holding the accumulators. Outside those steps, F308 moved the split of a
   task whose context exceeds its class cap to `split_task_over_class_cap` in
-  `packages/orchestration/run_task_list.py`.
+  `packages/orchestration/run_task_list.py`. Step (3), begun by F307: the final job review,
+  `_write_final_job_review` in the same file; the veto's terminal reading and the end state follow.
 - `run_pingpong` (`packages/orchestration/pingpong_loop.py`). Boundary: the builder, test and
   reviewer phases its own banners name, and the target snapshot check written out four times.
   Steps: (1) the snapshot check becomes one function each place calls, each keeping its own exit
@@ -294,7 +295,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1434 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1381 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1262 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 887 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -451,7 +452,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 4943 | `packages/orchestration/pingpong_job.py` |
+| 4939 | `packages/orchestration/pingpong_job.py` |
 | 4921 | `packages/orchestration/pingpong_loop.py` |
 | 1824 | `packages/orchestration/serve_http_handler.py` |
 | 3495 | `scripts/build_review_manifest.py` |

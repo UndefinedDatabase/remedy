@@ -3794,60 +3794,7 @@ def run_job(
             job.finished_at = datetime.now(timezone.utc).isoformat()
 
             # Final job review — job-level review after all per-task reviewers pass
-            try:
-                from packages.orchestration.data_paths import job_dir
-                from packages.orchestration.final_job_review import build_final_job_review
-
-                _task_verdicts_fjr = [
-                    {"task_id": t.task_id, "verdict": t.reviewer_verdict or t.final_status or ""}
-                    for t in job.tasks
-                ]
-                _task_summaries_fjr = [t.title or "" for t in job.tasks]
-                _task_diffs_fjr = [
-                    (getattr(t, "safe_diff_summary", "") or "")[:2000]
-                    for t in job.tasks
-                ]
-                _fjr = build_final_job_review(
-                    job_goal=job.job_title,
-                    task_plan=[{"task_id": t.task_id, "title": t.title} for t in job.tasks],
-                    task_summaries=_task_summaries_fjr,
-                    task_diffs=_task_diffs_fjr,
-                    task_verdicts=_task_verdicts_fjr,
-                    test_evidence={},
-                    gate_verdicts=[],
-                    job_id=job.job_id,
-                )
-                _fjr_dir = job_dir(job.job_id)
-                _fjr_dir.mkdir(parents=True, exist_ok=True)
-                (_fjr_dir / "final_job_review.json").write_text(
-                    _json.dumps(_fjr, indent=2) + "\n"
-                )
-
-                # If findings exist, persist final_job_repair_loop.json
-                if _fjr.get("findings"):
-                    from packages.orchestration.final_job_review import build_final_job_repair_loop
-                    _repair_loop = build_final_job_repair_loop(
-                        findings=_fjr["findings"],
-                        repair_tasks=[],
-                        re_review_verdict=_fjr["verdict"],
-                        rounds=0,
-                        budget=0,
-                    )
-                    (_fjr_dir / "final_job_repair_loop.json").write_text(
-                        _json.dumps(_repair_loop, indent=2) + "\n"
-                    )
-            except Exception as exc:  # noqa: BLE001 — a lost review is recorded as a blocking one
-                # The job stays complete, but a review that could not be written must not read as
-                # "no review", which the final verifier passes: write one that blocks instead.
-                job.metadata["final_job_review_error"] = type(exc).__name__
-                from packages.orchestration.data_paths import job_dir as _fjr_job_dir
-                _fjr_path = _fjr_job_dir(job.job_id) / "final_job_review.json"
-                if not _fjr_path.exists():
-                    _fjr_path.parent.mkdir(parents=True, exist_ok=True)
-                    _fjr_path.write_text(_json.dumps({
-                        "job_id": job.job_id, "verdict": "BLOCKED", "findings": [],
-                        "review_error": type(exc).__name__,
-                    }, indent=2) + "\n")
+            _write_final_job_review(job)
 
         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
             job.state = JOB_PAUSED
@@ -3874,6 +3821,55 @@ def run_job(
     finally:
         # The job runner — not the task loop — owns the worktree's cleanup.
         _finalize_job_workspace(job, job_handle)
+
+# WHY: step (3) of `run_job`'s boundary, begun (DECISION F307 D28): the final job review is one terminal step.
+def _write_final_job_review(job: JobPlan) -> None:
+    """Write the completed JOB's final review, and its repair loop when it has findings, or a blocking one."""
+    try:
+        from packages.orchestration.data_paths import job_dir
+        from packages.orchestration.final_job_review import build_final_job_review
+
+        _task_verdicts_fjr = [{"task_id": t.task_id, "verdict": t.reviewer_verdict or t.final_status or ""}
+                              for t in job.tasks]
+        _task_summaries_fjr = [t.title or "" for t in job.tasks]
+        _task_diffs_fjr = [(getattr(t, "safe_diff_summary", "") or "")[:2000] for t in job.tasks]
+        _fjr = build_final_job_review(
+            job_goal=job.job_title,
+            task_plan=[{"task_id": t.task_id, "title": t.title} for t in job.tasks],
+            task_summaries=_task_summaries_fjr,
+            task_diffs=_task_diffs_fjr,
+            task_verdicts=_task_verdicts_fjr,
+            test_evidence={},
+            gate_verdicts=[],
+            job_id=job.job_id,
+        )
+        _fjr_dir = job_dir(job.job_id)
+        _fjr_dir.mkdir(parents=True, exist_ok=True)
+        (_fjr_dir / "final_job_review.json").write_text(
+            _json.dumps(_fjr, indent=2) + "\n"
+        )
+
+        # If findings exist, persist final_job_repair_loop.json
+        if _fjr.get("findings"):
+            from packages.orchestration.final_job_review import build_final_job_repair_loop
+            _repair_loop = build_final_job_repair_loop(findings=_fjr["findings"], repair_tasks=[],
+                                                       re_review_verdict=_fjr["verdict"], rounds=0, budget=0)
+            (_fjr_dir / "final_job_repair_loop.json").write_text(
+                _json.dumps(_repair_loop, indent=2) + "\n"
+            )
+    except Exception as exc:  # noqa: BLE001 — a lost review is recorded as a blocking one
+        # The job stays complete, but a review that could not be written must not read as
+        # "no review", which the final verifier passes: write one that blocks instead.
+        job.metadata["final_job_review_error"] = type(exc).__name__
+        from packages.orchestration.data_paths import job_dir as _fjr_job_dir
+        _fjr_path = _fjr_job_dir(job.job_id) / "final_job_review.json"
+        if not _fjr_path.exists():
+            _fjr_path.parent.mkdir(parents=True, exist_ok=True)
+            _fjr_path.write_text(_json.dumps({
+                "job_id": job.job_id, "verdict": "BLOCKED", "findings": [],
+                "review_error": type(exc).__name__,
+            }, indent=2) + "\n")
+
 
 #: JobPlan worktree states that a resume may pick up.
 JOB_RECOVERABLE_STATES = frozenset({"active", "retained", "failed_recoverable"})
