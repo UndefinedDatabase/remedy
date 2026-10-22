@@ -1,9 +1,10 @@
 # Estimate calibration v1: what tasks of each class really cost
 
 > Status (F074, 2026-10-22): the distributions with their floor, their damping and their snapshot
-> (T001) and the shared estimator's source swap with one seam test per consumer (T002) are built.
-> The trust view `remedy stats calibration` and the plan's band annotation (T003) are not built yet.
-> DECISION F074 D1 in `.agent/decisions.md`; the feature is `docs/roadmap/features/T3_F074.md`.
+> (T001), the shared estimator's source swap with one seam test per consumer (T002), and the trust
+> view `remedy stats calibration` with the calibrated midpoint beside a band in
+> `remedy job plan-show` (T003) are built. DECISIONs F074 D1 and D2 in `.agent/decisions.md`; the
+> feature is `docs/roadmap/features/T3_F074.md`.
 
 Remedy estimates what a task will cost before it runs: the flight plan's band prices in a job's
 rehearsal, the predictive budget check that stops a job before its next task would break the money
@@ -64,6 +65,26 @@ longer set the arithmetic. A class below the floor reads exactly what it read be
 The price basis, `budget.price_basis_usd_per_1k_tokens`, still turns tokens into dollars, and without
 one nothing is priced. The measured costs are kept beside the tokens for the trust view; they do not
 replace the price basis.
+
+## The trust view
+`remedy stats calibration` shows what the estimates of one project rest on (`--project` names it;
+otherwise `REMEDY_PROJECT` or the working directory does). It prints the window, the floor, when the table
+was measured and when the next read measures again, then one row per task class and role, the whole
+task first: the tasks measured and their P20, P50 and P80 of tokens and cost, `unpriced` where a call
+reported no cost, and in the whole task's row the basis an estimate wears, `calibrated(n)` or
+`class default (n of floor)`. It ends with the tasks not counted and why. A project with no ledger,
+and a ledger with nothing in the window, each say that every estimate stays on its class default.
+`--json` carries the same table, the snapshot's age limit and the calibrated classes. The command
+reads the snapshot as every estimate does, so it measures again when the snapshot is old; it never
+writes the ledger or a job record.
+
+## The plan's bands
+`remedy job plan-show` keeps each task's band, S, M, L or XL, and for a task whose class is
+calibrated adds the class, its label and its measured midpoint inside the same parenthesis, for
+example `(band S, standard_build calibrated(20) midpoint 10,500 tokens; waits for nothing)`. The
+midpoint is read when the plan is shown, so it follows the ledger. A class below the floor shows its
+band alone, and the `--json` view of the plan is unchanged. The plan file written when a plan is
+made, `plan.md`, is not annotated.
 
 ## Deliberate absences
 - Remedy deliberately does not split a class by model: a model change ages out through the window.

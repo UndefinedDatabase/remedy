@@ -357,3 +357,63 @@ class TestEditTaskRefusals:
              "--title", "x", "--goal", "y"], capsys)
         assert code == 0, out
         assert f"remedy job run {approved_job_id}" in out
+
+
+class TestPlanShowCalibratedBands:
+    """F074 T003: beside a calibrated class's band, the plan view prints the class's measured midpoint."""
+
+    @pytest.fixture
+    def calibrated_job_id(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+        import subprocess
+        from datetime import datetime, timedelta, timezone
+
+        from packages.orchestration.project_registry import register_project_repo
+        from packages.orchestration.token_ledger import CallRecord, record_call
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        project = register_project_repo("Plan bands", repo)
+        recent = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+        # Twenty measured standard_build tasks and two format tasks, below the floor.
+        for task_class, count in (("standard_build", 20), ("format", 2)):
+            for k in range(1, count + 1):
+                seed = f"jobseed{task_class}{k:02d}"
+                path = job_record_path(seed)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps({"tasks": [{"task_id": "T001", "task_class": task_class}]}))
+                assert record_call(CallRecord(call_id=f"{seed}:T001", job_id=seed, task_id="T001", role="builder",
+                                              ts_utc=recent, tokens_in=k * 1000 - 100, tokens_out=100),
+                                   project_id=str(project.id))
+        self.repo = repo
+        plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": _TASKS})
+        body = plan.model_dump()
+        body["_approval"] = "pending"
+        body["_normalization"] = []
+        mapped = map_task_plan_to_tasks(plan)
+        record_llm_task_deliverables(mapped)
+        mapped[3].task_class = "format"
+        job = JobPlan(job_title="F074 plan bands", task_plan=body, tasks=mapped, state=RunState.PLANNED,
+                      repo_path=str(repo))
+        save_job_plan(job)
+        return str(job.job_id)
+
+    def test_a_calibrated_class_shows_its_midpoint_and_a_thin_one_its_band_alone(self, calibrated_job_id, capsys):
+        code, out = _run(["job", "plan-show", calibrated_job_id], capsys)
+        assert code == 0, out
+        # Builder totals 1000..20000, one trimmed from each end: the P50 is 10500.
+        assert "T1 — Build T1 (band S, standard_build calibrated(20) midpoint 10,500 tokens; waits for nothing)" in out
+        assert "T4 — Build T4 (band S; waits for T2, T1)" in out
+
+    def test_a_malformed_calibration_setting_leaves_the_bands_alone(self, calibrated_job_id, capsys):
+        (self.repo / "remedy.toml").write_text("[remedy.budget]\ncalibration_sample_floor = 0\n")
+        code, out = _run(["job", "plan-show", calibrated_job_id], capsys)
+        assert code == 0, out
+        assert "T1 — Build T1 (band S; waits for nothing)" in out
+
+    def test_the_json_view_is_unchanged(self, calibrated_job_id, capsys):
+        code, body = _json(["job", "plan-show", calibrated_job_id], capsys)
+        assert code == 0, body
+        assert [t["est_tokens_band"] for t in body["tasks"]] == ["S", "S", "S", "S"]
+        assert "calibrated" not in json.dumps(body)
