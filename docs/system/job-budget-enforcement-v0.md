@@ -158,8 +158,10 @@ both declined. It never replaces the backstop; it only stops EARLIER.
 
 ## Where the estimate comes from
 
-Expected tokens come from DOCUMENTED CLASS DEFAULTS, not calibration against
-history — calibration is out of scope. They are provisional and configurable:
+Expected tokens come from DOCUMENTED CLASS DEFAULTS unless the next task's class
+is calibrated from the cost ledger (F074, `docs/system/estimate-calibration-v1.md`):
+then the class's measured P50 is expected instead, labelled `calibrated(n)`.
+The defaults are provisional and configurable:
 `budget.class_default_tokens_low` / `_medium` / `_high` (8000 / 32000 / 120000).
 The price basis (`budget.price_basis_usd_per_1k_tokens`) has NO default; with
 none configured the predictive path is INERT and labels itself `no_price_basis`
@@ -185,6 +187,10 @@ Every predicted number carries one of these and no others
 | `no_cost_limit` | no `max_cost_usd` set, so nothing to predict against |
 | `unpriced_spend` | the spend so far is unpriced, so no honest comparison exists |
 
+F074 adds one label family beside the five: `calibrated(n)`, a prediction read from
+a task class calibrated on `n` measured tasks. It is compared against the limit
+exactly as `class_default` is.
+
 A breach is declared only when real numbers could be compared, and with a strict
 `>`: the exact-limit boundary belongs to the reactive check, so the two can
 never disagree about it.
@@ -204,7 +210,9 @@ persisted one, or `null`) and `burn_reading` (the persisted burn-alarm record,
 or `null`) alongside `limits`, `counters` and `evaluation`. The estimate is
 computed live and purely: the command writes nothing, persists nothing and
 mutates no job, and any failure in the estimate degrades to a single
-`unavailable (...)` line rather than failing the inspection.
+`unavailable (...)` line rather than failing the inspection. The one file the
+estimate may refresh is the project's calibration snapshot under the data root,
+a derived cache beside the cost ledger (F074).
 
 `remedy job budget <job_id> set <field> <value>` is the command's one write
 (DECISION F280 D3): one field of the job's run contract or token budget profile. It never
@@ -212,8 +220,9 @@ writes the F018 limits above, which `remedy job run <job_id>` takes as budget fl
 
 ## Deliberately not built
 
-Calibration of expected cost from run history and per-task-class caps are out of
-scope for F104 and exist nowhere in the code. Burn-rate anomaly detection is
+Calibration of expected cost from run history is F074's, not F104's
+(`docs/system/estimate-calibration-v1.md`). Per-task-class caps are out of scope
+for F104. Burn-rate anomaly detection is
 F116's, not F104's: it lives in `packages/orchestration/burn_detector.py` and
 `packages/orchestration/job_burn.py`, and `remedy job budget` shows its newest
 recorded trip (above).

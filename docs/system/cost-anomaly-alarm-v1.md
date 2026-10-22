@@ -85,5 +85,5 @@ sentence.
   nothing.
 - Remedy deliberately does not throttle a job's parallel width on a trip, because a job runs one
   task and one provider call at a time.
-- Remedy deliberately does not read class expectation bands yet, because the feature that supplies
-  them, F074, is not built; until then the hourly expectation is a setting.
+- Remedy deliberately does not read F074's calibrated class ranges, because they measure what a
+  whole task uses, not what a job burns in an hour; the hourly expectation stays a setting.
