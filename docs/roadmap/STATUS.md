@@ -319,6 +319,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane)
 
 - [ ] F151 — Worker adapter contract v2
+
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F314 — Findings paydown v10
+
+## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane, continued)
+
 - [ ] F157 — Capability matrix & honest degradation
 - [ ] F152 — Worker config isolation
 - [ ] F162 — Sandbox profiles per adapter

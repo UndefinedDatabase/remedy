@@ -165,7 +165,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: amend1020-orb-insight (DECISION amend1020 D1) and placed before F078 in the
 #: order F310, F312, F311, F313 under three headings (Tier 12, Tier 2, Tier 12);
 #: see their feature files.
-TOTAL_FEATURES = 313
+#: One more, F314 (findings paydown v10), was registered on 2026-10-22 by
+#: F307's closure under operator amendment amend0911-feedback rule B and
+#: placed after F151, the fifth unaccepted line below F307, under its own
+#: Tier 2 heading with the Tier 8 list re-opened after it; see T2_F314.md.
+TOTAL_FEATURES = 314
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
