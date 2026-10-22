@@ -6,6 +6,8 @@ SESSION 6 of feature F307 · round 28 · rounds so far 28
 
 Context self-assessment: this worker verified every prepared digest before any write, applied C1 by a byte-proof script, applied C2 by `git apply --check --index` then `git apply --index` from the reviewer's cut patch with no hand-retyping, read the staged diff in full against the patch before committing, and ran each gate once; context is ample and nothing was lost.
 
+Session end (the reviewer, after its verdict on round 28): this session ran seven delegated rounds, 22 to 28, and ends because the next work, F307's closure sequence, is planned as a session of its own (DECISION F307 D28). It worked T016 to T021: it booked R-1332 and resolved R-1331, R-1325, R-1327, R-1328, R-1381, R-1403, R-1411, R-1419, R-1330 and R-1291; it registered R-1418 for the next paydown and R-1419, which it repaired, and decided to carry R-1326 (DECISION F307 D28 (2)). No prose slip was written. Context self-assessment: every product commit was built by script in the disposable dry tree, run and red-proved there, and the worker's commit compared by bytes; two of the session's own transforms failed in the dry tree first (a leftover `__pycache__` folder that nested a moved folder, and a pinned scrubber rule), and neither reached the branch.
+
 Fortschritt: ~97 % (T001 to T020, R-1280, R-1290, R-1291, R-1292, R-1297, R-1298, R-1301, R-1330, R-1381, R-1403, R-1411, R-1414 to R-1417, R-1419 landed, R-1281's writer part landed, T021 under review · the closure open) — Schätzung
 
 ## Range
@@ -77,15 +79,28 @@ Review of `781b547c3`..`HEAD` on `feature/f307-findings-paydown-v9`.
 
 None. The commit sequence landed exactly as ordered (C1, C2), each touching only its named paths. No mutation red-proof, no full suite outside the selection, `REMEDY_TEST_MAX_WORKERS` never set, `.data` never read, no amend, rebase, force-push or `--no-verify`, no PR; each gate ran once and never concurrently.
 
+## Reviewer verdict of round 28 (carried here under amend0827 rule 1)
+
+VERDICT PASS. Book this paragraph byte for byte, preceded by one empty line, at the end of
+`.agent/live_review.md` in the next round's first commit:
+
+Gate: F307 R28 — the F307 round 28 entry, over `781b547c3`..`700eeffbf` (3 commits, each single-parent; insertions by `git show --shortstat`: `7d14bcf81` 105, `4101d0968` 56, `700eeffbf` 39). VERDICT PASS, verified by dry run, bytes identical: the product tree of `4101d0968` equals the reviewer's dry-run commit `436673749`, the ledger and the decisions file each equal their pre-image plus the prepared slice, and the plan and the saved block equal the prepared files. C2 moves the final job review verbatim into `_write_final_job_review`, with two list literals and one call joined; `run_job` fell from 1434 to 1381 lines and `pingpong_job.py` from 4943 to 4939, the rows and both pins with them. In a disposable worktree at `436673749`, two mutations turned `tests/orchestration/test_pingpong_integration.py` red: `run_job` no longer calling the review (three tests), and the review writing no blocking record (one test). The selection, 386 paths, read `12952 passed, 6 skipped` with exit 0, the worker's one run the same; ruff read clean over the 2 Python files, the integrity check `fail_count` 0, and the open set 6 ids.
+
 ## For the operator, in plain sentences
 
 Nothing a person sees changes; the largest part of Remedy's job runner got smaller, and this batch of repairs is ready to be closed in the next working session.
+
+This working session finished the remaining repairs of this batch but one. When a job stops because one of its steps could not be finished, a person can now try that step again, and the job's overview offers it. The overview also says how many uncommitted files a job started from and names them for programs. Remedy's own practice run no longer picks a repair that was already made, and the tests no longer fail because Remedy's background service wrote its logs while they ran. Remedy's two health commands now report in the same way, and the part that answers programs over the network has a name that says so. Choosing the models of a project in its own settings file was moved to the next batch, because it needs a larger part of the job runner reshaped first. The next working session closes this batch.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP`.
 2. Rule 2: the Open PR Gate.
-3. Review round 28's handback and book its verdict in the next round's first commit.
-4. The closure sequence of F307, per `docs/roadmap/STATUS_closure_protocol.md`, in a session of its own.
+3. Round 28 is reviewed (PASS): book the paragraph of the section "Reviewer verdict of round 28" above
+   in the next round's first commit.
+4. The closure sequence of F307, per `docs/roadmap/STATUS_closure_protocol.md`: the one full suite, the
+   evidence package, the Built State, the next findings paydown registered with R-1246, R-1326, R-1351,
+   R-1353, R-1418 and R-1281's rest, the ledger rotation and the STATUS flip. Session 7 of F307 begins;
+   the soft limit is 8 sessions.
 
 Operator questions open: 0. Open findings count gate 5 printed: 6.
