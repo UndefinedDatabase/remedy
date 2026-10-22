@@ -14,6 +14,7 @@ apps.cli.command_catalog_certificate
 apps.cli.command_catalog_client
 apps.cli.command_catalog_do
 apps.cli.command_catalog_doctor
+apps.cli.command_catalog_job_run
 apps.cli.command_catalog_mission
 apps.cli.command_catalog_project
 apps.cli.command_catalog_stats
