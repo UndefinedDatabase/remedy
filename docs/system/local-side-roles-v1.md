@@ -3,8 +3,9 @@
 > Status (F113, 2026-10-22): the named local endpoints with their probe (T001), the side-role
 > table with its refusal and its fallback (T002), the record of a job's side-role calls in its
 > evidence and the cost ledger (T003a), and the quality gate with its flip, its dwell and its status
-> lines (T003b) are built. DECISIONs F113 D1 to D3 in `.agent/decisions.md`; the feature is
-> `docs/roadmap/features/T3_F113.md`.
+> lines (T003b) are built, and the feature's Acceptance is held on real runs of the build-and-review
+> loop by `tests/regression/test_f113_acceptance.py` (T003c). DECISIONs F113 D1 to D3 in
+> `.agent/decisions.md`; the feature is `docs/roadmap/features/T3_F113.md`.
 
 Some of the model calls Remedy makes are chores: writing the short summary that stands in for a
 diff too long to put in a prompt, the result tour, the answer in the cockpit's chat. They run under
