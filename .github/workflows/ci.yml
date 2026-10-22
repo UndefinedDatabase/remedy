@@ -82,5 +82,19 @@ jobs:
       - name: Check the pinned set covers every declared dependency
         run: python3 -m pip check
 
+      # R-1426 (fix1022-review-findings, 2026-10-22): since amend1016sb a test or DoD command and
+      # every Pi tool run only inside the Bubblewrap sandbox, and the runner image carries no
+      # Bubblewrap; Ubuntu 23.10 and later also refuse the unprivileged user namespaces it needs
+      # through AppArmor (docs/system/tool-sandbox-v1.md). Without both, the suite reds on
+      # `sandbox_unavailable` for an environment reason, not a product one.
+      - name: Install the tool sandbox
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          bwrap --unshare-all --ro-bind / / true
+
       - name: Run Remedy CI
         run: remedy ci run

@@ -134,6 +134,16 @@ hosted workflow before `remedy ci run`. The UI and the tests that needed its too
 deleted on 2026-10-15 (amend1015f D3), so the workflow installs no node toolchain and every stage
 needs only the Python environment. The `ui` stage still runs the static brain viewer's checks.
 
+## The tool sandbox on the hosted runner (R-1426)
+
+Since amend1016sb (2026-10-16) a test or DoD command and every Pi tool run only inside the
+Bubblewrap sandbox (`docs/system/tool-sandbox-v1.md`). The hosted runner image carries no
+Bubblewrap, and Ubuntu 23.10 and later refuse the unprivileged user namespaces it needs, so the
+workflow installs `bubblewrap`, allows those namespaces, and starts one `bwrap` before
+`remedy ci run`; `tests/orchestration/test_ci_workflow.py` holds that order. Without it the first
+dispatched run after amend1016sb, 39856076613 on 2026-10-22, read 166 failures per column, all
+`sandbox_unavailable`.
+
 ## What is not measured
 
 **Hosted wall time.** Every number in the budget table above was taken on a

@@ -116,3 +116,14 @@ def test_hosted_workflow_installs_the_hash_pinned_toolchain_before_remedy():
 def test_hosted_workflow_keys_its_pip_cache_on_the_pinned_set():
     """A cache keyed on anything else would survive a change of the pins it serves."""
     assert workflow_text().count("cache-dependency-path: constraints.txt") == 1
+
+
+def test_hosted_workflow_installs_the_tool_sandbox_before_remedy_ci():
+    """R-1426: test and DoD commands and Pi's tools run only inside Bubblewrap, so the runner gets it,
+    with the user namespaces it needs, and proves it starts before `remedy ci run`."""
+    text = workflow_text()
+    install = "sudo apt-get install -y bubblewrap"
+    probe = "bwrap --unshare-all --ro-bind / / true"
+    assert text.count(install) == 1 and text.count(probe) == 1
+    assert "kernel.apparmor_restrict_unprivileged_userns=0" in text
+    assert text.index(install) < text.index(probe) < text.index("remedy ci run")
