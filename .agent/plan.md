@@ -6,16 +6,12 @@ the evidence names and never for provider unavailability, recorded in evidence, 
 ledger, off by default (docs/roadmap/features/T3_F296.md; DECISIONs F296 D1 to D5).
 
 ## Current Step
-Round 5 (session 1): the closure's integration-gate round — book round 4, T003's Amendment (the
-default stays off, DECISION F296 D5), the checklist's consolidation pass, the closure's self-use
-item run to its approval gate, and the feature's one full suite.
+Round 6 (session 1): the closure's evidence round — book round 5 and register R-1421 (the suite's
+CPU cost, owned by F314), the staging reclaim, the evidence job and the review package.
 
 ## Next Steps
-1. The evidence bundle and the review package (or a repair round naming every bad node id).
-2. The closing round: the Built State, the rotation, the STATUS line, the README and the pull
-   request.
+1. The closing round: the Built State, the rotation, the STATUS line with the README sync and
+   SU-074's consumed_by, and the pull request, left unmerged.
 
 ## Risks
-- The self-use run makes real provider calls through the `self_use` role, at most its budget.
-- The full suite is the feature's one run; a red node is this feature's to repair
-  (amend0917-throughput rule 2).
+- A package that builds BLOCKED_EVIDENCE is a closure blocker; its validator errors name the fix.
