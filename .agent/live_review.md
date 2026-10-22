@@ -1,25 +1,25 @@
-# Live Review — F307 Findings paydown v9
+# Live Review — F296 Evidence-triggered tier escalation (routing v2)
 
-> Round-by-round review record, re-headed at the F307 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F303, whose STATUS
-> line went `[x]` on its own branch at `276cd7b34`; this session's Open PR Gate merged pull
-> request 376 into `main` as `eeed13064`. F303's round 9 was reviewed after its own handback, so
-> operator amendment amend0827-process-diet rule 1 books its verdict here, in the first commit of
-> the next round that is happening anyway; its gate entry is appended at the end of this record by
-> this claim. Only the heading, this paragraph and the Steps section below are rewritten;
-> everything else from the Findings heading to the end of the file as it stood at `eeed13064` is
-> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
-> re-head. The open set at `eeed13064`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, holds 88 ids, the lowest R-1246 and the highest R-1411; F307
-> takes 85 of them and carries R-1246, R-1351 and R-1353 (DECISION F307 D1).
+> Round-by-round review record, re-headed at the F296 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F307, whose STATUS
+> line went `[x]` on its own branch at `b6c7b0457`; this session's Open PR Gate merged pull
+> request 377 into `main` as `eb7aa432b`, whose tree equals `b6c7b0457`'s. F307's round 32 was
+> reviewed after its own handback, so operator amendment amend0827-process-diet rule 1 books its
+> verdict here, in the first commit of the next round that is happening anyway; its gate entry is
+> appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
+> section below are rewritten; everything else from the Findings heading to the end of the file as
+> it stood at `eb7aa432b` is carried forward BYTE-IDENTICAL, and finding ids continue the
+> monotonic R-XXXX series across the re-head. The open set at `eb7aa432b`, computed with
+> `open_finding_ids` from `scripts/rotate_live_review.py`, holds 6 ids — R-1246, R-1281, R-1326,
+> R-1351, R-1353 and R-1418 — every one owned by F314, so F296 takes none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F307 D1's, which also writes the feature file's slice list. The first
-round claims F307, re-heads this record, books F303's round 9, and repairs R-1293 and R-1312 in
-the operations log's setup. The second round books R-1375's 33 resolution paragraphs and repairs
-R-1376, so that a closure can rotate this record again. Then the slices T004 to T020 of the
-feature file, one module at a time, then the closing structural step, then the closure.
+THE ORDER BELOW IS DECISION F296 D1's, which also writes the feature file's slice list. The first
+round claims F296, re-heads this record, books F307's round 32, and takes step (1) of
+`run_pingpong`'s boundary in the structure ledger, because the escalation is decided inside that
+function. Then T001b and T001c, the trigger and the step with the loop's call; T002a and T002b,
+the record; T003, the benchmark and the default; then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -234,3 +234,5 @@ Gate: F307 R29 — the F307 round 29 entry, over `50850011f`..`94c32744f` (5 com
 Gate: F307 R30 — the F307 round 30 entry, the closure's first repair round, over `94c32744f`..`f3d693a87` (4 commits, each single-parent; insertions by `git show --shortstat`: `a5e9763ec` 143, `412ca4e91` 5, `eb9905390` 20, `f3d693a87` 63). VERDICT PASS, verified by dry run, bytes identical. The reviewer's `verify.py` read ALL True: C1's block, ledger and plan equal the prepared files, the ledger its pre-image plus the slice, and C2's five recorded answers equal byte for byte the recorder's output in the reviewer's dry tree at `94c32744f`, where `tests/orchestration/test_record_client_answers.py`, `tests/test_no_orphan_modules.py` and `tests/cli/test_golden_path.py` read `55 passed` with exit 0. The closure's one full suite ran again on `412ca4e91`: exit 0, `23183 passed, 11 skipped, 1 warning in 328.36s (0:05:28)`, no bad node id, no leftover process, the reflog unchanged during the run; the bad set shrank from round 29's two nodes to none, with no node newly bad. The cost script exited 0 at 1222.15 CPU seconds, 7.4 percent below F303's closure. The integrity check read `fail_count` 0 and the open set 7 ids, R-1420 the newest.
 
 Gate: F307 R31 — the F307 round 31 entry, the closure's evidence round, over `f3d693a87`..`857783258` (3 commits, each single-parent; insertions by `git show --shortstat`: `5a9030360` 124, `a100201f3` 293, `857783258` 52). VERDICT PASS. The reviewer's `verify.py` read ALL True: C1's block, ledger and plan equal the prepared files, the ledger its pre-image plus the slice, C2's evidence script equal to the reviewer's, and each commit at or below 500 insertions; the reviewer's simulated C1 and C2 in a disposable worktree at `f3d693a87` had read the same. The staging reclaim previewed nothing, so no apply ran. The evidence job `f307r31e1001` ran on `a100201f3` with both ancestry counts 122, 11507 node ids collected and 251 deselected as the reviewer's collect-only precheck read them, no unsafe id, the planted red control caught, `11501 passed, 6 skipped` with exit 0, `validate_verification_tests` without problems and `is_valid_current_run True`. The review package `remedy-review-20261022-061118-READY_FOR_REVIEW.zip` reads `READY_FOR_REVIEW`; the reviewer read its SHA-256 `e49aa6fde92a4f6c69f5994c3a58e9b7734acef64713a9ee14d118db988dbfd8`, `is_zipfile` True, `testzip()` None and its manifest's subject from `eeed13064` to `a100201f3` over 122 commits itself. The integrity check read `fail_count` 0 and the open set 6 ids.
+
+Gate: F307 R32 — the F307 round 32 entry, the closing round, over `857783258`..`b6c7b0457` (4 commits, each single-parent; insertions by `git show --shortstat`: `5540154ae` 259, `a4d05508a` 681, `2cd5ce062` 63, `b6c7b0457` 99). VERDICT PASS, verified by dry run, bytes identical. The reviewer of F296's first session ran the round 32 reviewer's `verify.py` against the four commits and read 41 lines `True` and the last line `ALL True`: each commit is single-parent and carries its `F307 R32 Cn` subject, each names exactly its ordered paths with the numstat its manifest states, C4 carries the handoff beside them, and every committed file equals the prepared snapshot byte for byte, among them both ledger files of C2's rotation. C2 is the feature's one declared oversize commit, 681 insertions, inseparable because the rotation writes the ledger and its archive in one verified step. The worker's one run of the selection had read `578 passed` with exit 0, so no selection was re-run. The integrity check read `fail_count` 0 at `eb7aa432b`, and the open set held 6 ids. Pull request 377 had no hosted check, which operator amendment amend1011-manual-hosted-ci makes the normal state, and this session's Open PR Gate merged it into `main` as `eb7aa432b`, whose tree equals `b6c7b0457`'s.

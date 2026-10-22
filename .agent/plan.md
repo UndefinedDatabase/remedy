@@ -1,21 +1,22 @@
-# Plan — F307 Findings paydown v9
+# Plan — F296 Evidence-triggered tier escalation (routing v2)
 
 ## Goal
-Pay down the open findings F307 takes at its claim, each by the repair its own text names, with
-the evidence that discharged it, and carry the rest by name to the next paydown
-(docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 to D28).
+A task that fails on a cheaper tier gets its next repair round on the next tier up, for reasons
+the evidence names and never for provider unavailability, recorded in evidence, report, events and
+ledger, off by default (docs/roadmap/features/T3_F296.md; DECISION F296 D1).
 
 ## Current Step
-Round 32 (session 7): the closing round — book round 31, re-assign R-1246, R-1281, R-1326,
-R-1351, R-1353 and R-1418 to F314, the Built State, the rotation, F314 registered, F307 accepted
-in STATUS with the README sync and SU-073's consumed_by, and the pull request, left unmerged.
+Round 1 (session 1): claim F296, re-head the finding record, book F307's round 32, write the slice
+list, and take step (1) of `run_pingpong`'s boundary (T001a).
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F307's pull request, then the
-   next feature's first commit books round 32's verdict, then Rule A5.
+1. Round 2: T001b and T001c — the pure escalation module with its configuration keys, and the
+   loop's call with the provider swap, proved by a fixture job.
+2. T002a and T002b, the record; T003, the benchmark and the default.
+3. The closure sequence.
 
 ## Risks
-- A round's selection is every test file that names a touched module by import or by path, every
-  test file that reads a changed page by its path (R-1416, R-1417), and every test that runs a
-  recorder over a changed answer (R-1420).
-- `packages/orchestration/mission_contract.py` stands at 991 lines, nine below the file limit.
+- `run_pingpong` and `pingpong_loop.py` are held by the structure ratchet; every edit of them is
+  line-neutral or offset by a structural step, and new logic goes into a new module.
+- A no-progress stop exists already (two red runs with one fingerprint end the repair); the
+  escalation must take its place only when a step up is available and the key is on.

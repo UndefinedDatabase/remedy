@@ -1,15 +1,16 @@
-# Context — F307 Findings paydown v9
+# Context — F296 Evidence-triggered tier escalation (routing v2)
 
 ## Active Branch
-`feature/f307-findings-paydown-v9`, from `main` at `eeed13064` (the merge commit of pull request
-376, which carried F303).
+`feature/f296-tier-escalation`, from `main` at `eb7aa432b` (the merge commit of pull request 377,
+which carried F307).
 
 ## Scope
-F307 (Tier 2), the ninth rolling findings paydown, as `docs/roadmap/features/T2_F307.md` and
-DECISION F307 D1 state it: 85 of the 88 open findings, in 21 slices; the finding text is the spec.
+F296 (Tier 3), as `docs/roadmap/features/T3_F296.md` and DECISION F296 D1 state it: one step up
+the model tiers for one task's next repair round, on evidence, with its record and its benchmark.
 
 ## Do not touch
-The resolutions earlier paydowns landed; the record is append-only.
+F058's trigger and its disclosure; F110's seed table, hard rules and promotion rule; the budget
+guards — an escalated round still spends inside the job's budget.
 
 ## Active assumptions
 - Every behaviour lands with a test that is red without it, proved by the reviewer's mutation.
