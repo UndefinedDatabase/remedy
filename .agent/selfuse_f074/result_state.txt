@@ -1,0 +1,12 @@
+Job ID: f45fc09ff3464a9e
+Job State: completed
+Stop Reason: 
+Stop Source: 
+Error: 
+Run Manifest Error: 
+Budgets: {"deadline": null, "max_cost_usd": 6.0, "max_provider_calls": 8, "max_total_tokens": null, "max_wall_clock_minutes": null, "min_free_disk_bytes": null}
+Budget Actuals: {"active_until": "2026-10-22T09:55:41.037036+00:00", "actual_call_count": 2, "actual_sources": ["pingpong_live"], "measured_cost_usd": 0.4014336, "priced_call_count": 2, "provider_call_count": 2, "schema_version": "3.0.0", "started_at": "2026-10-22T09:54:26.810251+00:00", "total_tokens": 3769, "unmeasured_call_count": 0, "unpriced_call_count": 0, "waited_s": 0.0}
+Job Workspace: ~/Repos/remedy/.remedy-wt/job-f45fc09ff3464a9e
+
+Task States:
+  T001: applied_to_job_workspace (verdict: pass; final_status: staged_review_passed; repair_rounds_used: 0; run_id: 78c1e3ed9bed4c52)

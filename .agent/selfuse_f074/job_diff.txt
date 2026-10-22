@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-f45fc09ff3464a9e  (exit 0)
+diff --git a/apps/cli/commands/worker_facade_cmd.py b/apps/cli/commands/worker_facade_cmd.py
+index c22649d44..fecfe3d33 100644
+--- a/apps/cli/commands/worker_facade_cmd.py
++++ b/apps/cli/commands/worker_facade_cmd.py
+@@ -394,7 +394,7 @@ def doctor_core_report() -> DoctorCoreReport:
+                       f"(env {spec.env_var}). Fix: change {spec.key} to a live "
+                       f"id. {_dead_provenance(value, dead_entry_by_id)}",
+                       subject=value)
+-        except Exception as exc:  # noqa: BLE001 — a dead-model mismatch becomes an advisory, not a blocker
++        except (ImportError, OSError, ValueError) as exc:
+             # Already compact, and there is no fuller record to hold back:
+             # both renderings are the same sentence.
+             comparison_failed = ("the known-dead ids could not be compared "
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index 1fa195707..e1cce97e9 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 282
++MAX_EXCUSED = 281
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
