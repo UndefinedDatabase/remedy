@@ -1,9 +1,9 @@
 # Local side roles v1: summaries on a model server of your own
 
 > Status (F113, 2026-10-22): the named local endpoints with their probe (T001), the side-role
-> table with its refusal and its fallback (T002), and the record of a job's side-role calls in its
-> evidence and the cost ledger (T003a) are built. The quality gate with its flip and its status line
-> (T003b) is not built yet. DECISIONs F113 D1 and D2 in `.agent/decisions.md`; the feature is
+> table with its refusal and its fallback (T002), the record of a job's side-role calls in its
+> evidence and the cost ledger (T003a), and the quality gate with its flip, its dwell and its status
+> lines (T003b) are built. DECISIONs F113 D1 to D3 in `.agent/decisions.md`; the feature is
 > `docs/roadmap/features/T3_F113.md`.
 
 Some of the model calls Remedy makes are chores: writing the short summary that stands in for a
@@ -46,8 +46,9 @@ against a core role's own provider: the shipped defaults run the builder and the
 tools, and which provider serves a core role is not this feature's to change.
 
 ## What happens on a call
-A mapped role runs on its endpoint while the probe says the endpoint serves. When it does not, the
-role runs on the path it takes unmapped, its own configured model, exactly as it did before F113.
+A mapped role runs on its endpoint while no failed spot check stands against it and the probe says
+the endpoint serves. When either fails, the role runs on the path it takes unmapped, its own
+configured model, exactly as it did before F113.
 The summary role's three users, the diff summary, the result tour and the chat answer, all follow
 the same route.
 
@@ -64,3 +65,21 @@ copied into the `side_role_calls` table of that project's cost ledger, which acc
 `local_zero` and `unknown`. A local call's token count is left empty rather than set to zero, because
 the endpoint's client reports none. The tour and the chat answer run outside a job, so their calls
 reach no ledger.
+
+## The quality gate
+`remedy doctor side-roles` prints one line per mapped role: where it runs and why. With `--check`
+it tests every mapped role that has a spot-check set, today only `summary`, against that set: three
+small fixed diffs, each planting a fact a correct summary must name, none of them in a file name.
+A case fails when the summary leaves a fact out, when no summary comes back, or when it takes more
+than 60 seconds. A role that fails is moved back to its own model for that endpoint and model, and
+the command exits 1. The move is undone only by a passing check made at least an hour after it, so
+the route never flaps. A check against an endpoint that does not answer changes nothing. `remedy
+status` prints the same lines under "Side roles:" whenever a role is mapped.
+
+Every check is appended to `side_roles/spot_checks.jsonl` under the data root, and the moves are
+kept in `side_roles/quality_state.json`: an endpoint and its model belong to the machine, not to one
+project. A move binds one endpoint and model, so after the model changes the role is unchecked and
+runs locally until it is checked again. A state file that cannot be read keeps every mapped role on
+its own model. Remedy deliberately never runs a check by itself: a check spends the endpoint's time
+and is the operator's to ask for. Teacher and study may be mapped, but no call of theirs follows the
+route yet, so they have no set and are never checked.
