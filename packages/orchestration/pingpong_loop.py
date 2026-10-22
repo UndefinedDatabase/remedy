@@ -73,6 +73,7 @@ from packages.orchestration.session_sent_index import (
     should_dedupe_segment,
 )
 from packages.orchestration.structured_log import bind_call_log_context
+from packages.orchestration.tier_escalation import TaskTierLadder
 from packages.orchestration.verified_repair import review_test_evidence, with_test_failure_finding
 
 # ---------------------------------------------------------------------------
@@ -1954,8 +1955,7 @@ def _finalize_workspace(
             _wt.snapshot(worktree)
             result.worktree_head = worktree.head_commit
             end_tree = _wt.write_tree(worktree)
-            info = _wt.write_tree_diff(
-                worktree, start_tree, end_tree, run_dir / "result.diff")
+            info = _wt.write_tree_diff(worktree, start_tree, end_tree, run_dir / "result.diff")
             result.result_diff_path = "result.diff"
             result.result_diff_sha256 = info["sha256"]
             result.result_diff_size_bytes = info["size_bytes"]
@@ -2902,8 +2902,7 @@ def run_pingpong(
         comparison (no commit, no timestamps), not from staging-vs-original."""
         if _job_owned:
             end = _wt_mod().write_tree(workspace_handle)
-            return _wt_mod().changed_files_between(
-                workspace_handle, _task_start_tree, end)
+            return _wt_mod().changed_files_between(workspace_handle, _task_start_tree, end)
         return _find_staging_changes(staging, original)
 
     def _mutation_check() -> tuple[list[str], list[str]]:
@@ -2955,6 +2954,9 @@ def run_pingpong(
     # session was not resumed by a provider that cannot resume one.
     result.resume_declined = resume_declined_reasons(
         resume_sessions, builder=builder_provider, reviewer=reviewer_provider)
+    # F296 (DECISION F296 D2): one step up the model tiers for this task's next round, on evidence only.
+    ladder = TaskTierLadder.for_run(builder_name, builder_model, reviewer_name, reviewer_model,
+                                    _create_provider_with_cwd, claude_cli_write_mode, _provider_options)
 
     # Build context
     try:
@@ -3039,6 +3041,8 @@ def run_pingpong(
             if _stop is not None:
                 _record_stop(_stop)
                 break
+            if fresh := ladder.start_round(builder_provider, reviewer_provider):  # F296: this round runs one tier up
+                builder_name, builder_model, builder_provider, reviewer_name, reviewer_model, reviewer_provider = fresh
             # F264 T002 (DECISION F264 D4): THE STEERING READ, at this safe point and at no
             # other. It is an explicit step rather than a ride on `stop_check`, because that
             # probe also runs between transport retries of one call and during rate-limit
@@ -3066,7 +3070,7 @@ def run_pingpong(
             # prompt composition, so a later round can gate the repair-diff
             # segment on this same value without recomputing it.
             builder_resume_ref: str | None = None
-            if is_repair and getattr(builder_provider, "supports_resume", False) and result.rounds:
+            if is_repair and ladder.resumes("builder", builder_provider) and result.rounds:
                 prev_builder_out = result.rounds[-1].builder_output
                 prev_actuals = getattr(prev_builder_out, "usage_actuals", None) or {}
                 prev_session_id = str(prev_actuals.get("session_id") or "")
@@ -3342,9 +3346,7 @@ def run_pingpong(
             result.staged_files = _staged_now()
 
             # --- Builder no-changes flag ---
-            builder_no_changes = (
-                not result.staged_files and round_num == 1 and not is_fake
-            )
+            builder_no_changes = not result.staged_files and round_num == 1 and not is_fake
             if builder_no_changes:
                 result.builder_no_changes = True
 
@@ -3407,7 +3409,7 @@ def run_pingpong(
             # prompt composition, so a later round can gate the safe-diff
             # segment on this same value without recomputing it.
             reviewer_resume_ref: str | None = None
-            if is_repair and getattr(reviewer_provider, "supports_resume", False) and result.rounds:
+            if is_repair and ladder.resumes("reviewer", reviewer_provider) and result.rounds:
                 prev_reviewer_out = result.rounds[-1].reviewer_output
                 prev_actuals = getattr(prev_reviewer_out, "usage_actuals", None) or {}
                 prev_session_id = str(prev_actuals.get("session_id") or "")
@@ -3660,9 +3662,7 @@ def run_pingpong(
                     # recorded and sent identically.
                     retry_prompt = _reviewer_effective_prompt(reviewer_prompt, _parse_hint)
                 else:
-                    retry_prompt = _REVIEWER_RETRY_PROMPT.format(
-                        excerpt=reviewer_out.raw_text[:500],
-                    )
+                    retry_prompt = _REVIEWER_RETRY_PROMPT.format(excerpt=reviewer_out.raw_text[:500])
                 # F005: the single logical parse retry is its own provider call
                 # and gets its own trace; its F001 transport retries each get a
                 # trace too, but they do NOT count as another parse retry.
@@ -3736,8 +3736,7 @@ def run_pingpong(
             # The reviewer has answered; the round now measures what the job has
             # added so far. Each finding joins the reviewer's, and a pass becomes
             # needs_repair, so the repair decision treats it as any other finding.
-            hygiene_findings = round_hygiene_findings(
-                staging, original, staging_result.isolation_mode)
+            hygiene_findings = round_hygiene_findings(staging, original, staging_result.isolation_mode)
             if hygiene_findings:
                 reviewer_out.findings = list(reviewer_out.findings) + hygiene_findings
                 if reviewer_out.verdict == "pass":
@@ -3774,6 +3773,7 @@ def run_pingpong(
                 is_repair=is_repair,
                 coherence_error=coherence_error,
             ), rd, result.rounds, test_command)
+            ladder.after_review(decision, result.rounds, rounds_left=max_rounds - round_num)
             if reviewer_out.verdict_normalized:
                 decision.normalization_note = (
                     f"reviewer verdict normalized "
@@ -3901,8 +3901,8 @@ def run_pingpong(
             reviewer_model=result.reviewer_model,
             rounds=len(result.rounds),
             repair_rounds=result.repair_rounds_used,
-            same_builder_repairs=True,
-            same_reviewer_re_review=True,
+            same_builder_repairs=not ladder.escalations,
+            same_reviewer_re_review=not ladder.reviewer_raised,
         )
     except Exception:  # noqa: BLE001 — a missing actor binding must not crash run finalization
         result.task_actor_binding = None
