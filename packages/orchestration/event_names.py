@@ -155,6 +155,8 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "verification_failed",
         "verification_passed",
         "veto_proposal_answered",
+        # A task's next round moved one model tier up (DECISION F296 D3).
+        "worker.escalated",
         "workspace_materialized",
         "worktree_prepared",
         "worktree_recovered",

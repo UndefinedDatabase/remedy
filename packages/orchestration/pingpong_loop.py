@@ -73,6 +73,7 @@ from packages.orchestration.session_sent_index import (
     should_dedupe_segment,
 )
 from packages.orchestration.structured_log import bind_call_log_context
+from packages.orchestration.tier_escalation import TaskTierLadder
 from packages.orchestration.verified_repair import review_test_evidence, with_test_failure_finding
 
 # ---------------------------------------------------------------------------
@@ -227,6 +228,9 @@ class PingPongResult:
     #: resumed for, mapped to why — empty for a run offered nothing, or whose
     #: offered provider(s) actually resumed.
     resume_declined: dict[str, str] = field(default_factory=dict)
+    #: F296 T002b (DECISION F296 D4): the tiers the run's builder and reviewer started on and each
+    #: escalation it took; empty unless both run on configured tier models.
+    tier_ladder: dict[str, Any] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -1200,9 +1204,7 @@ def _load_review_scope_packet(
     """
     if not evidence_dir or not task_id:
         return None
-    packet_path = (
-        Path(evidence_dir) / "task_runs" / task_id / "review_scope_packet.json"
-    )
+    packet_path = Path(evidence_dir) / "task_runs" / task_id / "review_scope_packet.json"
     try:
         if not packet_path.is_file():
             return None
@@ -1954,8 +1956,7 @@ def _finalize_workspace(
             _wt.snapshot(worktree)
             result.worktree_head = worktree.head_commit
             end_tree = _wt.write_tree(worktree)
-            info = _wt.write_tree_diff(
-                worktree, start_tree, end_tree, run_dir / "result.diff")
+            info = _wt.write_tree_diff(worktree, start_tree, end_tree, run_dir / "result.diff")
             result.result_diff_path = "result.diff"
             result.result_diff_sha256 = info["sha256"]
             result.result_diff_size_bytes = info["size_bytes"]
@@ -2341,6 +2342,26 @@ def _check_target_mutation(
     return content, sorted(operational + noise)
 
 
+# WHY: the one record of a target snapshot check, which run_pingpong wrote out at four places
+# (step (1) of its boundary in docs/system/structure-ledger-v1.md, DECISION F296 D1).
+def _record_target_mutation(
+    result: PingPongResult, check: tuple[list[str], list[str]], error_prefix: str,
+) -> bool:
+    """Record the noise `check` found and, when it found a meaningful change, the blocked status,
+    the changed files and the error `error_prefix` opens; answer whether the run must stop."""
+    meaningful, noise = check
+    if noise:
+        result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
+        result.target_noise_detected = True
+    if not meaningful:
+        return False
+    result.final_status = "target_mutation_blocked"
+    result.target_mutated = True
+    result.changed_target_files = meaningful
+    result.error = f"{error_prefix}: {meaningful}"
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Fake staging mutation (for FakeProvider)
 # ---------------------------------------------------------------------------
@@ -2384,8 +2405,7 @@ def _workspace_hygiene_changes(staging: Path, original: Path, isolation_mode: st
 
     if isolation_mode == "worktree":
         return measure_work_tree(staging)
-    added = tuple(rel for rel in _find_staging_changes(staging, original)
-                  if not (original / rel).exists())
+    added = tuple(rel for rel in _find_staging_changes(staging, original) if not (original / rel).exists())
     tree: list[str] = []
     for dirpath, dirnames, filenames in os.walk(staging, followlinks=False):
         dirnames[:] = [d for d in dirnames if d not in _STAGING_NOISE_DIRS
@@ -2882,8 +2902,7 @@ def run_pingpong(
         comparison (no commit, no timestamps), not from staging-vs-original."""
         if _job_owned:
             end = _wt_mod().write_tree(workspace_handle)
-            return _wt_mod().changed_files_between(
-                workspace_handle, _task_start_tree, end)
+            return _wt_mod().changed_files_between(workspace_handle, _task_start_tree, end)
         return _find_staging_changes(staging, original)
 
     def _mutation_check() -> tuple[list[str], list[str]]:
@@ -2935,6 +2954,9 @@ def run_pingpong(
     # session was not resumed by a provider that cannot resume one.
     result.resume_declined = resume_declined_reasons(
         resume_sessions, builder=builder_provider, reviewer=reviewer_provider)
+    # F296 (DECISION F296 D2): one step up the model tiers for this task's next round, on evidence only.
+    ladder = TaskTierLadder.for_run(builder_name, builder_model, reviewer_name, reviewer_model,
+                                    _create_provider_with_cwd, claude_cli_write_mode, _provider_options, result)
 
     # Build context
     try:
@@ -3019,6 +3041,8 @@ def run_pingpong(
             if _stop is not None:
                 _record_stop(_stop)
                 break
+            if fresh := ladder.start_round(builder_provider, reviewer_provider):  # F296: this round runs one tier up
+                builder_name, builder_model, builder_provider, reviewer_name, reviewer_model, reviewer_provider = fresh
             # F264 T002 (DECISION F264 D4): THE STEERING READ, at this safe point and at no
             # other. It is an explicit step rather than a ride on `stop_check`, because that
             # probe also runs between transport retries of one call and during rate-limit
@@ -3046,7 +3070,7 @@ def run_pingpong(
             # prompt composition, so a later round can gate the repair-diff
             # segment on this same value without recomputing it.
             builder_resume_ref: str | None = None
-            if is_repair and getattr(builder_provider, "supports_resume", False) and result.rounds:
+            if is_repair and ladder.resumes("builder", builder_provider) and result.rounds:
                 prev_builder_out = result.rounds[-1].builder_output
                 prev_actuals = getattr(prev_builder_out, "usage_actuals", None) or {}
                 prev_session_id = str(prev_actuals.get("session_id") or "")
@@ -3311,28 +3335,18 @@ def run_pingpong(
                 _apply_fake_builder_changes(staging, builder_out, goal)
 
             # --- Target snapshot check after Builder ---
-            meaningful, noise = _mutation_check()
-            if noise:
-                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
-                result.target_noise_detected = True
-            if meaningful:
+            if _record_target_mutation(result, _mutation_check(), "Builder mutated target repo"):
                 # Compute staged evidence before blocking
                 result.staged_files = _staged_now()
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
-                result.final_status = "target_mutation_blocked"
-                result.target_mutated = True
-                result.changed_target_files = meaningful
-                result.error = f"Builder mutated target repo: {meaningful}"
                 break
 
             # Track staged files
             result.staged_files = _staged_now()
 
             # --- Builder no-changes flag ---
-            builder_no_changes = (
-                not result.staged_files and round_num == 1 and not is_fake
-            )
+            builder_no_changes = not result.staged_files and round_num == 1 and not is_fake
             if builder_no_changes:
                 result.builder_no_changes = True
 
@@ -3356,17 +3370,9 @@ def run_pingpong(
                 # repair_rounds > 0: continue to reviewer with test failure evidence
 
             # --- Target snapshot check after tests ---
-            meaningful, noise = _mutation_check()
-            if noise:
-                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
-                result.target_noise_detected = True
-            if meaningful:
+            if _record_target_mutation(result, _mutation_check(), "Test execution mutated target repo"):
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
-                result.final_status = "target_mutation_blocked"
-                result.target_mutated = True
-                result.changed_target_files = meaningful
-                result.error = f"Test execution mutated target repo: {meaningful}"
                 break
 
             # --- Reviewer phase ---
@@ -3403,7 +3409,7 @@ def run_pingpong(
             # prompt composition, so a later round can gate the safe-diff
             # segment on this same value without recomputing it.
             reviewer_resume_ref: str | None = None
-            if is_repair and getattr(reviewer_provider, "supports_resume", False) and result.rounds:
+            if is_repair and ladder.resumes("reviewer", reviewer_provider) and result.rounds:
                 prev_reviewer_out = result.rounds[-1].reviewer_output
                 prev_actuals = getattr(prev_reviewer_out, "usage_actuals", None) or {}
                 prev_session_id = str(prev_actuals.get("session_id") or "")
@@ -3656,9 +3662,7 @@ def run_pingpong(
                     # recorded and sent identically.
                     retry_prompt = _reviewer_effective_prompt(reviewer_prompt, _parse_hint)
                 else:
-                    retry_prompt = _REVIEWER_RETRY_PROMPT.format(
-                        excerpt=reviewer_out.raw_text[:500],
-                    )
+                    retry_prompt = _REVIEWER_RETRY_PROMPT.format(excerpt=reviewer_out.raw_text[:500])
                 # F005: the single logical parse retry is its own provider call
                 # and gets its own trace; its F001 transport retries each get a
                 # trace too, but they do NOT count as another parse retry.
@@ -3695,17 +3699,9 @@ def run_pingpong(
             rd.reviewer_output = reviewer_out
 
             # --- Target snapshot check after Reviewer ---
-            meaningful, noise = _mutation_check()
-            if noise:
-                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
-                result.target_noise_detected = True
-            if meaningful:
+            if _record_target_mutation(result, _mutation_check(), "Reviewer mutated target repo"):
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
-                result.final_status = "target_mutation_blocked"
-                result.target_mutated = True
-                result.changed_target_files = meaningful
-                result.error = f"Reviewer mutated target repo: {meaningful}"
                 break
 
             # Detect reviewer staging mutation
@@ -3740,8 +3736,7 @@ def run_pingpong(
             # The reviewer has answered; the round now measures what the job has
             # added so far. Each finding joins the reviewer's, and a pass becomes
             # needs_repair, so the repair decision treats it as any other finding.
-            hygiene_findings = round_hygiene_findings(
-                staging, original, staging_result.isolation_mode)
+            hygiene_findings = round_hygiene_findings(staging, original, staging_result.isolation_mode)
             if hygiene_findings:
                 reviewer_out.findings = list(reviewer_out.findings) + hygiene_findings
                 if reviewer_out.verdict == "pass":
@@ -3778,6 +3773,7 @@ def run_pingpong(
                 is_repair=is_repair,
                 coherence_error=coherence_error,
             ), rd, result.rounds, test_command)
+            ladder.after_review(decision, result.rounds, rounds_left=max_rounds - round_num)
             if reviewer_out.verdict_normalized:
                 decision.normalization_note = (
                     f"reviewer verdict normalized "
@@ -3850,15 +3846,7 @@ def run_pingpong(
     finally:
         # --- Final target snapshot check ---
         if not result.target_mutated:
-            meaningful, noise = _mutation_check()
-            if noise:
-                result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
-                result.target_noise_detected = True
-            if meaningful:
-                result.final_status = "target_mutation_blocked"
-                result.target_mutated = True
-                result.changed_target_files = meaningful
-                result.error = f"Target mutated during run: {meaningful}"
+            _record_target_mutation(result, _mutation_check(), "Target mutated during run")
 
         # --- Staged evidence (always compute before discard, even on block) ---
         if not result.staged_files:
@@ -3913,8 +3901,8 @@ def run_pingpong(
             reviewer_model=result.reviewer_model,
             rounds=len(result.rounds),
             repair_rounds=result.repair_rounds_used,
-            same_builder_repairs=True,
-            same_reviewer_re_review=True,
+            same_builder_repairs=not ladder.escalations,
+            same_reviewer_re_review=not ladder.reviewer_raised,
         )
     except Exception:  # noqa: BLE001 — a missing actor binding must not crash run finalization
         result.task_actor_binding = None
@@ -4893,9 +4881,9 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         # F012: the finalized logical provider calls, recorded through the single
         # ``on_call_finalized`` seam. The run manifest's call-hash list is built ONLY from
         # these — never by re-walking call directories.
-        "finalized_calls": [
-            c.to_json() if hasattr(c, "to_json") else c for c in result.finalized_calls
-        ],
+        "finalized_calls": [c.to_json() if hasattr(c, "to_json") else c for c in result.finalized_calls],
+        # F296 (DECISION F296 D4): the run's tiers, present only when its models are tier models.
+        **({"tier_ladder": dict(result.tier_ladder)} if result.tier_ladder else {}),
         # F011: the stop that ended this run, when one did. Present ONLY for a stopped run,
         # so an ordinary run's JSON is byte-for-byte what it always was. Bounded, redacted,
         # versioned: no absolute path and no secret ever reaches a run record.

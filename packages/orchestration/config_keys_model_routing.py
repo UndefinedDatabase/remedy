@@ -15,6 +15,13 @@ FAILOVER_CHAINS_CONFIG_KEY: str = "model_failover.chains"
 FAILOVER_COOLDOWN_CONFIG_KEY: str = "model_failover.cooldown_s"
 FAILOVER_COOLDOWN_DEFAULT_S: int = 300
 
+# The tier escalation's three keys and the threshold's default, spelled once here and read by
+# packages/orchestration/tier_escalation.py (F296, DECISION F296 D2).
+ESCALATION_ENABLED_CONFIG_KEY: str = "model_escalation.enabled"
+ESCALATION_AFTER_FAILURES_CONFIG_KEY: str = "model_escalation.after_failures"
+ESCALATION_AFTER_FAILURES_DEFAULT: int = 2
+ESCALATION_TIERS_CONFIG_KEY: str = "model_escalation.tiers"
+
 MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
     # F110's per-project override map, and the first TABLE-VALUED key in this
     # registry. The DEFAULT IS None AND NOT AN EMPTY TABLE on purpose: "no
@@ -92,6 +99,44 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         ),
         value_type=int,
         default=FAILOVER_COOLDOWN_DEFAULT_S,
+    ),
+    # WHY: F296's one switch; while it is off, no task's round moves to another tier.
+    ConfigKeySpec(
+        key=ESCALATION_ENABLED_CONFIG_KEY,
+        env_var="REMEDY_MODEL_ESCALATION_ENABLED",
+        description=(
+            "Whether a task whose builder keeps failing on a cheaper model tier gets its next repair "
+            "round on the next tier up, with its reviewer raised alongside (F296); off by default, "
+            "and a provider that cannot be reached never moves a task, which stays model failover's."
+        ),
+        value_type=bool,
+        default=False,
+    ),
+    ConfigKeySpec(
+        key=ESCALATION_AFTER_FAILURES_CONFIG_KEY,
+        env_var="REMEDY_MODEL_ESCALATION_AFTER_FAILURES",
+        description=(
+            "How many rounds in a row a tier's builder may fail, by red tests or a review that did not "
+            "pass, before the next round moves one tier up (F296); a whole number of at least 1. Two "
+            "red runs with the same failure, and a test run stopped at one of its limits, move it "
+            "sooner."
+        ),
+        value_type=int,
+        default=ESCALATION_AFTER_FAILURES_DEFAULT,
+    ),
+    ConfigKeySpec(
+        key=ESCALATION_TIERS_CONFIG_KEY,
+        env_var="REMEDY_MODEL_ESCALATION_TIERS",
+        description=(
+            "The model each tier runs on when a task escalates (F296); each entry of the "
+            "[remedy.model_escalation.tiers] sub-table names a tier, cheap, mid or top, and holds a "
+            "table of exactly provider and model; a run whose builder or reviewer is none of them "
+            "never escalates; a table that cannot be read is refused with the fault named, and no "
+            "task escalates; configured in TOML only — an env var cannot carry a table."
+        ),
+        value_type=dict,
+        entry_type=dict,
+        default=None,
     ),
     # WHY here: the provider-execution keys live in this module; `config.py` may not grow.
     ConfigKeySpec(

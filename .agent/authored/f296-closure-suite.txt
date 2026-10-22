@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 381.1s (the launcher's reading); pytest's own reported wall time: 380.20s (0:06:20)
+summary line: 23248 passed, 11 skipped, 1 warning in 380.20s (0:06:20)
+bad node ids (failed + errors):
+  - NONE
+leftover processes: NONE
+tree it ran on: 4e22c749a (F296 R5 C3: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C3 changed only .agent/ files, the feature file, the tier escalation page, the checklist page and the self-use queue
+reflog before: 4e22c749a HEAD@{2026-10-22 08:08:36 +0200}: commit: F296 R5 C3: the closure's self-use item run to its approval gate, never applied
+reflog after: 4e22c749a HEAD@{2026-10-22 08:08:36 +0200}: commit: F296 R5 C3: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F296 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 1
+Test load: 1369.23 CPU seconds, 380.21 wall seconds, 23259 tests collected, exit status 0, recorded 2026-10-22T06:15:07Z
+This closure's suite used 1369.23 CPU seconds, 12.0 percent more than F307's 1222.15; that is above the 10 percent limit, so this closure registers a finding owned by the rolling findings paydown.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F307's closure run:
+  +9.58 s  tests/orchestration/test_review_zip_hygiene.py (32.56 -> 42.14)
+  +8.10 s  tests/cli/test_do_scale_matrix.py (33.47 -> 41.57)
+  +7.48 s  tests/runtimes/test_supervisor_portability.py (42.72 -> 50.20)
+  +5.73 s  tests/serve_http_handler/test_public_api.py (12.00 -> 17.73)
+  +4.81 s  tests/orchestration/test_job_task_runner.py (17.51 -> 22.32)
+  +4.65 s  tests/orchestration/test_subtree_rerun_prepare.py (10.66 -> 15.31)
+  +3.46 s  tests/cli/test_do_sequence_cli.py (28.05 -> 31.51)
+  +3.45 s  tests/cli/test_do_order_file.py (9.68 -> 13.13)
+  +3.44 s  tests/orchestration/test_job_worktree_integrity.py (7.28 -> 10.72)
+  +3.44 s  tests/cli/test_do_several_projects.py (8.38 -> 11.82)

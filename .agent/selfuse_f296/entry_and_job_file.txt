@@ -1,0 +1,5 @@
+Entry ID: SU-074
+Entry Title: Narrow the excused handler at apps/cli/commands/worker_facade_cmd.py:309
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/worker_facade_cmd.py:1:except Exception as exc:  # noqa: BLE001 — a catalog import failure is that check's own result)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f296-r5-selfuse/SU-074.md
