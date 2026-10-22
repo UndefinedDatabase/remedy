@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-15154c7ee5cd42f7  (exit 0)
+diff --git a/apps/cli/commands/worker_facade_cmd.py b/apps/cli/commands/worker_facade_cmd.py
+index c22649d44..0e2fcdc91 100644
+--- a/apps/cli/commands/worker_facade_cmd.py
++++ b/apps/cli/commands/worker_facade_cmd.py
+@@ -349,7 +349,7 @@ def doctor_core_report() -> DoctorCoreReport:
+                f"{len(shipped_entries)} shipped + "
+                f"{len(dead_ids) - len(shipped_entries)} config-only dead ids "
+                f"({len(dead_ids)} total)")
+-    except Exception as exc:  # noqa: BLE001 — a dead-model-list read failure is its own check result
++    except (ImportError, RuntimeError) as exc:
+         _check("dead_model_list", False, report_safe_text(exc, limit=120))
+ 
+     if dead_ids:
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index 1fa195707..e1cce97e9 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 282
++MAX_EXCUSED = 281
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
