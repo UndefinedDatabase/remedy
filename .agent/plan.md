@@ -7,12 +7,11 @@ R-1422 (failover booking during a hold), R-1423 (`used.minutes` of a running job
 for F314).
 
 ## Current Step
-Part 3, R-1424: the deadline refusal committed; next its record. Part 4 repairs in progress.
+Part 4, R-1425: the mypy repairs of the new modules, one commit per module.
 
 ## Next Steps
-1. Part 3, R-1424: the deadline refusal and the budget doc line.
-2. Part 4, R-1425: mypy before/after counts, repairs per module, ledger entry left OPEN.
-3. Part 5: CHANGELOG, decisions, handoff; the finish gates; PR, dispatched CI, merge.
+1. Part 4, R-1425: the after count and the ledger entry, left OPEN.
+2. Part 5: CHANGELOG, decisions, handoff; the finish gates; PR, dispatched CI, merge.
 
 ## Risks
 - The contract bump to 1.28 touches pinned versions in tests and the client-answers kit.

@@ -110,9 +110,11 @@ When the budget stops a job, its budget decision is the one question to answer. 
 `blockers`, the open blocking criteria of the job's mission, so the person sees what is left before
 choosing. `extend` with no answer raises every limit the stop exhausted to twice the value the run
 read, and the wall clock to at least 60 minutes, so a client need not compute new numbers; a
-deadline and the disk floor are never doubled and still need an answer. An answer that is given
-holds, but no answer can lower a limit below what the run read. Over the public API, the run starts
-again by itself as soon as `extend` is answered, and the answer names it under `resumed`.
+deadline and the disk floor are never doubled and still need an answer; an `extend` without an
+answer on a deadline stop is refused `missing_argument` with the sentence that names the deadline
+answer (R-1424, 2026-10-22). An answer that is given holds, but no answer can lower a limit below
+what the run read. Over the public API, the run starts again by itself as soon as `extend` is
+answered, and the answer names it under `resumed`.
 
 The mission's remainder decision, which offers a follow-up mission for the blocking criteria a
 job left open, is no longer raised while the budget decision is open. It is raised once, when the
