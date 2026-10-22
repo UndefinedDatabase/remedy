@@ -6,16 +6,13 @@ the evidence that discharged it, and carry R-1246, R-1326, R-1351 and R-1353 by 
 paydown (docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 to D28).
 
 ## Current Step
-Round 30 (session 7): the closure's first repair round (amend0917-throughput rule 2) — book round
-29 and R-1420, record the client answers again, and run the closure's one full suite again on the
-repaired tree.
+Round 31 (session 7): the closure's evidence round — book round 30 with R-1420, save the evidence
+script, the staging reclaim, the evidence job and the review package.
 
 ## Next Steps
-1. The evidence bundle and the review package (a green suite), or the next repair round naming
-   every bad node id (a red one; at most three repair rounds).
-2. The closing round: the Built State, R-1246, R-1281, R-1326, R-1351, R-1353 and R-1418
-   re-assigned to the next findings paydown, the ledger rotation, that paydown registered, the
-   STATUS line, the README and the pull request.
+1. The closing round: the Built State, R-1246, R-1281, R-1326, R-1351, R-1353 and R-1418
+   re-assigned to the next findings paydown, the ledger rotation, that paydown registered, SU-073's
+   consumed_by, the STATUS line with the README, and the pull request, left unmerged.
 
 ## Risks
 - A round's selection is every test file that names a touched module by import or by path, every
