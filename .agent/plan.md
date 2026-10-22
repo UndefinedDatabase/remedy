@@ -3,19 +3,20 @@
 ## Goal
 A task that fails on a cheaper tier gets its next repair round on the next tier up, for reasons
 the evidence names and never for provider unavailability, recorded in evidence, report, events and
-ledger, off by default (docs/roadmap/features/T3_F296.md; DECISIONs F296 D1 to D3).
+ledger, off by default (docs/roadmap/features/T3_F296.md; DECISIONs F296 D1 to D4).
 
 ## Current Step
-Round 3 (session 1): T002a — `EscalatedProvider` stamps every escalated call with an
-`EscalatedCall`, which the round entry, the cost booking, the relaunch session guard, the run
-report's line and the job's `worker.escalated` event read.
+Round 4 (session 1): T002b — the run record's `tier_ladder`, `tier_outcomes.json` per task run
+from the job's evidence export, its mirror in the ledger's `tier_outcomes` table, and
+`query_tier_outcomes` for F133.
 
 ## Next Steps
-1. T002b: the outcome, cost, rounds and retries per task class and tier in the cost ledger.
-2. T003, the benchmark and the default; then the closure sequence.
+1. T003: the benchmark on the F082 corpus, cheap-first with escalation against the class tier,
+   and the default with the feature file's Amendment.
+2. The closure sequence.
 
 ## Risks
-- `run_pingpong`, `pingpong_loop.py` and `pingpong_job.py` are held by the structure ratchet;
-  every edit of them is line-neutral or offset by a structural step.
-- The ladder knows a role's tier only from the configured tier models; a run on other models
-  never escalates, by design.
+- `run_pingpong`, `pingpong_loop.py`, `pingpong_job.py`, `job_evidence.py` and `token_ledger.py`
+  are held by the structure ratchet; every edit of them is line-neutral.
+- A benchmark with paid providers may not be affordable inside the feature; the default then stays
+  off and the Amendment says so, as the Acceptance allows.
