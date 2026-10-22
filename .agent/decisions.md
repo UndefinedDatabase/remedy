@@ -31346,4 +31346,11 @@ repair was skipped. (8) The order's ORIG_BRANCH, `feature/f074-estimate-calibrat
 by the Open PR Gate's own merge of pull request 380 (`--delete-branch`), so the session ends on
 `main`.
 
+(9) The first dispatched hosted run, 39856076613, was red on 166 nodes per column, all of them
+`sandbox_unavailable`: the runner has no Bubblewrap, which amend1016sb made mandatory after the last
+green hosted run. The nodes are registered as ONE Low finding, R-1426, owned by F314, with the node
+list in `.agent/fix1022_ci_red_nodes.txt`, because 166 ids would name one cause 166 times. The
+repair is the workflow's sandbox step on this branch; the order allows one more run, and a second
+red run is not merged.
+
 HOW TO REVERSE: revert the branch's commits; each finding's repair is its own commit.
