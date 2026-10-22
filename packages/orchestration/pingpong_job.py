@@ -43,6 +43,7 @@ from packages.orchestration.execution_config import (
 from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
 from packages.orchestration.job_run_finish import stamp_blocked_job_finish
 from packages.orchestration.structured_log import bind_call_log_context
+from packages.orchestration.tier_escalation import escalation_started_in
 from packages.orchestration.verified_repair import final_task_test_command
 
 if TYPE_CHECKING:
@@ -4157,8 +4158,7 @@ def _log_task_started(log: Any, task: TaskEntry, attempt_id: str) -> None:
     """
     try:
         if log is not None:
-            log.log("task_run_started", task_id=task.task_id, task_type=task.task_class,
-                    attempt_id=attempt_id)
+            log.log("task_run_started", task_id=task.task_id, task_type=task.task_class, attempt_id=attempt_id)
     except _TASK_LOG_ERRORS:
         pass
 
@@ -4177,13 +4177,15 @@ def _repair_result(rnd: Any) -> str:
 
 
 def _log_task_rounds(log: Any, task: TaskEntry, result: Any, attempt_id: str) -> None:
-    """For each ping-pong round, in round order (DECISION F288 D1): ``task_round_repaired``
-    when the round is a repair, ``task_round_tested`` when its test ran, then
-    ``task_round_completed`` as before, with the reviewer's verdict. Every event carries
-    ``attempt_id``.
+    """For each ping-pong round, in round order (DECISION F288 D1): ``worker.escalated`` when an
+    escalation began in it (DECISION F296 D3), ``task_round_repaired`` when the round is a repair,
+    ``task_round_tested`` when its test ran, then ``task_round_completed`` as before, with the
+    reviewer's verdict. Every event carries ``attempt_id``.
     """
     try:
         for rnd in (result.rounds if log is not None else ()):
+            if (call := escalation_started_in(rnd)) is not None:
+                log.log("worker.escalated", task_id=task.task_id, attempt_id=attempt_id, **call.to_json())
             if rnd.kind == "repair":
                 log.log("task_round_repaired", task_id=task.task_id,
                         outcome=_repair_result(rnd), round_number=rnd.round_number,
@@ -4251,11 +4253,9 @@ def _log_task_ended(log: Any, task: TaskEntry, outcome: str, attempt_id: str) ->
     """
     try:
         if log is not None and outcome == "pass":
-            log.log("task_run_completed", task_id=task.task_id, outcome=outcome,
-                    attempt_id=attempt_id)
+            log.log("task_run_completed", task_id=task.task_id, outcome=outcome, attempt_id=attempt_id)
         elif log is not None:
-            log.log("task_run_failed", task_id=task.task_id, outcome=outcome,
-                    attempt_id=attempt_id)
+            log.log("task_run_failed", task_id=task.task_id, outcome=outcome, attempt_id=attempt_id)
     except _TASK_LOG_ERRORS:
         pass
 

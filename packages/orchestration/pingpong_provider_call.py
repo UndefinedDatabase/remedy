@@ -28,6 +28,7 @@ from packages.orchestration.rate_governor import (
     is_rate_limit_error,
     normalize_rate_limit_signal,
 )
+from packages.orchestration.tier_escalation import escalated_call_of
 
 if TYPE_CHECKING:
     from packages.orchestration.pingpong_loop import PingPongResult
@@ -94,9 +95,11 @@ def _record_attempt(
 
     One row under the configured ``provider`` and the role's configured model, unless a failover
     walk made more than one call: then one row per call, under the provider and model that served
-    or failed it, each read from that call's own answer (R-1276).
+    or failed it, each read from that call's own answer (R-1276). A call an escalated provider
+    served books that tier's model instead of the configured one (DECISION F296 D3).
     """
-    configured_model = getattr(result, f"{role}_model", "") or ""
+    escalated = escalated_call_of(out)
+    configured_model = escalated.model if escalated is not None else getattr(result, f"{role}_model", "") or ""
     calls = getattr(out, "failover_calls", None) or (FailoverCall(provider, configured_model),)
     rows: list[ProviderAttempt] = []
     for call in calls:

@@ -16,6 +16,11 @@ counted only over the rounds the current tier served (DECISION F296 D2):
 The models each tier runs on are the operator's, read from `model_escalation.tiers`; a run whose
 builder or reviewer is not one of them never escalates, because its tier is not known.
 
+Every call an escalated provider serves carries an `EscalatedCall`: the tier the role came from and
+the tier it ran on, the reason, the round the step began in, and the provider and model that served
+it. The run's record of each call, its cost booking, a relaunch's session guard, the run report's
+line and the job's `worker.escalated` event all read it (T002a, DECISION F296 D3).
+
 Remedy deliberately does not escalate on `provider_unavailable`: an unreachable provider is F058's
 failover, which keeps the tier and discloses what served the call. It never steps down, never adds a
 round the run's own round and repair caps do not allow, never overrides a stop the job's budget
@@ -191,6 +196,88 @@ class TierEscalation:
     reviewer_to: str
 
 
+@dataclass(frozen=True)
+class EscalatedCall:
+    """What every call an escalated provider serves carries (T002a, DECISION F296 D3)."""
+
+    escalated_from: str
+    tier: str
+    reason: str
+    round: int
+    provider: str
+    model: str
+
+    def to_json(self) -> dict[str, Any]:
+        """The record's keys: the tier the role came from and ran on, why, the round it began, and who served."""
+        return {"escalated_from": self.escalated_from, "tier": self.tier, "reason": self.reason,
+                "round": self.round, "provider": self.provider, "model": self.model}
+
+
+# WHY: the stamp rides on each answer, so the record, the booking and the event need no loop edit.
+class EscalatedProvider:
+    """A role's provider on an escalated tier: every answer it gives carries its `EscalatedCall`."""
+
+    def __init__(self, inner: Any, call: EscalatedCall) -> None:
+        self._inner = inner
+        self.escalated_call = call
+
+    def __getattr__(self, item: str) -> Any:
+        if item.startswith("_"):
+            raise AttributeError(item)
+        return getattr(self._inner, item)
+
+    def build(self, prompt: str, **kwargs: Any) -> Any:
+        out = self._inner.build(prompt, **kwargs)
+        out.tier_escalation = self.escalated_call
+        return out
+
+    def review(self, prompt: str, **kwargs: Any) -> Any:
+        out = self._inner.review(prompt, **kwargs)
+        out.tier_escalation = self.escalated_call
+        return out
+
+
+def escalated_call_of(out: Any) -> EscalatedCall | None:
+    """The `EscalatedCall` a provider's answer carries, or None for an answer of an unescalated call."""
+    call = getattr(out, "tier_escalation", None)
+    return call if isinstance(call, EscalatedCall) else None
+
+
+def escalation_started_in(rd: Any) -> EscalatedCall | None:
+    """The builder's `EscalatedCall` of the round an escalation began in, else None."""
+    call = escalated_call_of(getattr(rd, "builder_output", None))
+    return call if call is not None and call.round == rd.round_number else None
+
+
+#: How the run report says why a task moved up, by trigger.
+ESCALATION_REASON_WORDS: dict[str, str] = {
+    "watchdog_tripped": "a test run was stopped at one of its limits",
+    "no_progress": "its tests failed twice with the same failure",
+    "test_failed": "its tests kept failing",
+    "review_failed": "its reviews kept asking for repairs",
+}
+
+
+def escalation_report_lines(run_record: Mapping[str, Any]) -> list[str]:
+    """One line per escalation the calls of a run record carry, in round order (T002a)."""
+    began: dict[int, dict[str, Mapping[str, Any]]] = {}
+    for round_data in run_record.get("rounds") or []:
+        for role in ("builder", "reviewer"):
+            entry = (round_data.get(role) or {}).get("escalation")
+            if isinstance(entry, Mapping):
+                began.setdefault(int(entry.get("round") or 0), {}).setdefault(role, entry)
+    lines = []
+    for number in sorted(began):
+        builder, reviewer = began[number].get("builder"), began[number].get("reviewer")
+        if builder is None:
+            continue
+        why = ESCALATION_REASON_WORDS.get(str(builder.get("reason")), "the evidence asked for it")
+        kept = f"the reviewer was raised to {reviewer.get('tier')} with it" if reviewer else "the reviewer kept its tier"
+        lines.append(f"Escalation: from round {number} the builder ran on the {builder.get('tier')} tier instead of "
+                     f"{builder.get('escalated_from')}, because {why}; {kept}.")
+    return lines
+
+
 # WHY: the one object a run keeps about its tiers, so `run_pingpong` calls it at two places only.
 class TaskTierLadder:
     """The tiers one task's run stands on, and the escalations it took.
@@ -244,8 +331,10 @@ class TaskTierLadder:
                 if tier != self.tiers[role]:
                     pair = self.policy.tiers[tier]
                     extra = {"write_mode": self._write_mode} if role == "builder" else {}
-                    pending[role] = (pair.provider, pair.model,
-                                     self._make(pair.provider, role=role, model=pair.model, **extra, **self._options))
+                    call = EscalatedCall(escalated_from=self.tiers[role], tier=tier, reason=reason,
+                                         round=len(rounds) + 1, provider=pair.provider, model=pair.model)
+                    built = self._make(pair.provider, role=role, model=pair.model, **extra, **self._options)
+                    pending[role] = (pair.provider, pair.model, EscalatedProvider(built, call))
         except RuntimeError as exc:
             warnings.warn(f"tier escalation to {target} not taken: {exc}", stacklevel=2)
             return None

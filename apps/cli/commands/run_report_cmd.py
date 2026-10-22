@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.model_failover import failover_report_line
+from packages.orchestration.tier_escalation import escalation_report_lines
 
 
 def _cmd_run_show(
@@ -106,9 +107,9 @@ def _print_text_report(run_id: str, data: dict) -> None:
         print(f"Builder: {data.get('builder_provider', 'unknown')}")
         print(f"Reviewer: {data.get('reviewer_provider', 'unknown')}")
 
-    line = failover_report_line(data)
-    if line is not None:
-        print(line)
+    for line in (failover_report_line(data), *escalation_report_lines(data)):
+        if line is not None:
+            print(line)
 
     # Rounds summary
     rounds = data.get("rounds", [])
