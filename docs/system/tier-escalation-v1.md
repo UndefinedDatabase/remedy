@@ -1,9 +1,9 @@
 # Tier escalation v1: a failing cheaper model hands its next round one tier up
 
-> Status (F296, 2026-10-22): the trigger, the step and the loop's call are built (T001), and so is
-> the record of an escalated call in the run's record, its cost booking, the run report and the
-> job's event stream (T002a); the outcome per task class and tier in the cost ledger (T002b) and the
-> benchmark that decides the default (T003) are not yet. DECISIONs F296 D1 to D3 in
+> Status (F296, 2026-10-22): the trigger, the step and the loop's call are built (T001), the record
+> of an escalated call in the run's record, its cost booking, the run report and the job's event
+> stream (T002a), and the outcome per task class and tier in the evidence and the cost ledger
+> (T002b); the benchmark that decides the default (T003) is not yet. DECISIONs F296 D1 to D4 in
 > `.agent/decisions.md`; the feature is `docs/roadmap/features/T3_F296.md`.
 
 A task runs in rounds: a builder changes the code, the project's tests run, a reviewer reads the
@@ -76,6 +76,25 @@ Every call an escalated provider served says so in four places:
   failing; the reviewer was raised to mid with it.";
 - the job's event stream: a `worker.escalated` event, carrying the same fields, comes before the
   events of the round the step began in.
+
+## What each tier did, per task class
+A run whose builder and reviewer both run on configured tier models carries `tier_ladder` in its
+record, whether or not escalation is switched on: `enabled`, `builder_tier`, `reviewer_tier` and
+`escalations`, one entry per step with its round, its reason and each role's tier before and after.
+
+A job's evidence export turns that into `task_runs/<task>/tier_outcomes.json`, one row per tier the
+task's builder ran on: the task's class, the tier and the reviewer's tier, the first and last round
+it served, its rounds, the retries among its calls, its cost, and its outcome — `escalated`, with
+the trigger as its reason, for a tier the task moved up from, and the run's final status for the
+tier that ended it. A tier whose calls did not all report a cost has no cost and the basis
+`unknown`; Remedy never invents one.
+
+When the job's project has a cost ledger, the export also mirrors the file into the ledger's
+`tier_outcomes` table in `ledger.sqlite`, the same way it mirrors each task's calls: the file is
+written first and read back, a re-export replaces its own rows, and a mirror that fails never fails
+the export. `query_tier_outcomes` in `packages/orchestration/tier_outcomes.py` answers one summary
+per task class and tier — the task runs, how they ended, their rounds, retries and reported cost —
+which is what a later trust score reads.
 
 The routing policy itself is not changed by this: its seed table, its hard rules and its benchmark
 rule for moving a task class to a cheaper tier still decide which tier a task class starts on;
