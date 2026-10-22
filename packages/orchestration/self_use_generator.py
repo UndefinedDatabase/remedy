@@ -27,7 +27,8 @@ last two as real checks rather than placeholders — and finally the two sources
      an order placed after it would never be reached.
   1. THE FINDING LEDGER. The oldest OPEN (no ``Done:`` line) Low or Medium
      finding in ``.agent/live_review.md`` that no existing queue entry already
-     targets (R-0838), rendered as a job whose one task quotes the finding
+     targets (R-0838) and that no commit after the ledger's last change names in
+     its subject (R-1403), rendered as a job whose one task quotes the finding
      paragraph VERBATIM and whose acceptance is "repair it, or record why
      not" — never a per-finding summary this module would have to invent.
   2. A DOCUMENTATION-STALENESS CATALOG (``packages.orchestration.doc_staleness``, DECISION
@@ -102,6 +103,7 @@ from __future__ import annotations
 import ast
 import json
 import re
+import subprocess
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -396,6 +398,31 @@ def _oldest_open_low_or_medium_finding(
     return None
 
 
+#: A finding id as a commit subject names the finding its commit repairs.
+_SUBJECT_FINDING_RE = re.compile(r"\bR-\d{4}\b")
+
+
+def _repaired_since_last_booking(ledger_path: Path) -> frozenset[str]:
+    """The finding ids the subjects of the commits after the ledger's last change name (R-1403).
+
+    A finding stays open in the ledger until the round after its repair books its ``Done:`` line,
+    so a closure that repairs a finding before it generates the self-use item would hand a paid
+    run a finding with nothing left to do. Empty when the ledger is in no git repository, has no
+    commit, or git does not answer.
+    """
+    folder = str(ledger_path.parent)
+    try:
+        last = subprocess.run(["git", "-C", folder, "log", "-1", "--format=%H", "--", ledger_path.name],
+                              capture_output=True, text=True, timeout=30, check=True).stdout.strip()
+        if not last:
+            return frozenset()
+        subjects = subprocess.run(["git", "-C", folder, "log", "--format=%s", f"{last}..HEAD"],
+                                  capture_output=True, text=True, timeout=30, check=True).stdout
+    except (OSError, subprocess.SubprocessError):
+        return frozenset()
+    return frozenset(_SUBJECT_FINDING_RE.findall(subjects))
+
+
 def _finding_paragraph(text: str, r_id: str, ledger_path: Path) -> str:
     """The registration paragraph of ``r_id``, verbatim, from ``text``."""
     paragraph_re = re.compile(
@@ -425,7 +452,8 @@ def _next_queue_id(queue_path: Path | None) -> str:
 
 def _ledger_tier(queue_path: Path | None, ledger_path: Path) -> SelfUseQueueEntry | None:
     """Tier 1: the oldest open Low/Medium finding no queue entry targets, as a job."""
-    found = _oldest_open_low_or_medium_finding(ledger_path, _targeted_findings(queue_path))
+    found = _oldest_open_low_or_medium_finding(
+        ledger_path, _targeted_findings(queue_path) | _repaired_since_last_booking(ledger_path))
     if found is None:
         return None
     r_id, paragraph = found

@@ -10,6 +10,7 @@ corrupting the rendered job file's task boundary.
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -196,6 +197,33 @@ class TestLedgerTierPicksTheOldestEligibleFinding:
         assert entry is not None
         assert entry.title == "Address ledger finding R-0020"
         assert entry.provenance == "generated (self-use-generator tier 1, ledger scan, R-0020)"
+
+    def test_a_finding_a_commit_after_the_last_booking_names_is_skipped(self, tmp_path: Path):
+        """R-1403: a commit after the ledger's last change repairs R-0010 and names it, so its
+        repair has landed and only waits for its `Done:` line; the generator offers R-0020."""
+        repo = tmp_path / "repo"
+        (repo / ".agent").mkdir(parents=True)
+        ledger = _write_ledger(repo / ".agent", [
+            _finding("R-0010", "Low", "Oldest, repaired on the branch."),
+            _finding("R-0020", "Low", "Next oldest, still to repair."),
+        ])
+        queue_path = _write_queue(tmp_path, [_queue_item(consumed_by="F001")])
+
+        def git(*args: str) -> None:
+            subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+                           check=True, capture_output=True)
+
+        git("init", "-q")
+        git("add", "-A")
+        git("commit", "-qm", "book R-0010 and R-0020")
+        before = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+        assert before is not None and before.title == "Address ledger finding R-0010"
+
+        (repo / "fix.txt").write_text("repaired\n", encoding="utf-8")
+        git("add", "-A")
+        git("commit", "-qm", "the thing is repaired (R-0010)")
+        after = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+        assert after is not None and after.title == "Address ledger finding R-0020"
 
     def test_no_eligible_finding_answers_none(self, tmp_path: Path):
         ledger = _write_ledger(tmp_path, [_finding("R-0010", "Critical", "Ineligible only.")])
