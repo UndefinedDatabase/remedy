@@ -310,7 +310,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F296 — Evidence-triggered tier escalation (routing v2) (T001a–T003 complete, the default kept off by the T003 Amendment; R-1421 open — owned by F314; accepted 2026-10-22 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f296r6e1001 · package remedy-review-20261022-085320-READY_FOR_REVIEW.zip · SHA-256 cc616314ffef4d468e3dcfa497b55011ec6b129005fead9927778f05f410fbe5 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 0143b9e17e05e2626602830340b25fef55479b04)
 - [x] F113 — Local models for side roles (T001–T003c complete; accepted 2026-10-22 · live review PASS — ACCEPTED · Evidence job f113r5e1001 · package remedy-review-20261022-104538-READY_FOR_REVIEW.zip · SHA-256 402704bec2c9610387f01c056f892a8e1c40aadd045d5a4ef37779bcea5e5104 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a61bcfe1b43e0f6069976fbe997eb15578a90cc4)
-- [~] F074 — Estimate calibration
+- [x] F074 — Estimate calibration (T001–T003 complete; accepted 2026-10-22 · live review PASS — ACCEPTED · Evidence job f074r4e1001 · package remedy-review-20261022-123801-READY_FOR_REVIEW.zip · SHA-256 d051c25a03f87697660083e4f7f4e8ca6a5c8c3ee2b6c099ab385cca29a7c920 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 15922d2be7f1079521572747018e9a9951056747)
 
 ## Tier 7 — Routing v2: the history (operator ruling amend1006-luna-control-plane)
 
