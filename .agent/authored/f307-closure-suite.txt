@@ -1,0 +1,29 @@
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 450.0s (the launcher's reading); pytest's own reported wall time: 449.10s (0:07:29)
+summary line: 2 failed, 23181 passed, 11 skipped, 1 warning in 449.10s (0:07:29)
+bad node ids (failed + errors):
+  - tests/orchestration/test_record_client_answers.py::test_the_folder_holds_one_answer_per_case_and_matches_a_fresh_recording
+  - tests/orchestration/test_record_client_answers.py::test_the_check_names_every_changed_answer_and_exits_1
+leftover processes: NONE
+tree it ran on: c0cbaf535 (F307 R29 C3: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C3 changed only .agent/ files, the checklist page and the self-use queue
+reflog before: c0cbaf535 HEAD@{2026-10-22 05:17:12 +0200}: commit: F307 R29 C3: the closure's self-use item run to its approval gate, never applied
+reflog after: c0cbaf535 HEAD@{2026-10-22 05:17:12 +0200}: commit: F307 R29 C3: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F307 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1400.13 CPU seconds, 449.11 wall seconds, 23194 tests collected, exit status 1, recorded 2026-10-22T03:24:44Z
+This closure's suite used 1400.13 CPU seconds, 6.1 percent more than F303's 1319.51, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F303's closure run:
+  +14.64 s  tests/runtimes/test_supervisor_portability.py (49.20 -> 63.84)
+  +13.11 s  tests/serve_http_handler/test_public_api.py (0.00 -> 13.11)
+  +10.87 s  tests/serve_http_handler/test_public_api_lifecycle.py (0.00 -> 10.87)
+  +7.13 s  tests/cli/test_do_scale_matrix.py (39.17 -> 46.30)
+  +5.23 s  tests/serve_http_handler/test_subtree_rerun_e2e_live.py (0.00 -> 5.23)
+  +4.29 s  tests/orchestration/test_review_zip_hygiene.py (38.42 -> 42.71)
+  +3.93 s  tests/orchestration/test_persisted_call_ownership.py (7.82 -> 11.75)
+  +3.93 s  tests/orchestration/test_self_use_generator.py (4.04 -> 7.97)
+  +3.23 s  tests/serve_http_handler/test_pause_e2e_live.py (0.00 -> 3.23)
+  +3.23 s  tests/orchestration/test_subtree_rerun_prepare.py (11.56 -> 14.79)
