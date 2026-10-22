@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-86c18d48d1194552  (exit 0)
+diff --git a/apps/cli/commands/worker_facade_cmd.py b/apps/cli/commands/worker_facade_cmd.py
+index c22649d44..c022e85b8 100644
+--- a/apps/cli/commands/worker_facade_cmd.py
++++ b/apps/cli/commands/worker_facade_cmd.py
+@@ -306,7 +306,7 @@ def doctor_core_report() -> DoctorCoreReport:
+         cat = importlib.import_module("apps.cli.command_catalog")
+         _check("command_catalog", True,
+                f"{len(cat.CATALOG)} commands, {len(cat.GROUPS)} groups")
+-    except Exception as exc:  # noqa: BLE001 — a catalog import failure is that check's own result
++    except (ImportError, AttributeError) as exc:
+         _check("command_catalog", False, report_safe_text(exc, limit=120))
+ 
+     _try_import("run_contract", "packages.orchestration.run_contract", "ContractAction")
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index 1fa195707..e1cce97e9 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 282
++MAX_EXCUSED = 281
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
