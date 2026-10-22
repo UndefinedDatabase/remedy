@@ -109,7 +109,7 @@ def _entry_is_wellformed(entry: object, *, referenced: bool) -> bool:
     if not isinstance(sha, str) or _SHA256_PATTERN.fullmatch(sha) is None:
         return False
     size = entry.get("size")
-    if not _is_plain_int(size) or size < 0:
+    if not isinstance(size, int) or not _is_plain_int(size) or size < 0:
         return False
     return not referenced or isinstance(entry.get("obtain"), str)
 
