@@ -415,3 +415,32 @@ def test_the_budget_used_reads_the_decoded_actuals_exactly():
 
     entry = JI.job_insight_entry(job, now=NOW, model_server=_REACHABLE, threshold_s=300, events=[])
     assert entry["budget"]["used"] == {"tokens": 1200, "calls": 7, "minutes": 9, "waited_s": 90}
+
+
+def _job_last_active_four_minutes_ago(state: RunState) -> JobPlan:
+    """A job whose actuals were last persisted four minutes before NOW (R-1423)."""
+    job = _job(state=state, task_status=TASK_RUNNING)
+    job.budget_actuals = {
+        "schema_version": "3.0.0",
+        "provider_call_count": 7, "actual_call_count": 7, "unmeasured_call_count": 0,
+        "total_tokens": 1200, "actual_sources": ["pingpong_live"],
+        "started_at": (NOW - timedelta(minutes=10, seconds=30)).isoformat(),
+        "waited_s": 90, "active_until": (NOW - timedelta(minutes=4)).isoformat(),
+        "measured_cost_usd": None, "priced_call_count": 0, "unpriced_call_count": 7,
+    }
+    save_job_plan(job)
+    return job
+
+
+def test_a_running_jobs_minutes_are_measured_to_now_not_to_its_last_safe_point():
+    """R-1423: a running job is active now, so its minutes run to the answer's moment."""
+    job = _job_last_active_four_minutes_ago(RunState.RUNNING)
+    entry = JI.job_insight_entry(job, now=NOW, model_server=_REACHABLE, threshold_s=300, events=[])
+    assert entry["budget"]["used"]["minutes"] == 9
+
+
+def test_a_stopped_jobs_minutes_are_measured_to_its_last_active_moment():
+    """R-1423: a job that does not run is measured to the moment it was last active."""
+    job = _job_last_active_four_minutes_ago(RunState.STOPPED)
+    entry = JI.job_insight_entry(job, now=NOW, model_server=_REACHABLE, threshold_s=300, events=[])
+    assert entry["budget"]["used"]["minutes"] == 5
