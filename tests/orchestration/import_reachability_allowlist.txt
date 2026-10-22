@@ -427,6 +427,7 @@ packages.orchestration.tool_sandbox
 packages.orchestration.toolchain
 packages.orchestration.trust_report
 packages.orchestration.serve_http_handler
+packages.orchestration.side_role_calls
 packages.orchestration.side_role_routing
 packages.orchestration.tier_escalation
 packages.orchestration.tier_outcomes

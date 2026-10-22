@@ -35,6 +35,7 @@ from packages.orchestration.pingpong_job import (
     _export_target_guard,
     load_job_plan,
 )
+from packages.orchestration.side_role_calls import write_task_side_role_calls
 from packages.orchestration.tier_outcomes import write_task_tier_outcomes
 
 logger = logging.getLogger(__name__)
@@ -2395,16 +2396,15 @@ def _write_task_run_evidence(
     # None project_id leaves the hook inert, so evidence output is byte-identical
     # either way.
     task_written = write_evidence_bundle(
-        bundle,
-        str(task_out),
-        ledger_project_id=ledger_project_id,
-        ledger_job_id=job_id,
+        bundle, str(task_out),
+        ledger_project_id=ledger_project_id, ledger_job_id=job_id,
         ledger_task_id=task.task_id,
     )
 
     for filename, path in task_written.items():
         written[f"{task_rel}/{filename}"] = path
     written.update(write_task_tier_outcomes(run_data, task, task_out, task_rel, ledger_project_id, job_id))
+    written.update(write_task_side_role_calls(run_data, task, task_out, task_rel, ledger_project_id, job_id))
 
     _write_task_worktree_evidence(task, run_data, task_out, task_rel, written)
 

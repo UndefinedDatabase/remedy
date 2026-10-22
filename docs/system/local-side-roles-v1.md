@@ -1,9 +1,10 @@
 # Local side roles v1: summaries on a model server of your own
 
-> Status (F113, 2026-10-22): the named local endpoints with their probe (T001) and the side-role
-> table with its refusal and its fallback (T002) are built. The cost ledger's record of a side-role
-> call (T003a) and the quality gate with its flip and its status line (T003b) are not built yet.
-> DECISION F113 D1 in `.agent/decisions.md`; the feature is `docs/roadmap/features/T3_F113.md`.
+> Status (F113, 2026-10-22): the named local endpoints with their probe (T001), the side-role
+> table with its refusal and its fallback (T002), and the record of a job's side-role calls in its
+> evidence and the cost ledger (T003a) are built. The quality gate with its flip and its status line
+> (T003b) is not built yet. DECISIONs F113 D1 and D2 in `.agent/decisions.md`; the feature is
+> `docs/roadmap/features/T3_F113.md`.
 
 Some of the model calls Remedy makes are chores: writing the short summary that stands in for a
 diff too long to put in a prompt, the result tour, the answer in the cockpit's chat. They run under
@@ -54,3 +55,12 @@ A summary written by a mapped role records its route beside its text, as `route`
 `fallback`, the endpoint, the model that served when it was local, the reason when it fell back,
 and the cost basis, `local_zero` for a local call and `unknown` for a fallback. A summary of an
 unmapped role carries no route.
+
+## In the job's evidence and the cost ledger
+When a job's evidence is exported, every summary a task run wrote through a mapped role becomes one
+row of `side_role_calls.json` beside the task's other evidence: the role, the route, the endpoint,
+the model, the reason and the cost basis. When the job belongs to a registered project, the rows are
+copied into the `side_role_calls` table of that project's cost ledger, which accepts only the bases
+`local_zero` and `unknown`. A local call's token count is left empty rather than set to zero, because
+the endpoint's client reports none. The tour and the chat answer run outside a job, so their calls
+reach no ledger.
