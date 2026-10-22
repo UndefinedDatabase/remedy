@@ -228,6 +228,9 @@ class PingPongResult:
     #: resumed for, mapped to why — empty for a run offered nothing, or whose
     #: offered provider(s) actually resumed.
     resume_declined: dict[str, str] = field(default_factory=dict)
+    #: F296 T002b (DECISION F296 D4): the tiers the run's builder and reviewer started on and each
+    #: escalation it took; empty unless both run on configured tier models.
+    tier_ladder: dict[str, Any] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -1201,9 +1204,7 @@ def _load_review_scope_packet(
     """
     if not evidence_dir or not task_id:
         return None
-    packet_path = (
-        Path(evidence_dir) / "task_runs" / task_id / "review_scope_packet.json"
-    )
+    packet_path = Path(evidence_dir) / "task_runs" / task_id / "review_scope_packet.json"
     try:
         if not packet_path.is_file():
             return None
@@ -2404,8 +2405,7 @@ def _workspace_hygiene_changes(staging: Path, original: Path, isolation_mode: st
 
     if isolation_mode == "worktree":
         return measure_work_tree(staging)
-    added = tuple(rel for rel in _find_staging_changes(staging, original)
-                  if not (original / rel).exists())
+    added = tuple(rel for rel in _find_staging_changes(staging, original) if not (original / rel).exists())
     tree: list[str] = []
     for dirpath, dirnames, filenames in os.walk(staging, followlinks=False):
         dirnames[:] = [d for d in dirnames if d not in _STAGING_NOISE_DIRS
@@ -2956,7 +2956,7 @@ def run_pingpong(
         resume_sessions, builder=builder_provider, reviewer=reviewer_provider)
     # F296 (DECISION F296 D2): one step up the model tiers for this task's next round, on evidence only.
     ladder = TaskTierLadder.for_run(builder_name, builder_model, reviewer_name, reviewer_model,
-                                    _create_provider_with_cwd, claude_cli_write_mode, _provider_options)
+                                    _create_provider_with_cwd, claude_cli_write_mode, _provider_options, result)
 
     # Build context
     try:
@@ -4881,9 +4881,9 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         # F012: the finalized logical provider calls, recorded through the single
         # ``on_call_finalized`` seam. The run manifest's call-hash list is built ONLY from
         # these — never by re-walking call directories.
-        "finalized_calls": [
-            c.to_json() if hasattr(c, "to_json") else c for c in result.finalized_calls
-        ],
+        "finalized_calls": [c.to_json() if hasattr(c, "to_json") else c for c in result.finalized_calls],
+        # F296 (DECISION F296 D4): the run's tiers, present only when its models are tier models.
+        **({"tier_ladder": dict(result.tier_ladder)} if result.tier_ladder else {}),
         # F011: the stop that ended this run, when one did. Present ONLY for a stopped run,
         # so an ordinary run's JSON is byte-for-byte what it always was. Bounded, redacted,
         # versioned: no absolute path and no secret ever reaches a run record.

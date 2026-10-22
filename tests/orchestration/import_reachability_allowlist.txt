@@ -427,6 +427,7 @@ packages.orchestration.toolchain
 packages.orchestration.trust_report
 packages.orchestration.serve_http_handler
 packages.orchestration.tier_escalation
+packages.orchestration.tier_outcomes
 packages.orchestration.verified_repair
 packages.orchestration.verifier
 packages.orchestration.verifier_profiles

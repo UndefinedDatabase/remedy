@@ -35,6 +35,7 @@ from packages.orchestration.pingpong_job import (
     _export_target_guard,
     load_job_plan,
 )
+from packages.orchestration.tier_outcomes import write_task_tier_outcomes
 
 logger = logging.getLogger(__name__)
 
@@ -1767,8 +1768,7 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
         argv_v.append("-v")
     import time as _time
     _t0 = _time.monotonic()
-    result = _sp.run(argv_v, cwd=repo, capture_output=True, text=True, timeout=600,
-                     env=_env)
+    result = _sp.run(argv_v, cwd=repo, capture_output=True, text=True, timeout=600, env=_env)
     _duration = round(_time.monotonic() - _t0, 3)
     stdout = result.stdout or ""
     passed = sum(int(x) for x in re.findall(r"(\d+)\s+passed", stdout))
@@ -2379,8 +2379,7 @@ def _write_task_run_evidence(
 
     run_data = load_run(task.run_id)
     if run_data is None:
-        _write_unavailable(task_out, task_rel, task.task_id, written,
-                          f"Run data not found for {task.run_id}")
+        _write_unavailable(task_out, task_rel, task.task_id, written, f"Run data not found for {task.run_id}")
         return
 
     bundle = build_evidence_bundle(run_data)
@@ -2405,6 +2404,7 @@ def _write_task_run_evidence(
 
     for filename, path in task_written.items():
         written[f"{task_rel}/{filename}"] = path
+    written.update(write_task_tier_outcomes(run_data, task, task_out, task_rel, ledger_project_id, job_id))
 
     _write_task_worktree_evidence(task, run_data, task_out, task_rel, written)
 

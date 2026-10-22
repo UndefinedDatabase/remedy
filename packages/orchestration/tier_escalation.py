@@ -19,7 +19,10 @@ builder or reviewer is not one of them never escalates, because its tier is not 
 Every call an escalated provider serves carries an `EscalatedCall`: the tier the role came from and
 the tier it ran on, the reason, the round the step began in, and the provider and model that served
 it. The run's record of each call, its cost booking, a relaunch's session guard, the run report's
-line and the job's `worker.escalated` event all read it (T002a, DECISION F296 D3).
+line and the job's `worker.escalated` event all read it (T002a, DECISION F296 D3). A run whose
+roles both run on tier models records its tiers and its steps as `tier_ladder`, which
+`packages/orchestration/tier_outcomes.py` turns into the outcome per task class and tier (T002b,
+DECISION F296 D4).
 
 Remedy deliberately does not escalate on `provider_unavailable`: an unreachable provider is F058's
 failover, which keeps the tier and discloses what served the call. It never steps down, never adds a
@@ -195,6 +198,12 @@ class TierEscalation:
     reviewer_from: str
     reviewer_to: str
 
+    def to_json(self) -> dict[str, Any]:
+        """The run record's entry for this step (T002b, DECISION F296 D4)."""
+        return {"round": self.round, "reason": self.reason, "builder_from": self.builder_from,
+                "builder_to": self.builder_to, "reviewer_from": self.reviewer_from,
+                "reviewer_to": self.reviewer_to}
+
 
 @dataclass(frozen=True)
 class EscalatedCall:
@@ -288,7 +297,8 @@ class TaskTierLadder:
     """
 
     def __init__(self, policy: EscalationPolicy, roles: dict[str, tuple[str, str]],
-                 make: Callable[..., Any], write_mode: str, options: Mapping[str, Any]) -> None:
+                 make: Callable[..., Any], write_mode: str, options: Mapping[str, Any],
+                 record: dict[str, Any] | None = None) -> None:
         self.policy = policy
         self.roles = dict(roles)
         self.tiers = {role: policy.tier_of(*pair) for role, pair in roles.items()}
@@ -297,13 +307,20 @@ class TaskTierLadder:
         self._tier_start = 0
         self._pending: dict[str, tuple[str, str, Any]] = {}
         self._fresh: frozenset[str] = frozenset()
+        # The run record's `tier_ladder`, filled only when both roles run on tier models (DECISION F296 D4).
+        self._record = record if record is not None and None not in self.tiers.values() else None
+        if self._record is not None:
+            self._record.update(enabled=policy.enabled, builder_tier=self.tiers["builder"],
+                                reviewer_tier=self.tiers["reviewer"], escalations=[])
 
     @classmethod
     def for_run(cls, builder_name: str, builder_model: str, reviewer_name: str, reviewer_model: str,
-                make: Callable[..., Any], write_mode: str, options: Mapping[str, Any]) -> TaskTierLadder:
+                make: Callable[..., Any], write_mode: str, options: Mapping[str, Any],
+                result: Any = None) -> TaskTierLadder:
         roles = {"builder": (builder_name or "", builder_model or ""),
                  "reviewer": (reviewer_name or "", reviewer_model or "")}
-        return cls(resolve_escalation_policy(), roles, make, write_mode, options)
+        return cls(resolve_escalation_policy(), roles, make, write_mode, options,
+                   getattr(result, "tier_ladder", None))
 
     @property
     def reviewer_raised(self) -> bool:
@@ -343,6 +360,8 @@ class TaskTierLadder:
         if decision.repair_decision != "repair":
             decision.repair_decision, decision.reason = "repair", ESCALATION_REASON_PREFIX + reason
         self.escalations.append(step)
+        if self._record is not None:
+            self._record["escalations"].append(step.to_json())
         self.tiers.update(builder=target, reviewer=raised)
         self._tier_start, self._pending = len(rounds), pending
         return step
