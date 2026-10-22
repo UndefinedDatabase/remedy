@@ -1,0 +1,224 @@
+$ git diff HEAD...remedy/job-09fe11ff74a542bd  (exit 0)
+diff --git a/docs/guides/environment.md b/docs/guides/environment.md
+index 2e1bc3e29..132bb0be2 100644
+--- a/docs/guides/environment.md
++++ b/docs/guides/environment.md
+@@ -119,6 +119,7 @@ not read as its type; neither warning stops Remedy from running.
+ | `REMEDY_RUN_REAL_OLLAMA` | yes or no (1, true, yes / 0, false, no) | no | env-only | Run scripts/remedy_test_real_providers.sh against a real Ollama server instead of skipping (env-only flag) |
+ | `REMEDY_SCOPE_ALLOW` | a comma-separated list | none | `scope.allow` | Glob patterns for allowed write paths (F017 scope fences) |
+ | `REMEDY_SCOPE_DENY` | a comma-separated list | none | `scope.deny` | Glob patterns for denied write paths (F017 scope fences) |
++| `REMEDY_SELF_USE_BUILDER_HAS_NETWORK` | yes or no (1, true, yes / 0, false, no) | no | `self_use.builder_has_network` | Whether the self-use builder can reach the network (R-1418). Unset or false, the order tier skips the toolchain refresh order because its tasks read from the package index and from GitHub URLs and a builder without network access can only block. Set it to true when the configured provider's harness provides WebFetch or equivalent network tools — for example, a claude-cli builder started with claude_cli.all_tools enabled. |
+ | `REMEDY_SELF_USE_MODEL` | text | none | `self_use.model` | Model for both roles of a self-use run (operator amendment amend0920-selfuse-real, DECISION D2). Unset means the alias table's Sonnet alias, which the run's cost bound of at most 8 provider calls and 6.00 USD per closure is written for. |
+ | `REMEDY_SELF_USE_PROVIDER` | text | none | `self_use.provider` | Provider for BOTH the builder and the reviewer of a self-use run (operator amendment amend0920-selfuse-real, DECISION D2). Unset means `claude-cli`: a self-use run repairs THIS repository, which is frontier work, and five consecutive runs on the local model (SU-019 to SU-023) landed nothing. Set it to `ollama` to put the track back on the local model. |
+ | `REMEDY_SERVE_API_PORT` | a whole number | none | `serve.api_port` | When set, the `remedy serve start` supervisor also answers the public HTTP API (F253) on 127.0.0.1 at this port, and nothing else there; 0 picks a free port |
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index f675cfcd1..205f8027d 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -672,6 +672,21 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+         value_type=str,
+         default=None,
+     ),
++    ConfigKeySpec(
++        key="self_use.builder_has_network",
++        env_var="REMEDY_SELF_USE_BUILDER_HAS_NETWORK",
++        description=(
++            "Whether the self-use builder can reach the network (R-1418). "
++            "Unset or false, the order tier skips the toolchain refresh order "
++            "because its tasks read from the package index and from GitHub URLs "
++            "and a builder without network access can only block. Set it to "
++            "true when the configured provider's harness provides WebFetch or "
++            "equivalent network tools — for example, a claude-cli builder "
++            "started with claude_cli.all_tools enabled."
++        ),
++        value_type=bool,
++        default=False,
++    ),
+     ConfigKeySpec(
+         key="planner.provider",
+         env_var="REMEDY_PLANNER_PROVIDER",
+diff --git a/packages/orchestration/self_use_generator.py b/packages/orchestration/self_use_generator.py
+index 0b104e971..af1461cd5 100644
+--- a/packages/orchestration/self_use_generator.py
++++ b/packages/orchestration/self_use_generator.py
+@@ -67,9 +67,9 @@ Public API::
+     SelfUseGenerationError: a source this module needs could not be read
+     default_ledger_path() -> Path
+     default_source_root() -> Path
+-    generate_self_use_item(queue_path=None, ledger_path=None, *, source_root=None) -> SelfUseQueueEntry | None
++    generate_self_use_item(queue_path=None, ledger_path=None, *, source_root=None, builder_has_network=None) -> SelfUseQueueEntry | None
+     append_generated_item(entry, queue_path=None) -> None
+-    generate_and_append_if_empty(queue_path=None, ledger_path=None, *, source_root=None) -> SelfUseQueueEntry | None
++    generate_and_append_if_empty(queue_path=None, ledger_path=None, *, source_root=None, builder_has_network=None) -> SelfUseQueueEntry | None
+ 
+ Deliberate absences:
+   * REMEDY DELIBERATELY DOES NOT SUMMARIZE A FINDING. The rendered job's Task 1
+@@ -196,6 +196,13 @@ _ORDER_PROVENANCE_RE = re.compile(
+     r"^generated \(self-use-generator order tier, (?P<path>[^,]+), (?P<day>\d{4}-\d{2}-\d{2})\)$"
+ )
+ 
++#: THE TOOLCHAIN REFRESH ORDER REQUIRES NETWORK ACCESS (R-1418). Its tasks read from the package
++#: index and from GitHub's hosted-runner manifest URL. The order tier skips it unless
++#: ``self_use.builder_has_network`` is true: the default is ``False`` because the Pi harness
++#: runs builders in a private network namespace where those fetches cannot succeed, and spending
++#: a budget on a job that must block is worse than not queueing it.
++ORDER_REQUIRES_NETWORK = True
++
+ #: Severities this generator's Tier 1 will pick from — never High or Critical,
+ #: which are judgement calls a generator does not make for itself.
+ _ELIGIBLE_SEVERITIES = ("Low", "Medium")
+@@ -294,8 +301,28 @@ def _last_order_day(queue_path: Path | None) -> date | None:
+     return max(days) if days else None
+ 
+ 
+-def _order_tier(queue_path: Path | None, order_path: Path, today: date) -> SelfUseQueueEntry | None:
+-    """Tier 0: the toolchain refresh order, verbatim, when fourteen days have passed."""
++def _builder_has_network() -> bool:
++    """Read ``self_use.builder_has_network`` from the process config (R-1418)."""
++    from packages.orchestration.config import get_config
++    return bool(get_config().get("self_use.builder_has_network"))
++
++
++def _order_tier(
++    queue_path: Path | None,
++    order_path: Path,
++    today: date,
++    builder_has_network: bool | None = None,
++) -> SelfUseQueueEntry | None:
++    """Tier 0: the toolchain refresh order, verbatim, when fourteen days have passed.
++
++    Skipped when the builder cannot reach the network (R-1418): the order's tasks read from the
++    package index and GitHub URLs, so a network-less builder can only block. ``builder_has_network``
++    defaults to the ``self_use.builder_has_network`` config key (default ``False``).
++    """
++    if ORDER_REQUIRES_NETWORK:
++        capable = builder_has_network if builder_has_network is not None else _builder_has_network()
++        if not capable:
++            return None
+     if not order_path.is_file():
+         return None
+     last = _last_order_day(queue_path)
+@@ -880,6 +907,7 @@ def generate_self_use_item(
+     order_path: Path | None = None,
+     today: date | None = None,
+     source_root: Path | None = None,
++    builder_has_network: bool | None = None,
+ ) -> SelfUseQueueEntry | None:
+     """The next item to append, from the first tier that has one, or ``None``.
+ 
+@@ -887,10 +915,17 @@ def generate_self_use_item(
+     :func:`append_generated_item` for the write and
+     :func:`generate_and_append_if_empty` for the seam that combines both
+     behind the "only when the queue is empty" rule.
++
++    ``builder_has_network`` controls whether the order tier may queue the toolchain
++    refresh order (R-1418). ``None`` reads the ``self_use.builder_has_network`` config
++    key (default ``False``).
+     """
+     ledger = ledger_path or default_ledger_path()
+ 
+-    order_result = _order_tier(queue_path, order_path or default_order_path(), today or date.today())
++    order_result = _order_tier(
++        queue_path, order_path or default_order_path(), today or date.today(),
++        builder_has_network=builder_has_network,
++    )
+     if order_result is not None:
+         return order_result
+ 
+@@ -947,6 +982,7 @@ def generate_and_append_if_empty(
+     order_path: Path | None = None,
+     today: date | None = None,
+     source_root: Path | None = None,
++    builder_has_network: bool | None = None,
+ ) -> SelfUseQueueEntry | None:
+     """The seam a closure round calls: generate and append, but ONLY when empty.
+ 
+@@ -959,6 +995,7 @@ def generate_and_append_if_empty(
+         return None
+     entry = generate_self_use_item(
+         queue_path, ledger_path, order_path=order_path, today=today, source_root=source_root,
++        builder_has_network=builder_has_network,
+     )
+     if entry is None:
+         return None
+diff --git a/tests/orchestration/test_self_use_generator.py b/tests/orchestration/test_self_use_generator.py
+index e288572a7..63f671cc3 100644
+--- a/tests/orchestration/test_self_use_generator.py
++++ b/tests/orchestration/test_self_use_generator.py
+@@ -588,7 +588,7 @@ class TestOrderTier:
+         real = Path(__file__).resolve().parents[2] / ORDER_RELATIVE_PATH
+         queue_path = _write_queue(tmp_path, [])
+         entry = generate_self_use_item(queue_path=queue_path, ledger_path=tmp_path / "none.md",
+-                                       order_path=real, today=self.DAY)
++                                       order_path=real, today=self.DAY, builder_has_network=True)
+         assert entry is not None and entry.job_markdown == real.read_text(encoding="utf-8")
+         assert entry.title == "Refresh the pinned toolchain"
+ 
+@@ -597,7 +597,7 @@ class TestOrderTier:
+         ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
+         order = self._order(tmp_path)
+         entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger, order_path=order,
+-                                       today=self.DAY)
++                                       today=self.DAY, builder_has_network=True)
+         assert entry.job_markdown == order.read_text(encoding="utf-8")
+         assert entry.why == "Why it runs."
+         assert entry.provenance == ("generated (self-use-generator order tier, "
+@@ -607,21 +607,24 @@ class TestOrderTier:
+         queue_path = _write_queue(tmp_path, [self._order_item("2026-09-10")])
+         ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
+         entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger,
+-                                       order_path=self._order(tmp_path), today=self.DAY)
++                                       order_path=self._order(tmp_path), today=self.DAY,
++                                       builder_has_network=True)
+         assert entry.provenance.startswith("generated (self-use-generator tier 1")
+ 
+     def test_after_fourteen_days_the_order_is_due_again(self, tmp_path):
+         queue_path = _write_queue(tmp_path, [self._order_item("2026-09-09")])
+         ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
+         entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger,
+-                                       order_path=self._order(tmp_path), today=self.DAY)
++                                       order_path=self._order(tmp_path), today=self.DAY,
++                                       builder_has_network=True)
+         assert entry.id == "SU-002" and "order tier" in entry.provenance
+ 
+     def test_an_absent_order_file_leaves_the_ledger_tier_in_charge(self, tmp_path):
+         queue_path = _write_queue(tmp_path, [])
+         ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
+         entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger,
+-                                       order_path=tmp_path / "absent.md", today=self.DAY)
++                                       order_path=tmp_path / "absent.md", today=self.DAY,
++                                       builder_has_network=True)
+         assert entry.provenance.startswith("generated (self-use-generator tier 1")
+ 
+     def test_an_order_file_that_is_not_a_job_is_refused(self, tmp_path):
+@@ -629,7 +632,29 @@ class TestOrderTier:
+         order.write_text("Just prose, no job title.\n", encoding="utf-8")
+         with pytest.raises(SelfUseGenerationError, match="not a job file"):
+             generate_self_use_item(queue_path=_write_queue(tmp_path, []), ledger_path=tmp_path / "none.md",
+-                                   order_path=order, today=self.DAY)
++                                   order_path=order, today=self.DAY, builder_has_network=True)
++
++    def test_order_is_skipped_when_builder_has_no_network(self, tmp_path):
++        """R-1418: the order requires network; a network-less builder gets the ledger tier instead."""
++        queue_path = _write_queue(tmp_path, [])
++        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
++        order = self._order(tmp_path)
++        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger, order_path=order,
++                                       today=self.DAY, builder_has_network=False)
++        assert entry is not None
++        assert entry.provenance.startswith("generated (self-use-generator tier 1")
++
++    def test_order_is_skipped_by_default_without_network_config(self, tmp_path, monkeypatch):
++        """R-1418: builder_has_network=None reads the config key, which defaults to False."""
++        from packages.orchestration import self_use_generator
++        monkeypatch.setattr(self_use_generator, "_builder_has_network", lambda: False)
++        queue_path = _write_queue(tmp_path, [])
++        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
++        order = self._order(tmp_path)
++        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger, order_path=order,
++                                       today=self.DAY)
++        assert entry is not None
++        assert entry.provenance.startswith("generated (self-use-generator tier 1")
+ 
+ 
+ class TestTheAcceptanceAsksForTheRepairAlone:
