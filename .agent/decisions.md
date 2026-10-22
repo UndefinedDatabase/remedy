@@ -31243,3 +31243,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: for a project whose models are 
 ALTERNATIVES CONSIDERED: (a) a tier column in the ledger's `calls` table, REJECTED because a call row knows no task class and no outcome, and widening it means a migration in a held file; (b) recording the rows from the loop, REJECTED because the loop knows no task class and the ledger mirrors files, not memory; (c) recording a tier only for runs that may escalate, REJECTED because the benchmark of T003 compares runs that never move with runs that do.
 
 HOW TO REVERSE: delete `packages/orchestration/tier_outcomes.py` and its test, the `tier_ladder` field, its export and the ladder's filling of it, the export's call, and drop the table `tier_outcomes` and its meta key from any ledger; restore the joined lines from git history; delete this paragraph.
+
+## DECISION F296 D5 — T003 is the default kept off by an Amendment, because no round of the feature can buy the benchmark (2026-10-22, T003)
+
+THE PROBLEM: T003 asks for a benchmark on the F082 corpus that compares the class tier alone with cheap-first plus escalation, as PASS rate and cost per PASS, and for the default to flip only when that run is documented; the fourth Acceptance line allows the default to stay off with an Amendment saying so. Read at `6e4bd5788`: `run_bench_campaign` in `packages/orchestration/bench_run.py` has no command that calls it; a bench row's cost is tokens, not money; the five orders run three times per arm make thirty missions on paid models; and DECISION F307 D1 carried R-1351 and R-1353 for the same reason, an A/B measurement over paid providers that no round buys.
+
+THE DECISION: (1) No benchmark runs inside F296, and `model_escalation.enabled` stays `false`. (2) An Amendment of `docs/roadmap/features/T3_F296.md` says so, names what a later run needs and what is already in place for it — the run's `tier_ladder` and the outcome rows per task class and tier — and states that the default changes only by a later Amendment carrying the numbers. (3) `docs/system/tier-escalation-v1.md` names the default and this reason. (4) No finding is registered: the Acceptance itself allows this outcome, so nothing on disk is wrong.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing; handing a failing task to a stronger model stays something an operator switches on, until a measured comparison shows that starting cheap and escalating passes as often and costs less.
+
+ALTERNATIVES CONSIDERED: (a) running the benchmark on local models only, REJECTED because the comparison is against the class tier's models, which are paid, so a local-only run measures neither arm; (b) running it on the fake provider, REJECTED because a fake's pass and cost say nothing about a model; (c) registering a finding for the missing run, REJECTED because the Acceptance names this as an allowed close.
+
+HOW TO REVERSE: run the two bench series, write their numbers into a new Amendment of the feature file, and change the default there with an ADR; delete this paragraph.

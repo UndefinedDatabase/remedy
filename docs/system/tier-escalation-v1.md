@@ -3,7 +3,8 @@
 > Status (F296, 2026-10-22): the trigger, the step and the loop's call are built (T001), the record
 > of an escalated call in the run's record, its cost booking, the run report and the job's event
 > stream (T002a), and the outcome per task class and tier in the evidence and the cost ledger
-> (T002b); the benchmark that decides the default (T003) is not yet. DECISIONs F296 D1 to D4 in
+> (T002b). No benchmark has compared starting cheap with the class tier yet, so the switch stays off
+> by default until one does (T003, DECISION F296 D5). DECISIONs F296 D1 to D5 in
 > `.agent/decisions.md`; the feature is `docs/roadmap/features/T3_F296.md`.
 
 A task runs in rounds: a builder changes the code, the project's tests run, a reviewer reads the
