@@ -897,8 +897,10 @@ class TestEveryRealCallIsBooked:
         assert out.failover_disclosure.used.provider == "claude-cli"
         assert out.failover_disclosure.used.model == "opus"
         assert out.failover_calls == (FailoverCall("claude-cli", "opus", None),)
-        rows = _record_attempt(SimpleNamespace(builder_model="sonnet"), out, "builder", "claude-cli")
+        result = SimpleNamespace(builder_model="sonnet", provider_attempts=[])
+        rows = _record_attempt(result, out, "builder", "claude-cli")
         assert [(row.provider, row.model) for row in rows] == [("claude-cli", "opus")]
+        assert result.provider_attempts == rows
 
     def test_a_held_primary_that_serves_after_its_links_carries_them_all(self):
         clock = _ListClock()

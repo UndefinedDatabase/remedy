@@ -431,9 +431,10 @@ def _hand_hint(provider: Any, method: str, *args: Any) -> None:
 
 
 # WHY: a failed-over call is several real calls, and each one is booked (R-1276).
-def _with_calls(out: Any, calls: list[FailoverCall]) -> Any:
-    """Attach to `out` every real call behind it as `failover_calls`, when there was more than one."""
-    if len(calls) > 1:
+def _with_calls(out: Any, calls: list[FailoverCall], *, primary_served: bool) -> Any:
+    """Attach to `out` every real call behind it as `failover_calls`, unless the primary alone
+    served it: a backup that served with one call during a hold is a real call too (R-1422)."""
+    if len(calls) > 1 or not primary_served:
         out.failover_calls = tuple(
             FailoverCall(call.provider, call.model, None if call.output is out else call.output)
             for call in calls
@@ -630,7 +631,7 @@ class FailoverProvider:
                 timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             if link_out is not None:
-                return _with_calls(link_out, calls)
+                return _with_calls(link_out, calls, primary_served=False)
         out = getattr(self._primary, method)(
             prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
         )
@@ -638,7 +639,7 @@ class FailoverProvider:
         if not is_failover_trigger(out):
             if held:
                 self._held_until = float("-inf")
-            return _with_calls(out, calls)
+            return _with_calls(out, calls, primary_served=True)
         if not held:
             if resume:
                 # The run's own resume fallback calls again at full content with no session
@@ -650,9 +651,9 @@ class FailoverProvider:
                 primary_skipped=False, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             if link_out is not None:
-                return _with_calls(link_out, calls)
+                return _with_calls(link_out, calls, primary_served=False)
         out.failover_disclosure = self._disclosure(getattr(out, "error", "") or "", attempts, None)
-        return _with_calls(out, calls)
+        return _with_calls(out, calls, primary_served=True)
 
     def build(
         self,

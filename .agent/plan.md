@@ -7,7 +7,7 @@ R-1422 (failover booking during a hold), R-1423 (`used.minutes` of a running job
 for F314).
 
 ## Current Step
-Part 1, R-1422: red test committed alone, then the `_with_calls` fix and its record.
+Part 1, R-1422: the `_with_calls` fix committed; next its record (docs, Built State, ledger).
 
 ## Next Steps
 1. Part 2, R-1423: red tests, `in_flight` keyword, contract 1.28, kit seed and re-record.
