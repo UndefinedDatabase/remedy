@@ -34,6 +34,7 @@ from pydantic import BaseModel, ValidationError
 from packages.orchestration.failure_postmortem import FailureSignals, classify, utc_now_iso
 from packages.orchestration.intake import make_structured_call_fn
 from packages.orchestration.role_config import resolve_role_config
+from packages.orchestration.side_role_routing import side_role_call_fn
 from packages.orchestration.structured_outputs import run_structured_call
 
 #: Boundary every git unified diff in this repository uses between files.
@@ -65,6 +66,9 @@ class ArtifactSummary(BaseModel):
     generator: str
     generated_at: str
     artifact_hash: str
+    # F113 (DECISION F113 D1): the route a side role mapped to a local endpoint took, with its
+    # cost basis; None when the role that wrote the summary is mapped to no endpoint.
+    route: dict[str, str] | None = None
 
 
 def compute_artifact_hash(artifact_bytes: bytes) -> str:
@@ -260,6 +264,7 @@ def _fallback_summary(
     full_ref: str,
     artifact_hash: str,
     reason: str,
+    route: dict[str, str] | None = None,
 ) -> ArtifactSummary:
     """The "never silent, never blocking" fallback. NEVER raises, for any input."""
     combined = "\n\n".join(entry.get("text", "") for entry in sections)
@@ -279,6 +284,7 @@ def _fallback_summary(
         generator=f"fallback:{reason}",
         generated_at=utc_now_iso(),
         artifact_hash=artifact_hash,
+        route=route,
     )
 
 
@@ -306,6 +312,8 @@ def generate_artifact_summary(
         return _fallback_summary(sections, full_ref, artifact_hash, reason="no provider")
 
     prompt = _build_summary_prompt(sections)
+    side_role_route = getattr(call_fn, "side_role_route", None)
+    route = side_role_route.evidence() if side_role_route is not None else None
 
     try:
         outcome = run_structured_call(
@@ -318,13 +326,13 @@ def generate_artifact_summary(
     except Exception as exc:  # noqa: BLE001 — generation failure becomes a fallback summary, not a crash
         classification = classify(FailureSignals(exception=exc))
         return _fallback_summary(
-            sections, full_ref, artifact_hash, reason=classification.failure_class.value)
+            sections, full_ref, artifact_hash, reason=classification.failure_class.value, route=route)
 
     if not outcome.ok:
         classification = classify(
             FailureSignals(error_class=outcome.error_class, error_text=outcome.hint))
         return _fallback_summary(
-            sections, full_ref, artifact_hash, reason=classification.failure_class.value)
+            sections, full_ref, artifact_hash, reason=classification.failure_class.value, route=route)
 
     assert isinstance(outcome.value, GeneratedSummaryContent)
     return ArtifactSummary(
@@ -334,6 +342,7 @@ def generate_artifact_summary(
         generator=generator_label,
         generated_at=utc_now_iso(),
         artifact_hash=artifact_hash,
+        route=route,
     )
 
 
@@ -346,14 +355,17 @@ def summary_call_fn() -> Callable[[str, int], str] | None:
     """Build a call_fn for the `summary` role, or None.
 
     Bridges DECISION F108 D1's KNOWN_ROLES registration to an actual
-    callable: resolve_role_config("summary") supplies the model,
-    make_structured_call_fn (the only existing call_fn factory of this
-    shape in the repo) does the rest. Honest None under the same
+    callable. F113: a summary role mapped to a local endpoint runs there
+    while the endpoint serves (`side_role_routing.side_role_call_fn`);
+    otherwise resolve_role_config("summary") supplies the model and
+    make_structured_call_fn does the rest. Honest None under the same
     conditions make_structured_call_fn already returns None for (no
     ollama package importable, no reachable server) — never raises.
     """
     role_cfg = resolve_role_config("summary")
-    return make_structured_call_fn(GeneratedSummaryContent, model=role_cfg.model)
+    return side_role_call_fn(
+        "summary", GeneratedSummaryContent,
+        lambda: make_structured_call_fn(GeneratedSummaryContent, model=role_cfg.model))
 
 
 def select_relevant_sections(

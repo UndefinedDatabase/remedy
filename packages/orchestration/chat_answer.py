@@ -24,6 +24,7 @@ from packages.orchestration.failure_postmortem import FailureSignals, classify
 from packages.orchestration.intake import make_structured_call_fn
 from packages.orchestration.result_tour import PROVIDER_CALL_ERRORS
 from packages.orchestration.role_config import resolve_role_config
+from packages.orchestration.side_role_routing import side_role_call_fn
 from packages.orchestration.structured_outputs import run_structured_call
 
 #: The one sentence an answer gives when nothing in the evidence set answers the question.
@@ -322,13 +323,14 @@ def chat_model_written() -> bool:
 def chat_call_fn(schema: type[BaseModel] = GeneratedChatAnswer) -> Callable[[str, int], str] | None:
     """Build a call_fn for the `summary` role, or None.
 
-    Mirrors `result_tour.tour_call_fn`: `resolve_role_config("summary")` supplies
-    the model, `make_structured_call_fn` does the rest. This call site joins
+    Mirrors `result_tour.tour_call_fn`: a summary role mapped to a local endpoint
+    runs there (F113); otherwise `resolve_role_config("summary")` supplies the
+    model and `make_structured_call_fn` does the rest. This call site joins
     `model_routing.ROLE_CONFIG_CALL_SITES`. The model-written intent parse asks
     for its own schema through this same call site.
     """
     role_cfg = resolve_role_config("summary")
-    return make_structured_call_fn(schema, model=role_cfg.model)
+    return side_role_call_fn("summary", schema, lambda: make_structured_call_fn(schema, model=role_cfg.model))
 
 
 #: `answer_chat_question`'s own sentinel: distinguishes "no call_fn argument was

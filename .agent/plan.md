@@ -1,18 +1,19 @@
-# Plan — F296 Evidence-triggered tier escalation (routing v2)
+# Plan — F113 Local models for side roles
 
 ## Goal
-A task that fails on a cheaper tier gets its next repair round on the next tier up, for reasons
-the evidence names and never for provider unavailability, recorded in evidence, report, events and
-ledger, off by default (docs/roadmap/features/T3_F296.md; DECISIONs F296 D1 to D5).
+Summaries stop costing API tokens: a named local endpoint serves the cheap-tier side roles only,
+core roles are refused by F058's "core never local" rule, an endpoint that is down or a role that
+fails its spot check falls back to the role's own model, and every call records its route and basis
+(docs/roadmap/features/T3_F113.md; DECISIONs F113 D1 to D3).
 
 ## Current Step
-Round 7 (session 1): the closing round — book round 6, the Built State, the ledger rotation, F296
-accepted in STATUS with the README sync and SU-074's consumed_by, and the pull request, left
+Round 6 (session 1): the closing round — book round 5, the Built State, the ledger rotation, F113
+accepted in STATUS with the README sync and SU-075's consumed_by, and the pull request, left
 unmerged.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F296's pull request, then the
-   next feature's first commit books round 7's verdict, then Rule A5.
+1. The next session: Phase 1 rule 1, then the Open PR Gate merges F113's pull request, then the
+   next feature's first commit books round 6's verdict, then Rule A5.
 
 ## Risks
-- R-1421, the closure suite's CPU cost, is open and owned by F314.
+- None of F113's own; the open findings, R-1246 to R-1421, are owned by F314.

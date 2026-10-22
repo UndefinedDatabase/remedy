@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 362.6s (the launcher's reading); pytest's own reported wall time: 361.64s (0:06:01)
+summary line: 23353 passed, 11 skipped, 1 warning in 361.64s (0:06:01)
+bad node ids (failed + errors):
+  - NONE
+leftover processes: NONE
+tree it ran on: 908d30689 (F113 R4 C4: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C4 changed only .agent/ files, the acceptance test, the local side roles page, the checklist page and the self-use queue
+reflog before: 908d30689 HEAD@{2026-10-22 10:08:32 +0200}: commit: F113 R4 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: 908d30689 HEAD@{2026-10-22 10:08:32 +0200}: commit: F113 R4 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F113 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1347.63 CPU seconds, 361.65 wall seconds, 23364 tests collected, exit status 0, recorded 2026-10-22T08:14:42Z
+This closure's suite used 1347.63 CPU seconds, 1.6 percent less than F296's 1369.23, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F296's closure run:
+  +6.83 s  tests/cli/test_do_sequence_cli.py (31.51 -> 38.34)
+  +4.56 s  tests/test_grouped_cli.py (24.51 -> 29.07)
+  +2.79 s  tests/orchestration/test_token_ledger.py (7.66 -> 10.45)
+  +2.59 s  tests/orchestration/test_self_use_generator.py (4.59 -> 7.18)
+  +2.49 s  tests/orchestration/test_stream_export_e2e.py (3.19 -> 5.68)
+  +1.87 s  tests/test_command_discovery.py (6.53 -> 8.40)
+  +1.85 s  tests/cli/test_test_run_runtime.py (8.33 -> 10.18)
+  +1.64 s  tests/cli/test_mission_cmd.py (46.42 -> 48.06)
+  +1.49 s  tests/serve_http_handler/test_subtree_rerun_e2e_live.py (5.12 -> 6.61)
+  +1.30 s  tests/orchestration/test_event_name_coupling.py (16.11 -> 17.41)

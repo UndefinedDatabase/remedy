@@ -1,0 +1,5 @@
+Entry ID: SU-075
+Entry Title: Narrow the excused handler at apps/cli/commands/worker_facade_cmd.py:352
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/worker_facade_cmd.py:1:except Exception as exc:  # noqa: BLE001 — a dead-model-list read failure is its own check result)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f113-r4-selfuse/SU-075.md

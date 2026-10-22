@@ -1,19 +1,21 @@
-# Context — F296 Evidence-triggered tier escalation (routing v2)
+# Context — F113 Local models for side roles
 
 ## Active Branch
-`feature/f296-tier-escalation`, from `main` at `eb7aa432b` (the merge commit of pull request 377,
-which carried F307).
+`feature/f113-local-side-roles`, from `main` at `3af211790` (the merge commit of pull request 378,
+which carried F296).
 
 ## Scope
-F296 (Tier 3), as `docs/roadmap/features/T3_F296.md` and DECISION F296 D1 state it: one step up
-the model tiers for one task's next repair round, on evidence, with its record and its benchmark.
+F113 (Tier 3), as `docs/roadmap/features/T3_F113.md` and DECISION F113 D1 state it: named local
+endpoints for the cheap-tier side roles, the refusal of every core role, the fallback, the quality
+gate with its flip, and the cost basis `local_zero`.
 
 ## Do not touch
-F058's trigger and its disclosure; F110's seed table, hard rules and promotion rule; the budget
-guards — an escalated round still spends inside the job's budget.
+Core-role routing and its shipped defaults; model downloads and management; GPU or host
+provisioning; F058's failover walk.
 
 ## Active assumptions
 - Every behaviour lands with a test that is red without it, proved by the reviewer's mutation.
+- No test reaches a live model server: every probe and call in the tests goes to a fake client.
 
 ## Constraints
 - One full pytest suite per feature, in the closure's integration-gate round; every round runs
