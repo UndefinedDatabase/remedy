@@ -121,10 +121,10 @@ def _seed_running_jobs(now: datetime) -> None:
         job.created_at = (now - timedelta(seconds=created_s)).isoformat()
         job.first_running_at = (now - timedelta(seconds=720)).isoformat()
         job.budget_actuals = {
-            "schema_version": "2.0.0", "started_at": job.first_running_at, "provider_call_count": 4,
-            "actual_call_count": 4, "unmeasured_call_count": 0, "total_tokens": 48_211,
-            "actual_sources": ["pingpong_live"], "measured_cost_usd": None, "priced_call_count": 0,
-            "unpriced_call_count": 4}
+            "schema_version": "3.0.0", "started_at": job.first_running_at, "provider_call_count": 4,
+            "actual_call_count": 4, "unmeasured_call_count": 0, "total_tokens": 48_211, "waited_s": 0.0,
+            "active_until": (now - timedelta(seconds=silent_s)).isoformat(), "actual_sources": ["pingpong_live"],
+            "measured_cost_usd": None, "priced_call_count": 0, "unpriced_call_count": 4}
         save_job_plan(job)
         path = data_paths.worker_pulse_path(job_id)
         path.parent.mkdir(parents=True, exist_ok=True)
