@@ -17,7 +17,8 @@ from packages.orchestration.do_lane import (
     select_do_lane,
 )
 
-MATRIX_VERSION = 1
+#: 2 (R-1325, DECISION F307 D23): a plain word resolves only to the one document it names.
+MATRIX_VERSION = 2
 
 CODE = ["README.md", "package.json", "src/calc.js", "src/add.py", "tests/test_add.py", "src/app.ts",
         "src/main.ts", "src/database.py", "src/auth.ts", "CHANGELOG.md"]
@@ -55,6 +56,9 @@ MATRIX = [
     ("bug fix, tests only run", "Fix a bug in src/add.py. Run the tests.", CODE, B, "src/add.py"),
     ("feature in two files", "Add a feature to src/add.py and src/calc.js.", CODE, B, "src/add.py"),
     ("typo without a suffix", "Fix the typo in the readme", CODE, B, "README.md"),
+    ("the changelog by its word", "Add an entry to the changelog", CODE, B, "CHANGELOG.md"),
+    ("a plain word two documents share", "Fix the typo in the readme", TWO_READMES, F, ""),
+    ("a plain word naming a source file", "Fix the rounding in calc", CODE, F, ""),
     ("typo in German", "Korrigiere den Tippfehler in README.md", CODE, B, "README.md"),
     ("heading in German", "Ändere in README.md die Überschrift auf 'Hallo'.", CODE, B, "README.md"),
     ("no specific target", "Improve error handling everywhere.", CODE, F, ""),
