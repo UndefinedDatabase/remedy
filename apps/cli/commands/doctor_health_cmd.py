@@ -11,6 +11,7 @@ from apps.cli.json_envelope import emit_ok, fail
 def _cmd_doctor_health(ns: Any) -> None:
     """Print each of Remedy's own health checks as PASS, WARN or FAIL; exit 1 on a FAIL."""
     from packages.orchestration.self_health import (
+        health_check_lines,
         health_exit_code,
         health_failure_message,
         health_report_document,
@@ -33,10 +34,8 @@ def _cmd_doctor_health(ns: Any) -> None:
         emit_ok(verdict=document["verdict"], checks=document["checks"])
         return
     print(f"Remedy health: {verdict}")
-    for r in results:
-        print(f"  [{r.level}] {r.check}: {r.detail}")
-        if r.hint:
-            print(f"         fix: {r.hint}")
+    for line in health_check_lines(r.as_json() for r in results):
+        print(line)
     if health_exit_code(results) == 1:
         sys.exit(1)
 

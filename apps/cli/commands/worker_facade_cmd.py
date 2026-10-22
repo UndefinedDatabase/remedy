@@ -114,7 +114,8 @@ class DoctorCoreReport:
     """
 
     ready: bool
-    checks: list[dict[str, str | bool]]
+    #: Each check in the health module's shape, `check`, `level` (PASS or FAIL), `detail`, `hint` (R-1291).
+    checks: list[dict[str, str]]
     blockers: list[str]
     warnings: tuple[DoctorWarning, ...]
     dead_commands: list[str]
@@ -248,11 +249,11 @@ def doctor_core_report() -> DoctorCoreReport:
     `remedy_scripts_dir()` and its own lazy imports exactly where it did
     before, because the tests patch them there.
     """
-    checks: list[dict[str, str | bool]] = []
+    checks: list[dict[str, str]] = []
     warnings: list[DoctorWarning] = []
 
     def _check(name: str, ok: bool, detail: str = "") -> None:
-        checks.append({"check": name, "ok": ok, "detail": detail})
+        checks.append(HealthCheckResult(name, HEALTH_PASS if ok else HEALTH_FAIL, detail).as_json())
 
     def _warn(
         name: str,
@@ -285,18 +286,8 @@ def doctor_core_report() -> DoctorCoreReport:
 
     import importlib
 
-    def _safe_err(exc: Exception) -> str:
-        import re
-        msg = str(exc)
-        if len(msg) > 120:
-            msg = msg[:120] + "..."
-        msg = re.sub(r"/home/[^/]+/", "~/", msg)
-        msg = re.sub(r"/Users/[^/]+/", "~/", msg)
-        msg = msg.replace("/root/", "~/")
-        msg = msg.replace("/mnt/", "~/")
-        msg = msg.replace("/tmp/", "~/")
-        msg = re.sub(r"(?i)(key|token|secret|password|api_key)=[^\s,;)\"']+", r"\1=***", msg)
-        return msg
+    from packages.orchestration.paths_text import report_safe_text
+    from packages.orchestration.self_health import HEALTH_FAIL, HEALTH_PASS, HealthCheckResult
 
     def _try_import(name: str, module: str, attr: str) -> None:
         try:
@@ -307,7 +298,7 @@ def doctor_core_report() -> DoctorCoreReport:
             else:
                 _check(name, True, f"{attr} available")
         except Exception as exc:  # noqa: BLE001 — an import probe failure is that check's own result
-            _check(name, False, _safe_err(exc))
+            _check(name, False, report_safe_text(exc, limit=120))
 
     _try_import("worker_facade", "apps.cli.commands.worker_facade_cmd", "COMMAND_HANDLERS")
 
@@ -316,7 +307,7 @@ def doctor_core_report() -> DoctorCoreReport:
         _check("command_catalog", True,
                f"{len(cat.CATALOG)} commands, {len(cat.GROUPS)} groups")
     except Exception as exc:  # noqa: BLE001 — a catalog import failure is that check's own result
-        _check("command_catalog", False, _safe_err(exc))
+        _check("command_catalog", False, report_safe_text(exc, limit=120))
 
     _try_import("run_contract", "packages.orchestration.run_contract", "ContractAction")
     _try_import("config", "packages.orchestration.config", "get_config")
@@ -359,7 +350,7 @@ def doctor_core_report() -> DoctorCoreReport:
                f"{len(dead_ids) - len(shipped_entries)} config-only dead ids "
                f"({len(dead_ids)} total)")
     except Exception as exc:  # noqa: BLE001 — a dead-model-list read failure is its own check result
-        _check("dead_model_list", False, _safe_err(exc))
+        _check("dead_model_list", False, report_safe_text(exc, limit=120))
 
     if dead_ids:
         try:
@@ -408,7 +399,7 @@ def doctor_core_report() -> DoctorCoreReport:
             # both renderings are the same sentence.
             comparison_failed = ("the known-dead ids could not be compared "
                                  "against Remedy's built-in defaults and "
-                                 f"config: {_safe_err(exc)}")
+                                 f"config: {report_safe_text(exc, limit=120)}")
             _warn("dead_model_comparison", comparison_failed, comparison_failed)
 
     # -----------------------------------------------------------------
@@ -429,7 +420,7 @@ def doctor_core_report() -> DoctorCoreReport:
                f"{len(dead_commands)} dead of {len(cat_mod.CATALOG)} commands")
     except Exception as exc:  # noqa: BLE001 — a dead-command scan failure is that check's own result
         dead_commands = []
-        _check("dead_command_scan", False, _safe_err(exc))
+        _check("dead_command_scan", False, report_safe_text(exc, limit=120))
 
     # -----------------------------------------------------------------
     # F276 T004 — free disk against the configured floor.
@@ -458,8 +449,8 @@ def doctor_core_report() -> DoctorCoreReport:
                f"{free_bytes} bytes free, floor "
                f"{'not configured' if floor_bytes is None else floor_bytes}")
     except Exception as exc:  # noqa: BLE001 — a disk-floor read failure is that check's own result
-        disk["error"] = _safe_err(exc)
-        _check("disk_floor", False, _safe_err(exc))
+        disk["error"] = report_safe_text(exc, limit=120)
+        _check("disk_floor", False, report_safe_text(exc, limit=120))
 
     # -----------------------------------------------------------------
     # amend0929-context-hygiene C.2, amend0929b — reclaimable staging copies: ADVISORY.
@@ -525,7 +516,7 @@ def doctor_core_report() -> DoctorCoreReport:
               f"secret. {ENVIRONMENT_GUIDE_PATH} lists what each variable accepts.",
               subject=name)
 
-    blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
+    blockers: list[str] = [str(c["check"]) for c in checks if c["level"] == HEALTH_FAIL]
     ready = len(blockers) == 0
 
     # F293 T004: information only — never a check, a warning or a blocker.
@@ -559,10 +550,11 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     if getattr(ns, "json", False):
         emit_ok(**result)
         return
+    from packages.orchestration.self_health import health_check_lines
+
     print(f"Core Product Spine: {'READY' if ready else 'NOT READY'}")
-    for c in checks:
-        ok = "OK" if c["ok"] else "FAIL"
-        print(f"  [{ok}] {c['check']}: {c['detail']}")
+    for line in health_check_lines(checks):
+        print(line)
     if blockers:
         print(f"  blockers: {', '.join(blockers)}")
     if warnings:

@@ -302,7 +302,7 @@ with the code that calls it.
 | 352 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
-| 305 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
+| 295 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
 | 346 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
 | 334 | `scripts/build_review_manifest.py` | `build_manifest_from_snapshot` |
 | 320 | `packages/orchestration/trust_report.py` | `summarize_trust_report` |

@@ -62,6 +62,13 @@ each entry of `checks` has exactly the keys `check`, `level`, `detail` and `hint
 FAIL, the object has `ok` false, `error` `health_failed` and a `message` such as `1 of 8 health
 checks failed`, still carries `verdict` and `checks`, and the command exits 1.
 
+`remedy doctor core` answers its checks in the same shape and prints them through the same table
+(R-1291): each entry of its `checks` has the keys `check`, `level`, `detail` and `hint`, `level` is
+`PASS` or `FAIL`, and its `blockers` are the checks that read `FAIL`; its advisory `warnings` stay
+a list of their own. Both commands scrub a detail with one function: the home folder, any other
+home folder and the value of a key, token, secret or password never reach the output, and a path
+under `/mnt/` or `/tmp/` is named as it is.
+
 ## The crash report
 
 When a Remedy command ends on an error nobody expected, Remedy writes one Markdown report. This

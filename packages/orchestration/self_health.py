@@ -12,7 +12,7 @@ import os
 import shutil
 import sqlite3
 import subprocess
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -22,7 +22,7 @@ from packages.orchestration.budget_resolution import resolve_min_free_disk_bytes
 from packages.orchestration.config import RemedyConfig, get_config, validate_config
 from packages.orchestration.data_paths import projects_dir, resolve_data_root
 from packages.orchestration.data_reclaim import reclaim_preview_bytes
-from packages.orchestration.paths_text import home_relative_text
+from packages.orchestration.paths_text import report_safe_text
 from packages.orchestration.project_registry import list_projects_readonly
 from packages.orchestration.repository_snapshot import (
     SNAPSHOT_DIR_NAME,
@@ -57,7 +57,7 @@ class HealthCheckResult:
 
 
 def _result(check: str, level: str, detail: str, hint: str = "") -> HealthCheckResult:
-    return HealthCheckResult(check, level, home_relative_text(detail), hint)
+    return HealthCheckResult(check, level, report_safe_text(detail), hint)
 
 
 def _first_three(items: list[str]) -> str:
@@ -458,6 +458,17 @@ def health_verdict(results: tuple[HealthCheckResult, ...] | list[HealthCheckResu
 # Only a FAIL makes the command exit non-zero; a WARN is told, not enforced.
 def health_exit_code(results: tuple[HealthCheckResult, ...] | list[HealthCheckResult]) -> int:
     return 1 if any(result.level == HEALTH_FAIL for result in results) else 0
+
+
+# The text lines both doctor commands print for their checks, so the two tables cannot drift (R-1291).
+def health_check_lines(checks: Iterable[Mapping[str, Any]]) -> list[str]:
+    """Each check as `[LEVEL] check: detail`, and its hint as a `fix:` line below it."""
+    lines: list[str] = []
+    for check in checks:
+        lines.append(f"  [{check['level']}] {check['check']}: {check['detail']}")
+        if check.get("hint"):
+            lines.append(f"         fix: {check['hint']}")
+    return lines
 
 
 # The document `remedy doctor health --json` and the public API's health route both answer.
