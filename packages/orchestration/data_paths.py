@@ -126,6 +126,10 @@ DURABLE_CLASSES: tuple[DataRootClass, ...] = (
                   "retention is F166's"),
     DataRootClass("projects", "packages.orchestration.project_registry", "never; project registry, ledgers, locks"),
     DataRootClass("missions", "packages.orchestration.mission_state", "never; mission records"),
+    DataRootClass("reconcile-backups", "packages.orchestration.repo_mission_reconcile",
+                  "pruned by the reconcile itself, which removes a backup older than 30 days "
+                  "each time it makes one; the mission directories a fold or a flatten wrote "
+                  "(R-1283)"),
     DataRootClass("control", "packages.orchestration.safe_points", "never; stop requests and their archive"),
     DataRootClass("stops", "packages.orchestration.stop_reasons", "never; stop-reason log"),
     DataRootClass("proposed_tasks", "packages.orchestration.proposed_tasks", "never; proposed-task records"),
@@ -279,6 +283,11 @@ def missions_dir(root: Path | None = None) -> Path:
     per mission record; see ``packages/orchestration/mission_state.py``.
     """
     return data_class_dir("missions", root)
+
+
+def reconcile_backups_dir(root: Path | None = None) -> Path:
+    """Return where `remedy mission reconcile` keeps its backups (<root>/reconcile-backups, R-1283)."""
+    return data_class_dir("reconcile-backups", root)
 
 
 def control_dir(root: Path | None = None) -> Path:

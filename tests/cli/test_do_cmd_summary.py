@@ -27,13 +27,13 @@ class TestDocsExist:
         import re
         from pathlib import Path
 
-        from apps.cli.commands.do_cmd import _VALID_ROLE_PROVIDERS
+        from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
         doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
         assert "--builder-provider pi" in content
         values = re.findall(r"--builder-provider (\w[\w-]*)", content)
         assert values
-        assert set(values) <= _VALID_ROLE_PROVIDERS
+        assert set(values) <= ROLE_PROVIDER_NAMES
         assert "--builder-provider fixture" not in content
 
     def test_docs_pipeline_overview(self):

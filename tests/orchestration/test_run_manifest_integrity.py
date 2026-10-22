@@ -19,7 +19,7 @@ from packages.orchestration.pingpong_job import (
     parse_job_file,
     run_job,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.run_manifest import (
     GIT_INCOMPLETE,
     GIT_OK,
@@ -458,7 +458,7 @@ class TestSharedContextNoResequence:
     def test_f010_and_f012_same_identity_and_sequence(self, data_root, repo):
         from packages.orchestration.pingpong_job import parse_job_file, run_job
         from packages.orchestration.pingpong_loop import load_run
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         job = parse_job_file(_JOB, str(repo))
         res = run_job(job.job_id,

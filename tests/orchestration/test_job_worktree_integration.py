@@ -25,7 +25,8 @@ from packages.orchestration.pingpong_job import (
     run_job,
 )
 from packages.orchestration.pingpong_loop import load_run
-from packages.orchestration.pingpong_provider import BuilderOutput, FakeProvider, ReviewerOutput
+from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 
 @pytest.fixture(autouse=True)

@@ -8,8 +8,9 @@ passing `pingpong_loop`'s own `create_provider` at every call, so a test that re
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import Any
 
 from packages.orchestration.model_failover import (
     FailoverLink,
@@ -32,6 +33,9 @@ def create_role_provider(
     stream_evidence_dir: str | None = None,
     make_provider: Callable[..., PingPongProvider] = create_provider,
     with_failover: bool = True,
+    stream_counters: dict[tuple[int, str], int] | None = None,
+    chains: Mapping[str, tuple[FailoverLink, ...]] | None = None,
+    stop_check: Callable[[], Any] | None = None,
 ) -> PingPongProvider:
     """Create provider with role-appropriate cwd and write mode.
 
@@ -51,7 +55,15 @@ def create_role_provider(
     ``with_failover`` wraps the built provider in the DECISION F058 D2 walk when `role`'s
     configured chain is not empty; a link built mid-walk passes ``with_failover=False``, so a
     chain never nests a failover walk inside another.
+    ``stream_counters`` is the one count of stream calls per round and kind that every claude-cli
+    provider built for this role shares, the primary and each link alike, so a link's stream
+    directory continues the primary's numbering instead of writing over it (R-1278); a link
+    passes on the count its wrapper's call made.
+    ``chains`` is the failover table the run read once for every role it builds (R-1289); without it
+    the table is read here. ``stop_check`` is the run's stop probe, which the walk consults before
+    each link (R-1287).
     """
+    counters: dict[tuple[int, str], int] = {} if stream_counters is None else stream_counters
     if name == "claude-cli":
         stream_dir = None
         rel_prefix = ""
@@ -64,6 +76,7 @@ def create_role_provider(
             "stream_evidence": stream_evidence,
             "stream_evidence_dir": stream_dir,
             "stream_rel_prefix": rel_prefix,
+            "stream_counters": counters,
         }
         if role == "builder" and staging_dir:
             provider: PingPongProvider = ClaudeCliProvider(write_mode=write_mode, **common)
@@ -79,7 +92,7 @@ def create_role_provider(
 
     if not with_failover:
         return provider
-    chain = resolve_failover_chains().get(role, ())
+    chain = (resolve_failover_chains() if chains is None else chains).get(role, ())
     if not chain:
         return provider
 
@@ -94,6 +107,7 @@ def create_role_provider(
             stream_evidence_dir=stream_evidence_dir,
             make_provider=make_provider,
             with_failover=False,
+            stream_counters=counters,
         )
 
     return FailoverProvider(
@@ -104,4 +118,5 @@ def create_role_provider(
         links=chain,
         build_link=build_link,
         cooldown_s=resolve_failover_cooldown_s(),
+        stop_check=stop_check,
     )

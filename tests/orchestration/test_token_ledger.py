@@ -1354,7 +1354,7 @@ def live_job_repo(tmp_path):
 def _run_fake_provider_job(repo):
     """Run a real job end to end with the fake provider — no network, no real model."""
     from packages.orchestration.pingpong_job import parse_job_file, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     plan = parse_job_file(_LIVE_JOB_FILE, str(repo))
     return run_job(
@@ -1450,10 +1450,10 @@ class TestLiveMirrorOnTheProductionPath:
             ):
                 assert row[field] == getattr(expected, field), field
 
-            # A fake-provider call reports no price, and an unreported counter
-            # must not have become a zero on the way in (the P6 rule).
+            # A fake-provider call reports its fixed tokens and no price, and the
+            # unreported price must not have become a zero on the way in (the P6 rule).
             assert row["cost_usd"] is None
-            assert row["tokens_in"] is None
+            assert row["tokens_in"] == {"builder": 1200, "reviewer": 800}[row["role"]]
             assert row["cost_basis"] == COST_BASIS_UNKNOWN
 
     def test_the_live_row_is_the_row_backfill_would_have_written(
@@ -2186,7 +2186,7 @@ class TestQuerySegmentShares:
 # ---------------------------------------------------------------------------
 
 
-from packages.orchestration.pingpong_provider import FakeProvider  # noqa: E402
+from packages.orchestration.pingpong_provider_fake import FakeProvider  # noqa: E402
 
 
 class _MeasuredStubProvider(FakeProvider):
@@ -2306,7 +2306,7 @@ class TestCostTruthOnTheJobRunPath:
         from packages.orchestration.project_registry import register_project_repo
 
         project = register_project_repo("cost-truth", str(live_job_repo))
-        job = _run_fake_provider_job(live_job_repo)   # reports no usage at all
+        job = _run_fake_provider_job(live_job_repo)   # reports tokens, never a cost
 
         mirror = mirror_job_run_into_ledger(job.job_id)
         assert mirror["ledger_mirrored"] is True, mirror["error"]
@@ -2383,14 +2383,14 @@ class TestJobRunActuallyCallsTheMirror:
 
     def test_the_job_run_command_mirrors_the_job_it_just_ran(self, monkeypatch):
         from apps.cli.commands import do_cmd
-        from packages.orchestration import job_evidence, pingpong_job
+        from packages.orchestration import job_evidence, job_report, pingpong_job
 
         class _StubJob:
             job_id = "jid-under-test"
 
         monkeypatch.setattr(pingpong_job, "run_job", lambda *a, **k: _StubJob())
         monkeypatch.setattr(
-            pingpong_job, "format_job_report_text", lambda job: "report",
+            job_report, "format_job_report_text", lambda job: "report",
         )
 
         seen: list[str] = []
@@ -2410,14 +2410,14 @@ class TestJobRunActuallyCallsTheMirror:
 
     def test_a_mirror_failure_does_not_crash_the_command(self, monkeypatch, capsys):
         from apps.cli.commands import do_cmd
-        from packages.orchestration import job_evidence, pingpong_job
+        from packages.orchestration import job_evidence, job_report, pingpong_job
 
         class _StubJob:
             job_id = "jid-under-test"
 
         monkeypatch.setattr(pingpong_job, "run_job", lambda *a, **k: _StubJob())
         monkeypatch.setattr(
-            pingpong_job, "format_job_report_text", lambda job: "report",
+            job_report, "format_job_report_text", lambda job: "report",
         )
         monkeypatch.setattr(
             job_evidence, "mirror_job_run_into_ledger",

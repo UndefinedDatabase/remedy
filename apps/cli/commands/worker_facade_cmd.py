@@ -114,7 +114,8 @@ class DoctorCoreReport:
     """
 
     ready: bool
-    checks: list[dict[str, str | bool]]
+    #: Each check in the health module's shape, `check`, `level` (PASS or FAIL), `detail`, `hint` (R-1291).
+    checks: list[dict[str, str]]
     blockers: list[str]
     warnings: tuple[DoctorWarning, ...]
     dead_commands: list[str]
@@ -187,6 +188,58 @@ def last_day_test_load(environ=None, home: Path | None = None, now=None) -> dict
             "sentence": f"{runs} {noun} used {cpu_minutes:.1f} CPU minutes in the last 24 hours."}
 
 
+def _dead_origin(model_id: str, entries: dict[str, tuple[str, str]]) -> tuple[str, str, str]:
+    """Where the verdict came from, plus the entry's reason/successor; ENTRIES maps each id of
+    the shipped list to its recorded reason and successor (step (1) of `doctor_core_report`)."""
+    from packages.orchestration.dead_model_list import DEAD_MODEL_CONFIG_KEY, DEAD_MODEL_LIST_FILENAME
+
+    if model_id in entries:
+        reason, superseded = entries[model_id]
+        return (f"the shipped list scripts/{DEAD_MODEL_LIST_FILENAME}",
+                reason, superseded)
+    return (f"the operator's {DEAD_MODEL_CONFIG_KEY} config list", "", "")
+
+
+def _dead_provenance_short(model_id: str, entries: dict[str, tuple[str, str]]) -> str:
+    """The provenance clause for TEXT mode — shorter words, same claim.
+
+    Remedy does not know a model is retired; it knows an
+    operator-maintained file says so. Wording that implies live
+    provider knowledge would be a false live indicator, so this
+    clause appears in BOTH renderings and only its length differs.
+    What text mode drops is the entry's full recorded reason, never
+    the source of the verdict.
+    """
+    origin, _reason, _superseded = _dead_origin(model_id, entries)
+    return f"per {origin} — operator data, no provider queried"
+
+
+def _dead_provenance(model_id: str, entries: dict[str, tuple[str, str]]) -> str:
+    """The full provenance record for `--json`: source, reason, successor.
+
+    Says WHERE the "dead" verdict came from — data, never a probe —
+    and then everything the entry recorded, which is what an
+    operator reads once the compact line has caught their eye.
+    """
+    origin, reason, superseded = _dead_origin(model_id, entries)
+    parts = [
+        f"Remedy calls this id dead only because {origin} says so — "
+        f"that list is operator-maintained data, no provider was "
+        f"queried, so the verdict is exactly as current as the data.",
+    ]
+    if reason:
+        parts.append(f"Recorded reason: {reason}")
+    # State the successor only when saying it ADDS something: with a
+    # recorded reason in hand, "no replacement id is recorded" is
+    # already in that reason, and repeating it twice in one line was
+    # the noise this split exists to remove.
+    if superseded:
+        parts.append(f"Recorded replacement: {superseded}.")
+    elif not reason:
+        parts.append("No replacement id is recorded.")
+    return " ".join(parts)
+
+
 def doctor_core_report() -> DoctorCoreReport:
     """Build `doctor core`'s report: T5_F289.md T002, DECISION F289 D1.
 
@@ -196,11 +249,11 @@ def doctor_core_report() -> DoctorCoreReport:
     `remedy_scripts_dir()` and its own lazy imports exactly where it did
     before, because the tests patch them there.
     """
-    checks: list[dict[str, str | bool]] = []
+    checks: list[dict[str, str]] = []
     warnings: list[DoctorWarning] = []
 
     def _check(name: str, ok: bool, detail: str = "") -> None:
-        checks.append({"check": name, "ok": ok, "detail": detail})
+        checks.append(HealthCheckResult(name, HEALTH_PASS if ok else HEALTH_FAIL, detail).as_json())
 
     def _warn(
         name: str,
@@ -233,18 +286,8 @@ def doctor_core_report() -> DoctorCoreReport:
 
     import importlib
 
-    def _safe_err(exc: Exception) -> str:
-        import re
-        msg = str(exc)
-        if len(msg) > 120:
-            msg = msg[:120] + "..."
-        msg = re.sub(r"/home/[^/]+/", "~/", msg)
-        msg = re.sub(r"/Users/[^/]+/", "~/", msg)
-        msg = msg.replace("/root/", "~/")
-        msg = msg.replace("/mnt/", "~/")
-        msg = msg.replace("/tmp/", "~/")
-        msg = re.sub(r"(?i)(key|token|secret|password|api_key)=[^\s,;)\"']+", r"\1=***", msg)
-        return msg
+    from packages.orchestration.paths_text import report_safe_text
+    from packages.orchestration.self_health import HEALTH_FAIL, HEALTH_PASS, HealthCheckResult
 
     def _try_import(name: str, module: str, attr: str) -> None:
         try:
@@ -255,7 +298,7 @@ def doctor_core_report() -> DoctorCoreReport:
             else:
                 _check(name, True, f"{attr} available")
         except Exception as exc:  # noqa: BLE001 — an import probe failure is that check's own result
-            _check(name, False, _safe_err(exc))
+            _check(name, False, report_safe_text(exc, limit=120))
 
     _try_import("worker_facade", "apps.cli.commands.worker_facade_cmd", "COMMAND_HANDLERS")
 
@@ -264,7 +307,7 @@ def doctor_core_report() -> DoctorCoreReport:
         _check("command_catalog", True,
                f"{len(cat.CATALOG)} commands, {len(cat.GROUPS)} groups")
     except Exception as exc:  # noqa: BLE001 — a catalog import failure is that check's own result
-        _check("command_catalog", False, _safe_err(exc))
+        _check("command_catalog", False, report_safe_text(exc, limit=120))
 
     _try_import("run_contract", "packages.orchestration.run_contract", "ContractAction")
     _try_import("config", "packages.orchestration.config", "get_config")
@@ -307,65 +350,15 @@ def doctor_core_report() -> DoctorCoreReport:
                f"{len(dead_ids) - len(shipped_entries)} config-only dead ids "
                f"({len(dead_ids)} total)")
     except Exception as exc:  # noqa: BLE001 — a dead-model-list read failure is its own check result
-        _check("dead_model_list", False, _safe_err(exc))
+        _check("dead_model_list", False, report_safe_text(exc, limit=120))
 
     if dead_ids:
         try:
             from packages.orchestration.config import all_key_specs, get_config
-            from packages.orchestration.dead_model_list import (
-                DEAD_MODEL_CONFIG_KEY,
-                DEAD_MODEL_LIST_FILENAME,
-            )
             from packages.orchestration.model_aliases import (
                 MODEL_ALIASES,
                 builtin_model_ids,
             )
-
-            def _dead_origin(model_id: str) -> tuple[str, str, str]:
-                """Where the verdict came from, plus the entry's reason/successor."""
-                if model_id in dead_entry_by_id:
-                    reason, superseded = dead_entry_by_id[model_id]
-                    return (f"the shipped list scripts/{DEAD_MODEL_LIST_FILENAME}",
-                            reason, superseded)
-                return (f"the operator's {DEAD_MODEL_CONFIG_KEY} config list", "", "")
-
-            def _dead_provenance_short(model_id: str) -> str:
-                """The provenance clause for TEXT mode — shorter words, same claim.
-
-                Remedy does not know a model is retired; it knows an
-                operator-maintained file says so. Wording that implies live
-                provider knowledge would be a false live indicator, so this
-                clause appears in BOTH renderings and only its length differs.
-                What text mode drops is the entry's full recorded reason, never
-                the source of the verdict.
-                """
-                origin, _reason, _superseded = _dead_origin(model_id)
-                return f"per {origin} — operator data, no provider queried"
-
-            def _dead_provenance(model_id: str) -> str:
-                """The full provenance record for `--json`: source, reason, successor.
-
-                Says WHERE the "dead" verdict came from — data, never a probe —
-                and then everything the entry recorded, which is what an
-                operator reads once the compact line has caught their eye.
-                """
-                origin, reason, superseded = _dead_origin(model_id)
-                parts = [
-                    f"Remedy calls this id dead only because {origin} says so — "
-                    f"that list is operator-maintained data, no provider was "
-                    f"queried, so the verdict is exactly as current as the data.",
-                ]
-                if reason:
-                    parts.append(f"Recorded reason: {reason}")
-                # State the successor only when saying it ADDS something: with a
-                # recorded reason in hand, "no replacement id is recorded" is
-                # already in that reason, and repeating it twice in one line was
-                # the noise this split exists to remove.
-                if superseded:
-                    parts.append(f"Recorded replacement: {superseded}.")
-                elif not reason:
-                    parts.append("No replacement id is recorded.")
-                return " ".join(parts)
 
             # Built-in defaults: name the ALIAS, because that is the line an
             # operator repoints. Derived from the table, never hardcoded.
@@ -377,11 +370,11 @@ def doctor_core_report() -> DoctorCoreReport:
                 _warn("dead_builtin_model",
                       f"{model_id} — built-in default via alias {alias_text}; "
                       f"fix: repoint alias {alias_text}; "
-                      f"{_dead_provenance_short(model_id)}",
+                      f"{_dead_provenance_short(model_id, dead_entry_by_id)}",
                       f"{model_id} is a BUILT-IN default, reached through alias "
                       f"{alias_text} in packages/orchestration/model_aliases.py. "
                       f"Fix: repoint alias {alias_text} to a live id. "
-                      f"{_dead_provenance(model_id)}",
+                      f"{_dead_provenance(model_id, dead_entry_by_id)}",
                       subject=model_id, repair_path=MODEL_ALIAS_TABLE_PATH)
 
             # Configured ids: name the KEY it came from. Discovered from the
@@ -396,17 +389,17 @@ def doctor_core_report() -> DoctorCoreReport:
                 _warn("dead_configured_model",
                       f"{value} — from config key {spec.key}; "
                       f"fix: change {spec.key} to a live id; "
-                      f"{_dead_provenance_short(value)}",
+                      f"{_dead_provenance_short(value, dead_entry_by_id)}",
                       f"{value} is the resolved value of config key {spec.key} "
                       f"(env {spec.env_var}). Fix: change {spec.key} to a live "
-                      f"id. {_dead_provenance(value)}",
+                      f"id. {_dead_provenance(value, dead_entry_by_id)}",
                       subject=value)
         except Exception as exc:  # noqa: BLE001 — a dead-model mismatch becomes an advisory, not a blocker
             # Already compact, and there is no fuller record to hold back:
             # both renderings are the same sentence.
             comparison_failed = ("the known-dead ids could not be compared "
                                  "against Remedy's built-in defaults and "
-                                 f"config: {_safe_err(exc)}")
+                                 f"config: {report_safe_text(exc, limit=120)}")
             _warn("dead_model_comparison", comparison_failed, comparison_failed)
 
     # -----------------------------------------------------------------
@@ -427,7 +420,7 @@ def doctor_core_report() -> DoctorCoreReport:
                f"{len(dead_commands)} dead of {len(cat_mod.CATALOG)} commands")
     except Exception as exc:  # noqa: BLE001 — a dead-command scan failure is that check's own result
         dead_commands = []
-        _check("dead_command_scan", False, _safe_err(exc))
+        _check("dead_command_scan", False, report_safe_text(exc, limit=120))
 
     # -----------------------------------------------------------------
     # F276 T004 — free disk against the configured floor.
@@ -456,8 +449,8 @@ def doctor_core_report() -> DoctorCoreReport:
                f"{free_bytes} bytes free, floor "
                f"{'not configured' if floor_bytes is None else floor_bytes}")
     except Exception as exc:  # noqa: BLE001 — a disk-floor read failure is that check's own result
-        disk["error"] = _safe_err(exc)
-        _check("disk_floor", False, _safe_err(exc))
+        disk["error"] = report_safe_text(exc, limit=120)
+        _check("disk_floor", False, report_safe_text(exc, limit=120))
 
     # -----------------------------------------------------------------
     # amend0929-context-hygiene C.2, amend0929b — reclaimable staging copies: ADVISORY.
@@ -523,7 +516,7 @@ def doctor_core_report() -> DoctorCoreReport:
               f"secret. {ENVIRONMENT_GUIDE_PATH} lists what each variable accepts.",
               subject=name)
 
-    blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
+    blockers: list[str] = [str(c["check"]) for c in checks if c["level"] == HEALTH_FAIL]
     ready = len(blockers) == 0
 
     # F293 T004: information only — never a check, a warning or a blocker.
@@ -557,10 +550,11 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     if getattr(ns, "json", False):
         emit_ok(**result)
         return
+    from packages.orchestration.self_health import health_check_lines
+
     print(f"Core Product Spine: {'READY' if ready else 'NOT READY'}")
-    for c in checks:
-        ok = "OK" if c["ok"] else "FAIL"
-        print(f"  [{ok}] {c['check']}: {c['detail']}")
+    for line in health_check_lines(checks):
+        print(line)
     if blockers:
         print(f"  blockers: {', '.join(blockers)}")
     if warnings:

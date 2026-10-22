@@ -22,12 +22,9 @@ The lock is advisory (`fcntl.flock`), as the worktree locks beside it are.
 
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import os
 import subprocess
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,6 +42,7 @@ from packages.orchestration.mission_record import (
     PLAN_VERSIONS_KEY,
     Mission,
     MissionError,
+    MissionJobLink,
     MissionOrder,
     MissionOrderBatch,
 )
@@ -56,18 +54,14 @@ from packages.orchestration.mission_state import (
     list_missions,
     list_missions_safe,
     load_mission,
-    mission_dir_for_project,
     mission_job_state_label,
     project_ids_with_missions,
+    repo_mission_lock,
     save_mission,
 )
 
-LOCK_FILENAME = ".repo-mission.lock"
-
-#: The kinds of order a batch records: one that builds, and one that only reads (DECISION
-#: amend1011b D7); a read-only order adds no build job.
+#: The kind of order a batch records; every order accepted today builds.
 ORDER_KIND_BUILD = "build"
-ORDER_KIND_READ_ONLY = "read_only"
 
 
 class RepoMissionError(MissionError):
@@ -118,19 +112,6 @@ def repo_key(project: Any, repo_root: str | Path) -> str:
         f"register it before giving it an order")
 
 
-@contextmanager
-def repo_mission_lock(project_id: str, root: Path | None = None) -> Iterator[None]:
-    """Hold the exclusive per-project lock that makes lookup, create and enqueue one step."""
-    directory = mission_dir_for_project(project_id, root)
-    directory.mkdir(parents=True, exist_ok=True)
-    fd = os.open(directory / LOCK_FILENAME, os.O_RDWR | os.O_CREAT, 0o600)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        yield
-    finally:
-        os.close(fd)
-
-
 def canonical_candidates(project_id: str, key: str, root: Path | None = None) -> list[Mission]:
     """The live missions that may be the repository's, canonical one first (DECISION amend1011b D1).
 
@@ -151,24 +132,40 @@ def canonical_candidates(project_id: str, key: str, root: Path | None = None) ->
 # ---------------------------------------------------------------------------
 
 
-def _seal(mission: Mission) -> tuple[MissionOrderBatch, ...]:
-    """The mission's batches with the current one sealed, a legacy order made a batch first."""
-    orders = mission.orders
+def seal_current_order_batch(mission: Mission) -> tuple[tuple[MissionOrderBatch, ...], tuple[MissionJobLink, ...]]:
+    """The mission's batches with the current one sealed, and its job links.
+
+    A legacy order is made a batch first, and the links without an order id take that batch's id,
+    as the reconcile gives them (R-1299). A last batch a fold already sealed is sealed again when
+    the mission's plan or contract changed after it, so the next order does not drop them (R-1285).
+    A batch no plan was made for, whose plan slot still holds the version the batch before it
+    sealed, seals no plan rather than that one (R-1298).
+    """
+    orders, links = mission.orders, mission.job_links
     if not orders and (mission.order is not None or mission.job_links):
         order = mission.order or MissionOrder(text=mission.goal)
+        legacy_id = f"legacy-{mission.id[:12]}"
         orders = (MissionOrderBatch(
-            order_id=f"legacy-{mission.id[:12]}", text=order.text, source_path=order.source_path,
+            order_id=legacy_id, text=order.text, source_path=order.source_path,
             source_sha256=order.source_sha256, created_at=mission.created_at),)
-    if not orders or orders[-1].sealed is not None:
-        return orders
+        links = tuple(replace(link, order_id=link.order_id or legacy_id) for link in links)
+    if not orders:
+        return orders, links
     plan = mission.mission_plan
+    version = int((plan or {}).get(PLAN_VERSION_KEY, 0))
     # The chain stays in the mission's plan slot; a sealed batch keeps its own body only
     # (operator amendment amend1014-luna-mission-fixes A.1), so the record grows by one plan.
     body = ({k: v for k, v in plan.items() if k != PLAN_VERSIONS_KEY}
             if isinstance(plan, dict) else plan)
-    sealed = {"sealed_at": _utc_now(), "plan_version": int((plan or {}).get(PLAN_VERSION_KEY, 0)),
-              "plan": body, "contract": mission.contract}
-    return (*orders[:-1], replace(orders[-1], sealed=sealed))
+    before = orders[-2].sealed if len(orders) > 1 else None
+    if before is not None and before.get("plan_version") == version:
+        body = None
+    last = orders[-1].sealed
+    if last is not None and last.get("plan") == body and last.get("contract") == mission.contract:
+        return orders, links
+    sealed = {"sealed_at": _utc_now(), "plan_version": version, "plan": body,
+              "contract": mission.contract}
+    return (*orders[:-1], replace(orders[-1], sealed=sealed)), links
 
 
 def _target_commit(repo_root: str | Path) -> str:
@@ -182,14 +179,15 @@ def _target_commit(repo_root: str | Path) -> str:
     return proc.stdout.strip() if proc.returncode == 0 else ""
 
 
-def _find_or_create(project: Any, key: str, root: Path | None) -> Mission:
-    """The repository's mission, created only when it has none; the caller holds the lock."""
+def _find_or_create(project: Any, key: str, root: Path | None) -> tuple[Mission, bool]:
+    """The repository's mission and whether this call created it, which it does only when
+    there is none; the caller holds the lock."""
     project_id = str(project.id)
     candidates = canonical_candidates(project_id, key, root)
     if candidates:
-        return candidates[0]
+        return candidates[0], False
     return create_mission(
-        project_id, f"Maintain {getattr(project, 'slug', None) or project.name}", root=root)
+        project_id, f"Maintain {getattr(project, 'slug', None) or project.name}", root=root), True
 
 
 def ensure_repo_mission(project: Any, repo_root: str | Path, *,
@@ -197,12 +195,11 @@ def ensure_repo_mission(project: Any, repo_root: str | Path, *,
     """The repository's one mission and whether this call created it; no order is added."""
     key = repo_key(project, repo_root)
     with repo_mission_lock(str(project.id), root):
-        existing = canonical_candidates(str(project.id), key, root)
-        mission = _find_or_create(project, key, root)
+        mission, created = _find_or_create(project, key, root)
         if mission.repo != key:
             mission = replace(mission, repo=key)
             save_mission(mission, root)
-    return mission, not existing
+    return mission, created
 
 
 def _refusal(mission: Mission | None) -> str:
@@ -233,18 +230,19 @@ def accept_order(project: Any, repo_root: str | Path, order: MissionOrder, *,
     project_id = str(project.id)
     key = repo_key(project, repo_root)
     with repo_mission_lock(project_id, root):
-        mission = _find_or_create(project, key, root)
-        if _refusal(mission):
-            raise RepoMissionError(_refusal(mission))
+        mission, _created = _find_or_create(project, key, root)
+        if refusal := _refusal(mission):
+            raise RepoMissionError(refusal)
         reopened = mission.status if mission.status == MISSION_STATUS_ACHIEVED else ""
         batch = MissionOrderBatch(
             order_id=uuid4().hex, text=order.text, source_path=order.source_path,
             source_sha256=order.source_sha256, created_at=_utc_now(),
             target_commit=_target_commit(repo_root), kind=kind, budgets=budgets,
-            correlation_id=correlation_id, reopened_from=reopened)
+            correlation_id=correlation_id, reopened_from=reopened, repo_path=str(repo_root))
+        orders, links = seal_current_order_batch(mission)
         mission = replace(
             mission, repo=key, status=MISSION_STATUS_ACTIVE, order=order, contract=None,
-            orders=(*_seal(mission), batch))
+            orders=(*orders, batch), job_links=links)
         save_mission(mission, root)
     return mission, batch
 
@@ -259,8 +257,8 @@ def accept_order_in_each(targets: list[tuple[Any, str]], order: MissionOrder, *,
     (DECISION amend1011b D4). Answers each project id's (mission id, order id).
     """
     for project, repo_root in targets:
-        if order_refusal(project, repo_root, root):
-            raise RepoMissionError(order_refusal(project, repo_root, root))
+        if refusal := order_refusal(project, repo_root, root):
+            raise RepoMissionError(refusal)
     correlation = uuid4().hex if len(targets) > 1 else ""
     accepted: dict[str, tuple[str, str]] = {}
     for project, repo_root in targets:
@@ -295,6 +293,27 @@ def unlink_order_jobs(project_id: str, mission_id: str, job_ids: list[str],
     return mission
 
 
+def withdraw_order_batch(project_id: str, mission_id: str, order_id: str,
+                         root: Path | None = None) -> Mission:
+    """Take back an order whose planning failed (R-1298): its batch leaves the mission and the
+    current-order slots return to the order before it, so no empty batch stays current. Only
+    the last batch, and only while no job is linked to it, is taken back."""
+    with repo_mission_lock(project_id, root):
+        mission = load_mission(project_id, mission_id, root)
+        if (not mission.orders or mission.orders[-1].order_id != order_id
+                or any(link.order_id == order_id for link in mission.job_links)):
+            return mission
+        batch, rest = mission.orders[-1], mission.orders[:-1]
+        previous = rest[-1] if rest else None
+        order = (MissionOrder(text=previous.text, source_path=previous.source_path,
+                              source_sha256=previous.source_sha256) if previous else None)
+        contract = (previous.sealed or {}).get("contract") if previous else None
+        mission = replace(mission, orders=rest, order=order, contract=contract,
+                          status=batch.reopened_from or mission.status)
+        save_mission(mission, root)
+    return mission
+
+
 def order_batch_view(mission: Mission) -> list[dict[str, Any]]:
     """One row per batch, oldest first, with the jobs the chain attributes to it (DECISION amend1011b D3)."""
     rows = []
@@ -314,6 +333,14 @@ def order_batch_view(mission: Mission) -> list[dict[str, Any]]:
 def project_repo_root(project: Any) -> str:
     """The repository a project's one mission is for: its canonical one, else its first, else ""."""
     return str(project.canonical_repo_path or (project.repo_paths[0] if project.repo_paths else ""))
+
+
+# WHY: a mission of a project's second repository continues its work there, not in the project's
+# canonical one (DECISION F307 D11).
+def mission_repo_root(mission: Mission) -> str:
+    """The repository *mission*'s own work continues in: its newest recorded order, else the
+    project's repository as :func:`project_repo_root` reads it."""
+    return mission.order_repo_path() or project_repo_root(project_by_id(mission.project_id))
 
 
 def ensure_project_mission(project_id: str, *, root: Path | None = None) -> tuple[Mission, bool]:

@@ -4,7 +4,7 @@ Read-only: shows who did what in a job under its mission — every recorded acti
 operator on the job or one of its tasks, every default the operator accepted and every choice
 Remedy's planner made — one plain sentence each, read through
 `ownership_phrases.ownership_view`, the SAME view the browser's `ownership` read route answers
-(`packages/orchestration/ui_server.py`), so the CLI and the browser can never say two
+(`packages/orchestration/serve_http_handler.py`), so the CLI and the browser can never say two
 different things about who did what. Never writes.
 
 Exit codes follow the CLI contract (docs/guides/exit-codes.md): 3 when the job's record

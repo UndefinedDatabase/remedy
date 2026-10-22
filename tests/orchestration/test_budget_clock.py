@@ -197,7 +197,7 @@ def _resumed_job(tmp_path, *, last_active_ago):
 
 def _run(job):
     from packages.orchestration.pingpong_job import _persist_job, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     _persist_job(job)
     return run_job(job.job_id, builder_provider=FakeProvider(pass_on_round=1, fail_on_round=99),

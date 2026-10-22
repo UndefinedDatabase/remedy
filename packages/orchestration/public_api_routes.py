@@ -50,6 +50,9 @@ class PublicApiRoute:
     #: The body keys a write route passes as its twin's positional arguments, after `--` and in
     #: this order (DECISION F303 D3 (1)); `()` for a route whose body keys are all options.
     positional_body: tuple[str, ...] = ()
+    #: The options a `starts_run` route always passes to its twin, before the ones its body gives
+    #: (DECISION F307 D22); `()` for every other route.
+    run_options: tuple[str, ...] = ()
 
 
 #: Every route this registry publishes. A test pins each one by name, so an unpinned addition
@@ -118,7 +121,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "decisions answered, the missions and the applies, with the cursor for the next "
             "read, as `remedy client changes --since <cursor> --json` prints it; without "
             "`since` only a cursor is given. For a client token it lists only what belongs to the "
-            "client's own projects."
+            "client's own projects. A job's `cost`, `calls` and `tokens` come from the cost ledger, "
+            "which this read does not watch: they refresh when the job itself is listed again, and "
+            "the digest always has them (R-1305)."
         ),
     ),
     PublicApiRoute(
@@ -364,7 +369,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "<job> --json` prints it: `order`, `state` and `state_detail`, `next` with the one "
             "next step and the route that takes it, `end` with the way out of a job that is still open "
             "(since 1.21), the five `steps` with the job's tasks under "
-            "`building`, `changes`, `numbers` (null where not measured) and `note_open`. Every "
+            "`building`, `changes`, `dirty_start` (since 1.27), `numbers` (null where not "
+            "measured) and `note_open`. Every "
             "word is in the `story` key of `GET /api/v1/interface`. A job id prefix is accepted, "
             "and a client token reads only a job of one of its projects (403 "
             "`api_client_policy_refused`)."
@@ -450,13 +456,30 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "`null` until the run ends, and `state` and `answer` as the route above reads them. "
             "`builder_provider` and `reviewer_provider` each pass "
             "`--builder-provider=<value>` and `--reviewer-provider=<value>`, a provider HTTP does not "
-            "offer refused with 400 `api_provider_not_offered`; no other option of "
-            "`remedy job run` is offered over HTTP. A job id prefix is accepted. A client waits "
+            "offer refused with 400 `api_provider_not_offered`; of the other options of "
+            "`remedy job run` only `--retry` is offered over HTTP, by the route below. A job id "
+            "prefix is accepted. A client waits "
             "for the run's end by polling the route above until `state` is not `running`. "
             "Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a "
             "record that cannot be read), `ambiguous_job_id` 400, `job_already_running` 409, "
             "`api_command_failed` 500 when the run cannot start, and "
             "`api_client_policy_refused` 403 for a client token's job outside its projects."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/jobs/{job}/retry",
+        twin="job.run",
+        body=(("builder_provider", "string"), ("reviewer_provider", "string")),
+        starts_run=True,
+        run_options=("--retry",),
+        description=(
+            "Retries a job a run left blocked: starts its run as `POST /api/v1/jobs/{job}/run` "
+            "does, as `remedy job run <job> --retry <options> --json` would, so the job's tasks "
+            "that ended blocked or failed, and the tasks the block skipped after them, go back to "
+            "pending first and run again. The body, the answer, the poll and the refusals are the "
+            "run route's own; a job that is not blocked, or has no such task, runs as that route "
+            "runs it. The story's `retry` names this route."
         ),
     ),
 )

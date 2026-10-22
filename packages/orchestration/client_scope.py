@@ -25,9 +25,9 @@ def client_project_ids(client: Any) -> frozenset[str]:
     the client's when its `project_id` is one of them. A listed name no project answers to adds
     nothing, so a client of no registered project reads no job."""
     from packages.orchestration.api_clients import client_lists_project
-    from packages.orchestration.project_registry import _list_projects_readonly
+    from packages.orchestration.project_registry import list_projects_readonly
 
-    return frozenset(str(project.id) for project in _list_projects_readonly()
+    return frozenset(str(project.id) for project in list_projects_readonly()
                      if client_lists_project(client, (project.slug or "", str(project.id))))
 
 

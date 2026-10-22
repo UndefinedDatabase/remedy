@@ -187,7 +187,7 @@ def test_a_pause_envelope_on_the_socket_is_recorded_with_the_command_lines_sourc
 
 
 def test_only_the_socket_handler_records_a_source_the_client_names():
-    from packages.orchestration.ui_server import COMMAND_EFFECT_SOURCE, _RemedyHandler
+    from packages.orchestration.serve_http_handler import COMMAND_EFFECT_SOURCE, _RemedyHandler
 
     cockpit, socket_handler = _RemedyHandler, SD.socket_handler_class("t")
     assert cockpit._effect_source_from(cockpit, {"source": "x"}) == COMMAND_EFFECT_SOURCE
@@ -203,7 +203,7 @@ def test_a_repeated_nonce_is_answered_from_the_record_as_the_door_answers_it(roo
 
 
 def test_a_command_the_door_does_not_expose_is_refused_as_the_door_refuses_it(root, running):
-    from packages.orchestration.ui_server import COMMAND_NOT_EXPOSED_MESSAGE
+    from packages.orchestration.serve_http_handler import COMMAND_NOT_EXPOSED_MESSAGE
 
     status, body = SD.post_command(root, _job(), {"command": "do.run", "client_nonce": "n-1"})
     assert (status, body) == (400, {"error": COMMAND_NOT_EXPOSED_MESSAGE, "field": "command"})
@@ -274,7 +274,7 @@ def _ended(root: Path, job_id: str) -> SR.RunRecord:
 
 
 def test_only_the_socket_handler_with_a_launcher_accepts_job_run(root):
-    from packages.orchestration.ui_server import _RemedyHandler
+    from packages.orchestration.serve_http_handler import _RemedyHandler
 
     def bare(cls):
         """An instance that never ran the HTTP handler's constructor."""
@@ -428,7 +428,7 @@ def test_the_api_port_without_the_token_is_401(root, running_with_api):
 
 @pytest.mark.parametrize("method,path", [
     (method, path)
-    for method in ("GET", "POST", "PUT", "DELETE")
+    for method in ("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
     for path in ("/", "/api", "/api/state", "/index.html",
                  "/api/jobs/any-job/commands", "/api/v2/health")
 ])
@@ -629,7 +629,7 @@ def test_a_post_with_a_query_string_is_400_and_runs_nothing(root, running_with_a
 def test_a_post_declaring_a_body_above_the_ceiling_is_400_and_runs_nothing(
         root, running_with_api):
     """R-1194: a body above `COMMAND_REQUEST_MAX_BYTES` is refused before it is read."""
-    from packages.orchestration.ui_server import COMMAND_REQUEST_MAX_BYTES
+    from packages.orchestration.serve_http_handler import COMMAND_REQUEST_MAX_BYTES
 
     token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
     job_id, decision_id = _job_with_open_decision()

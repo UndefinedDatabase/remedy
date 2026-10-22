@@ -30,6 +30,7 @@ from apps.cli.commands.run_invocation import (
 from apps.cli.commands.run_report_cmd import _cmd_run_list, _cmd_run_show
 from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.do_role_guards import non_writing_provider_refusal, unrepresentable_baseline
+from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
 
 if TYPE_CHECKING:
     import argparse
@@ -42,8 +43,7 @@ _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 # CLI accepts --<role>-provider / --<role>-model / --<role>-effort for the
 # builder, reviewer, and repair roles. Values are validated at the CLI layer
 # before being passed through to role_config.resolve_role_config.
-# Exactly the names create_provider (packages/orchestration/pingpong_provider.py) builds.
-_VALID_ROLE_PROVIDERS = frozenset({"ollama", "claude", "claude-cli", "fake", "pi"})
+# The provider names are ROLE_PROVIDER_NAMES, spelled once in provider_names.py (R-1288).
 _VALID_ROLE_EFFORTS = frozenset({"low", "medium", "high", "max"})
 _ROLE_OVERRIDE_ROLES = ("builder", "reviewer", "repair")
 
@@ -58,8 +58,8 @@ def _validate_role_override(role: str, field: str, value: object) -> None:
     if value is None:
         return
     if field == "provider" and (why := (
-            f"invalid --{role}-provider: {value!r}. Allowed: {', '.join(sorted(_VALID_ROLE_PROVIDERS))}."
-            if value not in _VALID_ROLE_PROVIDERS else non_writing_provider_refusal(role, str(value)))):
+            f"invalid --{role}-provider: {value!r}. Allowed: {', '.join(sorted(ROLE_PROVIDER_NAMES))}."
+            if value not in ROLE_PROVIDER_NAMES else non_writing_provider_refusal(role, str(value)))):
         fail("invalid_argument", why, json_output=False, exit_code=2)
     if field == "effort" and value not in _VALID_ROLE_EFFORTS:
         fail(
@@ -453,7 +453,7 @@ def _cmd_do(
                  json_output=json_output, exit_code=2)
     # DECISION F304 D6: one order file is run by one mission at a time, unless a new one is asked.
     if order_source_kwargs and not new_mission:
-        from packages.orchestration.mission_state import running_mission_for_order_file
+        from packages.orchestration.repo_mission import running_mission_for_order_file
 
         source_path = order_source_kwargs["order_source_path"]
         running = running_mission_for_order_file(source_path)
@@ -497,13 +497,10 @@ def _cmd_job_run(
     reviewer_model: str | None = None,
     reviewer_effort: str | None = None,
     repair_provider: str | None = None,
-    repair_model: str | None = None,
-    repair_effort: str | None = None,
-    max_total_tokens: str | None = None,
-    max_provider_calls: str | None = None,
-    max_wall_clock_minutes: str | None = None,
-    max_cost_usd: str | None = None,
-    deadline: str | None = None,
+    repair_model: str | None = None, repair_effort: str | None = None,
+    max_total_tokens: str | None = None, max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None, max_cost_usd: str | None = None,
+    deadline: str | None = None, retry: bool = False,
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
 
@@ -515,7 +512,7 @@ def _cmd_job_run(
     `job_blocked`, `job_failed` or `job_stopped_by_budget`, every key of its report
     beside the token, and exit 1; every other end — completed, paused at the operator's
     request or at `--tasks`, stopped at the operator's request — answers as before
-    (R-1184, DECISION F304 D8).
+    (R-1184, DECISION F304 D8). ``retry`` first puts a blocked job's stuck tasks back (R-1331).
     """
     from apps.cli.commands.run_invocation import RunInvocation
 
@@ -576,35 +573,16 @@ def _cmd_job_run(
             fail("invalid_budget", str(exc), json_output=json_output, exit_code=2)
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
-    from packages.orchestration.pingpong_job import (
-        export_job_report,
-        job_resume_refusal,
-        load_job_plan,
-        run_job,
-    )
-
-    # R-0913: a job whose recorded worktree cannot be continued is refused with
-    # resume_job_plan's own words, before anything runs or the record is touched.
-    _recorded = load_job_plan(job_id)
-    _refusal = job_resume_refusal(_recorded) if _recorded is not None else ""
-    if _refusal:
-        fail("job_not_resumable", _refusal, json_output=json_output)
-
-    # DECISION F295 D12 (3): a cancelled job never runs again, beside the
-    # R-0913 refusal above and before anything runs or is forwarded.
+    from apps.cli.commands.job_run_refusals import refuse_job_run_before_it_starts
     from packages.core.models import RunState
-    if _recorded is not None and _recorded.state == RunState.CANCELLED:
-        fail(
-            "job_not_resumable",
-            f"job {job_id} is cancelled and never runs again.",
-            json_output=json_output,
-        )
-    if _recorded is not None:
-        from apps.cli.commands.job_run_refusals import refuse_unapproved_job_run
-        refuse_unapproved_job_run(_recorded, job_id, json_output=json_output)
-        from packages.orchestration.do_rehearsal import rehearsal_staleness_warning
-        if (warning := rehearsal_staleness_warning(_recorded)):
-            print(warning, file=sys.stderr)
+    from packages.orchestration.job_report import export_job_report
+    from packages.orchestration.job_retry import retry_blocked_job_tasks
+    from packages.orchestration.pingpong_job import run_job
+
+    # DECISION F307 D22: step (1) of this function's boundary, every refusal before anything runs.
+    _recorded = refuse_job_run_before_it_starts(job_id, json_output=json_output)
+    if retry and _recorded is not None:    # R-1331: the stuck tasks go back to pending first.
+        retry_blocked_job_tasks(_recorded)
 
     # DECISION F200 D5: a plain `job run <job>` on a job that exists runs in the serve
     # supervisor while one answers, and this command follows it to its end; any other
@@ -657,7 +635,7 @@ def _cmd_job_run(
     if json_output:
         report["cost_mirror"] = cost_mirror
     else:
-        from packages.orchestration.pingpong_job import format_job_report_text
+        from packages.orchestration.job_report import format_job_report_text
         print(format_job_report_text(job))
         if cost_mirror["ledger_mirrored"]:
             print("Cost recorded to the ledger. See: remedy stats cost")
@@ -967,6 +945,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
         max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
+        retry=bool(getattr(args, "retry", False)),
     ),
     "job.apply": lambda args: _cmd_job_apply(
         args.job_id,

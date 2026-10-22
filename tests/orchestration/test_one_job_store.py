@@ -117,8 +117,8 @@ class TestNoWhichStoreBranchSurvives:
         assert _files_containing(PHRASE, "packages", casefold=True) == []
 
     def test_the_cockpit_adapters_are_gone(self):
-        ui_server = importlib.import_module("packages.orchestration.ui_server")
-        assert [name for name in ADAPTERS if hasattr(ui_server, name)] == []
+        serve_http_handler = importlib.import_module("packages.orchestration.serve_http_handler")
+        assert [name for name in ADAPTERS if hasattr(serve_http_handler, name)] == []
         for name in ADAPTERS:
             assert _files_containing(name, "packages", "apps", "tests", "scripts") == [], name
-        assert hasattr(ui_server, "_RemedyHandler")
+        assert hasattr(serve_http_handler, "_RemedyHandler")

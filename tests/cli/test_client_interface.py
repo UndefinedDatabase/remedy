@@ -96,7 +96,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.25"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.27"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -470,7 +470,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
             "repair_rounds_allowed", "repair_rounds_source", "repo_path", "result_diff", "status",
             "target_guard", "tasks", "warning", "worktree",
         }),
-        "the keys export_job_report in packages/orchestration/pingpong_job.py returns, and the "
+        "the keys export_job_report in packages/orchestration/job_report.py returns, and the "
         "cost_mirror _cmd_job_run stores into that report",
     ),
     "apps.cli.commands.do_cmd:_cmd_job_apply:**export_job_apply_json(result)": (
@@ -581,8 +581,8 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
-            "changes", "end", "ended_at", "job_id", "next", "note_open", "numbers", "order",
-            "started_at", "state", "state_detail", "steps", "updated_at", "verification",
+            "changes", "dirty_start", "end", "ended_at", "job_id", "next", "note_open", "numbers",
+            "order", "started_at", "state", "state_detail", "steps", "updated_at", "verification",
         }),
         "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
         "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",
@@ -739,7 +739,7 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
 
     sites = {site: keys for site, (keys, _why) in UNRESOLVED_ANSWER_SITES.items()}
     assert sites["apps.cli.commands.do_cmd:_cmd_job_run:**report"] == (
-        _returned_dict_keys("packages/orchestration/pingpong_job.py", "export_job_report")
+        _returned_dict_keys("packages/orchestration/job_report.py", "export_job_report")
         | _stored_keys("apps/cli/commands/do_cmd.py", "_cmd_job_run", "report"))
     assert sites["apps.cli.commands.do_cmd:_cmd_job_apply:**export_job_apply_json(result)"] == (
         _returned_dict_keys("packages/orchestration/job_apply.py", "export_job_apply_json"))
@@ -906,19 +906,20 @@ def _dict_value_keys(path: str, function: str, key: str) -> set[str]:
 
 def test_the_job_run_answer_trees_name_exactly_what_their_code_builds():
     pingpong = "packages/orchestration/pingpong_job.py"
+    report = "packages/orchestration/job_report.py"
     trees = ANSWER_KEY_TREES["job.run"]
     assert trees is JOB_REPORT_KEY_TREES
     tasks = trees["tasks"]
-    assert set(tasks) == _bound_dict_keys(_function_def(pingpong, "export_job_report"), "report")
+    assert set(tasks) == _bound_dict_keys(_function_def(report, "export_job_report"), "report")
     assert set(tasks["apply_manifest"]) == _returned_dict_keys(pingpong, "_export_apply_manifest")
     assert set(tasks["apply_manifest"]["applied_file_proofs"]) == (
         _returned_dict_keys(pingpong, "_export_file_proof"))
     assert set(tasks["proof_summary"]) == _returned_dict_keys(pingpong, "_export_proof_summary")
-    assert set(tasks["veto"]) == _dict_value_keys(pingpong, "export_job_report", "veto")
+    assert set(tasks["veto"]) == _dict_value_keys(report, "export_job_report", "veto")
     assert set(tasks["steering_not_consumed"]) == _dict_literal_keys(
-        _REPO_ROOT / pingpong, "_task_steering_not_consumed_map")
+        _REPO_ROOT / report, "_task_steering_not_consumed_map")
     for key in ("worktree", "result_diff", "postmortem", "context_strategy"):
-        assert set(trees[key]) == _dict_value_keys(pingpong, "export_job_report", key), key
+        assert set(trees[key]) == _dict_value_keys(report, "export_job_report", key), key
     assert trees["execution_config"] is EXECUTION_CONFIG_KEY_TREE
     assert set(EXECUTION_CONFIG_KEY_TREE) == _returned_dict_keys(
         "packages/orchestration/execution_config.py", "_export_execution_config")
@@ -1744,7 +1745,7 @@ def test_the_writer_replaces_only_the_generated_section(tmp_path):
 #: The sha256 of `tests/cli/test_machine_client_contract.py`, F295's gate test, as F295 accepted it
 #: and as F298 keeps it (R-1179). A change to that file is deliberate: it updates this digest in the
 #: same commit and its DECISION says why.
-F295_GATE_TEST_SHA256 = "dfe3d5b0f1d8d720fc4a0d2ff64c6ff3eeb67b3f69f1e0d5e3e9b1af8d768423"
+F295_GATE_TEST_SHA256 = "931a8dc550869dfb914a4c04b6cb74c7d5db780c67416421d1cf3d9ddc774929"
 
 
 def test_f295s_gate_test_is_unchanged():

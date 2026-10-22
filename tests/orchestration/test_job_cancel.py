@@ -33,7 +33,7 @@ from packages.orchestration.pingpong_job import (
     run_job,
     save_job_plan,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.safe_points import request_stop, stop_requested, stop_status
 
 _TWO_TASK_JOB = """\

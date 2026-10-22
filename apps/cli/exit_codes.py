@@ -36,7 +36,8 @@ class ExitCodeMeaning(NamedTuple):
 
 #: The floor every command reaches (D12 (4)): the argument parser exits 2 on a
 #: malformed invocation, and the dispatch boundary exits 1 on an unhandled
-#: exception, before a single line of any handler runs. 0, 1 and 2 therefore
+#: exception and 2 on a remedy.toml that cannot be read (R-1313), before a
+#: single line of any handler runs. 0, 1 and 2 therefore
 #: need no per-command declaration; only a code above this floor does.
 EXIT_CODE_FLOOR: tuple[int, ...] = (0, 1, 2)
 
@@ -55,9 +56,9 @@ CLI_EXIT_CODES: tuple[ExitCodeMeaning, ...] = (
     ),
     ExitCodeMeaning(
         2, "usage",
-        "The invocation itself is wrong — an unknown command, or a missing, "
-        "invalid, unrecognised or conflicting argument — and nothing was "
-        "attempted.",
+        "The invocation itself is wrong — an unknown command, a missing, "
+        "invalid, unrecognised or conflicting argument, or a remedy.toml that "
+        "cannot be read — and nothing was attempted.",
     ),
     ExitCodeMeaning(
         3, "not_ready",

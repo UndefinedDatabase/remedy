@@ -36,7 +36,7 @@ from packages.orchestration.budget_guard import (
     predict_next_task_cost,
 )
 from packages.orchestration.budget_resolution import PredictiveBudgetConfig
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.token_economy import TokenBand
 
 UTC = timezone.utc
@@ -781,7 +781,7 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
             parse_job_file,
             run_job,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         class _Counted(FakeProvider):
             @property
@@ -819,7 +819,7 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
         # R-1007: two rounds reviewed and failed, the third round's builder call is the
         # fifth and last the budget allows, so the stop lands before its reviewer call.
         from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan, parse_job_file, run_job
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         class _Counted(FakeProvider):
             @property
@@ -840,12 +840,12 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
     def test_a_timed_out_builder_call_is_recorded_as_a_timeout(
             self, isolate_data_root, demo_repo, monkeypatch):
         # R-1016, R-1027 and R-1035: the provider was there and the call ran out of time.
-        from packages.orchestration import pingpong_loop
+        from packages.orchestration import pingpong_provider_call
         from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         from packages.orchestration.self_use_findings import describe_self_use_run_defects
 
-        monkeypatch.setattr(pingpong_loop._time, "sleep", lambda _s: None)
+        monkeypatch.setattr(pingpong_provider_call._time, "sleep", lambda _s: None)
         error = "provider_error: RuntimeError: claude CLI timed out after 120s"
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         run_job(job.job_id, builder_provider=FakeProvider(builder_error=error),
@@ -860,7 +860,7 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
 
     def test_a_missing_provider_still_reads_unavailable(self, isolate_data_root, demo_repo):
         from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         run_job(job.job_id, builder_provider=FakeProvider(builder_error="claude: command not found"),

@@ -55,7 +55,7 @@ def test_t20_stays_selected():
 
 
 def test_no_file_in_packages_is_excused_whole():
-    """`ui_server.py` was the last, for its frontend build's output; that build was deleted
+    """`serve_http_handler.py` was the last, for its frontend build's output; that build was deleted
     (amend1015f D3), so no file under packages/ prints freely any more."""
     text = (REPO / "pyproject.toml").read_text(encoding="utf-8")
     section = text.split("[tool.ruff.lint.per-file-ignores]", 1)[1].split("\n[", 1)[0]

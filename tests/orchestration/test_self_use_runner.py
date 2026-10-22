@@ -16,7 +16,7 @@ import pytest
 
 import packages.orchestration.self_use_runner as self_use_runner
 from packages.orchestration.pingpong_job import JOB_COMPLETED, TASK_APPLIED
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.role_config import DEFAULT_PROVIDER, RoleConfig
 from packages.orchestration.self_use_runner import SelfUseRunError, run_next_self_use_item
 

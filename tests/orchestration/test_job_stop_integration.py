@@ -34,7 +34,7 @@ from packages.orchestration.pingpong_job import (
     parse_job_file,
     run_job,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.safe_points import (
     request_stop,
     stop_archive_dir,
@@ -489,7 +489,7 @@ import sys, time
 from pathlib import Path
 sys.path.insert(0, {repo!r})
 from packages.orchestration.pingpong_job import parse_job_file, run_job
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 
 class SlowProvider(FakeProvider):

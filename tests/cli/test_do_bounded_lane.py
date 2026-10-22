@@ -84,7 +84,7 @@ def events(monkeypatch) -> list[str]:
     """The walk's ordered events: ``builder``, ``reviewer`` and ``progress: <line>``."""
     log: list[str] = []
     from packages.orchestration import do_progress
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     for method, name in (("build", "builder"), ("review", "reviewer")):
         original = getattr(FakeProvider, method)

@@ -11,9 +11,11 @@ The module sits under `packages/` rather than `apps/cli/commands/` because its
 steps call package functions and must be testable without the CLI.
 
 Scope: init registers and ignores and writes no file into the repository
-(D2); study runs once, on a non-empty repository only (D3); plan creates the
-mission record for the order, writes the contract template forced or proposed
-onto it (DECISION F269 D1 (4)), plans it and keeps the plan (D4, D5); shape reads
+(D2); study runs once, on a non-empty repository only (D3); plan accepts the
+order as a batch of the one lasting mission of each repository it touches,
+creating that mission only once (DECISION amend1011b D1 to D4), writes the
+contract template forced or proposed onto its current order (DECISION F269 D1
+(4)), plans it and keeps the plan (D4, D5); shape reads
 "one job" or "milestones" from that plan, `--force-job` / `--force-mission`
 overriding it, and plans the jobs, each bounded by deliverables (D5, D6); the ui
 step that opened the old cockpit is gone and `--no-ui` does nothing (operator amendment
@@ -694,7 +696,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
                 write_template_contract(str(target.id), ctx.project_missions[str(target.id)][0],
                                         template)
     except (ContractTemplateError, ContractError, MissionError) as exc:
-        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
+        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}" + _withdraw_unplanned_order(ctx)
     contract_note = (f"contract template {template}, {how}" if template is not None
                      else "no contract template, none proposed from the order")
 
@@ -720,7 +722,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         outcome = plan_mission(project_id, ctx.mission_id, call_fn, repo_root=ctx.repo_root,
                                provider=planner_name, provider_kind=planner_name)
     except (MissionPlanInProgressError, MissionError) as exc:
-        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
+        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}" + _withdraw_unplanned_order(ctx)
     kept_note = ""
     if call_fn is not None:
         outcome, kept_note = _deterministic_plan_for_invented_scope(ctx, project_id, outcome, planner_name)
@@ -730,6 +732,16 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         f"mission {ctx.mission_id} plan v{outcome.version} ({outcome.source}, "
         f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}; "
         f"lane: {lane.lane} ({lane.reason}){kept_note}; {contract_note}")
+
+
+def _withdraw_unplanned_order(ctx: DoContext) -> str:
+    """Take the order back out of every mission that accepted it, when its planning failed; the
+    note for the step's detail (R-1298, DECISION F307 D10)."""
+    from packages.orchestration.repo_mission import withdraw_order_batch
+
+    for project_id, (mission_id, order_id) in ctx.project_missions.items():
+        withdraw_order_batch(project_id, mission_id, order_id)
+    return "; the order was taken back out of its mission(s), so no unplanned order stays current"
 
 
 def _deterministic_plan_for_invented_scope(
@@ -765,12 +777,12 @@ def _stop_unrun_shape_jobs(ctx: DoContext) -> str:
     """
     from datetime import datetime, timezone
 
-    from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan, save_job_plan
+    from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan_safe, save_job_plan
     from packages.orchestration.repo_mission import unlink_order_jobs
 
     stopped: list[str] = []
     for job_id in ctx.job_ids:
-        job = load_job_plan(job_id)
+        job, _damaged = load_job_plan_safe(job_id)    # R-1311: a damaged record is passed over
         if job is None:
             continue
         job.state = JOB_STOPPED

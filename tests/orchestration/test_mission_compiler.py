@@ -1234,3 +1234,21 @@ class TestMissionPlanEvidenceSink:
         # here would go stale on the next edit to that file.
         planned = source.index("outcome = plan_mission(")
         assert 'provider_kind="ollama"' in source[planned:planned + 200]
+
+
+def test_a_plan_saved_during_the_planner_call_is_kept_as_a_version(planned_mission):
+    """R-1300, DECISION F307 D7: the version chain is read under the mission's lock after the
+    provider call, so a plan another writer saved during that call is kept, never overwritten."""
+    mission, call_fn = planned_mission
+    plan_mission("proj", mission.id, call_fn)
+
+    def racing(prompt: str, attempt: int) -> str:
+        first = load_mission("proj", mission.id).mission_plan
+        body = {k: v for k, v in first.items() if k != PLAN_VERSIONS_KEY}
+        set_mission_plan("proj", mission.id, {**body, PLAN_VERSIONS_KEY: [body], PLAN_VERSION_KEY: 2})
+        return call_fn(prompt, attempt)
+
+    third = plan_mission("proj", mission.id, racing)
+
+    assert third.version == 3
+    assert [v[PLAN_VERSION_KEY] for v in third.mission.mission_plan[PLAN_VERSIONS_KEY]] == [1, 2]

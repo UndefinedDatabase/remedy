@@ -1,5 +1,5 @@
 """F038 T002 and DECISION F038 D7 — the chat's send of a confirmed action card through the
-one write door, `POST /api/jobs/<id>/commands` in `packages/orchestration/ui_server.py`, as the
+one write door, `POST /api/jobs/<id>/commands` in `packages/orchestration/serve_http_handler.py`, as the
 `remedy serve start` supervisor answers it on its unix socket (DECISION amend1015f D20).
 
 Remedy deliberately does not let the chat run a command's effect itself: this module builds

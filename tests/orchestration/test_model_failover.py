@@ -20,17 +20,20 @@ from packages.orchestration.config import (
     get_key_spec,
     validate_config,
 )
-from packages.orchestration.failure_postmortem import is_provider_connection_error
-from packages.orchestration.model_failover import (
+from packages.orchestration.config_keys_model_routing import (
     FAILOVER_CHAINS_CONFIG_KEY,
     FAILOVER_COOLDOWN_CONFIG_KEY,
     FAILOVER_COOLDOWN_DEFAULT_S,
+)
+from packages.orchestration.failure_postmortem import is_provider_connection_error
+from packages.orchestration.model_failover import (
     FAILOVER_LINK_KEYS,
     FAILOVER_LOCAL_ROLES,
     FAILOVER_REASON_PROVIDER_UNAVAILABLE,
     FAILOVER_RULE_NAMES,
     LOCAL_PROVIDERS,
     RULE_CORE_ROLE_ON_LOCAL_PROVIDER,
+    FailoverCall,
     FailoverChainError,
     FailoverChainRefused,
     FailoverChainViolation,
@@ -55,6 +58,7 @@ from packages.orchestration.model_routing import (
     TASK_CLASS_TIERS,
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
+from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
 from packages.orchestration.provider_timeouts import is_nonzero_exit_error, is_timeout_error
 from packages.orchestration.rate_governor import is_rate_limit_error
 from packages.orchestration.role_config import KNOWN_ROLES
@@ -572,7 +576,7 @@ class _StubProvider:
         self.last_review_output: ReviewerOutput | None = None
         # An attribute besides name/supports_resume/build/review, for the test that a
         # FailoverProvider hands an arbitrary attribute through to its primary.
-        self.begin_stream_call = "primary-stream-hook"
+        self.extra_hook = "primary-hook"
 
     @property
     def name(self) -> str:
@@ -773,7 +777,7 @@ class TestFailoverProviderWalk:
         assert out.failover_disclosure.used is None
         assert [attempt.model for attempt in out.failover_disclosure.attempts] == ["m1", "m2"]
 
-    def test_review_walks_the_same_way_and_a_timed_out_link_is_returned_as_is(self):
+    def test_review_walks_the_same_way_and_a_timed_out_link_is_returned_serving_nothing(self):
         primary = _StubProvider(
             "claude-cli", review_error="provider_error: ConnectionError: connection refused",
         )
@@ -786,9 +790,12 @@ class TestFailoverProviderWalk:
         out = fp.review("look at it")
         assert out is link1.last_review_output
         assert out.error == "claude CLI timed out after 600s"
-        assert out.failover_disclosure.used.position == 1
+        # R-1286: a link whose answer is itself a failure serves nothing, holds nothing.
+        assert out.failover_disclosure.used is None
+        assert [a.error for a in out.failover_disclosure.attempts] == ["claude CLI timed out after 600s"]
+        assert _held_until(fp) == float("-inf")
 
-    def test_name_supports_resume_primary_links_and_other_attrs_reach_the_primary(self):
+    def test_name_supports_resume_and_other_attrs_reach_the_primary(self):
         primary = _StubProvider("claude-cli", supports_resume=True)
         link = FailoverLink("claude-cli", "m1", "mid")
         fp = FailoverProvider(
@@ -797,9 +804,7 @@ class TestFailoverProviderWalk:
         )
         assert fp.name == "claude-cli"
         assert fp.supports_resume is True
-        assert fp.primary is primary
-        assert fp.links == (link,)
-        assert fp.begin_stream_call == primary.begin_stream_call
+        assert fp.extra_hook == primary.extra_hook
 
     def test_supports_resume_is_false_when_the_primary_answers_false(self):
         primary = _StubProvider("claude-cli", supports_resume=False)
@@ -814,6 +819,294 @@ class TestFailoverProviderWalk:
 _DOWN = "provider_error: ConnectionError: connection refused"
 
 
+class _HintedStub(_StubProvider):
+    """A stub that records the stream hints and stable prefixes it is handed (R-1278)."""
+
+    def __init__(self, name, **kwargs) -> None:
+        super().__init__(name, **kwargs)
+        self.stream_calls: list[tuple[int, str]] = []
+        self.prefixes: list[str] = []
+
+    def begin_stream_call(self, round_no, kind="attempt"):
+        self.stream_calls.append((round_no, kind))
+
+    def offer_stable_prefix(self, prefix):
+        self.prefixes.append(prefix)
+
+
+class TestEveryRealCallIsBooked:
+    """R-1276: the walk attaches every real call behind its answer, in the order it made them."""
+
+    def test_a_backup_that_serves_carries_the_failed_primary_and_itself(self):
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("ollama", "small", "mid"),), build_link=lambda the_link: link_provider,
+        )
+        out = fp.build("p1")
+        assert out.failover_calls == (
+            FailoverCall("claude-cli", "sonnet", primary.last_build_output),
+            FailoverCall("ollama", "small", None),
+        )
+
+    def test_a_chain_that_runs_out_carries_every_link_after_the_primarys_own_answer(self):
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link1 = _StubProvider("l1", build_error=_DOWN)
+        chain = (FailoverLink("nope", "m0", "mid"), FailoverLink("ollama", "m1", "mid"))
+
+        def build_link(link):
+            if link.provider == "nope":
+                raise RuntimeError("Unknown provider: 'nope'")
+            return link1
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=chain, build_link=build_link,
+        )
+        out = fp.build("p1")
+        assert out is primary.last_build_output
+        assert out.failover_calls == (
+            FailoverCall("claude-cli", "sonnet", None),
+            FailoverCall("ollama", "m1", link1.last_build_output),
+        )
+
+    def test_a_primary_that_serves_carries_no_calls(self):
+        primary = _StubProvider("claude-cli")
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("ollama", "m1", "mid"),), build_link=lambda the_link: primary,
+        )
+        assert not hasattr(fp.build("p1"), "failover_calls")
+
+    def test_a_held_primary_that_serves_after_its_links_carries_them_all(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        fp.build("p1")
+        link_provider._build_error = _DOWN
+        primary._build_error = ""
+        clock.now = 10
+        out = fp.build("p2")
+        assert out is primary.last_build_output
+        assert out.failover_calls == (
+            FailoverCall("claude-cli", "opus", link_provider.last_build_output),
+            FailoverCall("claude-cli", "sonnet", None),
+        )
+
+
+class TestAStopBetweenLinksEndsTheChain:
+    """R-1287: the walk consults the run's stop probe before each link."""
+
+    def test_a_stop_signalled_after_the_first_link_calls_no_second(self):
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link1 = _StubProvider("l1", build_error=_DOWN)
+        link2 = _StubProvider("l2")
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("claude-cli", "m1", "mid"), FailoverLink("claude-cli", "m2", "mid")),
+            build_link=lambda link: link1 if link.model == "m1" else link2,
+            stop_check=lambda: "stopped" if link1.build_calls else None,
+        )
+        out = fp.build("p1")
+        assert out is primary.last_build_output
+        assert len(link1.build_calls) == 1
+        assert link2.build_calls == []
+        assert [a.model for a in out.failover_disclosure.attempts] == ["m1"]
+        assert out.failover_disclosure.used is None
+
+    def test_the_role_factory_hands_the_walk_the_stop_and_the_runs_table(self, tmp_path):
+        from packages.orchestration.role_provider_factory import create_role_provider
+
+        primary = _StubProvider("stub", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = create_role_provider(
+            "stub", role="builder", staging_dir=str(tmp_path),
+            make_provider=lambda name, model="": primary if name == "stub" else link_provider,
+            chains={"builder": (FailoverLink("ollama", "small", "mid"),)},
+            stop_check=lambda: "stopped",
+        )
+        assert isinstance(fp, FailoverProvider)
+        assert fp.build("p1") is primary.last_build_output
+        assert link_provider.build_calls == []
+
+
+class TestTheRunReadsTheChainsOnce:
+    """R-1289 and R-1287: a run reads the failover table once and hands it, with its stop probe, to
+    the providers of both roles."""
+
+    def test_both_roles_get_one_table_read_and_the_runs_stop_probe(self, monkeypatch, tmp_path):
+        import packages.orchestration.pingpong_loop as loop
+        import packages.orchestration.role_provider_factory as factory
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        reads = []
+        table: dict = {}
+        monkeypatch.setattr(loop, "resolve_failover_chains", lambda: reads.append(1) or table)
+
+        def no_second_read():
+            raise AssertionError("the factory read the failover table again")
+
+        monkeypatch.setattr(factory, "resolve_failover_chains", no_second_read)
+        seen = []
+        original = loop._create_provider_with_cwd
+
+        def recording(name, *, role, **options):
+            seen.append((role, options.get("chains"), options.get("stop_check")))
+            return original(name, role=role, **options)
+
+        monkeypatch.setattr(loop, "_create_provider_with_cwd", recording)
+
+        def stop_check():
+            return None
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Demo\n")
+        loop.run_pingpong("Fix README", str(repo), builder_name="fake", reviewer_name="fake",
+                          stop_check=stop_check)
+
+        assert reads == [1]
+        assert [role for role, _chains, _check in seen] == ["builder", "reviewer"]
+        assert all(chains is table and check is stop_check for _role, chains, check in seen)
+
+
+class TestALinkIsBuiltOnceAndHearsEachCall:
+    """R-1278: a link is built once per wrapper and hears the round, kind and prefix of each call."""
+
+    def test_a_link_is_built_once_and_hears_every_hint_the_primary_hears(self):
+        primary = _HintedStub("claude-cli", build_error=_DOWN)
+        link_provider = _HintedStub("l1")
+        builds: list[FailoverLink] = []
+
+        def build_link(link):
+            builds.append(link)
+            return link_provider
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("claude-cli", "opus", "top"),), build_link=build_link,
+        )
+        fp.begin_stream_call(1, "attempt")
+        fp.offer_stable_prefix("prefix-1")
+        fp.build("p1")
+        fp.begin_stream_call(2, "attempt")
+        fp.offer_stable_prefix("prefix-2")
+        fp.build("p2")
+
+        assert len(builds) == 1
+        assert primary.stream_calls == [(1, "attempt"), (2, "attempt")]
+        assert link_provider.stream_calls == [(1, "attempt"), (2, "attempt")]
+        assert primary.prefixes == ["prefix-1", "prefix-2"]
+        assert link_provider.prefixes == ["prefix-1", "prefix-2"]
+
+    def test_a_link_that_could_not_be_built_is_built_again_on_the_next_call(self):
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        tries = [0]
+
+        def build_link(link):
+            tries[0] += 1
+            if tries[0] == 1:
+                raise RuntimeError("not yet")
+            return link_provider
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("claude-cli", "opus", "top"),), build_link=build_link,
+        )
+        assert fp.build("p1") is primary.last_build_output
+        assert fp.build("p2") is link_provider.last_build_output
+        assert tries[0] == 2
+
+
+def _outage_or_stream_claude(tmp_path):
+    """A fake `claude` on PATH: an outage for the model `primary-model`, a served stream otherwise."""
+    import json as _json
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    result = _json.dumps({"type": "result", "subtype": "success", "is_error": False, "session_id": "s",
+                          "result": "Builder made changes", "usage": {"input_tokens": 3, "output_tokens": 2}})
+    fake = bin_dir / "claude"
+    fake.write_text(
+        "#!/bin/sh\ncat > /dev/null\n"
+        'case " $* " in *" primary-model "*) echo "All connection attempts failed" >&2; exit 1;; esac\n'
+        f"printf '%s\\n' '{result}'\n"
+    )
+    fake.chmod(0o755)
+    return bin_dir
+
+
+class TestABackupClaudeCliWritesBesideThePrimary:
+    """R-1278: a claude-cli backup's stream artifacts land in a directory of their own, numbered on
+    from the primary's, in the round the loop declared, through the real role factory and CLI."""
+
+    def test_the_backups_stream_continues_the_primarys_numbering(self, monkeypatch, tmp_path):
+        import os
+
+        from packages.orchestration.role_provider_factory import create_role_provider
+
+        monkeypatch.setenv("PATH", f"{_outage_or_stream_claude(tmp_path)}{os.pathsep}{os.environ['PATH']}")
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[[remedy.model_failover.chains.builder]]
+provider = "claude-cli"
+model = "backup-model"
+tier = "mid"
+''')
+        evidence = tmp_path / "evidence"
+        fp = create_role_provider(
+            "claude-cli", role="builder", staging_dir=str(tmp_path), model="primary-model",
+            stream_evidence=True, stream_evidence_dir=str(evidence),
+        )
+        fp.begin_stream_call(2, "attempt")
+        out = fp.build("do it")
+
+        assert not out.error
+        assert out.failover_disclosure.used.model == "backup-model"
+        assert out.stream_call_id == "streams/builder/round-02/attempt-02"
+        streams = evidence / "streams" / "builder" / "round-02"
+        assert sorted(p.name for p in streams.iterdir()) == ["attempt-01", "attempt-02"]
+        assert "Builder made changes" in (streams / "attempt-02" / "raw_stream.jsonl").read_text()
+        assert "Builder made changes" not in (streams / "attempt-01" / "raw_stream.jsonl").read_text()
+
+    def test_each_real_call_is_booked_with_its_own_model_and_stream(self, monkeypatch, tmp_path):
+        """R-1276: the failed primary and the backup that served are two attempts, each with its own
+        provider, model, error and stream, and the run's callback hears both."""
+        import os
+
+        from packages.orchestration.pingpong_loop import PingPongResult
+        from packages.orchestration.pingpong_provider_call import _call_with_retry
+        from packages.orchestration.role_provider_factory import create_role_provider
+
+        monkeypatch.setenv("PATH", f"{_outage_or_stream_claude(tmp_path)}{os.pathsep}{os.environ['PATH']}")
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[[remedy.model_failover.chains.builder]]
+provider = "claude-cli"
+model = "backup-model"
+tier = "mid"
+''')
+        fp = create_role_provider(
+            "claude-cli", role="builder", staging_dir=str(tmp_path), model="primary-model",
+            stream_evidence=True, stream_evidence_dir=str(tmp_path / "evidence"),
+        )
+        fp.begin_stream_call(1, "attempt")
+        result = PingPongResult(builder_provider="claude-cli", builder_model="primary-model")
+        heard = []
+        out = _call_with_retry(lambda: fp.build("do it"), result=result, role="builder",
+                               provider="claude-cli", on_provider_attempt=heard.append, round_num=1)
+
+        assert not out.error
+        rows = [(a.provider, a.model, bool(a.error), a.stream_call_id) for a in result.provider_attempts]
+        assert rows == [
+            ("claude-cli", "primary-model", True, "streams/builder/round-01/attempt-01"),
+            ("claude-cli", "backup-model", False, "streams/builder/round-01/attempt-02"),
+        ]
+        assert heard == result.provider_attempts
+        assert result.provider_attempts[1].usage_actuals["input_tokens"] == 3
+
+
 class _ListClock:
     """An injected clock: a test sets `now` and never sleeps."""
 
@@ -822,6 +1115,11 @@ class _ListClock:
 
     def __call__(self) -> float:
         return self.now
+
+
+def _held_until(fp: FailoverProvider) -> float:
+    """The clock reading until which `fp` holds its primary down; `-inf` when never held (R-1294)."""
+    return fp._held_until
 
 
 def _held_wrapper(primary, link_provider, clock, cooldown_s):
@@ -847,7 +1145,7 @@ class TestStickyWindow:
         assert len(primary.build_calls) == 1
         assert first.failover_disclosure.primary_skipped is False
         assert first.failover_disclosure.primary_error == _DOWN
-        assert fp.held_until == 60
+        assert _held_until(fp) == 60
 
         clock.now = 59
         second = fp.build("p2")
@@ -886,7 +1184,7 @@ class TestStickyWindow:
         assert not hasattr(back, "failover_disclosure")
         assert [c.prompt for c in primary.build_calls] == ["p1", "p2"]
         assert [c.prompt for c in link_provider.build_calls] == ["p1", "p2"]
-        assert fp.held_until == float("-inf")
+        assert _held_until(fp) == float("-inf")
 
         clock.now = 11
         fp.build("p3")
@@ -972,7 +1270,7 @@ class TestFailoverReportLine:
     def test_one_call_that_ran_out(self):
         run_record = {"rounds": [{"builder": {"failover": {"used": None}}}]}
         assert failover_report_line(run_record) == (
-            "Failover: 1 call found no backup model that could be reached. "
+            "Failover: 1 call found no backup model that served it. "
             "The run's record names every model tried."
         )
 
@@ -990,7 +1288,7 @@ class TestFailoverReportLine:
         }
         assert failover_report_line(run_record) == (
             "Failover: 2 calls were served by backup models because their usual provider "
-            "could not be reached. 1 call found no backup model that could be reached. "
+            "could not be reached. 1 call found no backup model that served it. "
             "The run's record names every model tried."
         )
 
@@ -1070,6 +1368,10 @@ tier = "mid"
         assert failover["primary_error"].startswith(
             "provider_error: RuntimeError: claude CLI not found on PATH"
         )
+        # R-1276: the run books both real calls, and its evidence names each one's provider and model.
+        booked = [(a["provider"], a["model"]) for a in record["provider_evidence"]["provider_attempts"]
+                  if a["role"] == "builder"]
+        assert booked[:2] == [("claude-cli", "primary-model"), ("fake", "stand-in")]
 
     def test_a_chain_that_runs_out_leaves_the_primarys_own_failure(self, monkeypatch, tmp_path):
         from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
@@ -1123,7 +1425,7 @@ tier = "mid"
         import packages.orchestration.pingpong_loop as loop
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        monkeypatch.setattr("packages.orchestration.pingpong_loop._time.sleep", lambda seconds: None)
+        monkeypatch.setattr("packages.orchestration.pingpong_provider_call._time.sleep", lambda seconds: None)
         _configure_chains_toml(monkeypatch, tmp_path, f'''
 [[remedy.model_failover.chains.{role}]]
 provider = "fake"
@@ -1227,7 +1529,7 @@ class TestFailoverOnTheGapsThatHappenInPractice:
         fake.chmod(0o755)
         monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        monkeypatch.setattr("packages.orchestration.pingpong_loop._time.sleep", lambda seconds: None)
+        monkeypatch.setattr("packages.orchestration.pingpong_provider_call._time.sleep", lambda seconds: None)
         _configure_chains_toml(monkeypatch, tmp_path, '''
 [[remedy.model_failover.chains.builder]]
 provider = "fake"
@@ -1245,3 +1547,65 @@ tier = "mid"
         failover = export_pingpong_json(result)["rounds"][0]["builder"]["failover"]
         assert failover["intended"] == {"provider": "claude-cli", "model": "primary-model"}
         assert failover["used"]["provider"] == "fake"
+
+
+class TestALinkThatFailsServesNothing:
+    """R-1286, DECISION F307 D4: a link serves only when its answer carries no error."""
+
+    def test_a_link_that_times_out_during_a_hold_is_returned_and_leaves_the_hold_alone(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        fp.build("p1")
+        assert _held_until(fp) == 60
+
+        link_provider._build_error = "claude CLI timed out after 600s"
+        clock.now = 10
+        out = fp.build("p2")
+        assert out is link_provider.last_build_output
+        assert out.failover_disclosure.used is None
+        assert out.failover_disclosure.primary_skipped is True
+        assert [a.error for a in out.failover_disclosure.attempts] == ["claude CLI timed out after 600s"]
+        assert _held_until(fp) == 60
+        assert [c.prompt for c in primary.build_calls] == ["p1"]
+
+    def test_a_rate_limited_link_neither_holds_the_primary_nor_turns_resume_off(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", supports_resume=True, build_error=_DOWN)
+        link_provider = _StubProvider("l1", build_error="claude CLI exited 1: HTTP 429 rate limit exceeded")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        out = fp.build("p1")
+        assert out is link_provider.last_build_output
+        assert out.failover_disclosure.used is None
+        assert out.failover_disclosure.primary_error == _DOWN
+        assert _held_until(fp) == float("-inf")
+        assert fp.supports_resume is True
+
+    def test_the_report_counts_two_calls_no_backup_served(self):
+        run_record = {"rounds": [{"builder": {"failover": {"used": None}}},
+                                 {"builder": {"failover": {"used": None}}}]}
+        assert failover_report_line(run_record) == (
+            "Failover: 2 calls found no backup model that served them. "
+            "The run's record names every model tried."
+        )
+
+
+class TestALinkNamesAProviderRemedyCanCreate:
+    """R-1288, DECISION F307 D4: a misspelt provider is refused when the table is read."""
+
+    def test_a_misspelt_provider_is_refused_naming_the_known_ones(self):
+        with pytest.raises(FailoverChainError) as caught:
+            parse_failover_chains({"builder": [{"provider": "claude_cli", "model": "sonnet", "tier": "mid"}]})
+        assert str(caught.value) == (
+            "model_failover.chains: 'builder' link 1 names provider 'claude_cli', which Remedy cannot "
+            "create; known providers: claude, claude-cli, fake, ollama, pi"
+        )
+
+    @pytest.mark.parametrize("provider", sorted(ROLE_PROVIDER_NAMES))
+    def test_every_provider_a_role_can_run_on_parses(self, provider):
+        chains = parse_failover_chains({"study": [{"provider": provider, "model": "m", "tier": "cheap"}]})
+        assert chains == {"study": (FailoverLink(provider, "m", "cheap"),)}
+
+    def test_the_names_are_the_ones_create_provider_and_the_role_factory_build(self):
+        assert ROLE_PROVIDER_NAMES == frozenset({"fake", "claude", "claude-cli", "ollama", "pi"})

@@ -162,7 +162,7 @@ def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo
 # ── 2c: a job's calls and tokens, read through the command line (DECISION F304 D13) ──
 
 
-def test_a_full_dos_job_carries_the_calls_its_ledger_holds_and_no_token_the_fake_never_reported(
+def test_a_full_dos_job_carries_the_calls_and_the_tokens_its_ledger_holds(
         repo, capsys):
     from packages.orchestration.token_ledger import query_cost
 
@@ -174,9 +174,11 @@ def test_a_full_dos_job_carries_the_calls_its_ledger_holds_and_no_token_the_fake
     [job] = client["jobs"]
     ledger = query_cost(project_id=project["project_id"], job_id=job_id).total
     assert job["harness_invocations"] == ledger.calls == 4
-    no_tokens = {"input": None, "output": None, "cache_read": None, "cache_creation": None}
-    assert job["tokens"] == no_tokens
-    assert project["cost_today"]["tokens"] == no_tokens
+    # R-1323: two builds and two reviews, each with the fake's fixed tokens.
+    tokens = {"input": 2 * 1200 + 2 * 800, "output": 2 * 300 + 2 * 200, "cache_read": 0,
+              "cache_creation": 0}
+    assert job["tokens"] == tokens
+    assert project["cost_today"]["tokens"] == tokens
 
 
 # ── 2d: 1,000 settled jobs, the default window and the flag (F304 T007, DECISION F304 D16) ──

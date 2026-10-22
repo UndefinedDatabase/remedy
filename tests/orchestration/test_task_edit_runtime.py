@@ -33,7 +33,7 @@ from packages.orchestration.job_plan import (
     plan_content_hash,
 )
 from packages.orchestration.pingpong_job import JobPlan, load_job_plan, run_job, save_job_plan
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.plan_editing import (
     EDIT_LOG_EVIDENCE,
     EDIT_LOG_KEY,

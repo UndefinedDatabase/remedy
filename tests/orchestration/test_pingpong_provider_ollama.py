@@ -15,10 +15,8 @@ import types
 import pytest
 
 from packages.orchestration.model_aliases import resolve_model_alias
-from packages.orchestration.pingpong_provider import (
-    OllamaPingPongProvider,
-    create_provider,
-)
+from packages.orchestration.pingpong_provider import create_provider
+from packages.orchestration.pingpong_provider_ollama import OllamaPingPongProvider
 
 # ---------------------------------------------------------------------------
 # Fake ollama module — the mocked HTTP boundary

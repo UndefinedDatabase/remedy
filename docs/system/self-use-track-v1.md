@@ -113,7 +113,10 @@ something the run does not control — a defect that is flaky or reproduces only
 once in so many runs, evidence that was never captured, or work that waits on
 the operator or on another feature. A finding held that way stays in the ledger
 for a session to pick up by hand; it is no longer handed to a builder who cannot
-finish it.
+finish it. Nor is a finding whose repair has already landed: a finding stays open
+in the ledger until the round after its repair books its `Done:` line, so the
+generator skips every finding a commit after the ledger's last change names in its
+subject (R-1403, DECISION F307 D24).
 
 When the finding ledger, the documentation-staleness catalog and `remedy doctor
 core` all have nothing to offer, two more sources almost always do (F291,

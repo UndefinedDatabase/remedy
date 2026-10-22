@@ -7,9 +7,9 @@ import pytest
 from packages.orchestration.fake_deliverable import DeliverableFakeProvider
 from packages.orchestration.pingpong_provider import (
     ClaudeCliProvider,
-    OllamaPingPongProvider,
     create_provider,
 )
+from packages.orchestration.pingpong_provider_ollama import OllamaPingPongProvider
 from packages.orchestration.role_config import KNOWN_ROLES, resolve_role_config
 
 # amend1015c D6: the name "fake" builds the fake that writes its task's deliverable file.

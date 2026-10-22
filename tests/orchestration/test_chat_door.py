@@ -20,7 +20,7 @@ from packages.orchestration.chat_intent import (
 from packages.orchestration.command_audit import AUDIT_FILENAME
 from packages.orchestration.pause_control import pause_requested
 from packages.orchestration.serve_paths import serve_paths
-from tests.ui_server.door_host import SupervisorThread
+from tests.serve_http_handler.door_host import SupervisorThread
 
 
 class TestChatDoorSend:

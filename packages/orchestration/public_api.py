@@ -90,8 +90,11 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: the decision route's `resumed` and `resume_refused` after an `extend`, and F078 (DECISION F078 D6)
 #: to `1.23` for the interface's status answer `autonomy`, with no change over HTTP, and F141
 #: (DECISION F141 D7) to `1.24` for `autonomy`'s `push_allowed` and `permissions`, with none either,
-#: and F303 (DECISION F303 D3) to `1.25` for `POST /api/v1/jobs/{job}/note`.
-PUBLIC_API_VERSION = "1.25"
+#: and F303 (DECISION F303 D3) to `1.25` for `POST /api/v1/jobs/{job}/note`, and F307
+#: (DECISION F307 D11) to `1.26` for an order's `repo_path`, with no change over HTTP, and F307
+#: (DECISION F307 D17, D18) to `1.27` for exit code 2 on a `remedy.toml` that cannot be read and,
+#: over HTTP, the refusals of the methods, the query values and the path values no route takes.
+PUBLIC_API_VERSION = "1.27"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -153,6 +156,20 @@ def _match_route_path(template: str, path: str) -> dict[str, str] | None:
     return bound
 
 
+# WHY: a bound segment no job, order or decision id holds is refused on every route alike (R-1195, R-1309).
+def _path_value_refusal(segments: dict[str, str], path: str) -> dict[str, Any] | None:
+    """The `api_path_invalid` refusal for a bound segment that begins with `-`, or that holds `/` or a NUL
+    character once decoded, or None when every segment is one a command can take."""
+    from apps.cli.json_envelope import build_error
+
+    for name, value in segments.items():
+        if value.startswith("-"):
+            return build_error("api_path_invalid", f"the {name} in '{path}' must not begin with '-'")
+        if "/" in value or "\x00" in value:
+            return build_error("api_path_invalid", f"the {name} in '{path}' must not hold '/' or a NUL character")
+    return None
+
+
 def public_api_token_refusal() -> tuple[int, dict[str, Any]]:
     """The 401 a caller gets for a missing or wrong bearer token; it names the server's token and
     a client token as the two the route takes (DECISION F253 D16)."""
@@ -165,15 +182,17 @@ def public_api_token_refusal() -> tuple[int, dict[str, Any]]:
     )
 
 
-def public_api_method_refusal() -> tuple[int, dict[str, Any]]:
-    """The 405 a caller gets for a method this server does not answer under this namespace."""
+def public_api_method_refusal(method: str = "POST") -> tuple[int, dict[str, Any]]:
+    """The 405 a caller gets for a method this server does not answer under this namespace: a write,
+    POST, where this server has no supervisor's runner, or a method no route answers, named (R-1304)."""
     from apps.cli.json_envelope import build_error
 
-    return 405, build_error(
-        "api_method_not_allowed",
-        "this server answers only GET under /api/v1; writes are answered by the supervisor "
-        "that `remedy serve start` starts",
-    )
+    if method == "POST":
+        message = ("this server answers only GET under /api/v1; writes are answered by the supervisor "
+                   "that `remedy serve start` starts")
+    else:
+        message = f"{method} is not answered under /api/v1; its routes answer GET and POST"
+    return 405, build_error("api_method_not_allowed", message)
 
 
 def _client_interface_answer() -> dict[str, Any]:
@@ -482,7 +501,10 @@ def answer_public_api_get(
     `true` or `false`; a key of `query_values` takes one non-empty value; a key given more than
     once, with an empty value when it is of `query_values`, with a value other than `true`/`false`
     when it is of `query`, or not declared in either, answers 400 `api_query_invalid` before the
-    twin is ever asked. The twin's bound path segments, query flags and query values are then
+    twin is ever asked, with a sentence of its own for a declared key and for an undeclared one
+    (R-1308); a bound path value that begins with `-`, or holds `/` or a NUL character once
+    decoded, answers 400 `api_path_invalid`, as on a write (R-1309). The twin's bound path
+    segments, query flags and query values are then
     passed as keyword arguments; a body with `ok` true answers 200, a body with `ok` false answers
     the HTTP status `refusals` declares for its `error` — raising `KeyError` for a token the route
     never declared, which a test catches before it ships.
@@ -495,24 +517,26 @@ def answer_public_api_get(
         segments = _match_route_path(route.path, path)
         if segments is None:
             continue
+        refused = _path_value_refusal(segments, path)
+        if refused is not None:
+            return 400, refused, {}
         flags: dict[str, bool] = {}
         values_kw: dict[str, str] = {}
         for key, values in parse_qs(query, keep_blank_values=True).items():
-            accepted = ", ".join(f"'{k}'" for k in (*route.query, *route.query_values)) or "none"
-            invalid = build_error(
-                "api_query_invalid",
-                f"'{key}' is not a valid query key for '{path}'; it accepts {accepted}",
-            )
             if key in route.query:
                 if len(values) != 1 or values[0] not in ("true", "false"):
-                    return 400, invalid, {}
+                    return 400, build_error(
+                        "api_query_invalid", f"'{key}' in '{path}' takes one value, true or false"), {}
                 flags[key] = values[0] == "true"
             elif key in route.query_values:
                 if len(values) != 1 or not values[0]:
-                    return 400, invalid, {}
+                    return 400, build_error(
+                        "api_query_invalid", f"'{key}' in '{path}' takes one value that is not empty"), {}
                 values_kw[key] = values[0]
             else:
-                return 400, invalid, {}
+                accepted = ", ".join(f"'{k}'" for k in (*route.query, *route.query_values)) or "none"
+                return 400, build_error(
+                    "api_query_invalid", f"'{key}' is not a valid query key for '{path}'; it accepts {accepted}"), {}
         if client is not None and route.twin in _CLIENT_SCOPED_TWINS:
             refusal = _client_read_refusal(client, segments.get("job", ""))
             if refusal is not None:
@@ -553,7 +577,8 @@ def _start_run_answer(
     The job is read with `lookup_job_id` and `load_job_plan_safe`: a value `lookup_job_id` refuses
     as invalid answers 404 `invalid_job_id`, one no job matches or whose record cannot be read
     answers 404 `job_not_found`, one that matches several answers 400 `ambiguous_job_id`. Then
-    START_RUN is called with the full job id and the options the body gives, the builder's
+    START_RUN is called with the full job id, the route's own `run_options` (DECISION F307 D22)
+    and the options the body gives, the builder's
     `--builder-provider=<value>` first and the reviewer's `--reviewer-provider=<value>` second;
     a `RunRefused` answers 409 with its own token and message, an `OSError` 500
     `api_command_failed`, and the run's record 202, read by `run_record_payload` as `GET
@@ -591,8 +616,9 @@ def _start_run_answer(
 
     if why := remote_provider_refusal(body):
         return 400, build_error(API_PROVIDER_NOT_OFFERED, why), {}
-    options = [f"--{key.replace('_', '-')}={body[key]}" for key in _RUN_PROVIDER_KEYS
-               if key in body]
+    route = next(r for r in PUBLIC_API_ROUTES if r.starts_run and _match_route_path(r.path, path) is not None)
+    options = [*route.run_options, *(f"--{key.replace('_', '-')}={body[key]}" for key in _RUN_PROVIDER_KEYS
+                                     if key in body)]
     try:
         record = start_run(job_id, options)
     except RunRefused as exc:
@@ -705,15 +731,9 @@ def answer_public_api_post(
         segments = _match_route_path(route.path, path)
         if segments is None:
             continue
-        for name, value in segments.items():
-            if value.startswith("-"):
-                return 400, build_error(
-                    "api_path_invalid",
-                    f"the {name} in '{path}' must not begin with '-'"), {}
-            if "/" in value or "\x00" in value:
-                return 400, build_error(
-                    "api_path_invalid",
-                    f"the {name} in '{path}' must not hold '/' or a NUL character"), {}
+        refused = _path_value_refusal(segments, path)
+        if refused is not None:
+            return 400, refused, {}
         if route.starts_order and start_order is None:
             return (*public_api_method_refusal(), {})
         if route.starts_run and start_run is None:
@@ -740,7 +760,7 @@ def answer_public_api_post(
             except PublicApiWriteRefusal as refusal:
                 return refusal.status, build_error(refusal.error, refusal.message), {}
             if order_key is not None and not checked.get("new_mission"):
-                from packages.orchestration.mission_state import running_mission_for_order_file
+                from packages.orchestration.repo_mission import running_mission_for_order_file
 
                 mission = running_mission_for_order_file(
                     str(keyed_order_file_path(serve_paths(), order_key).resolve()))

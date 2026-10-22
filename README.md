@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-154 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+155 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -38,7 +38,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 47 | 48 |
+| 2 | Minimal Self-Build Runtime | 48 | 49 |
 | 3 | Full Token Economy & Autonomy | 13 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
@@ -117,7 +117,7 @@ F274 one world completion, part two (the prototype-cluster deletion map,
 GENERATED from the live import graph rather than typed and held against it
 in BOTH directions, so a re-inserted edge reddens a test instead of passing
 unnoticed; the import-reachability ratchet, ruled a ratchet rather than a
-one-shot gate; the cockpit and command-layer edge cuts, with `ui_server.py`
+one-shot gate; the cockpit and command-layer edge cuts, with `serve_http_handler.py`
 losing 458 lines and gaining none and the `feature` command group deleted
 whole; and the retirement of `worker_recommend`. Nothing was deleted from
 the prototype cluster here, only made SAFE to delete: that deletion, the
@@ -339,7 +339,19 @@ gets a plan whose files are the planner's instead of failing before any job; a
 milestone's outline no longer fences a job the person never fenced; when such an
 order's plan is refused twice, Remedy asks which files are meant instead of
 planning a third time, and the answer becomes the job's tasks; the guide
-`docs/guides/do-run-v1.md` describes it).
+`docs/guides/do-run-v1.md` describes it),
+F307 findings paydown v9 (fifty-seven written-down problems were repaired, each with
+a test that fails without its repair: a job that stops because one of its steps
+could not be finished keeps its finish time, and trying it again runs that step
+again; an order that names one file by a plain word is read as that file; a middle
+way of running an order now sits between the small and the full one; a job's
+overview names the uncommitted files it started from; Remedy's two health commands
+report in one shape; a settings file that cannot be read is answered with a clear
+refusal instead of a crash report; and a backup model that takes over a call books
+that call to itself. Several large pieces of code were split into smaller modules on
+the way, and the part that answers programs over the network got a name that says
+so. Remedy then ran one more repair on itself that stopped, as it should, at its
+approval gate).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

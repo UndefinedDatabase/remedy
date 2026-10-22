@@ -34,6 +34,7 @@ from apps.cli.command_catalog_certificate import JOB_CERTIFICATE_COMMANDS, VERIF
 from apps.cli.command_catalog_client import CLIENT_COMMANDS
 from apps.cli.command_catalog_do import DO_COMMANDS
 from apps.cli.command_catalog_doctor import DOCTOR_COMMANDS
+from apps.cli.command_catalog_job_run import JOB_RUN_COMMANDS
 from apps.cli.command_catalog_mission import MISSION_COMMANDS
 from apps.cli.command_catalog_project import PROJECT_COMMANDS
 from apps.cli.command_catalog_stats import STATS_COMMANDS
@@ -1574,46 +1575,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
     ),
 
-    # ── do.job-* ──────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="job.run",
-        group_id="job",
-        subcommand="run",
-        description="Run pending job tasks sequentially through Builder/Reviewer/Repair.",
-        action_class="write_metadata",
-        supports_json=True,
-        related=("job.show",),
-        args=(
-            ArgDef("job_id", "Job ID (under its mission)"),
-            ArgDef("--max-rounds", "Max ping-pong rounds per task's run (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
-            ArgDef("--repair-rounds", "Max repair attempts per task's run (default: 2, 0=disabled, persisted on continuation)", required=False, is_option=True, default=None),
-            ArgDef("--test-command", "Test command to execute in staging (persisted on continuation)", required=False, is_option=True, default=None),
-            ArgDef("--claude-cli-write-mode", "Claude CLI write mode for the BUILDER: none, allowed-tools, dangerous-skip (default: allowed-tools, persisted on continuation). The reviewer never writes", required=False, is_option=True, default=None),
-            ArgDef("--stream-evidence", "Opt-in F004 raw stream evidence: use Claude CLI stream-json and write redacted raw_stream.jsonl + run_events.jsonl. Omitted keeps the persisted/default mode", required=False, is_option=True),
-            ArgDef("--no-stream-evidence", "Explicitly disable this run's raw stream evidence (overrides a persisted true). Omitted keeps the persisted/default mode", required=False, is_option=True),
-            ArgDef("--tasks", "Max tasks to execute (omitted keeps persisted; 0=all)", required=False, is_option=True, default=None),
-            ArgDef("--timeout-sec", "Raw per-call timeout in seconds (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--max-output-chars", "Max provider output chars (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--builder-provider", "Builder provider: claude, claude-cli, fake or pi (default: pi, the local Pi harness with Ollama; ollama alone cannot write files; persisted on continuation)", required=False, is_option=True, default=None),
-            ArgDef("--builder-model", "Model for builder role", required=False, is_option=True, default=None),
-            ArgDef("--builder-effort", "Effort level for builder role", required=False, is_option=True, default=None),
-            ArgDef("--reviewer-provider", "Reviewer provider: claude, claude-cli, fake, ollama or pi (default: pi, read-only tools; persisted on continuation)", required=False, is_option=True, default=None),
-            ArgDef("--reviewer-model", "Model for reviewer role", required=False, is_option=True, default=None),
-            ArgDef("--reviewer-effort", "Effort level for reviewer role", required=False, is_option=True, default=None),
-            ArgDef("--repair-provider", "Provider for repair role", required=False, is_option=True, default=None),
-            ArgDef("--repair-model", "Model for repair role", required=False, is_option=True, default=None),
-            ArgDef("--repair-effort", "Effort level for repair role", required=False, is_option=True, default=None),
-            ArgDef("--timeout-profile", "Timeout profile: fast, normal, patient (default: normal unless raw timeout is explicitly set)", required=False, is_option=True, default=None),
-            ArgDef("--max-total-tokens", "Maximum total tokens (F018 budget override)", required=False, is_option=True, default=None),
-            ArgDef("--max-provider-calls", "Maximum provider calls (F018 budget override)", required=False, is_option=True, default=None),
-            ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes (F018 budget override)", required=False, is_option=True, default=None),
-            ArgDef("--max-cost-usd", "Maximum cost in USD (F104 budget override)", required=False, is_option=True, default=None),
-            ArgDef("--deadline", "UTC deadline as ISO 8601 string (F018 budget override)", required=False, is_option=True, default=None),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=True, exit_codes=(0, 1, 2, 3),
-    ),
+    *JOB_RUN_COMMANDS,
     *STATS_COMMANDS,
     CommandEntry(
         command_id="runtime.serve",

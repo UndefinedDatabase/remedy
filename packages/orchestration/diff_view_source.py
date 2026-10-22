@@ -5,7 +5,7 @@ diff TEXT into the contract-v1 view and touches no filesystem whatsoever — it 
 total by contract. This is the other half of the same job. It decides WHICH artifact to
 read for a requested scope, reads it, and hands the text over to the parser.
 
-It performs no HTTP and imports nothing from ``ui_server.py``, deliberately: the endpoint
+It performs no HTTP and imports nothing from ``serve_http_handler.py``, deliberately: the endpoint
 layer stays a thin caller that maps this envelope to a response, and this half stays
 testable with no server running and no port bound. F037 R7 wires the two GET routes onto
 ``build_diff_view``; nothing calls it before then.
@@ -37,7 +37,7 @@ DIFF_TASK_RUN_ARTIFACT_NAME = "safe.diff"
 DIFF_TASK_RUNS_DIR_NAME = "task_runs"
 
 #: The three named absences. ``DIFF_REASON_NO_EVIDENCE_DIR``'s VALUE repeats the string
-#: ``packages/orchestration/ui_server.py`` already uses for the same condition in its
+#: ``packages/orchestration/serve_http_handler.py`` already uses for the same condition in its
 #: ``_empty_prompt_trace("evidence_dir_unavailable")`` call — one spelling per concept, per
 #: the AGENTS.md "Code Discoverability Conventions".
 DIFF_REASON_NO_EVIDENCE_DIR = "evidence_dir_unavailable"

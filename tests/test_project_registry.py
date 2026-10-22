@@ -192,17 +192,17 @@ class TestSaveLoadRoundtrip:
 
 class TestReadOnlyProofs:
     def test_list_projects_readonly_does_not_write(self, tmp_path, monkeypatch):
-        """_list_projects_readonly never writes to disk (R3 mtime proof)."""
+        """list_projects_readonly never writes to disk (R3 mtime proof)."""
         import os
 
-        from packages.orchestration.project_registry import _list_projects_readonly
+        from packages.orchestration.project_registry import list_projects_readonly
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         p = _make_project(name="RO Test")
         save_project(p)
         stored = tmp_path / "projects" / f"{p.id}.json"
         mtime_before = os.path.getmtime(stored)
         size_before = stored.stat().st_size
-        projects = _list_projects_readonly()
+        projects = list_projects_readonly()
         assert len(projects) == 1
         assert projects[0].slug is not None
         mtime_after = os.path.getmtime(stored)

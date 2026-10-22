@@ -9,7 +9,7 @@ tests/
   orchestration/     Core engine: source_apply, approval_queue,
                      test_runner, command_discovery, autonomy, event_ledger,
                      project_brain
-  ui_server/         HTTP API: dashboard contract, live state, brain view model,
+  serve_http_handler/         HTTP API: dashboard contract, live state, brain view model,
                      auth/redaction
   cli/               CLI surface: command catalog, job commands, runtime wrappers
   ui_contracts/      Python-verifiable frontend contracts: graph architecture,

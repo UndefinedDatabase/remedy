@@ -1,6 +1,6 @@
 """amend1015 Phase 1.2 — a run of a job whose task ended blocked ends blocked, never `running`.
 
-The run story's `retry` is `POST /api/v1/jobs/{job}/run`, which runs `remedy job run`. Before this
+A plain `remedy job run` re-attempts no such task, a retry with `--retry` does (R-1331). Before this
 repair, a run of a job whose task had ended blocked skipped that task, ran nothing, and left the
 job's record reading `running` with no run alive, so the story said "working" for ever. A job that
 runs nothing and still has a blocked task ends blocked again, keeping the reason it had.
@@ -36,14 +36,14 @@ def repo(tmp_path) -> Path:
 
 
 def _passing():
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     return FakeProvider(pass_on_round=1, fail_on_round=99)
 
 
 def test_a_run_of_a_job_whose_task_ended_blocked_ends_blocked(data_root, repo):
     from packages.orchestration.pingpong_job import load_job_plan_safe, parse_job_file, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     job = parse_job_file(_JOB, str(repo))
     first = run_job(job.job_id, builder_provider=FakeProvider(builder_error="provider_unavailable: down"),

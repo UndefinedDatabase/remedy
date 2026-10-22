@@ -6,7 +6,7 @@ promise. The record is one JSON object per line in `commands_audit.jsonl`, insid
 private control directory, appended and never rewritten.
 
 This module owns the record and nothing else: it decides no status code, refuses no request
-and never reads a request. `packages/orchestration/ui_server.py` decides; this writes down
+and never reads a request. `packages/orchestration/serve_http_handler.py` decides; this writes down
 what was decided.
 """
 from __future__ import annotations
@@ -73,7 +73,7 @@ OUTCOMES = (
 )
 
 
-# `token_fp` arrives already fingerprinted, from `ui_server.token_fingerprint` (DECISION
+# `token_fp` arrives already fingerprinted, from `serve_http_handler.token_fingerprint` (DECISION
 # F009 D7) — that is where a reader looking for the hashing will find it. This module never
 # sees, accepts or writes a raw token, which is why no fingerprinting happens here.
 def args_fingerprint(args: Any) -> str:

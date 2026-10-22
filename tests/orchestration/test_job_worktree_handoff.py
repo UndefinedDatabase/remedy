@@ -26,9 +26,9 @@ from packages.orchestration.artifact_contract_gate import check_worktree_artifac
 from packages.orchestration.data_paths import job_dir
 from packages.orchestration.job_apply import apply_job
 from packages.orchestration.job_evidence import export_job_evidence
+from packages.orchestration.job_report import export_job_report
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
-    export_job_report,
     job_worktree_id,
     load_job_plan,
     parse_job_file,

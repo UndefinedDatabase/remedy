@@ -204,8 +204,10 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
 | `projects` | digest | every registered project |
 | `missions` | digest projects | each project's missions |
 | `order_source_path` | digest missions | the order file of the mission's current order |
+| `orders` | digest missions | every order the mission was given, oldest first, each with the jobs it asked for |
 | `jobs` | digest | every job |
 | `job_id` | digest jobs and decisions; `remedy change proof` | the job |
+| `order_id` | digest jobs | the order the job belongs to; null for a job of no order |
 | `state` | digest jobs | the job's state: `stopped`, `completed` and the others |
 | `cost` | digest jobs | `value_usd` and its `basis`, measured, never guessed |
 | `evidence` | digest jobs | the job's evidence references |
@@ -285,6 +287,12 @@ permission matrix with `action`, its `words`, the cells `L2` to `L5` and `now`, 
 level in force with the push switch applied. `docs/system/permission-matrix-v1.md` says what
 each cell means.
 
+Since interface 1.26 each of a mission's `orders` may carry `repo_path`, the repository root the
+order was accepted for; an order accepted before 1.26 carries none.
+
+Since interface 1.27 a command whose `remedy.toml` cannot be read answers `config_invalid` with exit
+code 2 and writes no crash report; before, it answered `unhandled_command_error` with exit code 1.
+
 ## What Remedy never does on a machine order
 
 - It never applies without `--approve`, and never commits or pushes without their own flags.
@@ -308,7 +316,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.25`.
+Interface version: `1.27`.
 
 ### Envelope
 
@@ -322,7 +330,7 @@ Refusal keys: `error`, `message`.
 |---|---|---|
 | `0` | `ok` | The command did what it was asked, including finding nothing to do or honouring a pending stop request. |
 | `1` | `failed` | The command ran and did not do what was asked — a refusal, a failed operation, a red check, drift found; the general failure and the code of every refusal no narrower meaning claims. |
-| `2` | `usage` | The invocation itself is wrong — an unknown command, or a missing, invalid, unrecognised or conflicting argument — and nothing was attempted. |
+| `2` | `usage` | The invocation itself is wrong — an unknown command, a missing, invalid, unrecognised or conflicting argument, or a remedy.toml that cannot be read — and nothing was attempted. |
 | `3` | `not_ready` | The invocation is well formed, but what it names is absent or not in a state the command can act on. |
 | `4` | `environment` | The machine lacks a prerequisite the command cannot supply, such as a git repository. |
 
@@ -364,6 +372,7 @@ Story phrase `review_not_passed`: `rounds`.
 Story phrase `waiting_for_apply`: `n`.
 Story phrase `applied`: `n`.
 Story phrase `declined`: none.
+Story phrase `dirty_start`: `captured`, `preserved`.
 Story reason `provider_unavailable`: `provider`.
 Story reason `tests_failed`: `n`.
 Story reason `review_not_passed`: `rounds`.
@@ -496,17 +505,19 @@ Keys under the answer keys: see below.
   - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `job_window`: `ended_limit`, `left_out`
-  - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+  - `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
     - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
       - `blocking_criteria`: `id`, `status`, `text`
       - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
     - `cost`: `basis`, `value_usd`
+    - `dirty_start`: `captured`, `preserved`
     - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
     - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
   - `projects`: `cost_today`, `missions`, `project_id`, `slug`
     - `cost_today`: `basis`, `day`, `harness_invocations`, `tokens`, `value_usd`
       - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
-    - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+    - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `orders`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+      - `orders`: `created_at`, `job_ids`, `kind`, `order_id`, `source_path`, `source_sha256`
   - `supervisor`: `answers`
 - `jobs`: `*`
   - `*`: `job_id`, `name`, `rehearsed`, `short_id`, `state`
@@ -566,6 +577,7 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--max-wall-clock-minutes` | yes | no | yes | no | Maximum wall-clock minutes (F018 budget override) |
 | `--max-cost-usd` | yes | no | yes | no | Maximum cost in USD (F104 budget override) |
 | `--deadline` | yes | no | yes | no | UTC deadline as ISO 8601 string (F018 budget override) |
+| `--retry` | yes | no | no | no | Put the tasks that ended blocked or failed back to pending first, so they run again; a plain run re-attempts none of them |
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.
@@ -882,7 +894,7 @@ Keys under the answer keys: see below.
     - `milestones`: `depends_on`, `dod_ref`, `goal`, `id`, `jobs_draft`, `rationale`
       - `jobs_draft`: `est_band`, `goal`, `title`
   - `order`: `source_path`, `source_sha256`, `text`
-  - `orders`: `budgets`, `correlation_id`, `created_at`, `kind`, `order_id`, `plan_source`, `reopened_from`, `sealed`, `source_path`, `source_sha256`, `target_commit`, `text`
+  - `orders`: `budgets`, `correlation_id`, `created_at`, `kind`, `order_id`, `reopened_from`, `repo_path`, `sealed`, `source_path`, `source_sha256`, `target_commit`, `text`
     - `budgets`: `*`
     - `sealed`: `*`
 
@@ -959,14 +971,16 @@ Keys under the answer keys: see below.
 - `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
 - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
-- `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`
+  - `dirty_start`: `captured`, `preserved`
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
-- `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_id`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+- `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `orders`, `project_id`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+  - `orders`: `created_at`, `job_ids`, `kind`, `order_id`, `source_path`, `source_sha256`
 
 #### `remedy client order`
 
@@ -1014,10 +1028,12 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
+Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
+- `dirty_start`: `args`, `key`
+  - `args`: `*`
 - `end`: `action`, `route`
   - `route`: `method`, `path`
 - `next`: `action`, `route`
@@ -1165,16 +1181,18 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
 - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `job_window`: `ended_limit`, `left_out`
-- `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`
+  - `dirty_start`: `captured`, `preserved`
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
 - `projects`: `cost_today`, `missions`, `project_id`, `slug`
   - `cost_today`: `basis`, `day`, `harness_invocations`, `tokens`, `value_usd`
     - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
-  - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+  - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `orders`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+    - `orders`: `created_at`, `job_ids`, `kind`, `order_id`, `source_path`, `source_sha256`
 - `supervisor`: `answers`
 <!-- END GENERATED by render_client_interface_markdown() -->

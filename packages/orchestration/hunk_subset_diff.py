@@ -21,7 +21,7 @@ touches no network, no logging and no global mutable state, and never learns whe
 subset would land cleanly; a conflict is the applier's answer, not this one's. DELIBERATE
 ABSENCE — it also does NOT import the applier, structurally rather than incidentally: this
 module decides WHICH bytes, ``apply_structured_patch`` decides whether they land, and
-``tests/ui_server/test_command_channel.py`` already names the applier's module one the write
+``tests/serve_http_handler/test_command_channel.py`` already names the applier's module one the write
 door may never reach, so the subset builder must not become the back door into it. A reader
 who wants the apply mechanics wants ``apply_structured_patch``, in the
 ``packages/orchestration/`` module that test's ``FORBIDDEN_MODULES`` names; one who wants how

@@ -31,7 +31,7 @@ def repo(tmp_path):
 
 
 def _prov():
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
     return FakeProvider(pass_on_round=1, fail_on_round=99)
 
 

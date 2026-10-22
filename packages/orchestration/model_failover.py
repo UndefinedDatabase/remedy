@@ -1,53 +1,11 @@
-"""F058 — per-role model failover chains: config, hard-rule validation and the walk (T001, T002).
+"""F058 — per-role model failover chains: their parse and hard rules, the walk, the report line.
 
-Citing DECISION F058 D1: a chain lives in `remedy.toml` under `model_failover.chains`, one entry
-per role, each a list of links of exactly `provider`, `model` and `tier`, tried in order when the
-role's provider is unavailable after the transport retries. Every link is checked against the
-three hard rules of `packages/orchestration/model_routing.py` and against a fourth this feature
-adds, "core never local": a link on a local provider is allowed only for a role whose class the
-shipped table routes to the cheap tier. A refused chain table names every violated rule and the
-link it belongs to; no role fails over on a refusal.
-
-The parse and the hard-rule validation above stay a pure function of their arguments, exactly
-like `packages/orchestration/model_routing.py` whose docstring states the same discipline for the
-same reason: the hard-rule checks are tested without a config file existing at all. The one place
-this module reads configuration for THAT part is :func:`resolve_failover_chains`, which imports
-`get_config` inside its own body, the idiom `packages/orchestration/role_config.py` already
-established for its own table-valued keys.
-
-Citing DECISION F058 D2: T002's walk, :class:`FailoverProvider`, lives here but does not decide
-to wrap any role — that choice, and the chain it reads through `resolve_failover_chains`, belong
-to `create_role_provider` in `packages/orchestration/role_provider_factory.py`, the provider seam
-where a run actually builds its providers. A failover trigger is exactly the provider-unavailable
-gap: not a timeout, a non-zero exit, a rate limit or a parse failure, each already owned by the
-transport retries, the governor or the single parse retry.
-
-Public API::
-
-    FAILOVER_CHAINS_CONFIG_KEY: the config key carrying the chain table
-    FAILOVER_LINK_KEYS: the three keys a link table may carry
-    LOCAL_PROVIDERS: providers this feature treats as local
-    FAILOVER_LOCAL_ROLES: roles the core-never-local rule exempts
-    RULE_CORE_ROLE_ON_LOCAL_PROVIDER: this feature's own hard-rule name
-    FAILOVER_RULE_NAMES: the four hard-rule names, in report order
-    FailoverLink: one link of a chain
-    FailoverChainViolation: one rule a link violates
-    FailoverChainError: a chain table that cannot be used at all
-    FailoverChainRefused: a chain table a hard rule refuses
-    parse_failover_chains(raw) -> dict[str, tuple[FailoverLink, ...]]
-    validate_failover_chains(chains, effective_tiers=None, safety_relevant_classes=...)
-        -> tuple[FailoverChainViolation, ...]
-    build_failover_chains(raw, effective_tiers=None) -> dict[str, tuple[FailoverLink, ...]]
-    resolve_failover_chains() -> dict[str, tuple[FailoverLink, ...]]
-    FAILOVER_COOLDOWN_CONFIG_KEY: str = "model_failover.cooldown_s"
-    FAILOVER_COOLDOWN_DEFAULT_S: int = 300
-    resolve_failover_cooldown_s() -> int
-    FAILOVER_REASON_PROVIDER_UNAVAILABLE: the reason string a disclosure carries
-    is_failover_trigger(out) -> bool: whether an output's error is the gap this feature owns
-    FailoverLinkAttempt: one link's attempt and what it answered
-    FailoverDisclosure: what a failed-over call discloses, intended versus used
-    FailoverProvider: wraps a role's provider and walks its chain on a trigger
-    failover_report_line(run_record) -> str | None: the run's one-line failover summary
+A chain is read from `model_failover.chains` and checked against the three hard rules of
+`packages/orchestration/model_routing.py` and this feature's own, "core never local" (DECISION
+F058 D1); the parse and the checks are pure functions of their arguments. `FailoverProvider`
+wraps a role's provider and, when the provider is unavailable, tries the chain's links in order
+and discloses what served the call (DECISIONs F058 D2 to D4); `create_role_provider` in
+`packages/orchestration/role_provider_factory.py` decides which roles it wraps.
 """
 
 from __future__ import annotations
@@ -58,6 +16,11 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from packages.orchestration.config_keys_model_routing import (
+    FAILOVER_CHAINS_CONFIG_KEY,
+    FAILOVER_COOLDOWN_CONFIG_KEY,
+    FAILOVER_COOLDOWN_DEFAULT_S,
+)
 from packages.orchestration.failure_postmortem import (
     is_provider_connection_error,
     is_provider_unavailable_error,
@@ -76,6 +39,7 @@ from packages.orchestration.model_routing import (
     model_tier_rank,
     resolve_task_class_tier_with_overrides,
 )
+from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
 from packages.orchestration.provider_timeouts import is_timeout_error
 from packages.orchestration.rate_governor import (
     RATE_LIMIT_REASON_OVERLOADED,
@@ -86,10 +50,6 @@ from packages.orchestration.role_config import KNOWN_ROLES
 # ---------------------------------------------------------------------------
 # The chain vocabulary
 # ---------------------------------------------------------------------------
-
-#: The config key carrying the chain table — DECISION F058 D1. Spelled once here and shared by
-#: the registry entry (packages/orchestration/config_keys_model_routing.py) and the resolver below.
-FAILOVER_CHAINS_CONFIG_KEY: str = "model_failover.chains"
 
 #: The three keys a link table may carry; a link naming any other key is refused.
 FAILOVER_LINK_KEYS: tuple[str, ...] = ("provider", "model", "tier")
@@ -204,6 +164,13 @@ def parse_failover_chains(raw: Mapping[str, Any]) -> dict[str, tuple[FailoverLin
                 raise FailoverChainError(
                     f"model_failover.chains: {role!r} link {position} must set provider to a "
                     f"non-empty string"
+                )
+            # R-1288: a name no provider answers to is refused here, not when the failover fires.
+            if provider not in ROLE_PROVIDER_NAMES:
+                raise FailoverChainError(
+                    f"model_failover.chains: {role!r} link {position} names provider {provider!r}, "
+                    f"which Remedy cannot create; known providers: "
+                    f"{', '.join(sorted(ROLE_PROVIDER_NAMES))}"
                 )
             model = link.get("model")
             if not isinstance(model, str) or not model:
@@ -342,14 +309,6 @@ def resolve_failover_chains() -> dict[str, tuple[FailoverLink, ...]]:
 # The cooldown — the sticky window, DECISION F058 D4
 # ---------------------------------------------------------------------------
 
-#: WHY: spelled once here and shared by the registry entry
-#: (packages/orchestration/config_keys_model_routing.py) and the resolver below.
-FAILOVER_COOLDOWN_CONFIG_KEY: str = "model_failover.cooldown_s"
-
-#: WHY: how long the walk holds a role's primary down after a backup has served it, when the
-#: operator sets no cooldown of their own.
-FAILOVER_COOLDOWN_DEFAULT_S: int = 300
-
 
 def resolve_failover_cooldown_s() -> int:
     """Return the configured cooldown in whole seconds, or :data:`FAILOVER_COOLDOWN_DEFAULT_S`.
@@ -424,6 +383,17 @@ class FailoverLinkAttempt:
         }
 
 
+# WHY: one real provider call a failed-over call made, so each is booked on its own (R-1276).
+@dataclass(frozen=True)
+class FailoverCall:
+    """A provider and model the walk really called, and its answer — `None` for the answer the
+    walk returns, which the booking reads from that answer itself."""
+
+    provider: str
+    model: str
+    output: Any = None
+
+
 # WHY: what a failed-over call discloses — the model Remedy meant to use versus the one it did.
 @dataclass(frozen=True)
 class FailoverDisclosure:
@@ -452,6 +422,25 @@ class FailoverDisclosure:
         }
 
 
+# WHY: a stream hint or a stable prefix is duck-typed — a provider that has no such method needs none.
+def _hand_hint(provider: Any, method: str, *args: Any) -> None:
+    """Call ``provider.<method>(*args)`` when the provider has that method, the loop's own hint shape."""
+    hint = getattr(provider, method, None)
+    if callable(hint):
+        hint(*args)
+
+
+# WHY: a failed-over call is several real calls, and each one is booked (R-1276).
+def _with_calls(out: Any, calls: list[FailoverCall]) -> Any:
+    """Attach to `out` every real call behind it as `failover_calls`, when there was more than one."""
+    if len(calls) > 1:
+        out.failover_calls = tuple(
+            FailoverCall(call.provider, call.model, None if call.output is out else call.output)
+            for call in calls
+        )
+    return out
+
+
 # WHY: the walk itself — wraps a role's provider and, on a trigger, tries each link in order
 # before letting the primary's own failure stand (DECISION F058 D2).
 class FailoverProvider:
@@ -468,6 +457,7 @@ class FailoverProvider:
         build_link: Callable[[FailoverLink], Any],
         cooldown_s: float = 0.0,
         clock: Callable[[], float] = time.monotonic,
+        stop_check: Callable[[], Any] | None = None,
     ) -> None:
         self._primary = primary
         self._role = role
@@ -477,23 +467,18 @@ class FailoverProvider:
         self._build_link = build_link
         self._cooldown_s = cooldown_s
         self._clock = clock
+        # WHY: the run's stop probe — non-None means stopped — consulted before each link (R-1287).
+        self._stop_check = stop_check
         # WHY: no hold exists yet, and never will unless a call below sets it (DECISION F058 D4).
         self._held_until: float = float("-inf")
         # WHY: the session guard — True for the rest of this wrapper's life once a link has
         # served a call, so a backup's session is never handed to the primary (DECISION F058 D4).
         self._resume_disabled = False
-
-    @property
-    def primary(self) -> Any:
-        return self._primary
-
-    @property
-    def links(self) -> tuple[FailoverLink, ...]:
-        return self._links
-
-    @property
-    def build_link(self) -> Callable[[FailoverLink], Any]:
-        return self._build_link
+        # WHY: each link is built once and kept, so its stream directories number on (R-1278).
+        self._built_links: dict[int, Any] = {}
+        # WHY: the stream hint and the stable prefix the loop gave the next call; a link hears them too.
+        self._stream_call: tuple[int, str] | None = None
+        self._stable_prefix: Any = None
 
     @property
     def name(self) -> str:
@@ -505,10 +490,15 @@ class FailoverProvider:
             return False
         return bool(getattr(self._primary, "supports_resume", False))
 
-    @property
-    def held_until(self) -> float:
-        """The clock reading until which the primary is held down; `-inf` when never held."""
-        return self._held_until
+    def begin_stream_call(self, round_no: int, kind: str = "attempt") -> None:
+        """Declare the next call's round and kind to the primary and to every link that call reaches (R-1278)."""
+        self._stream_call = (round_no, kind)
+        _hand_hint(self._primary, "begin_stream_call", round_no, kind)
+
+    def offer_stable_prefix(self, prefix: Any) -> None:
+        """Offer the next prompt's stable prefix to the primary and to every link that call reaches (R-1278)."""
+        self._stable_prefix = prefix
+        _hand_hint(self._primary, "offer_stable_prefix", prefix)
 
     def __getattr__(self, item: str) -> Any:
         if item.startswith("_"):
@@ -525,16 +515,28 @@ class FailoverProvider:
         timeout_sec: int,
         max_output_chars: int,
     ) -> tuple[Any | None, FailoverLinkAttempt]:
-        """Call one link with no session (DECISION F058 D4 (3)); `None` output means build failed."""
-        try:
-            provider = self._build_link(link)
-        except RuntimeError as exc:
-            return None, FailoverLinkAttempt(
-                position=position,
-                provider=link.provider,
-                model=link.model,
-                error=f"provider_error: {type(exc).__name__}: {exc}",
-            )
+        """Call one link with no session (DECISION F058 D4 (3)); `None` output means build failed.
+
+        A link is built on its first call and kept (R-1278); one that cannot be built is tried
+        again on the next call that reaches it. Before it is called it hears the round, the kind
+        and the stable prefix the loop gave this call.
+        """
+        provider = self._built_links.get(position)
+        if provider is None:
+            try:
+                provider = self._build_link(link)
+            except RuntimeError as exc:
+                return None, FailoverLinkAttempt(
+                    position=position,
+                    provider=link.provider,
+                    model=link.model,
+                    error=f"provider_error: {type(exc).__name__}: {exc}",
+                )
+            self._built_links[position] = provider
+        if self._stream_call is not None:
+            _hand_hint(provider, "begin_stream_call", *self._stream_call)
+        if self._stable_prefix is not None:
+            _hand_hint(provider, "offer_stable_prefix", self._stable_prefix)
         link_out = getattr(provider, method)(
             prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=None
         )
@@ -546,89 +548,68 @@ class FailoverProvider:
         )
         return link_out, attempt
 
-    def _walk_links(
+    def _disclosure(
         self,
-        out: Any,
-        method: str,
-        prompt: str,
+        primary_error: str,
+        attempts: list[FailoverLinkAttempt],
+        used: FailoverLinkAttempt | None,
         *,
-        timeout_sec: int,
-        max_output_chars: int,
-    ) -> Any:
-        """Walk every link after a primary trigger; a serving link opens the cooldown."""
-        primary_error = getattr(out, "error", "") or ""
-        attempts: list[FailoverLinkAttempt] = []
-        for position, link in enumerate(self._links, start=1):
-            link_out, attempt = self._call_link(
-                link, position, method, prompt,
-                timeout_sec=timeout_sec, max_output_chars=max_output_chars,
-            )
-            attempts.append(attempt)
-            if link_out is not None and not is_failover_trigger(link_out):
-                self._resume_disabled = True
-                self._held_until = self._clock() + self._cooldown_s
-                link_out.failover_disclosure = FailoverDisclosure(
-                    role=self._role,
-                    intended_provider=self._intended_provider,
-                    intended_model=self._intended_model,
-                    primary_error=primary_error,
-                    attempts=tuple(attempts),
-                    used=attempt,
-                )
-                return link_out
-        out.failover_disclosure = FailoverDisclosure(
+        primary_skipped: bool = False,
+    ) -> FailoverDisclosure:
+        """The one disclosure builder: the intended provider and model are always this wrapper's."""
+        return FailoverDisclosure(
             role=self._role,
             intended_provider=self._intended_provider,
             intended_model=self._intended_model,
             primary_error=primary_error,
             attempts=tuple(attempts),
-            used=None,
+            used=used,
+            primary_skipped=primary_skipped,
         )
-        return out
 
-    def _run_while_held(
+    def _walk_links(
         self,
         method: str,
         prompt: str,
+        attempts: list[FailoverLinkAttempt],
+        calls: list[FailoverCall],
         *,
+        primary_error: str,
+        primary_skipped: bool,
         timeout_sec: int,
         max_output_chars: int,
-        resume: str | None,
-    ) -> Any:
-        """While the primary is held down: every link first, the primary only when all trigger."""
-        attempts: list[FailoverLinkAttempt] = []
+    ) -> Any | None:
+        """The one link loop: the first link that answers ends the walk, disclosed; None when all trigger.
+
+        A link serves only when its answer carries no error (R-1286): a link that answers with a
+        timeout, a non-zero exit, a rate limit or a stream cap ends the walk with that failure, which
+        the transport retries own, and neither holds the primary down nor turns resume off. A link
+        that serves outside a hold opens one; a link that serves during a hold leaves it as it is.
+        Every link that was really called joins `calls` (R-1276). A stop signalled before a link ends
+        the walk there, as a chain that ran out (R-1287).
+        """
         for position, link in enumerate(self._links, start=1):
+            if self._stop_check is not None and self._stop_check() is not None:
+                break
             link_out, attempt = self._call_link(
                 link, position, method, prompt,
                 timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             attempts.append(attempt)
-            if link_out is not None and not is_failover_trigger(link_out):
-                link_out.failover_disclosure = FailoverDisclosure(
-                    role=self._role,
-                    intended_provider=self._intended_provider,
-                    intended_model=self._intended_model,
-                    primary_error="",
-                    attempts=tuple(attempts),
-                    used=attempt,
-                    primary_skipped=True,
-                )
-                return link_out
-        out = getattr(self._primary, method)(
-            prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
-        )
-        if not is_failover_trigger(out):
-            self._held_until = float("-inf")
-            return out
-        out.failover_disclosure = FailoverDisclosure(
-            role=self._role,
-            intended_provider=self._intended_provider,
-            intended_model=self._intended_model,
-            primary_error=getattr(out, "error", "") or "",
-            attempts=tuple(attempts),
-            used=None,
-        )
-        return out
+            if link_out is not None:
+                calls.append(FailoverCall(link.provider, link.model, link_out))
+            if link_out is None or is_failover_trigger(link_out):
+                continue
+            served = not attempt.error
+            if served:
+                self._resume_disabled = True
+                if not primary_skipped:
+                    self._held_until = self._clock() + self._cooldown_s
+            link_out.failover_disclosure = self._disclosure(
+                primary_error, attempts, attempt if served else None, primary_skipped=primary_skipped,
+            )
+            return link_out
+        return None
 
     def _run_with_failover(
         self,
@@ -639,24 +620,39 @@ class FailoverProvider:
         max_output_chars: int,
         resume: str | None,
     ) -> Any:
-        if self._clock() < self._held_until:
-            return self._run_while_held(
-                method, prompt,
-                timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume,
+        attempts: list[FailoverLinkAttempt] = []
+        calls: list[FailoverCall] = []
+        held = self._clock() < self._held_until
+        if held:
+            # While the primary is held down: every link first, the primary only when all trigger.
+            link_out = self._walk_links(
+                method, prompt, attempts, calls, primary_error="", primary_skipped=True,
+                timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
+            if link_out is not None:
+                return _with_calls(link_out, calls)
         out = getattr(self._primary, method)(
             prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
         )
+        calls.append(FailoverCall(self._intended_provider, self._intended_model, out))
         if not is_failover_trigger(out):
-            return out
-        if resume:
-            # The run's own resume fallback calls again at full content with no session
-            # (DECISION F058 D4 (3)); walking the chain here would hand a backup a session
-            # it never opened.
-            return out
-        return self._walk_links(
-            out, method, prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars
-        )
+            if held:
+                self._held_until = float("-inf")
+            return _with_calls(out, calls)
+        if not held:
+            if resume:
+                # The run's own resume fallback calls again at full content with no session
+                # (DECISION F058 D4 (3)); walking the chain here would hand a backup a session
+                # it never opened.
+                return out
+            link_out = self._walk_links(
+                method, prompt, attempts, calls, primary_error=getattr(out, "error", "") or "",
+                primary_skipped=False, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+            )
+            if link_out is not None:
+                return _with_calls(link_out, calls)
+        out.failover_disclosure = self._disclosure(getattr(out, "error", "") or "", attempts, None)
+        return _with_calls(out, calls)
 
     def build(
         self,
@@ -721,8 +717,8 @@ def failover_report_line(run_record: Mapping[str, Any]) -> str | None:
             f"not be reached."
         )
     if ran_out == 1:
-        sentences.append("1 call found no backup model that could be reached.")
+        sentences.append("1 call found no backup model that served it.")
     elif ran_out > 1:
-        sentences.append(f"{ran_out} calls found no backup model that could be reached.")
+        sentences.append(f"{ran_out} calls found no backup model that served them.")
     sentences.append("The run's record names every model tried.")
     return "Failover: " + " ".join(sentences)

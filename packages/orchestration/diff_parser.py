@@ -43,7 +43,7 @@ CONTRACT NOTES a reader will otherwise have to guess at:
 * ``intraline`` joined the per-line shape while version 1 was still PRIVATE — nothing
   outside this repository could observe it — so it completed v1 rather than changing a
   shipped shape. Version 1 stopped being private when F256 landed the diff endpoint:
-  ``packages/orchestration/ui_server.py`` builds the envelope through
+  ``packages/orchestration/serve_http_handler.py`` builds the envelope through
   ``packages/orchestration/diff_view_source.py``'s ``build_diff_view``, which carries
   ``DIFF_VIEW_VERSION`` straight out to a consumer. Version 1 WAS served. That is why
   F033's id change took a real bump to 2 rather than riding in unversioned, and any

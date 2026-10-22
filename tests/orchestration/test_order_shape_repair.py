@@ -137,3 +137,44 @@ def test_a_german_check_task_is_inspection_and_folds_into_the_work():
     folded = fold_inspection_tasks(plan)
     assert [t.id for t in folded.tasks] == ["T001"]
     assert "Prüfe Änderungsumfang" in folded.tasks[0].goal
+
+
+def test_a_damaged_job_record_does_not_end_the_failure_path(tmp_path, monkeypatch):
+    """R-1311 and R-1413, DECISION F307 D8: each job is read with the loader that never raises, so
+    a record whose task list has the wrong shape is passed over and the jobs after it are still stopped."""
+    import json
+
+    from packages.core.models import RunState
+    from packages.orchestration import do_sequence
+    from packages.orchestration.data_paths import job_record_path
+    from packages.orchestration.do_context import DoContext
+    from packages.orchestration.mission_state import MissionOrder
+    from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
+    from packages.orchestration.project_registry import resolve_project
+    from packages.orchestration.repo_mission import accept_order, link_order_job
+
+    _registered = __import__("tests.orchestration.test_do_sequence_order_digest",
+                             fromlist=["_registered_repo"])._registered_repo
+    repo = _registered(tmp_path, monkeypatch)
+    project = resolve_project(repo)
+    mission, batch = accept_order(project, repo, MissionOrder(text="m"))
+    jobs = []
+    for _ in range(2):
+        job = JobPlan(job_title="t", mission="m", user_prompt="m", state=RunState.PLANNED,
+                      project_id=str(project.id))
+        save_job_plan(job)
+        link_order_job(str(project.id), mission.id, batch.order_id, str(job.job_id))
+        jobs.append(str(job.job_id))
+    damaged = job_record_path(jobs[0])
+    record = json.loads(damaged.read_text())
+    record["tasks"] = "not a list"    # R-1413: makes the strict loader raise AttributeError
+    damaged.write_text(json.dumps(record))
+    ctx = DoContext.__new__(DoContext)
+    ctx.job_ids = list(jobs)
+    ctx.project_missions = {str(project.id): (mission.id, batch.order_id)}
+
+    note = do_sequence._stop_unrun_shape_jobs(ctx)
+
+    assert load_job_plan(jobs[1]).state == RunState.STOPPED
+    assert jobs[1] in note and jobs[0] not in note
+    assert ctx.job_ids == []

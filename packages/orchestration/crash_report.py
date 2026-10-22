@@ -20,7 +20,7 @@ from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
 
 from packages.orchestration.data_paths import data_class_dir
-from packages.orchestration.self_health import home_relative_text
+from packages.orchestration.paths_text import home_relative_text
 from packages.orchestration.stream_evidence import redact_text
 
 # How long a report keeps the `crash_reports` health check warning.
@@ -45,31 +45,33 @@ def remedy_version() -> str:
 
 # A digest of the resolved configuration, so two reports show whether the settings differed.
 def config_digest() -> str:
-    from packages.orchestration.run_manifest import _config_snapshot
+    from packages.orchestration.run_manifest import config_snapshot
 
     try:
-        text = json.dumps(_config_snapshot(), sort_keys=True, default=str)
+        text = json.dumps(config_snapshot(), sort_keys=True, default=str)
     except (OSError, ValueError):
         return "unavailable"
     return "sha256:" + sha256(text.encode("utf-8")).hexdigest()
 
 
-# The report text: header lines, the traceback, the notice; all redacted like evidence.
+# The report text: header lines, the traceback, the notice. The command, the error and each
+# traceback entry are redacted on their own, so a private key hides only its part (R-1280).
 def render_crash_report(
     error: BaseException, *, command: str, when: datetime, version: str, digest: str,
 ) -> str:
     moment = when if when.tzinfo is not None else when.replace(tzinfo=timezone.utc)
     stamp = moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    trace = "".join(
-        traceback.format_exception(type(error), error, error.__traceback__)
-    ).rstrip("\n")
+    trace = "\n".join(
+        redact_text(entry.rstrip("\n"))
+        for entry in traceback.format_exception(type(error), error, error.__traceback__)
+    )
     lines = [
         "# Remedy crash report",
         "",
         f"- time: {stamp}",
         f"- version: {version}",
-        f"- command: {command}",
-        f"- error: {type(error).__name__}: {error}",
+        f"- command: {redact_text(command)}",
+        f"- error: {redact_text(f'{type(error).__name__}: {error}')}",
         f"- configuration digest: {digest}",
         "",
         "## Traceback",
@@ -80,7 +82,7 @@ def render_crash_report(
         "",
         CRASH_NOTICE,
     ]
-    return home_relative_text(redact_text("\n".join(lines) + "\n"))
+    return home_relative_text("\n".join(lines) + "\n")
 
 
 # Write one report (folder 0700, file 0600); None on any write failure so the real error is never hidden.

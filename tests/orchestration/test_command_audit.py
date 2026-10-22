@@ -146,7 +146,7 @@ def test_a_job_id_that_does_not_validate_writes_nothing_and_returns_false(
 
 
 def test_neither_the_raw_token_nor_the_raw_args_reach_the_file(control: Path) -> None:
-    from packages.orchestration.ui_server import token_fingerprint
+    from packages.orchestration.serve_http_handler import token_fingerprint
 
     raw_token = "s3cret-token-value-do-not-log"
     secret_arg = "/home/alice/private/keyfile"

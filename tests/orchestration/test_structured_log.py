@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import logging.handlers
 import os
 import pathlib
 import re
@@ -11,6 +12,7 @@ import stat
 
 import pytest
 
+from packages.orchestration import structured_log as structured_log_module
 from packages.orchestration.config import load_config
 from packages.orchestration.run_log import RunLogWriter
 from packages.orchestration.structured_log import (
@@ -19,18 +21,35 @@ from packages.orchestration.structured_log import (
     DEFAULT_LOG_MAX_BYTES,
     FILE_ONLY_ATTR,
     LOG_CONTEXT_KEYS,
-    LOG_FIELD_NAMES,
     LOG_FILE_NAME,
+    MIN_LOG_BACKUP_COUNT,
+    MIN_LOG_MAX_BYTES,
+    REMEDY_LOGGER_NAMES,
+    bind_call_log_context,
     bind_log_context,
     configure_structured_logging,
-    current_log_context,
     log_files_oldest_first,
     logs_dir,
     read_log_entries,
+    remedy_log_job_id,
+    remedy_log_run_id,
+    remedy_log_task_id,
     reset_structured_logging,
 )
 
+# The keys of every JSON line, in order (R-1294: the tests' own copy, no production reader).
+LOG_FIELD_NAMES = ("ts", "level", "logger", "message", "job_id", "task_id", "run_id")
+
+
+def current_log_context() -> dict[str, str | None]:
+    """The three ids bound now, read from the public context variables (R-1294)."""
+    return {"job_id": remedy_log_job_id.get(), "task_id": remedy_log_task_id.get(),
+            "run_id": remedy_log_run_id.get()}
+
+
 CHILD = logging.getLogger("packages.orchestration.fixture")
+APPS_CHILD = logging.getLogger("apps.cli.fixture")
+LIBRARY = logging.getLogger("fixture_library.client")
 TS_SHAPE = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
 SECRET_PARTS = (
     "sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
@@ -93,6 +112,105 @@ def test_nested_bindings_restore_what_was_before(tmp_path):
             assert current_log_context() == {"job_id": "outer", "task_id": "inner", "run_id": None}
         assert current_log_context() == {"job_id": "outer", "task_id": None, "run_id": None}
     assert current_log_context() == {"job_id": None, "task_id": None, "run_id": None}
+
+
+def test_a_decorated_call_binds_the_ids_its_arguments_carry_for_the_whole_call():
+    seen = []
+
+    @bind_call_log_context(job_id="job", run_id="run")
+    def work(job, *, run="", other=""):
+        seen.append(current_log_context())
+
+    with bind_log_context(task_id="outer-task", run_id="outer-run"):
+        work("j1", run="r1")
+        work("j2")
+    assert seen == [{"job_id": "j1", "task_id": "outer-task", "run_id": "r1"},
+                    {"job_id": "j2", "task_id": "outer-task", "run_id": "outer-run"}]
+    assert current_log_context() == {"job_id": None, "task_id": None, "run_id": None}
+
+
+def test_a_call_given_no_run_id_is_given_a_fresh_one_it_also_receives():
+    received = []
+
+    @bind_call_log_context(run_id="run_id", mint_run_id=lambda: "minted")
+    def work(*, run_id=""):
+        received.append((run_id, current_log_context()["run_id"]))
+
+    work()
+    work(run_id="given")
+    assert received == [("minted", "minted"), ("given", "given")]
+
+
+class _ProbeProvider:
+    """A builder and reviewer stand-in that logs one line from inside the run, through a Remedy logger."""
+
+    name = "fake"
+    supports_resume = False
+
+    def build(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume=None):
+        from packages.orchestration.pingpong_provider import BuilderOutput
+
+        CHILD.warning("probe from the builder")
+        return BuilderOutput(summary="ok", provider="fake")
+
+    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume=None):
+        from packages.orchestration.pingpong_provider import ReviewerOutput
+
+        return ReviewerOutput(verdict="pass", provider="fake")
+
+
+def _probe_lines(path: pathlib.Path) -> list[dict]:
+    return [entry for entry in map(json.loads, _lines(path)) if entry["message"] == "probe from the builder"]
+
+
+def test_a_line_a_run_logs_carries_its_job_task_and_run_ids(tmp_path, monkeypatch):
+    """R-1279: through `run_pingpong`, as `run_job` calls it, and on its own."""
+    from packages.orchestration.pingpong_loop import run_pingpong
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    _root, path = _setup(tmp_path)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Demo\n")
+    probe = _ProbeProvider()
+    given = run_pingpong("Fix README", str(repo), builder_provider=probe, reviewer_provider=probe,
+                         max_rounds=1, job_id="job-1", task_id="task-1", run_id="run-given")
+    alone = run_pingpong("Fix README", str(repo), builder_provider=probe, reviewer_provider=probe, max_rounds=1)
+
+    first, second = _probe_lines(path)
+    assert (first["job_id"], first["task_id"], first["run_id"]) == ("job-1", "task-1", "run-given")
+    assert given.run_id == "run-given"
+    assert (second["job_id"], second["task_id"], second["run_id"]) == (None, None, alone.run_id)
+    assert alone.run_id
+
+
+def test_a_line_a_job_logs_carries_its_job_id(tmp_path, monkeypatch):
+    """R-1279: `run_job` binds the job's id around everything the job does, outside its runs too."""
+    from packages.orchestration import pingpong_job
+    from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    _root, path = _setup(tmp_path)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Demo\n")
+    job = parse_job_file("# Job: Probe\n\n## Task 1\nFix the README.\n\nAcceptance:\n- README fixed\n", str(repo))
+    started = pingpong_job._log_task_started
+
+    def logged_start(*args, **kwargs):
+        CHILD.warning("probe from the job")
+        return started(*args, **kwargs)
+
+    monkeypatch.setattr(pingpong_job, "_log_task_started", logged_start)
+    probe = _ProbeProvider()
+    run_job(job.job_id, builder_provider=probe, reviewer_provider=probe, repair_rounds=0)
+
+    entries = [json.loads(line) for line in _lines(path)]
+    (job_line,) = [entry for entry in entries if entry["message"] == "probe from the job"]
+    (run_line,) = _probe_lines(path)
+    task = load_job_plan(job.job_id).tasks[0]
+    assert (job_line["job_id"], job_line["task_id"], job_line["run_id"]) == (job.job_id, None, None)
+    assert (run_line["job_id"], run_line["task_id"], run_line["run_id"]) == (job.job_id, task.task_id, task.run_id)
 
 
 def test_an_exception_in_a_block_resets_all_ids():
@@ -163,6 +281,16 @@ def test_json_false_writes_a_text_line(tmp_path):
     assert re.match(r"^\S+ INFO packages\.orchestration\.fixture job=j1 task=- run=- plain words$", line)
 
 
+def test_a_private_key_in_a_text_line_hides_only_the_message(tmp_path):
+    """R-1280, DECISION F307 D5: the time, level, logger and ids of the line survive."""
+    _, path = _setup(tmp_path, "json_lines = false\n")
+    with bind_log_context(job_id="j1"):
+        CHILD.info("bad key %s", "-----BEGIN RSA " + "PRIVATE KEY-----\nMIIEabcdef")
+    (line,) = _lines(path)
+    assert re.match(
+        r"^\S+ INFO packages\.orchestration\.fixture job=j1 task=- run=- \[PRIVATE_KEY_REDACTED\]$", line)
+
+
 def test_default_level_writes_info_and_not_debug(tmp_path):
     _, path = _setup(tmp_path)
     CHILD.debug("quiet one")
@@ -224,20 +352,62 @@ def test_configuring_twice_leaves_two_handlers_and_one_line_per_record(tmp_path)
     assert len(_lines(path)) == 1
 
 
-def test_reset_removes_its_handlers_keeps_foreign_ones_and_restores_the_level(tmp_path):
+def test_reset_removes_its_handlers_keeps_foreign_ones_and_restores_the_levels(tmp_path):
+    """R-1293 and R-1312, DECISION F307 D2: the setup lowers Remedy's two loggers, never the
+    root, and a reset restores both and leaves nothing saved."""
     root_logger = logging.getLogger()
     foreign = logging.NullHandler()
     root_logger.addHandler(foreign)
-    before = root_logger.level
+    before = {name: logging.getLogger(name).level for name in ("", *REMEDY_LOGGER_NAMES)}
     try:
         _setup(tmp_path, 'level = "DEBUG"\n')
-        assert root_logger.level == logging.DEBUG
+        assert REMEDY_LOGGER_NAMES == ("packages", "apps")
+        assert [logging.getLogger(name).level for name in REMEDY_LOGGER_NAMES] == [logging.DEBUG] * 2
+        assert root_logger.level == before[""]
         reset_structured_logging()
         assert not [h for h in root_logger.handlers if getattr(h, "_remedy_structured_log", False)]
         assert foreign in root_logger.handlers
-        assert root_logger.level == before
+        assert {name: logging.getLogger(name).level for name in before} == before
+        assert structured_log_module._saved_logger_levels is None
     finally:
         root_logger.removeHandler(foreign)
+
+
+def test_a_library_info_stays_out_of_the_file_while_remedy_info_is_written(tmp_path):
+    """R-1293: a library's logger keeps the root's level, so only its warning reaches the file."""
+    root_logger = logging.getLogger()
+    before = root_logger.level
+    root_logger.setLevel(logging.WARNING)
+    try:
+        _, path = _setup(tmp_path)
+        LIBRARY.info("library chatter")
+        CHILD.info("packages line")
+        APPS_CHILD.info("apps line")
+        LIBRARY.warning("library warning")
+        messages = [json.loads(line)["message"] for line in _lines(path)]
+        assert messages == ["packages line", "apps line", "library warning"]
+    finally:
+        root_logger.setLevel(before)
+
+
+def test_an_error_level_keeps_a_remedy_warning_on_the_terminal_and_out_of_the_file(tmp_path, capsys):
+    _, path = _setup(tmp_path, 'level = "ERROR"\n')
+    CHILD.warning("shown, not written")
+    CHILD.error("shown and written")
+    assert capsys.readouterr().err.splitlines() == ["shown, not written", "shown and written"]
+    assert [json.loads(line)["message"] for line in _lines(path)] == ["shown and written"]
+
+
+def test_a_rotation_setting_below_its_floor_is_raised_with_one_warning_each(tmp_path, capsys):
+    """R-1312, DECISION F307 D2: 0 would be a file that never rotates, or one truncated."""
+    _setup(tmp_path, "max_bytes = 0\nbackup_count = 0\n")
+    (handler,) = [h for h in logging.getLogger().handlers
+                  if isinstance(h, logging.handlers.RotatingFileHandler)]
+    assert (handler.maxBytes, handler.backupCount) == (MIN_LOG_MAX_BYTES, MIN_LOG_BACKUP_COUNT) == (1024, 1)
+    assert capsys.readouterr().err.splitlines() == [
+        "logging.max_bytes 0 is below its floor; 1024 is used",
+        "logging.backup_count 0 is below its floor; 1 is used",
+    ]
 
 
 def test_a_root_that_cannot_be_written_drops_lines_silently_and_keeps_the_error_stream(

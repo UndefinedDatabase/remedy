@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -579,3 +580,49 @@ class TestABudgetDecisionAnsweredThroughTheCommandLine:
         status = json.loads(run("status", "--json").out)
         [client_job] = [j for j in status["client"]["jobs"] if j["job_id"] == job_id]
         assert client_job["state"] == "cancelled"
+
+
+class TestCreateMissionForJobsRepository:
+    """DECISION F307 D11: a goal approved from a job is accepted into the job's own repository
+    when it has one, else the project's."""
+
+    def _job(self, repo_path: str):
+        from packages.orchestration.pingpong_job import JobPlan
+
+        return JobPlan(job_title="fixture", mission="Keep it working",
+                       project_id="proj-1", repo_path=repo_path)
+
+    @patch("packages.orchestration.mission_state.mission_for_job")
+    @patch("packages.orchestration.repo_mission.link_order_job")
+    @patch("packages.orchestration.repo_mission.accept_order")
+    @patch("packages.orchestration.repo_mission.project_by_id")
+    def _accept(self, repo_path, mock_project_by_id, mock_accept_order, mock_link_order_job,
+               mock_mission_for_job):
+        from packages.orchestration.mission_record import Mission, MissionOrderBatch
+
+        mock_mission_for_job.return_value = None
+        owner = SimpleNamespace(id="proj-1", slug="p", name="p",
+                                canonical_repo_path="/canonical/repo",
+                                repo_paths=["/canonical/repo"])
+        mock_project_by_id.return_value = owner
+        mission = Mission(id="m1", project_id="proj-1", goal="Keep it working")
+        mock_accept_order.return_value = (mission, MissionOrderBatch(order_id="o1"))
+        mock_link_order_job.return_value = mission
+
+        from apps.cli.commands.decision import _create_mission_for_job
+
+        result = _create_mission_for_job(self._job(repo_path), json_output=True)
+        return result, mock_accept_order
+
+    def test_a_jobs_own_repository_is_used_when_it_has_one(self):
+        result, mock_accept_order = self._accept("/second/repo")
+
+        assert result == "m1"
+        args, _kwargs = mock_accept_order.call_args
+        assert args[1] == "/second/repo"
+
+    def test_the_projects_repository_is_used_when_the_job_names_none(self):
+        _result, mock_accept_order = self._accept("")
+
+        args, _kwargs = mock_accept_order.call_args
+        assert args[1] == "/canonical/repo"

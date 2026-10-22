@@ -55,7 +55,7 @@ client would not look (`socket_path_problem`).
 ## The socket is the write door
 
 The supervisor answers its socket with a subclass of the write door's
-request handler (`_RemedyHandler` in `packages/orchestration/ui_server.py`),
+request handler (`_RemedyHandler` in `packages/orchestration/serve_http_handler.py`),
 built by `serve_daemon.socket_handler_class`. An envelope sent over the
 socket passes the door's checks — token, CSRF header, the job, the payload
 shape, the command catalog, the nonce and the rate limit — and no second

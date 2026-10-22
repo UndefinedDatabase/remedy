@@ -112,7 +112,7 @@ def socket_handler_class(token: str, launcher: RunLauncher | None = None,
     answers a write under `/api/v1` through it (DECISION F253 D9). With ORDERS it also starts
     `POST /api/v1/orders` through it (DECISION F253 D14 (3)).
     """
-    from packages.orchestration.ui_server import (
+    from packages.orchestration.serve_http_handler import (
         COMMAND_EFFECT_FAILED_MESSAGE,
         _RemedyHandler,
         _safe_error,
@@ -158,9 +158,9 @@ def public_api_handler_class(token: str, runner: CommandRunner | None = None,
 
     A subclass of `socket_handler_class(token, launcher, runner, orders)`. With a LAUNCHER it
     answers `POST /api/v1/jobs/{job}/run` through it, the same one the socket's handler holds
-    (DECISION F253 D18 (4)); with none the route answers 405. Each
-    of `do_GET`, `do_POST`, `do_PUT` and `do_DELETE` reads the path the way `do_POST` reads it,
-    and passes a path `is_public_api_path` accepts to the inherited method, which answers it
+    (DECISION F253 D18 (4)); with none the route answers 405. Every method, `do_GET`, `do_POST`,
+    `do_PUT`, `do_DELETE`, `do_PATCH`, `do_HEAD` and `do_OPTIONS` (R-1303), reads the path the way
+    `do_POST` reads it, and passes a path `is_public_api_path` accepts to the inherited method, which answers it
     exactly as the socket does. Every other path, for every method, answers 404
     `api_route_not_found` straight through `_send_json`, naming that this port serves only
     `/api/v1` — never through `_send_public_api_answer`, so a request this port does not serve
@@ -179,37 +179,15 @@ def public_api_handler_class(token: str, runner: CommandRunner | None = None,
         ))
 
     class _PublicApiHandler(base):
-        def do_GET(self) -> None:  # noqa: N802
+        def _answer_or_not_served(self) -> None:
             parsed = urlparse(getattr(self, "path", ""))
             path = parsed.path.rstrip("/") or "/"
             if is_public_api_path(path):
-                super().do_GET()
+                getattr(super(), f"do_{self.command}")()
                 return
             _not_served(self, path)
 
-        def do_POST(self) -> None:  # noqa: N802
-            parsed = urlparse(getattr(self, "path", ""))
-            path = parsed.path.rstrip("/") or "/"
-            if is_public_api_path(path):
-                super().do_POST()
-                return
-            _not_served(self, path)
-
-        def do_PUT(self) -> None:  # noqa: N802
-            parsed = urlparse(getattr(self, "path", ""))
-            path = parsed.path.rstrip("/") or "/"
-            if is_public_api_path(path):
-                super().do_PUT()
-                return
-            _not_served(self, path)
-
-        def do_DELETE(self) -> None:  # noqa: N802
-            parsed = urlparse(getattr(self, "path", ""))
-            path = parsed.path.rstrip("/") or "/"
-            if is_public_api_path(path):
-                super().do_DELETE()
-                return
-            _not_served(self, path)
+        do_GET = do_POST = do_PUT = do_DELETE = do_PATCH = do_HEAD = do_OPTIONS = _answer_or_not_served  # noqa: N815
 
     return _PublicApiHandler
 
@@ -416,7 +394,7 @@ def stop_supervisor(root: Path | None = None, *, timeout: float = 10.0) -> bool:
 def post_command(root: Path | None, job_id: str, envelope: dict[str, Any],
                  *, timeout: float = 30.0) -> tuple[int, dict[str, Any]]:
     """Send one F009 command envelope for JOB_ID to ROOT's supervisor; (status, body)."""
-    from packages.orchestration.ui_server import COMMAND_CSRF_HEADER
+    from packages.orchestration.serve_http_handler import COMMAND_CSRF_HEADER
 
     paths = serve_paths(root)
     token = paths.token_file.read_text(encoding="utf-8").strip()

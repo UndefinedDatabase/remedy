@@ -66,13 +66,13 @@ from packages.orchestration.mission_state import (
     resolve_mission_id,
     resolve_verify_command,
     run_verify_task,
-    running_mission_for_order_file,
     save_mission,
     set_mission_contract,
     set_mission_order,
     set_mission_status,
 )
 from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
+from packages.orchestration.repo_mission import running_mission_for_order_file
 from packages.orchestration.schemas.models import JobIntake
 
 _T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=timezone.utc)
@@ -138,6 +138,14 @@ class TestMissionRecord:
     def test_a_project_id_that_would_escape_its_directory_is_refused(self, tmp_path):
         with pytest.raises(MissionError):
             create_mission("../../etc", "Ship the importer", root=tmp_path)
+
+    def test_a_project_ids_keyword_is_refused_and_writes_nothing(self, tmp_path):
+        """DECISION F307 D12: `create_mission` lost the keyword; a mission over several projects
+        is only ever a legacy record read back, never one this function writes."""
+        legacy_kwargs = {"project_ids": (_PROJECT, "other")}
+        with pytest.raises(TypeError):
+            create_mission(_PROJECT, "Ship the importer", root=tmp_path, **legacy_kwargs)
+        assert mission_dir_for_project(_PROJECT, root=tmp_path).exists() is False
 
 
 class TestMissionLoading:
@@ -1028,3 +1036,67 @@ class TestTheMissionCarriesItsOrderAndItsContract:
             Mission.from_json(dict(base, order="just a string"))
         with pytest.raises(ValueError):
             Mission.from_json(dict(base, contract=["not", "an", "object"]))
+
+
+# --- the per-project lock of every writer (R-1300, DECISION F307 D7) --------
+
+def _writers(mission_id: str):
+    from packages.orchestration.mission_state import set_mission_plan
+
+    return {
+        "status": lambda root: set_mission_status("p1", mission_id, "paused", root),
+        "plan": lambda root: set_mission_plan("p1", mission_id, {"_version": 1}, root),
+        "order": lambda root: set_mission_order("p1", mission_id, MissionOrder(text="o"), root),
+        "contract": lambda root: set_mission_contract("p1", mission_id, {"criteria": []}, root),
+    }
+
+
+@pytest.mark.parametrize("writer", ["status", "plan", "order", "contract"])
+def test_a_mission_writer_waits_for_the_project_lock(tmp_path, writer):
+    """R-1300: a writer holds `repo_mission_lock`, so it cannot interleave with an order being accepted."""
+    import threading
+
+    from packages.orchestration.mission_state import repo_mission_lock
+
+    mission = create_mission("p1", "goal", root=tmp_path)
+    write = _writers(mission.id)[writer]
+    started, done = threading.Event(), threading.Event()
+
+    def run() -> None:
+        started.set()
+        write(tmp_path)
+        done.set()
+
+    with repo_mission_lock("p1", tmp_path):
+        worker = threading.Thread(target=run)
+        worker.start()
+        assert started.wait(5)
+        assert not done.wait(0.3)
+    worker.join(5)
+    assert done.is_set()
+
+
+def test_the_thread_that_holds_the_lock_writes_without_waiting_for_itself(tmp_path):
+    import threading
+
+    from packages.orchestration.mission_state import repo_mission_lock
+
+    mission = create_mission("p1", "goal", root=tmp_path)
+    done = threading.Event()
+
+    def run() -> None:
+        with repo_mission_lock("p1", tmp_path):
+            set_mission_status("p1", mission.id, "paused", tmp_path)
+        done.set()
+
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    assert done.wait(5)
+
+
+def test_a_writer_of_a_missing_mission_makes_no_lock_file(tmp_path):
+    from packages.orchestration.mission_state import mission_root
+
+    with pytest.raises(MissionNotFoundError):
+        set_mission_status("p9", "0" * 32, "paused", tmp_path)
+    assert not (mission_root(tmp_path) / "p9").exists()

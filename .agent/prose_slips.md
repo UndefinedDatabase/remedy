@@ -1298,3 +1298,4 @@
 2026-10-21, F303 round 5 — the worker's handback carried the per-commit tables but not the item-status table the block ordered; nothing on disk outside the handoff was affected.
 2026-10-21, F303 round 8 — the worker's handback carried no item-status table although the block ordered one, and the worker's reply said it did; nothing on disk outside the handoff was affected.
 2026-10-21, F303 round 9 — the reviewer typed two insertion counts into the drafts of the round 6 and round 8 gate records before measuring them; both were corrected from `git show --shortstat` before any block was built.
+2026-10-21, F307 round 10 — the reviewer's block added a key to the order batch without reading the machine client interface's key trees, so the round's own selection went red on an undeclared answer key; the worker stopped and reported it, and round 11 repairs it as R-1414.

@@ -1,6 +1,7 @@
 """`remedy mission` — the persistent goal above a chain of jobs (F056).
 
-``start`` creates a mission, ``list`` shows the ones this project has, ``show``
+``start`` shows the repository's one mission and creates it, with a first order,
+only when it has none, ``list`` shows the ones this project has, ``show``
 renders one mission's chain with each linked job's state as the job store
 reports it right now, ``plan`` compiles the goal into milestones (F069), and
 ``continue`` adds the next job — with a task that
@@ -10,10 +11,9 @@ transitions, and ``watchdog`` reports F077's tripwires without writing
 anything.  They are not the only writers: the orchestrator loop's terminal
 moves and the watchdog's own pause move the status with no human in the loop.
 
-Creation is ALWAYS explicit.  There is no code path here that a run can trip
-over: a mission exists because someone typed ``remedy mission start``, or
-because someone answered the plan-approval opt-in with yes.  A plain do-flow
-leaves no mission behind.
+A repository has one lasting mission (DECISION amend1011b D1 to D3): the first
+order given to it, by ``remedy do``, ``remedy mission start`` or the public API,
+creates it, and each later order is a batch under it.
 
 Scoping follows F148: the project comes from ``--project``, ``REMEDY_PROJECT``
 or the working directory, exactly as ``remedy job list`` resolves it.  There

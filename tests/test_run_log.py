@@ -34,7 +34,9 @@ from packages.orchestration.run_log import (
 from packages.orchestration.structured_log import (
     LOG_FILE_NAME,
     configure_structured_logging,
-    current_log_context,
+    remedy_log_job_id,
+    remedy_log_run_id,
+    remedy_log_task_id,
     reset_structured_logging,
 )
 
@@ -430,7 +432,7 @@ class TestMirrorRunEvent:
             event="e", job_id="j", run_id="r", timestamp="t", task_id="T9",
             metadata={"attempt_id": "a"},
         ))
-        assert current_log_context() == {"job_id": None, "task_id": None, "run_id": None}
+        assert (remedy_log_job_id.get(), remedy_log_task_id.get(), remedy_log_run_id.get()) == (None, None, None)
 
     def test_the_timeline_line_is_what_it_was(self, tmp_path, log_path):
         writer = RunLogWriter("job-a", data_root=tmp_path)

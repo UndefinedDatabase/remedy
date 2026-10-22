@@ -176,7 +176,7 @@ RETIRED_EVENT_NAMES: frozenset[str] = frozenset(
         # Retired by DECISION F271 D3, which deleted its only writer
         # `patch_revert.py` under finding R-0982 and ruled in as many words that
         # the readers stay, each reading run logs already on disk.  Those readers
-        # are `change_set.py`, `project_brain.py` and `ui_server.py`; the fourth
+        # are `change_set.py`, `project_brain.py` and `serve_http_handler.py`; the fourth
         # reader that ruling kept, `autonomy_readiness._has_revert_snapshot`, was
         # deleted by F277 round 2 because it fed a signal no level checked, which
         # is the one of the four that was an accident rather than a retirement.

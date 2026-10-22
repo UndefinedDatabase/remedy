@@ -96,7 +96,7 @@ def test_the_configuration_digest_is_unavailable_when_the_snapshot_fails(monkeyp
     def explode():
         raise ValueError("no configuration")
 
-    monkeypatch.setattr(run_manifest, "_config_snapshot", explode)
+    monkeypatch.setattr(run_manifest, "config_snapshot", explode)
     assert config_digest() == "unavailable"
 
 
@@ -160,3 +160,35 @@ def test_recent_reports_of_a_missing_folder_is_empty(tmp_path):
 
 def test_the_notice_says_remedy_never_sends_the_report():
     assert "never sends" in crash_report.CRASH_NOTICE
+
+
+# A private key written so that no source line of this file names it whole (R-1280).
+PEM = "-----BEGIN RSA " + "PRIVATE KEY-----\nMIIEabcdef\n-----END RSA " + "PRIVATE KEY-----"
+
+
+def test_a_private_key_in_the_error_hides_only_the_error_and_its_traceback_entry():
+    """R-1280, DECISION F307 D5: each part is redacted on its own, so the rest of the report stays."""
+    try:
+        raise RuntimeError("bad key " + PEM)
+    except RuntimeError as caught:
+        error = caught
+    text = render_crash_report(error, command="job.list", when=FIXED_TIME, version="1.2.3", digest="sha256:abc")
+    assert text.splitlines()[2:7] == [
+        "- time: 2026-10-13T12:30:45Z",
+        "- version: 1.2.3",
+        "- command: job.list",
+        "- error: [PRIVATE_KEY_REDACTED]",
+        "- configuration digest: sha256:abc",
+    ]
+    assert "Traceback (most recent call last):" in text
+    assert "in test_a_private_key_in_the_error_hides_only_the_error_and_its_traceback_entry" in text
+    assert "MIIEabcdef" not in text and "BEGIN RSA" not in text
+    assert text.endswith(CRASH_NOTICE + "\n")
+
+
+def test_a_secret_in_the_command_is_redacted_on_its_own_line():
+    text = render_crash_report(
+        _plain_crash(), command="job.list --token=abcdef0123456789abcdef", when=FIXED_TIME,
+        version="1.2.3", digest="sha256:abc")
+    assert "abcdef0123456789abcdef" not in text
+    assert "- error: ValueError: plain failure" in text

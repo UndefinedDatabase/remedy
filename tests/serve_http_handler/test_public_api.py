@@ -1,0 +1,3215 @@
+"""Contract tests for the public HTTP API's route registry (F253, DECISION F253 D1).
+
+Pins `GET /api/v1/interface`, the registry's shape rules and the version rule, over real HTTP
+requests to the bare handler on a TCP socket and to the supervisor's handler on a unix
+socket. No job, no provider, no model: the one route this round publishes answers the same
+thing regardless of which job, if any, a server was started for.
+
+`PINNED_ROUTES` is the drift guard: a route the registry carries with no test named here fails
+the suite, so a route added later cannot ship unpinned.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import threading
+from dataclasses import replace
+from http.client import HTTPConnection
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+from uuid import uuid4
+
+import pytest
+
+from apps.cli.json_envelope import build_ok
+from packages.orchestration import public_api, self_health
+from packages.orchestration import serve_runs as SR
+from packages.orchestration.data_paths import projects_dir
+from packages.orchestration.self_health import (
+    HEALTH_PASS,
+    HealthCheckResult,
+    health_report_document,
+    run_health_checks,
+)
+from packages.orchestration.serve_daemon import UnixHTTPConnection, socket_handler_class
+from packages.orchestration.serve_http_handler import _RemedyHandler, token_fingerprint
+from packages.orchestration.serve_paths import serve_paths
+from packages.orchestration.structured_log import LOG_FILE_NAME, logs_dir
+from packages.orchestration.token_ledger import LEDGER_FILENAME
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SERVER_TOKEN = "f253-public-api-test-token"
+
+#: `(method, path)` of every published route to the name of the test that pins it. A test that
+#: the registry's own `(method, path)` set equals this dict's keys, and that every name here
+#: exists in this module, makes an unpinned route fail the suite.
+PINNED_ROUTES: dict[tuple[str, str], str] = {
+    ("GET", "/api/v1/interface"): "test_interface_route_answers_the_command_envelope",
+    ("GET", "/api/v1/execution"): "test_the_execution_route_answers_the_client_execution_command",
+    ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
+    ("GET", "/api/v1/jobs/{job}/proof"): "test_proof_route_answers_the_change_proof_command",
+    ("GET", "/api/v1/changes"): "test_changes_route_answers_the_client_changes_command",
+    ("GET", "/api/v1/health"): "test_the_health_route_answers_the_doctor_health_command",
+    ("POST", "/api/v1/jobs/{job}/decisions/{decision}"):
+        "test_the_decision_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/decline"):
+        "test_the_decline_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/apply"):
+        "test_the_apply_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/stop"):
+        "test_the_stop_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/abandon"):
+        "test_the_cancel_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/orders/{order}/cancel"):
+        "test_the_order_cancel_route_is_pinned_with_its_body_and_its_statuses",
+    ("GET", "/api/v1/orders/{order}"):
+        "test_the_order_poll_route_is_pinned_with_its_statuses",
+    ("POST", "/api/v1/orders"):
+        "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
+    ("GET", "/api/v1/jobs/{job}/logs"): "test_the_logs_route_answers_the_doctor_logs_command",
+    ("POST", "/api/v1/jobs/{job}/note"): "test_the_note_route_takes_a_steering_note_for_one_task",
+    ("GET", "/api/v1/jobs/{job}/story"): "test_the_story_route_answers_the_client_story_command",
+    ("GET", "/api/v1/now"): "test_the_now_route_answers_the_running_jobs_entry_and_workers",
+    ("GET", "/api/v1/jobs/{job}/insight"): "test_the_insight_route_answers_the_stream_and_advice",
+    ("GET", "/api/v1/jobs/{job}/diff"): "test_the_diff_route_answers_the_client_diff_command",
+    ("GET", "/api/v1/jobs/{job}/run"):
+        "test_the_run_poll_route_is_pinned_with_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/run"):
+        "test_the_run_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/retry"):
+        "test_the_retry_route_is_pinned_with_its_body_and_its_options",
+}
+
+
+def _handler_class() -> type:
+    """A `_RemedyHandler` subclass bound to a known token, no job and no command runner."""
+    return type("_PublicApiTestHandler", (_RemedyHandler,), {
+        "server_token": SERVER_TOKEN,
+        "target_job_id": "",
+    })
+
+
+@pytest.fixture
+def tcp_server():
+    """The bare handler, with no command runner, on a real TCP socket, 127.0.0.1, port 0."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _handler_class())
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield server.server_address[1]
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+
+
+@pytest.fixture
+def unix_server(tmp_path_factory):
+    """The supervisor's own handler, `socket_handler_class`, on a real unix socket."""
+    import socketserver
+
+    base = tmp_path_factory.mktemp("pa")
+    sock_path = base / "s.sock"
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    server = _Server(str(sock_path), socket_handler_class(SERVER_TOKEN))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield sock_path
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+
+
+def _tcp_request(port: int, method: str, path: str,
+                  headers: dict[str, str] | None = None) -> tuple[int, dict, dict[str, str]]:
+    conn = HTTPConnection("127.0.0.1", port, timeout=10)
+    try:
+        conn.request(method, path, headers=headers or {})
+        resp = conn.getresponse()
+        raw = resp.read()
+        status = resp.status
+        resp_headers = dict(resp.getheaders())
+    finally:
+        conn.close()
+    body = json.loads(raw) if raw else {}
+    return status, body, resp_headers
+
+
+def _unix_request(sock_path: Path, method: str, path: str,
+                   headers: dict[str, str] | None = None,
+                   body: bytes | None = None) -> tuple[int, dict, dict[str, str]]:
+    conn = UnixHTTPConnection(sock_path, timeout=10)
+    try:
+        conn.request(method, path, body=body, headers=headers or {})
+        resp = conn.getresponse()
+        raw = resp.read()
+        status = resp.status
+        resp_headers = dict(resp.getheaders())
+    finally:
+        conn.close()
+    body = json.loads(raw) if raw else {}
+    return status, body, resp_headers
+
+
+def _bearer(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _command_line_interface_answer() -> dict:
+    """`remedy client interface --json`'s real standard output, as a subprocess, parsed."""
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "client", "interface", "--json"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def _status_json_client(extra_args: tuple[str, ...] = ()) -> dict:
+    """`remedy status --json [extra_args]`'s real `client` key, as a subprocess, parsed."""
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "status", "--json", *extra_args],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)["client"]
+
+
+def _change_proof_command_answer(job_id: str, *, ok: bool = True) -> dict:
+    """`remedy change proof <job_id> --json`'s real standard output, as a subprocess, parsed.
+
+    A refusal exits nonzero but still prints the envelope to stdout
+    (`apps.cli.json_envelope.fail`), so `ok` only selects which exit this call expects.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "change", "proof", job_id, "--json"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+    )
+    if ok:
+        assert result.returncode == 0, result.stderr
+    else:
+        assert result.returncode != 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def _client_changes_command_answer(since: str | None = None, *, exit_code: int = 0) -> dict:
+    """`remedy client changes [--since <since>] --json`'s real standard output, as a subprocess,
+    parsed. A refusal exits nonzero but still prints the envelope to stdout
+    (`apps.cli.json_envelope.fail`), so `exit_code` only selects which exit this call expects.
+    """
+    args = [sys.executable, "-m", "apps.cli.main", "client", "changes", "--json"]
+    if since is not None:
+        args += ["--since", since]
+    result = subprocess.run(args, cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30)
+    assert result.returncode == exit_code, result.stdout + result.stderr
+    return json.loads(result.stdout)
+
+
+#: Git identity for the scratch repository the seed below commits into.
+_SEED_GIT_IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+                      "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+#: A deadline already in the past: the run's budget stops it before any task runs,
+#: raising the one decision a fake run raises on its own (as
+#: tests/cli/test_machine_client_contract.py uses it).
+_SEED_PAST_DEADLINE = "2000-01-01T00:00:00+00:00"
+
+
+def _seed_project_job_and_decision(tmp_path: Path) -> None:
+    """Put one project, one job and one open decision on the current data root.
+
+    The same path as tests/cli/test_machine_client_contract.py, with the fake providers: an
+    order file whose deadline has already passed stops the run before any task runs and raises
+    the budget decision, so `remedy do` exits 1 and leaves one job with one open decision behind.
+    """
+    repo = tmp_path / "seed-repo"
+    repo.mkdir()
+    env = {**os.environ, **_SEED_GIT_IDENTITY}
+    subprocess.run(["git", "init", "-q", str(repo)], check=True, env=env)
+    (repo / "README.md").write_text("# Scratch\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True, env=env)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "init"], check=True, env=env)
+    order_file = tmp_path / "seed-order.md"
+    order_file.write_text(
+        "---\nmax-cost-usd: 1\n---\nAdd a line saying hello to README.md\n", encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "do", str(order_file), "--json",
+         "--no-ui", "--run-unattended", "--no-llm", "--builder-provider", "fake",
+         "--reviewer-provider", "fake", "--deadline", _SEED_PAST_DEADLINE],
+        cwd=str(repo), capture_output=True, text=True, env=env, timeout=120)
+    assert result.returncode == 1, result.stdout + result.stderr
+
+
+def _without_generated_at(answer: dict) -> dict:
+    """`answer` without its own `generated_at`, stamped fresh by each call to `build_proof_chain`."""
+    return {k: v for k, v in answer.items() if k != "generated_at"}
+
+
+def _without_volatile_digest_fields(digest: dict) -> dict:
+    """`digest` without its own `read_at` and without any decision's `age_seconds`."""
+    copy = {k: v for k, v in digest.items() if k != "read_at"}
+    copy["decisions"] = [
+        {k: v for k, v in decision.items() if k != "age_seconds"}
+        for decision in copy.get("decisions", [])
+    ]
+    return copy
+
+
+def _without_volatile_changes_fields(changes: dict) -> dict:
+    """`changes` without its own `read_at` and `cursor`, and without any decision's
+    `age_seconds` (both `decisions` and `closed_decisions` carry the key)."""
+    copy = {k: v for k, v in changes.items() if k not in ("read_at", "cursor")}
+    for key in ("decisions", "closed_decisions"):
+        copy[key] = [{k: v for k, v in entry.items() if k != "age_seconds"}
+                     for entry in copy.get(key, [])]
+    return copy
+
+
+# -- A: the one route, over both transports ---------------------------------
+
+
+def test_interface_route_answers_the_command_envelope(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    assert body == _command_line_interface_answer()
+
+
+def test_the_same_route_over_the_supervisors_socket_answers_the_same_body(unix_server):
+    status, body, _headers = _unix_request(
+        unix_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    assert body == _command_line_interface_answer()
+
+
+# -- B: refusals --------------------------------------------------------------
+
+
+def test_no_authorization_header_is_401(tcp_server):
+    status, body, _headers = _tcp_request(tcp_server, "GET", "/api/v1/interface")
+    assert status == 401, body
+    assert body["ok"] is False
+    assert body["error"] == "api_token_invalid"
+    assert body["schema_version"] == 1
+
+
+def test_a_wrong_bearer_token_is_401(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer("not-the-token"))
+    assert status == 401, body
+    assert body["ok"] is False
+    assert body["error"] == "api_token_invalid"
+    assert body["schema_version"] == 1
+
+
+def test_the_right_token_only_in_the_query_is_401(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/interface?token={SERVER_TOKEN}")
+    assert status == 401, body
+    assert body["ok"] is False
+    assert body["error"] == "api_token_invalid"
+    assert body["schema_version"] == 1
+
+
+def test_an_unknown_path_with_the_right_token_is_404(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/nothing", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "api_route_not_found"
+
+
+def test_the_bare_prefix_with_the_right_token_is_404(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "api_route_not_found"
+
+
+def test_an_unknown_path_without_a_token_is_401_not_404(tcp_server):
+    status, body, _headers = _tcp_request(tcp_server, "GET", "/api/v1/nothing")
+    assert status == 401, body
+    assert body["error"] == "api_token_invalid"
+
+
+# -- C: the drift guard -------------------------------------------------------
+
+
+def test_every_route_is_pinned_by_name():
+    registry_keys = {(route.method, route.path) for route in public_api.PUBLIC_API_ROUTES}
+    assert registry_keys == set(PINNED_ROUTES.keys()), {
+        "unpinned": sorted(registry_keys - set(PINNED_ROUTES.keys())),
+        "vanished": sorted(set(PINNED_ROUTES.keys()) - registry_keys),
+    }
+    module_globals = globals()
+    for test_name in PINNED_ROUTES.values():
+        assert test_name in module_globals, f"{test_name} is not defined in this module"
+
+
+# -- D: every route's shape ---------------------------------------------------
+
+
+def test_every_route_is_well_formed():
+    import re
+
+    from apps.cli.client_interface import (
+        CLIENT_OPERATION_IDS,
+        OPERATION_ANSWER_KEYS,
+        OPERATION_REFUSAL_TOKENS,
+    )
+    from apps.cli.command_catalog import get_command
+
+    segment_re = re.compile(r"^[A-Za-z0-9_-]+$")
+    for route in public_api.PUBLIC_API_ROUTES:
+        assert route.path.startswith(public_api.PUBLIC_API_PREFIX + "/")
+        assert route.method in ("GET", "POST")
+        assert bool(route.body) == (route.method == "POST")
+        assert (route.refusal_default is not None) == (
+            route.method == "POST" and not (route.starts_order or route.starts_run))
+        entry = get_command(route.twin)  # raises KeyError if not a catalog command
+        assert route.twin in CLIENT_OPERATION_IDS
+        assert not public_api.command_is_excluded(route.twin)
+        if route.twin_key is not None:
+            assert route.twin_key in OPERATION_ANSWER_KEYS[route.twin]
+        for segment in route.path.split("/")[1:]:
+            is_named = segment.startswith("{") and segment.endswith("}")
+            assert is_named or segment_re.match(segment), segment
+        for token, status in route.refusals:
+            assert token in OPERATION_REFUSAL_TOKENS[route.twin], (route.twin, token)
+            # 503 is the health route's one status: a failing check answers it (DECISION F199 D3).
+            assert status in (400, 404, 409, 503), (route.twin, token, status)
+        option_flags = {arg.name for arg in entry.args if arg.is_option}
+        value_options = {arg.name for arg in entry.args if arg.is_option and not arg.is_flag}
+        for key in route.query:
+            assert "--" + key.replace("_", "-") in option_flags
+        for key in route.query_values:
+            assert "--" + key.replace("_", "-") in value_options
+        flag_options = {arg.name for arg in entry.args if arg.is_option and arg.is_flag}
+        positional_names = {arg.name for arg in entry.args if not arg.is_option}
+        for key, kind in route.body:
+            assert kind in ("string", "strings", "flag")
+            # A `starts_order` route's body maps to `remedy do run`'s own flags, not its twin
+            # `client.order`'s (which takes none): checked by its own dedicated test instead.
+            if route.starts_order:
+                continue
+            # DECISION F303 D3 (1): a key the route passes positionally, after `--`, is never a
+            # `--option` of its twin — it is the twin's own positional argument of that name.
+            if key in route.positional_body:
+                assert kind == "string", (route.path, key)
+                assert key in positional_names, (route.path, key)
+                continue
+            if kind == "flag":
+                assert "--" + key.replace("_", "-") in flag_options, (route.path, key)
+            else:
+                assert "--" + key.replace("_", "-") in value_options, (route.path, key)
+    major = public_api.PUBLIC_API_PREFIX.rsplit("/api/v", 1)[-1]
+    assert public_api.PUBLIC_API_VERSION.split(".")[0] == major
+
+
+def test_only_the_note_route_sets_a_positional_body_key():
+    """DECISION F303 D3 (1): the exemption is for the note route's `text` alone, not a general
+    escape hatch — a future route still names every other body key as a `--option`."""
+    for route in public_api.PUBLIC_API_ROUTES:
+        if route.path == "/api/v1/jobs/{job}/note":
+            assert route.positional_body == ("text",)
+        else:
+            assert route.positional_body == ()
+
+
+# -- E: the exclusion list -----------------------------------------------------
+
+
+def test_the_exclusion_list_holds_the_feature_files_initial_entries():
+    assert public_api.PUBLIC_API_EXCLUDED_COMMANDS == (
+        "patch.apply", "patch.revert", "rollback.*", "snapshot.create", "config.set",
+        "config.init", "init.run", "self-repair.proposal-approve", "self-repair.proposal-deny",
+        "worker.unload", "runtime.stop", "ui.stop", "queue.rm", "queue.reclaim",
+    )
+
+
+def test_command_is_excluded_matches_a_wildcard_entry():
+    assert public_api.command_is_excluded("rollback.anything") is True
+
+
+def test_command_is_excluded_does_not_match_a_published_command():
+    assert public_api.command_is_excluded("client.interface") is False
+
+
+# -- F: deprecation -------------------------------------------------------------
+
+
+def test_a_deprecated_route_answers_the_deprecation_header(tcp_server, monkeypatch):
+    deprecated_route = replace(public_api.PUBLIC_API_ROUTES[0], deprecated=True)
+    monkeypatch.setattr(public_api, "PUBLIC_API_ROUTES", (deprecated_route,))
+    status, _body, headers = _tcp_request(
+        tcp_server, "GET", deprecated_route.path, headers=_bearer(SERVER_TOKEN))
+    assert status == 200
+    assert headers.get("Deprecation") == "true"
+
+
+def test_an_undeprecated_route_sends_no_deprecation_header(tcp_server):
+    status, _body, headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 200
+    assert "Deprecation" not in headers
+
+
+# -- G: the published page -----------------------------------------------------
+
+
+def test_the_pages_generated_section_equals_the_rendering():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    start = page.index(public_api.PUBLIC_API_PAGE_BEGIN)
+    end = page.index(public_api.PUBLIC_API_PAGE_END) + len(public_api.PUBLIC_API_PAGE_END) + 1
+    assert page[start:end] == public_api.render_public_api_markdown()
+
+
+def test_the_page_states_the_prefix_the_auth_scheme_and_the_refusal_tokens():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "/api/v1" in page
+    assert "Authorization: Bearer" in page
+    assert "api_token_invalid" in page
+    assert "api_route_not_found" in page
+    assert "Deprecation: true" in page
+
+
+def test_the_page_states_the_ledger_file_and_the_query_refusal_token():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "api/calls.jsonl" in page
+    assert "api_query_invalid" in page
+
+
+def test_the_page_states_the_changes_route_and_the_value_query_key():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "/api/v1/changes" in page
+    assert "since=<value>" in page
+
+
+def test_the_page_states_the_supervisor_ports_setting():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "serve.api_port" in page
+    assert "REMEDY_SERVE_API_PORT" in page
+
+
+def test_every_remedy_command_the_pages_hand_written_part_names_is_in_the_catalog():
+    """R-1187: a `remedy <group> <subcommand>` span above the generated marker is real.
+
+    A group named alone (no second word, or a second word starting with `-`) passes only
+    when the catalog holds that group's `run` command — the way `remedy status` and `remedy
+    do` run without a subcommand, and `remedy ui` prints its help instead (recurrence, round
+    3, DECISION F253 D3 (5)): a bare `remedy ui` must fail here, not pass because the group
+    merely exists.
+
+    Mutates nothing; this is the standing proof, not the mutation the reviewer runs.
+    """
+    import re
+
+    from apps.cli.command_catalog import CATALOG, resolve_group
+
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    spans = [s for s in re.findall(r"`([^`]+)`", hand_written) if s.startswith("remedy ")]
+    assert spans, "no `remedy ...` span found in the page's hand-written part"
+    for span in spans:
+        words = span.split()
+        first = words[1] if len(words) > 1 else ""
+        second = words[2] if len(words) > 2 else ""
+        if second and not second.startswith("-"):
+            group_id = resolve_group(first)
+            assert any(cmd.group_id == group_id and cmd.subcommand == second
+                       for cmd in CATALOG), span
+        else:
+            group_id = resolve_group(first)
+            assert group_id is not None, span
+            assert any(cmd.group_id == group_id and cmd.subcommand == "run"
+                       for cmd in CATALOG), span
+
+
+def test_the_page_states_the_method_refusal_token():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "api_method_not_allowed" in page
+
+
+# -- H: the digest route, twinned with status.run's client object -------------
+
+
+def test_digest_route_answers_the_status_commands_client_object(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/digest", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    digest = {k: v for k, v in body.items() if k not in ("schema_version", "ok")}
+    reference = _status_json_client()
+    assert digest["jobs"], "the digest holds no job"
+    assert digest["decisions"], "the digest holds no decision"
+    assert _without_volatile_digest_fields(digest) == _without_volatile_digest_fields(reference)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/digest?all_ended_jobs=true", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    digest_all = {k: v for k, v in body.items() if k not in ("schema_version", "ok")}
+    reference_all = _status_json_client(("--all-ended-jobs",))
+    assert (_without_volatile_digest_fields(digest_all)
+            == _without_volatile_digest_fields(reference_all))
+
+
+# -- H2: the proof route, twinned with change.proof ----------------------------
+
+
+def test_proof_route_answers_the_change_proof_command(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+    client = _status_json_client()
+    job_id = client["jobs"][0]["job_id"]
+    reference = _without_generated_at(_change_proof_command_answer(job_id))
+
+    for candidate in (job_id, job_id[:8]):
+        status, body, _headers = _tcp_request(
+            tcp_server, "GET", f"/api/v1/jobs/{candidate}/proof", headers=_bearer(SERVER_TOKEN))
+        assert status == 200, body
+        assert _without_generated_at(body) == reference
+
+
+def test_proof_route_refusals_match_the_change_proof_command(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+    client = _status_json_client()
+    job_id = client["jobs"][0]["job_id"]
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/jobs/not-a-job/proof", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "invalid_job_id"
+    assert body == _change_proof_command_answer("not-a-job", ok=False)
+
+    missing = str(uuid4())
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{missing}/proof", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "job_not_found"
+    assert body == _change_proof_command_answer(missing, ok=False)
+
+    # An ambiguous prefix: a second job id that shares the first eight hex characters.
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    source = data_root / "jobs" / job_id
+    last = job_id[-1]
+    twin_id = job_id[:-1] + ("0" if last != "0" else "1")
+    shutil.copytree(source, data_root / "jobs" / twin_id)
+    prefix = job_id[:8]
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{prefix}/proof", headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "ambiguous_job_id"
+    assert body == _change_proof_command_answer(prefix, ok=False)
+
+
+def test_the_proof_route_has_no_route_beneath_or_above_it(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+    client = _status_json_client()
+    job_id = client["jobs"][0]["job_id"]
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{job_id}", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "api_route_not_found"
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{job_id}/proof/extra", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "api_route_not_found"
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{job_id}/proof?path=README.md",
+        headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "api_query_invalid"
+
+
+# -- H3: the changes route, twinned with client.changes (S3b, DECISION F253 D5) -----
+
+
+def test_changes_route_answers_the_client_changes_command(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/changes", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    reference = _client_changes_command_answer()
+    assert _without_volatile_changes_fields(body) == _without_volatile_changes_fields(reference)
+
+    since = "2000-01-01T00:00:00Z"
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/changes?since={since}", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    reference = _client_changes_command_answer(since)
+    assert body["jobs"], "the route lists no job"
+    assert _without_volatile_changes_fields(body) == _without_volatile_changes_fields(reference)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/changes?since=yesterday", headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    reference = _client_changes_command_answer("yesterday", exit_code=2)
+    assert body == reference
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/changes?since=", headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "api_query_invalid"
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/changes?since=a&since=b", headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "api_query_invalid"
+
+
+def _fixed_health_check(check: str):
+    def _check(*_args, **_kwargs) -> HealthCheckResult:
+        return HealthCheckResult(check, HEALTH_PASS, "fine", "")
+
+    return _check
+
+
+def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_server, monkeypatch):
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
+    assert (route.method, route.twin, route.refusals) == (
+        "GET", "doctor.health", (("health_failed", 503),))
+    assert public_api.PUBLIC_API_VERSION == "1.27"
+
+    for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
+                        ("check_disk_floor", "disk"), ("check_providers", "providers"),
+                        ("check_default_chain", "default_chain")):
+        monkeypatch.setattr(self_health, name, _fixed_health_check(check))
+
+    def ask(path: str = "/api/v1/health", headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    expected = build_ok(**health_report_document(run_health_checks()))
+    for status, body, _headers in ask(headers=_bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert body["ok"] is True
+        assert body["verdict"] == "PASS"
+        assert [c["check"] for c in body["checks"]] == [
+            c["check"] for c in expected["checks"]]
+        assert len(body["checks"]) == 10
+        assert body == expected
+
+    ledger = projects_dir() / "alpha" / LEDGER_FILENAME
+    ledger.parent.mkdir(parents=True)
+    ledger.write_bytes(b"this is not a database " * 20)
+    for status, body, _headers in ask(headers=_bearer(SERVER_TOKEN)):
+        assert status == 503, body
+        assert body["ok"] is False
+        assert body["error"] == "health_failed"
+        assert body["message"] == "1 of 10 health checks failed"
+        ledgers = next(c for c in body["checks"] if c["check"] == "ledgers")
+        assert ledgers["level"] == "FAIL"
+
+    for status, body, _headers in ask():
+        assert status == 401, body
+
+
+def test_the_logs_route_answers_the_doctor_logs_command(tcp_server, unix_server):
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/logs")
+    assert (route.method, route.twin, route.refusals, route.query_values) == (
+        "GET", "doctor.logs",
+        (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), ("run",))
+    # Operator amendment amend1014-luna-mission-fixes B.3: the route resolves the job first.
+    job_id = _saved_job_with_id("abc1230000000000")
+    quiet = _saved_job_with_id("ccc0000000000000")
+
+    def line(job_id: str, run_id: str, message: str) -> str:
+        return json.dumps({
+            "ts": "2026-10-13T08:05:09.042Z", "level": "INFO", "logger": "pkg.mod",
+            "message": message, "job_id": job_id, "task_id": "T001", "run_id": run_id,
+        })
+
+    folder = logs_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    lines = [line(job_id, "r1", "first"), line(job_id, "r2", "second"),
+             line("def4560000000000", "r9", "elsewhere")]
+    (folder / LOG_FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    written = [json.loads(text) for text in lines]
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    expected = build_ok(job_id=job_id, run_id=None, entries=written[:2], unreadable=0,
+                        files=[LOG_FILE_NAME])
+    for status, body, _headers in ask("/api/v1/jobs/abc123/logs", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert body["ok"] is True
+        assert [entry["message"] for entry in body["entries"]] == ["first", "second"]
+        assert body == expected
+
+    for status, body, _headers in ask("/api/v1/jobs/abc123/logs?run=r2", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert [entry["message"] for entry in body["entries"]] == ["second"]
+        assert body["run_id"] == "r2"
+
+    for status, body, _headers in ask("/api/v1/jobs/abc123/logs?nope=1", _bearer(SERVER_TOKEN)):
+        assert status == 400, body
+        assert body["error"] == "api_query_invalid"
+
+    for status, body, _headers in ask(f"/api/v1/jobs/{quiet}/logs", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert body["entries"] == []
+
+    for status, body, _headers in ask("/api/v1/jobs/none/logs", _bearer(SERVER_TOKEN)):
+        assert (status, body["error"]) == (404, "invalid_job_id"), body
+
+    for status, body, _headers in ask("/api/v1/jobs/abc123/logs"):
+        assert status == 401, body
+
+
+def test_the_logs_route_answers_one_runs_lines_oldest_first(tcp_server, unix_server):
+    """DECISION F303 D1 (4): the order is proved through the route, not only below it."""
+    job_id = _saved_job_with_id("abc1240000000000")
+
+    def line(run_id: str, message: str, ts: str) -> str:
+        return json.dumps({
+            "ts": ts, "level": "INFO", "logger": "pkg.mod",
+            "message": message, "job_id": job_id, "task_id": "T001", "run_id": run_id,
+        })
+
+    folder = logs_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    lines = [
+        line("r1", "third", "2026-10-13T08:05:09.300Z"),
+        line("r1", "first", "2026-10-13T08:05:09.100Z"),
+        line("r1", "second", "2026-10-13T08:05:09.200Z"),
+        line("r2", "elsewhere", "2026-10-13T08:05:09.400Z"),
+    ]
+    (folder / LOG_FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    for status, body, _headers in ask(f"/api/v1/jobs/{job_id}/logs?run=r1", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert [entry["message"] for entry in body["entries"]] == ["first", "second", "third"]
+        assert [entry["ts"] for entry in body["entries"]] == sorted(
+            entry["ts"] for entry in body["entries"])
+
+
+def test_the_contract_page_names_the_one_route_served_outside_the_api():
+    """DECISION F303 D1 (3): the hand-written section names the socket's command door."""
+    import re
+
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    start = page.index("## Served outside the public API")
+    end = page.index("\n## ", start + 1)
+    section = page[start:end]
+    tokens = {
+        (m.group(1), m.group(2))
+        for m in re.finditer(r"`(GET|POST|PUT|DELETE) (/[^`]*)`", section)
+    }
+    assert tokens == {("POST", "/api/jobs/{job}/commands")}
+
+
+@pytest.mark.parametrize("method, path", [
+    ("GET", "/"),
+    ("GET", "/api/state"),
+    ("GET", "/index.html"),
+    ("GET", "/api/jobs/any-job/commands"),
+    ("POST", "/api/state"),
+    ("POST", "/api/v2/jobs/any-job/note"),
+    ("PUT", "/api/jobs/any-job/commands"),
+    ("DELETE", "/api/jobs/any-job/commands"),
+], ids=[
+    "get-root", "get-api-state", "get-index-html", "get-commands-door-wrong-method",
+    "post-api-state", "post-v2-note", "put-commands-door", "delete-commands-door",
+])
+def test_the_socket_serves_nothing_outside_the_contract_and_its_door(unix_server, method, path):
+    """DECISION F303 D1 (3): the socket serves nothing beyond the contract and the one door."""
+    url = f"{path}?token={SERVER_TOKEN}"
+    status, body, _headers = _unix_request(
+        unix_server, method, url, headers=_bearer(SERVER_TOKEN))
+    assert status in (403, 404, 405), (method, path, status, body)
+
+
+def test_the_socket_serves_the_command_door_but_refuses_no_token(unix_server):
+    """The door is served (not 404/405) and refuses an unauthenticated caller."""
+    status, body, _headers = _unix_request(
+        unix_server, "POST", "/api/jobs/any-job/commands")
+    assert status not in (404, 405) and status >= 400, (status, body)
+    assert (status, body["error"]) == (403, "invalid token")
+
+
+# -- I: query refusals ----------------------------------------------------------
+
+
+@pytest.mark.parametrize("path", [
+    "/api/v1/digest?nope=true",
+    "/api/v1/digest?all_ended_jobs=yes",
+    "/api/v1/digest?all_ended_jobs=",
+    "/api/v1/digest?all_ended_jobs=true&all_ended_jobs=false",
+    f"/api/v1/interface?token={SERVER_TOKEN}",
+])
+def test_an_undeclared_key_a_repeated_key_or_a_bad_value_is_400(tcp_server, path):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", path, headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "api_query_invalid"
+
+
+def test_a_declared_flag_set_to_false_is_200(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/digest?all_ended_jobs=false", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+
+
+def test_an_invalid_query_without_a_token_is_401_not_400(tcp_server):
+    status, body, _headers = _tcp_request(tcp_server, "GET", "/api/v1/digest?nope=true")
+    assert status == 401, body
+    assert body["error"] == "api_token_invalid"
+
+
+# -- J: the call ledger ----------------------------------------------------------
+
+
+def test_the_ledger_holds_one_line_per_request_in_order(tcp_server):
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    ledger_path = data_root / "api" / "calls.jsonl"
+
+    status, _body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 200
+    status, _body, _headers = _tcp_request(tcp_server, "GET", "/api/v1/interface")
+    assert status == 401
+    status, _body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/nothing", headers=_bearer(SERVER_TOKEN))
+    assert status == 404
+    status, _body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/digest?nope=true", headers=_bearer(SERVER_TOKEN))
+    assert status == 400
+
+    raw_lines = ledger_path.read_text(encoding="utf-8").splitlines()
+    assert len(raw_lines) == 4
+    records = [json.loads(line) for line in raw_lines]
+    for record in records:
+        assert list(record.keys()) == ["ts", "token_fp", "client", "method", "path", "status",
+                                       "error"]
+        assert record["method"] == "GET"
+        assert record["client"] == ""
+
+    assert records[0]["status"] == 200
+    assert records[0]["error"] == ""
+    assert records[0]["path"] == "/api/v1/interface"
+    assert records[0]["token_fp"] == token_fingerprint(SERVER_TOKEN)
+
+    assert records[1]["status"] == 401
+    assert records[1]["error"] == "api_token_invalid"
+    assert records[1]["path"] == "/api/v1/interface"
+    assert records[1]["token_fp"] == token_fingerprint("")
+
+    assert records[2]["status"] == 404
+    assert records[2]["error"] == "api_route_not_found"
+    assert records[2]["path"] == "/api/v1/nothing"
+    assert records[2]["token_fp"] == token_fingerprint(SERVER_TOKEN)
+
+    assert records[3]["status"] == 400
+    assert records[3]["error"] == "api_query_invalid"
+    assert records[3]["path"] == "/api/v1/digest"
+    assert records[3]["token_fp"] == token_fingerprint(SERVER_TOKEN)
+
+    for raw_line in raw_lines:
+        assert SERVER_TOKEN not in raw_line
+        assert "?" not in raw_line
+        assert "nope" not in raw_line
+
+    assert (ledger_path.parent.stat().st_mode & 0o777) == 0o700
+    assert (ledger_path.stat().st_mode & 0o777) == 0o600
+
+
+# -- K: a failed ledger write never changes the answer ---------------------------
+
+
+def test_a_failed_ledger_write_never_changes_the_answer(tcp_server, monkeypatch):
+    def _raise_os_error(**_kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(public_api, "append_public_api_call", _raise_os_error)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    assert body == _command_line_interface_answer()
+
+    status, body, _headers = _tcp_request(tcp_server, "GET", "/api/v1/interface")
+    assert status == 401, body
+
+
+# -- L: POST, PUT and DELETE under the namespace (R-1188) -----------------------
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE"])
+def test_post_put_and_delete_answer_method_not_allowed_with_the_token(tcp_server, method):
+    status, body, _headers = _tcp_request(
+        tcp_server, method, "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 405, body
+    assert body["ok"] is False
+    assert body["error"] == "api_method_not_allowed"
+    assert body["schema_version"] == 1
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE"])
+def test_post_put_and_delete_without_the_token_are_401(tcp_server, method):
+    status, body, _headers = _tcp_request(tcp_server, method, "/api/v1/interface")
+    assert status == 401, body
+    assert body["error"] == "api_token_invalid"
+
+
+def test_post_put_and_delete_each_write_their_own_ledger_line(tcp_server):
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    ledger_path = data_root / "api" / "calls.jsonl"
+
+    for method in ("POST", "PUT", "DELETE"):
+        status, _body, _headers = _tcp_request(
+            tcp_server, method, "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+        assert status == 405
+
+    raw_lines = ledger_path.read_text(encoding="utf-8").splitlines()
+    assert len(raw_lines) == 3
+    records = [json.loads(line) for line in raw_lines]
+    for method, record in zip(("POST", "PUT", "DELETE"), records):
+        assert record["method"] == method
+        assert record["status"] == 405
+        assert record["error"] == "api_method_not_allowed"
+        assert record["path"] == "/api/v1/interface"
+
+
+# -- L2: PATCH, HEAD and OPTIONS, the method named, and the Server header (R-1303, R-1304) ----
+
+
+@pytest.mark.parametrize("method", ["PUT", "PATCH", "OPTIONS"])
+def test_a_refused_method_is_named_and_never_sent_to_the_supervisor(tcp_server, method):
+    status, body, _headers = _tcp_request(
+        tcp_server, method, "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 405, body
+    assert body["error"] == "api_method_not_allowed"
+    assert body["message"] == f"{method} is not answered under /api/v1; its routes answer GET and POST"
+
+
+def test_patch_head_and_options_are_refused_and_each_writes_its_ledger_line(tcp_server):
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    statuses = [_tcp_request(tcp_server, method, "/api/v1/interface")[0]
+                for method in ("PATCH", "HEAD", "OPTIONS")]
+    statuses.append(_tcp_request(tcp_server, "HEAD", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))[0])
+    assert statuses == [401, 401, 401, 405]
+    lines = (data_root / "api" / "calls.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [(json.loads(line)["method"], json.loads(line)["status"]) for line in lines] == [
+        ("PATCH", 401), ("HEAD", 401), ("OPTIONS", 401), ("HEAD", 405)]
+
+
+def test_every_answer_names_its_server_as_remedy_only(tcp_server):
+    for method in ("GET", "HEAD", "OPTIONS"):
+        _status, _body, headers = _tcp_request(
+            tcp_server, method, "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+        assert headers["Server"] == "Remedy", method
+
+
+# -- L3: a value a query key cannot take, and a path value on a GET (R-1308, R-1309) ------
+
+
+def test_a_query_key_given_empty_or_as_a_bad_flag_is_refused_with_its_own_sentence():
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/changes", "since=")
+    assert (status, body["error"]) == (400, "api_query_invalid")
+    assert body["message"] == "'since' in '/api/v1/changes' takes one value that is not empty"
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/digest", "all_ended_jobs=maybe")
+    assert (status, body["error"]) == (400, "api_query_invalid")
+    assert body["message"] == "'all_ended_jobs' in '/api/v1/digest' takes one value, true or false"
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/changes", "until=x")
+    assert body["message"] == "'until' is not a valid query key for '/api/v1/changes'; it accepts 'since'"
+
+
+def test_a_get_refuses_a_path_value_that_leaves_its_place(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/jobs/..%2F..%2Fetc/story", headers=_bearer(SERVER_TOKEN))
+    assert (status, body["error"]) == (400, "api_path_invalid"), body
+    assert body["message"] == "the job in '/api/v1/jobs/..%2F..%2Fetc/story' must not hold '/' or a NUL character"
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/-x/story")
+    assert (status, body["error"]) == (400, "api_path_invalid")
+
+
+def test_the_changes_route_says_when_a_jobs_cost_fields_refresh():
+    """R-1305: the route and the page it is rendered on say the cost ledger is not watched."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/changes")
+    assert route.description.endswith(
+        "A job's `cost`, `calls` and `tokens` come from the cost ledger, which this read does not watch: they refresh when the job itself is listed again, and the digest always has them (R-1305).")
+    assert "the digest always has them (R-1305)." in public_api.render_public_api_markdown()
+
+
+# -- M: the write route that answers a decision (S4a, DECISION F253 D9) -----------
+
+DECISION_PATH = "/api/v1/jobs/{job}/decisions/{decision}"
+_OK_ENVELOPE = {"schema_version": 1, "ok": True, "outcome": "answered"}
+
+
+def _decision_route() -> public_api.PublicApiRoute:
+    return next(route for route in public_api.PUBLIC_API_ROUTES if route.path == DECISION_PATH)
+
+
+def _recording_runner(envelope: dict | None = _OK_ENVELOPE):
+    """A stand-in `run_command` that records its arguments and returns ENVELOPE."""
+    calls: list[tuple[str, list[str]]] = []
+
+    def run(job: str, argv: list[str]) -> dict | None:
+        calls.append((job, argv))
+        return envelope
+
+    return calls, run
+
+
+def _post(path: str, body: object, run) -> tuple[int, dict, dict[str, str]]:
+    raw = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
+    return public_api.answer_public_api_post(path, raw, run)
+
+
+def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
+    route = _decision_route()
+    assert (route.method, route.path, route.twin) == ("POST", DECISION_PATH, "decision.resolve")
+    assert route.body == (("reason", "string"), ("answer", "strings"))
+    assert route.refusal_default == 409
+    assert route.refusals == (
+        ("invalid_job_id", 404), ("job_not_found", 404), ("decision_not_found", 404),
+        ("stop_reason_not_found", 404), ("proposed_task_not_found", 404),
+        ("ambiguous_job_id", 400), ("invalid_argument", 400), ("missing_argument", 400),
+        ("option_not_applicable", 400), ("answer_parse_error", 400), ("invalid_budget", 400),
+        ("decision_not_resolvable", 400),
+    )
+    assert "--as-mission" in route.description and "is not offered" in route.description
+    assert public_api.PUBLIC_API_VERSION == "1.27"
+
+
+def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "Query or body" in page
+    assert "`reason` (string), `answer` (strings)" in page
+    assert "`decision_not_resolvable` 400, any other 409" in page
+
+
+def test_the_page_states_how_a_write_is_refused():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    assert "## Writes" in hand_written
+    for token in ("api_body_invalid", "api_path_invalid", "api_command_failed"):
+        assert token in hand_written, token
+
+
+def test_a_post_builds_the_command_line_from_the_body_and_the_path():
+    calls, run = _recording_runner()
+    status, body, headers = _post("/api/v1/jobs/j1/decisions/d1",
+                                  {"reason": "extend", "answer": ["a b", "--c"]}, run)
+    assert (status, body, headers) == (200, _OK_ENVELOPE, {})
+    assert calls == [("j1", ["decision", "resolve", "--reason=extend", "--answer=a b",
+                             "--answer=--c", "--json", "--", "j1", "d1"])]
+
+
+@pytest.mark.parametrize("raw", [b"", b"  \n", b"{}"])
+def test_a_post_with_no_body_or_an_empty_object_takes_the_bare_command_line(raw):
+    calls, run = _recording_runner()
+    assert _post("/api/v1/jobs/j1/decisions/d1", raw, run)[0] == 200
+    assert calls == [("j1", ["decision", "resolve", "--json", "--", "j1", "d1"])]
+
+
+@pytest.mark.parametrize("body, key", [
+    (b"not json", "valid JSON"),
+    (b"\xff\xfe", "valid JSON"),
+    (b'["reason"]', "JSON object"),
+    (b'"reason"', "JSON object"),
+    (b'{"as_mission": true}', "as_mission"),
+    (b'{"reason": 3}', "reason"),
+    (b'{"reason": null}', "reason"),
+    (b'{"answer": "Postgres"}', "answer"),
+    (b'{"answer": ["ok", ""]}', "answer"),
+    (b'{"answer": ["ok", 2]}', "answer"),
+])
+def test_a_post_body_that_is_not_the_routes_own_is_400_and_runs_nothing(body, key):
+    calls, run = _recording_runner()
+    status, answer, _headers = _post("/api/v1/jobs/j1/decisions/d1", body, run)
+    assert status == 400 and answer["error"] == "api_body_invalid"
+    assert key in answer["message"]
+    assert calls == []
+
+
+@pytest.mark.parametrize("path", [
+    "/api/v1/jobs/-h/decisions/d1", "/api/v1/jobs/j1/decisions/--help",
+    "/api/v1/jobs/-/decisions/d1",
+])
+def test_a_path_value_that_begins_with_a_dash_is_400_and_runs_nothing(path):
+    calls, run = _recording_runner()
+    status, answer, _headers = _post(path, {}, run)
+    assert status == 400 and answer["error"] == "api_path_invalid"
+    assert calls == []
+
+
+def test_a_command_that_prints_no_envelope_is_500():
+    calls, run = _recording_runner(None)
+    status, answer, _headers = _post("/api/v1/jobs/j1/decisions/d1", {}, run)
+    assert (status, answer["error"]) == (500, "api_command_failed")
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("token, expected", [
+    ("decision_not_found", 404), ("ambiguous_job_id", 400), ("decision_already_answered", 409),
+    ("a_token_nobody_listed", 409),
+])
+def test_a_refusal_keeps_the_commands_envelope_and_takes_its_routes_status(token, expected):
+    refusal = {"schema_version": 1, "ok": False, "error": token, "message": "m"}
+    _calls, run = _recording_runner(refusal)
+    status, answer, _headers = _post("/api/v1/jobs/j1/decisions/d1", {}, run)
+    assert (status, answer) == (expected, refusal)
+
+
+def test_a_get_of_a_write_routes_path_is_404_and_a_post_of_a_get_routes_path_is_405():
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/j1/decisions/d1")
+    assert (status, body["error"]) == (404, "api_route_not_found")
+    _calls, run = _recording_runner()
+    status, body, _headers = _post("/api/v1/interface", {}, run)
+    assert (status, body["error"]) == (405, "api_method_not_allowed")
+    status, body, _headers = _post("/api/v1/nothing", {}, run)
+    assert (status, body["error"]) == (404, "api_route_not_found")
+
+
+def test_the_cockpits_own_server_answers_a_decision_post_405_and_ledgers_it(tcp_server):
+    ledger_path = Path(os.environ["REMEDY_DATA_DIR"]) / "api" / "calls.jsonl"
+    path = "/api/v1/jobs/j1/decisions/d1"
+    status, body, _headers = _tcp_request(tcp_server, "POST", path, headers=_bearer(SERVER_TOKEN))
+    assert (status, body["error"]) == (405, "api_method_not_allowed")
+    assert "remedy serve start" in body["message"]
+    records = [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()]
+    assert [(r["method"], r["path"], r["status"]) for r in records] == [("POST", path, 405)]
+
+
+def test_a_percent_encoded_path_value_reaches_the_command_decoded():
+    """R-1192: `encodeURIComponent` and `urllib.parse.quote` both send `:` as `%3A`."""
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "percent-encoded" in page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    calls, run = _recording_runner()
+    status, _body, _headers = _post("/api/v1/jobs/j1/decisions/td%3Aabc%3A1", {}, run)
+    assert status == 200
+    assert calls == [("j1", ["decision", "resolve", "--json", "--", "j1", "td:abc:1"])]
+
+
+def test_a_path_value_that_decodes_to_a_dash_is_400_and_runs_nothing():
+    calls, run = _recording_runner()
+    status, answer, _headers = _post("/api/v1/jobs/%2Dh/decisions/d1", {}, run)
+    assert (status, answer["error"]) == (400, "api_path_invalid")
+    assert calls == []
+
+
+def test_a_job_prefix_and_its_full_id_lock_on_the_same_job():
+    """R-1193: the runner's one-command-per-job lock is keyed by the job, not by its spelling."""
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_title="lock-key-job", user_prompt="Lock key prompt",
+                  tasks=[TaskEntry(title="Pick a database")])
+    save_job_plan(job)
+    full = str(job.job_id)
+    calls, run = _recording_runner()
+    for spelling in (full, full[:8]):
+        assert _post(f"/api/v1/jobs/{spelling}/decisions/d1", {}, run)[0] == 200
+    assert [key for key, _argv in calls] == [full, full]
+    assert [argv[-2] for _key, argv in calls] == [full, full[:8]]
+
+
+def test_a_path_value_that_decodes_to_a_slash_or_a_nul_is_400_and_runs_nothing():
+    """R-1195: `decision resolve` builds a file name from its job value, and a child's arguments
+    cannot hold a NUL, so a value holding either never reaches the command."""
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = " ".join(page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)].split())
+    assert "holds `/` or a NUL character once decoded" in hand_written
+    calls, run = _recording_runner()
+    for path in ("/api/v1/jobs/..%2F..%2Fescape/decisions/sr:abc",
+                 "/api/v1/jobs/j1/decisions/td%2Fabc",
+                 "/api/v1/jobs/j1/decisions/td%00abc"):
+        status, answer, _headers = _post(path, {}, run)
+        assert (status, answer["error"]) == (400, "api_path_invalid"), path
+    assert calls == []
+
+
+# -- the write route that declines a result (S4b, DECISION F253 D11) -------------
+
+DECLINE_PATH = "/api/v1/jobs/{job}/decline"
+
+
+def test_the_decline_route_is_pinned_with_its_body_and_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == DECLINE_PATH)
+    assert (route.method, route.twin) == ("POST", "job.decline")
+    assert route.body == (("reason", "string"),)
+    assert route.refusal_default == 409
+    assert route.refusals == (
+        ("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400),
+        ("missing_argument", 400),
+    )
+    assert "`api`" in route.description
+
+
+@pytest.mark.parametrize("body, reason", [({"reason": "not wanted"}, "not wanted"), ({}, "")])
+def test_a_decline_post_runs_the_command_with_its_reason_and_the_api_door(body, reason):
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post("/api/v1/jobs/j1/decline", body, run)
+    assert status == 200
+    assert calls == [("j1", ["job", "decline", f"--reason={reason}", "--source=api", "--json",
+                             "--", "j1"])]
+
+
+def test_a_decline_post_refuses_a_key_the_route_does_not_take():
+    calls, run = _recording_runner()
+    status, answer, _headers = _post("/api/v1/jobs/j1/decline", {"answer": ["x"]}, run)
+    assert (status, answer["error"]) == (400, "api_body_invalid")
+    assert calls == []
+
+
+def test_the_stop_route_is_pinned_with_its_body_and_its_statuses():
+    """exec-1017b: a client stops a running job, or ends one that waits, without the command line."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/stop")
+    assert (route.method, route.twin, route.body) == ("POST", "job.stop", (("reason", "string"),))
+    assert (route.refusal_default, route.refusals) == (
+        409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
+    assert "`api`" in route.description and "job_not_stoppable" in route.description
+    assert public_api.PUBLIC_API_VERSION == "1.27"
+
+
+@pytest.mark.parametrize("body, reason", [({"reason": "obsolete"}, "obsolete"), ({}, "")])
+def test_a_stop_post_runs_the_command_with_its_reason_and_the_api_door(body, reason):
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post("/api/v1/jobs/j1/stop", body, run)
+    assert status == 200
+    assert calls == [("j1", ["job", "stop", f"--reason={reason}", "--source=api", "--json", "--", "j1"])]
+
+
+def test_the_cancel_route_is_pinned_with_its_body_and_its_statuses():
+    """exec-1017c: a client ends a job for good without the command line."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/abandon")
+    assert (route.method, route.twin, route.body) == ("POST", "job.abandon", (("reason", "string"),))
+    assert (route.refusal_default, route.refusals) == (
+        409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
+    assert "`api`" in route.description and "job_not_cancellable" in route.description
+    assert public_api.PUBLIC_API_VERSION == "1.27"
+
+
+def test_a_cancel_post_runs_the_command_with_its_reason_and_the_api_door():
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post("/api/v1/jobs/j1/abandon", {"reason": "not wanted"}, run)
+    assert status == 200
+    assert calls == [("j1", ["job", "abandon", "--reason=not wanted", "--source=api", "--json", "--", "j1"])]
+
+
+def test_a_cancel_of_a_completed_job_answers_409_with_the_commands_own_refusal():
+    def run(_lock, _argv):
+        return {"ok": False, "error": "job_not_cancellable", "message": "job j1 is completed"}
+    status, answer, _headers = _post("/api/v1/jobs/j1/abandon", {}, run)
+    assert (status, answer["error"]) == (409, "job_not_cancellable")
+
+
+def test_the_order_cancel_route_is_pinned_with_its_body_and_its_statuses():
+    """exec-1017c: one call cancels an order, whatever it is doing; no client stops its jobs one by one."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/orders/{order}/cancel")
+    assert (route.method, route.twin, route.body) == (
+        "POST", "client.cancel-order", (("reason", "string"), ("decline_results", "flag")))
+    assert (route.refusal_default, route.refusals) == (409, (("order_not_found", 404),))
+    assert "cancelling" in route.description and "already_cancelled" in route.description
+
+
+@pytest.mark.parametrize("body, extra", [({"reason": "wrong order"}, []),
+                                         ({"reason": "wrong order", "decline_results": True},
+                                          ["--decline-results"])])
+def test_an_order_cancel_post_runs_the_command_locked_on_the_order(body, extra):
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post("/api/v1/orders/0123456789abcdef/cancel", body, run)
+    assert status == 200
+    assert calls == [("order:0123456789abcdef",
+                      ["client", "cancel-order", "--reason=wrong order", "--source=api", *extra, "--json",
+                       "--", "0123456789abcdef"])]
+
+
+def test_an_unknown_order_cancel_answers_404():
+    def run(_lock, _argv):
+        return {"ok": False, "error": "order_not_found", "message": "no order record names 'x'."}
+    status, answer, _headers = _post("/api/v1/orders/0123456789abcdef/cancel", {}, run)
+    assert (status, answer["error"]) == (404, "order_not_found")
+
+
+def test_a_stop_of_a_completed_job_answers_409_with_the_commands_own_refusal():
+    def run(_lock, _argv):
+        return {"ok": False, "error": "job_not_stoppable", "message": "job j1 is already completed"}
+    status, answer, _headers = _post("/api/v1/jobs/j1/stop", {"reason": "x"}, run)
+    assert (status, answer["error"]) == (409, "job_not_stoppable")
+
+
+def test_every_route_declares_only_refusals_its_twin_answers():
+    """A route's `refusals` are tokens its twin command really refuses with, as the machine
+    client interface lists them (DECISION F298 D4), so no status is declared for a token that
+    cannot arrive."""
+    from apps.cli.client_interface import OPERATION_REFUSAL_TOKENS
+
+    stray = {route.path: sorted({token for token, _status in route.refusals}
+                                - set(OPERATION_REFUSAL_TOKENS[route.twin]))
+             for route in public_api.PUBLIC_API_ROUTES}
+    assert {path: tokens for path, tokens in stray.items() if tokens} == {}
+
+
+# -- the write route that approves an apply (S4c, DECISION F253 D12) -------------
+
+APPLY_PATH = "/api/v1/jobs/{job}/apply"
+
+
+def _saved_job_in(repo_path: str) -> str:
+    """The full id of a saved job whose record names REPO_PATH as its repository."""
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_title="apply-route-job", user_prompt="Apply route prompt",
+                  tasks=[TaskEntry(title="Write a page")], repo_path=repo_path)
+    save_job_plan(job)
+    return str(job.job_id)
+
+
+def test_the_apply_route_is_pinned_with_its_body_and_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == APPLY_PATH)
+    assert (route.method, route.twin) == ("POST", "job.apply")
+    assert route.body == (("commit", "string"), ("commit_auto", "flag"),
+                          ("commit_with_history", "flag"), ("push", "flag"),
+                          ("skip_blocked", "flag"))
+    assert route.refusal_default == 409
+    assert route.refusals == (("job_not_found", 404), ("invalid_argument", 400))
+    assert "`--test-command`" in route.description and "not offered" in route.description
+
+
+def test_an_apply_post_applies_to_the_jobs_own_repository_by_its_full_id(tmp_path):
+    full = _saved_job_in(str(tmp_path))
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post(
+        f"/api/v1/jobs/{full[:8]}/apply", {"commit": "Land it", "push": True, "skip_blocked": False},
+        run)
+    assert status == 200
+    assert calls == [(full, ["job", "apply", "--approve", f"--repo={tmp_path}", "--commit=Land it",
+                             "--push", "--json", "--", full])]
+
+
+@pytest.mark.parametrize("flag", ["commit_auto", "commit_with_history", "push", "skip_blocked"])
+def test_each_apply_flag_set_true_passes_its_option(tmp_path, flag):
+    full = _saved_job_in(str(tmp_path))
+    calls, run = _recording_runner()
+    assert _post(f"/api/v1/jobs/{full}/apply", {flag: True}, run)[0] == 200
+    assert calls == [(full, ["job", "apply", "--approve", f"--repo={tmp_path}",
+                             "--" + flag.replace("_", "-"), "--json", "--", full])]
+
+
+def test_an_apply_post_for_no_known_job_runs_the_command_without_a_repository():
+    """The command refuses the value `job_not_found` before it touches any repository."""
+    calls, run = _recording_runner()
+    assert _post("/api/v1/jobs/0123abcd/apply", {}, run)[0] == 200
+    assert calls == [("0123abcd", ["job", "apply", "--approve", "--json", "--", "0123abcd"])]
+
+
+def test_an_apply_post_for_a_job_without_a_repository_is_409_and_runs_nothing():
+    """Without a repository on the record, `--repo` would mean the supervisor's own folder."""
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "`api_job_repository_unknown`" in page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    full = _saved_job_in("")
+    calls, run = _recording_runner()
+    status, answer, _headers = _post(f"/api/v1/jobs/{full}/apply", {"commit_auto": True}, run)
+    assert (status, answer["error"]) == (409, "api_job_repository_unknown")
+    assert full in answer["message"]
+    assert calls == []
+
+
+def test_an_apply_post_refuses_a_key_or_a_kind_the_route_does_not_take(tmp_path):
+    full = _saved_job_in(str(tmp_path))
+    calls, run = _recording_runner()
+    for body in ({"push": "true"}, {"push": 1}, {"test_command": "true"}, {"repo": str(tmp_path)},
+                 {"dry_run": True}):
+        status, answer, _headers = _post(f"/api/v1/jobs/{full}/apply", body, run)
+        assert (status, answer["error"]) == (400, "api_body_invalid"), body
+    assert calls == []
+
+
+# -- the route that polls an order (S5b, DECISION F253 D14) ---------------------
+
+ORDER_POLL_PATH = "/api/v1/orders/{order}"
+
+
+def _order_command_answer(order_id: str, *, ok: bool = True) -> dict:
+    """`remedy client order <order_id> --json`'s real standard output, as a subprocess, parsed.
+
+    A refusal exits nonzero but still prints the envelope to stdout
+    (`apps.cli.json_envelope.fail`), so `ok` only selects which exit this call expects.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "client", "order", order_id, "--json"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+    )
+    if ok:
+        assert result.returncode == 0, result.stderr
+    else:
+        assert result.returncode != 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_the_order_poll_route_is_pinned_with_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
+    assert (route.method, route.twin) == ("GET", "client.order")
+    assert route.refusals == (("order_not_found", 404),)
+    assert public_api.PUBLIC_API_VERSION == "1.27"
+
+
+def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
+    from tests.cli.test_client_order_cmd import _start_ended_order
+
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    order_id = _start_ended_order(data_root)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/orders/{order_id}", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    assert body == _order_command_answer(order_id)
+
+
+def test_the_order_poll_route_refuses_an_unknown_well_formed_id(tcp_server):
+    unknown = "0123456789abcdef"
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/orders/{unknown}", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body == _order_command_answer(unknown, ok=False)
+
+
+def test_the_order_poll_route_rejects_a_path_shaped_id(tcp_server):
+    """R-1198's own guard, read through the route: `../x` must never be read as a path; since R-1309
+    the route refuses it before any id is read, as a write route does."""
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/orders/..%2Fx", headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body == {"schema_version": 1, "ok": False, "error": "api_path_invalid",
+                    "message": "the order in '/api/v1/orders/..%2Fx' must not hold '/' or a NUL character"}
+
+
+# -- the write route that creates and starts an order (S5b, DECISION F253 D14) --
+
+ORDER_CREATE_PATH = "/api/v1/orders"
+
+
+def _registered_project_slug(tmp_path: Path) -> str:
+    """The slug of a project registered on the active data root, backed by a fresh git repo."""
+    from packages.orchestration.project_registry import register_project_repo
+
+    repo = tmp_path / "order-route-repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    return register_project_repo("order-route-repo", repo).slug
+
+
+@pytest.fixture
+def registered_project_slug(tmp_path):
+    return _registered_project_slug(tmp_path)
+
+
+def _order_text(slug: str) -> str:
+    return f"---\nproject: {slug}\nmax-cost-usd: 1\n---\nAdd a line saying hello to README.md\n"
+
+
+def _fixture_order_record(**overrides) -> SR.OrderRecord:
+    """An `OrderRecord` whose `ended_at` is already set, so `order_state` never touches `/proc`
+    at all — the mocked tests below only need a deterministic answer, not a live process."""
+    base = dict(
+        order_id="abc0123456789def", pid=1, started_at="2026-01-01T00:00:00Z",
+        order_file="/data/orders/abc0123456789def/order.md",
+        out_log="/data/orders/abc0123456789def/out.log",
+        err_log="/data/orders/abc0123456789def/err.log",
+        exit_code=None, ended_at="2026-01-01T00:00:05Z")
+    base.update(overrides)
+    return SR.OrderRecord(**base)
+
+
+def _recording_order_starter(record: SR.OrderRecord):
+    """A stand-in order starter that records `(order_text, options)` and returns RECORD."""
+    calls: list[tuple[str, list[str]]] = []
+
+    def start(order_text: str, options: list[str]):
+        calls.append((order_text, list(options)))
+        return record
+
+    return calls, start
+
+
+def _post_order(body: object, start) -> tuple[int, dict, dict[str, str]]:
+    raw = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
+    _run_calls, run = _recording_runner()
+    return public_api.answer_public_api_post(ORDER_CREATE_PATH, raw, run, start)
+
+
+def test_the_order_create_route_is_pinned_with_its_body_and_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_CREATE_PATH)
+    assert (route.method, route.twin) == ("POST", "client.order")
+    assert route.body == (
+        ("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
+        ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
+        ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
+        ("capture_review", "flag"))
+    assert route.refusals == ()
+    assert route.refusal_default is None
+    assert route.starts_order is True
+    assert "`api_order_project_unknown`" in route.description
+    assert "`api_provider_not_offered`" in route.description
+
+
+def test_the_order_create_routes_body_matches_do_runs_own_flags():
+    """`route.body`'s twin is `client.order`, which takes none of these; its flags and strings
+    are checked against `do.run`'s own instead (DECISION F253 D14 (1))."""
+    from apps.cli.command_catalog import get_command
+
+    do_run = get_command("do.run")
+    flag_options = {a.name for a in do_run.args if a.is_option and a.is_flag}
+    value_options = {a.name for a in do_run.args if a.is_option and not a.is_flag}
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_CREATE_PATH)
+    for key, kind in route.body:
+        if key in ("order", "order_key"):
+            continue  # neither is an option of `remedy do` (DECISION F253 D22)
+        if kind == "flag":
+            assert "--" + key.replace("_", "-") in flag_options, key
+        else:
+            assert "--" + key.replace("_", "-") in value_options, key
+
+
+@pytest.mark.parametrize("flag", ["no_llm", "new_mission", "force_job", "force_mission"])
+def test_each_order_create_flag_set_true_passes_its_option(registered_project_slug, flag):
+    text = _order_text(registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, _body, _headers = _post_order({"order": text, flag: True}, start)
+    assert status == 202
+    assert calls == [(text, ["--" + flag.replace("_", "-")])]
+
+
+@pytest.mark.parametrize("flag", ["no_llm", "new_mission", "force_job", "force_mission"])
+def test_each_order_create_flag_set_false_passes_nothing(registered_project_slug, flag):
+    text = _order_text(registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, _body, _headers = _post_order({"order": text, flag: False}, start)
+    assert status == 202
+    assert calls == [(text, [])]
+
+
+@pytest.mark.parametrize("key, flag_name, value", [
+    ("builder_provider", "--builder-provider", "fake"),
+    ("reviewer_provider", "--reviewer-provider", "ollama"),
+    ("deadline", "--deadline", "value-x"),
+])
+def test_each_order_create_string_passes_its_value(registered_project_slug, key, flag_name, value):
+    text = _order_text(registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, _body, _headers = _post_order({"order": text, key: value}, start)
+    assert status == 202
+    assert calls == [(text, [f"{flag_name}={value}"])]
+
+
+@pytest.mark.parametrize("body", [{"builder_provider": "claude-cli"}, {"reviewer_provider": "claude-cli"},
+                                  {"builder_provider": "ollama"}, {"builder_provider": "value-x"}])
+def test_a_provider_http_does_not_offer_is_refused_before_anything_starts(registered_project_slug, body):
+    """exec-1017 D6: the Claude Code CLI runs outside the tool sandbox; it is a command-line choice only."""
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order({"order": _order_text(registered_project_slug), **body}, start)
+    assert (status, answer["error"]) == (400, "api_provider_not_offered")
+    assert calls == []
+
+
+def test_an_order_create_post_sends_the_order_text_to_the_starter_byte_for_byte(
+        registered_project_slug):
+    text = (f"---\nproject: {registered_project_slug}\nmax-cost-usd: 1\n---\n"
+           "Unicode: café ☃, and a trailing blank line.\n\n")
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, _body, _headers = _post_order({"order": text}, start)
+    assert status == 202
+    assert calls == [(text, [])]
+
+
+def test_an_order_create_post_answers_202_with_the_starters_record(
+        tmp_path, registered_project_slug):
+    out_log = tmp_path / "out.log"
+    out_log.write_text('{"ok": true, "mission_id": "m-fixture"}\n', encoding="utf-8")
+    record = _fixture_order_record(
+        out_log=str(out_log), order_file=str(tmp_path / "order.md"), exit_code=0)
+    calls, start = _recording_order_starter(record)
+    text = _order_text(registered_project_slug)
+
+    status, body, _headers = _post_order({"order": text}, start)
+
+    assert status == 202, body
+    assert body == {
+        "schema_version": 1, "ok": True,
+        "order_id": record.order_id, "state": "ended",
+        "started_at": record.started_at, "ended_at": record.ended_at,
+        "exit_code": record.exit_code, "order_file": record.order_file,
+        "answer": {"ok": True, "mission_id": "m-fixture"},
+        "jobs": [],          # no mission batch records this order file: no job is invented
+        "phase": "ended", "cancel": None,     # exec-1017c: a walk that ended with no job, never cancelled
+    }
+    assert calls == [(text, [])]
+
+
+def test_an_order_create_post_without_the_order_key_is_400_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order({}, start)
+    assert (status, answer["error"]) == (400, "api_body_invalid")
+    assert calls == []
+
+
+def _keyed_order_starter(record: SR.OrderRecord):
+    """Like `_recording_order_starter`, but takes `order_key` as a keyword and records it."""
+    calls: list[tuple[str, list[str], str | None]] = []
+
+    def start(order_text: str, options: list[str], order_key: str | None = None):
+        calls.append((order_text, list(options), order_key))
+        return record
+
+    return calls, start
+
+
+def _stand_in_running_mission(monkeypatch, mission):
+    """Replace `running_mission_for_order_file` (the route imports it at each call) with a
+    stand-in that records the path it is asked and returns MISSION."""
+    from packages.orchestration import repo_mission
+
+    asked: list[str] = []
+
+    def running_mission_for_order_file(source_path, root=None):
+        asked.append(source_path)
+        return mission
+
+    monkeypatch.setattr(repo_mission, "running_mission_for_order_file",
+                        running_mission_for_order_file)
+    return asked
+
+
+@pytest.mark.parametrize("bad_key", ["", ".x", "a/b", "k" * 65])
+def test_an_order_create_post_with_a_malformed_order_key_is_400_and_starts_nothing(
+        registered_project_slug, bad_key):
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order(
+        {"order": _order_text(registered_project_slug), "order_key": bad_key}, start)
+    assert (status, answer["error"]) == (400, "api_body_invalid"), answer
+    assert calls == []
+
+
+def test_an_order_with_a_key_that_a_running_mission_records_is_409_and_starts_nothing(
+        registered_project_slug, monkeypatch):
+    from types import SimpleNamespace
+
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import keyed_order_file_path
+
+    asked = _stand_in_running_mission(
+        monkeypatch, SimpleNamespace(id="m-running", status="active"))
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order(
+        {"order": _order_text(registered_project_slug), "order_key": "k-1"}, start)
+    assert status == 409, answer
+    assert answer["error"] == "order_already_running"
+    assert answer["mission_id"] == "m-running"
+    assert "m-running" in answer["message"]
+    assert calls == []
+    assert asked == [str(keyed_order_file_path(serve_paths(), "k-1").resolve())]
+
+
+def test_an_order_with_a_key_and_new_mission_true_does_not_ask_and_starts(
+        registered_project_slug, monkeypatch):
+    from types import SimpleNamespace
+
+    asked = _stand_in_running_mission(
+        monkeypatch, SimpleNamespace(id="m-running", status="active"))
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    text = _order_text(registered_project_slug)
+    status, answer, _headers = _post_order(
+        {"order": text, "order_key": "k-1", "new_mission": True}, start)
+    assert status == 202, answer
+    assert asked == []
+    assert calls == [(text, ["--new-mission"], "k-1")]
+
+
+def test_an_order_with_a_key_that_no_running_mission_records_is_202_and_starts_with_the_key(
+        registered_project_slug, monkeypatch):
+    asked = _stand_in_running_mission(monkeypatch, None)
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    text = _order_text(registered_project_slug)
+    status, answer, _headers = _post_order({"order": text, "order_key": "k-1"}, start)
+    assert status == 202, answer
+    assert len(asked) == 1
+    assert calls == [(text, [], "k-1")]
+
+
+def test_an_order_without_a_key_does_not_ask_and_the_starter_gets_two_positional_arguments(
+        registered_project_slug, monkeypatch):
+    from types import SimpleNamespace
+
+    asked = _stand_in_running_mission(
+        monkeypatch, SimpleNamespace(id="m-running", status="active"))
+    seen: list[tuple[tuple, dict]] = []
+
+    def start(*args, **kwargs):
+        seen.append((args, kwargs))
+        return _fixture_order_record()
+
+    text = _order_text(registered_project_slug)
+    status, answer, _headers = _post_order({"order": text}, start)
+    assert status == 202, answer
+    assert asked == []
+    assert seen == [((text, []), {})]
+
+
+def test_an_order_create_post_with_a_broken_header_is_400_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    body = {"order": "---\nnot a valid line\n---\nDo it\n"}
+    status, answer, _headers = _post_order(body, start)
+    assert (status, answer["error"]) == (400, "order_file_invalid_header")
+    assert calls == []
+
+
+def test_an_order_create_post_with_an_empty_order_is_400_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order({"order": "---\n---\n   \n"}, start)
+    assert (status, answer["error"]) == (400, "order_file_empty")
+    assert calls == []
+
+
+def test_an_order_create_post_whose_header_names_no_project_is_409_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    body = {"order": "---\nmax-cost-usd: 1\n---\nDo it\n"}
+    status, answer, _headers = _post_order(body, start)
+    assert (status, answer["error"]) == (409, "api_order_project_unknown")
+    assert calls == []
+
+
+def test_an_order_create_post_whose_project_is_not_registered_is_409_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    body = {"order": "---\nproject: no-such-project-xyz\n---\nDo it\n"}
+    status, answer, _headers = _post_order(body, start)
+    assert (status, answer["error"]) == (409, "api_order_project_unknown")
+    assert calls == []
+
+
+def test_an_order_create_post_whose_header_names_no_project_is_refused_with_remedy_project_set(
+        monkeypatch, registered_project_slug):
+    """R-1202: `_order_text_and_options` refuses an order whose header names no project before
+    `select_project` is ever consulted. With `REMEDY_PROJECT` naming a registered project, a
+    fall-through to `select_project`'s own environment fallback would otherwise accept such an
+    order; this test fails if that fall-through replaces the explicit refusal."""
+    monkeypatch.setenv("REMEDY_PROJECT", registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    body = {"order": "---\nmax-cost-usd: 1\n---\nDo it\n"}
+    status, answer, _headers = _post_order(body, start)
+    assert (status, answer["error"]) == (409, "api_order_project_unknown")
+    assert calls == []
+
+
+def test_an_order_create_post_whose_starter_raises_oserror_is_500_and_starts_nothing(
+        registered_project_slug):
+    """R-1201: an `OSError` from the order starter (the child could not be started) is answered
+    500 `api_command_failed` rather than left to propagate unanswered and unledgered."""
+    def start(order_text: str, options: list[str]):
+        raise OSError("cannot start")
+
+    text = _order_text(registered_project_slug)
+    status, answer, _headers = _post_order({"order": text}, start)
+    assert (status, answer["error"]) == (500, "api_command_failed")
+
+
+def test_an_order_create_post_through_the_socket_handler_when_the_child_cannot_start(
+        tmp_path, registered_project_slug):
+    """R-1201: through a real handler made by `socket_handler_class` holding an `OrderLauncher`
+    whose child cannot start, `POST /api/v1/orders` answers 500 `api_command_failed`, the call
+    ledger holds one line for it with that status and token, and `orders_dir` is left holding
+    no folder."""
+    import socketserver
+
+    from packages.orchestration.serve_paths import serve_paths
+
+    paths = serve_paths()
+    launcher = SR.OrderLauncher(paths, argv_prefix=[str(tmp_path / "no-such-program")])
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path / "order-500.sock"
+    server = _Server(str(sock_path), socket_handler_class(
+        SERVER_TOKEN, runner=SR.CommandRunner(paths), orders=launcher))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        text = _order_text(registered_project_slug)
+        status, body, _headers = _unix_request(
+            sock_path, "POST", ORDER_CREATE_PATH, headers=_bearer(SERVER_TOKEN),
+            body=json.dumps({"order": text}).encode("utf-8"))
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+
+    assert (status, body["error"]) == (500, "api_command_failed")
+    ledger_path = Path(os.environ["REMEDY_DATA_DIR"]) / "api" / "calls.jsonl"
+    records = [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()]
+    matches = [r for r in records if r["path"] == ORDER_CREATE_PATH]
+    assert len(matches) == 1
+    assert matches[0]["status"] == 500
+    assert matches[0]["token_fp"] == token_fingerprint(SERVER_TOKEN)
+    assert list(paths.orders_dir.glob("*")) == []
+
+
+def test_an_order_create_post_with_no_starter_is_405():
+    _calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(ORDER_CREATE_PATH, b"{}", run)
+    assert (status, answer["error"]) == (405, "api_method_not_allowed")
+
+
+def test_the_page_states_the_order_create_refusal_tokens():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    for token in ("api_order_project_unknown", "order_file_invalid_header", "order_file_empty"):
+        assert token in hand_written, token
+
+
+# -- client tokens and their policy (S6b-1, DECISION F253 D16) -------------------
+
+CLIENT_TOKEN = "client-token-of-the-nightly-bot-0123456789"
+
+
+def _client_entry(**changes) -> dict:
+    entry = {"name": "nightly-bot", "token": CLIENT_TOKEN, "projects": [],
+             "max_total_tokens": None, "max_provider_calls": None, "may_apply": False}
+    entry.update(changes)
+    return entry
+
+
+def _write_clients(entries: list[dict], mode: int = 0o600) -> Path:
+    """Write the operator's clients file under the scratch data root, at MODE."""
+    from packages.orchestration.api_clients import api_clients_path
+
+    path = api_clients_path()
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    path.write_text(json.dumps({"clients": entries}), encoding="utf-8")
+    os.chmod(path, mode)
+    return path
+
+
+def _ledger_records() -> list[dict]:
+    ledger_path = Path(os.environ["REMEDY_DATA_DIR"]) / "api" / "calls.jsonl"
+    return [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()]
+
+
+def test_a_client_token_reads_a_route_like_the_servers_token_and_the_ledger_names_it(tcp_server):
+    _write_clients([_client_entry()])
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(CLIENT_TOKEN))
+    assert status == 200, body
+    server_status, server_body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert server_status == 200
+    assert body == server_body
+    records = _ledger_records()
+    assert [r["client"] for r in records] == ["nightly-bot", ""]
+    assert records[0]["token_fp"] == token_fingerprint(CLIENT_TOKEN)
+    assert CLIENT_TOKEN not in json.dumps(records)
+
+
+def test_a_client_token_is_refused_by_the_cockpits_other_doors(tcp_server):
+    from packages.orchestration.serve_http_handler import COMMAND_CSRF_HEADER
+
+    _write_clients([_client_entry()])
+    status, _body, _headers = _tcp_request(tcp_server, "GET", f"/api/state?token={CLIENT_TOKEN}")
+    assert status == 403
+    status, _body, _headers = _tcp_request(
+        tcp_server, "POST", "/api/jobs/any-job/commands",
+        headers={**_bearer(CLIENT_TOKEN), COMMAND_CSRF_HEADER: CLIENT_TOKEN})
+    assert status == 403
+
+
+@pytest.mark.parametrize("change", ["mode", "removed"])
+def test_a_client_token_stops_working_at_the_very_next_call(tcp_server, change):
+    path = _write_clients([_client_entry()])
+    assert _tcp_request(tcp_server, "GET", "/api/v1/interface",
+                        headers=_bearer(CLIENT_TOKEN))[0] == 200
+    if change == "mode":
+        os.chmod(path, 0o644)
+    else:
+        _write_clients([_client_entry(name="other-bot", token="other-token-" + "x" * 30)])
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(CLIENT_TOKEN))
+    assert (status, body["error"]) == (401, "api_token_invalid")
+    assert _tcp_request(tcp_server, "GET", "/api/v1/interface",
+                        headers=_bearer(SERVER_TOKEN))[0] == 200
+    assert _ledger_records()[-2]["client"] == ""
+
+
+def _registered_project(tmp_path: Path):
+    from packages.orchestration.project_registry import register_project_repo
+
+    repo = tmp_path / "client-route-repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    return register_project_repo("client-route-repo", repo)
+
+
+def _client_order(project, **ceilings) -> str:
+    header = "".join(f"{key}: {value}\n" for key, value in ceilings.items())
+    return f"---\nproject: {project.slug}\n{header}---\nAdd a line saying hello to README.md\n"
+
+
+def _client_policy(**changes):
+    from packages.orchestration.api_clients import ApiClient
+
+    fields = {"name": "nightly-bot", "token": CLIENT_TOKEN, "projects": (),
+              "max_total_tokens": None, "max_provider_calls": None, "may_apply": False}
+    fields.update(changes)
+    return ApiClient(**fields)
+
+
+def _saved_job_of_project(project_id: str, repo_path: str) -> str:
+    """The full id of a saved job whose record names PROJECT_ID as its project."""
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_title="client-policy-job", user_prompt="Client policy prompt",
+                  tasks=[TaskEntry(title="Write a page")], repo_path=repo_path,
+                  project_id=project_id)
+    save_job_plan(job)
+    return str(job.job_id)
+
+
+def _post_order_as(client, text: str, start):
+    _run_calls, run = _recording_runner()
+    raw = json.dumps({"order": text}).encode("utf-8")
+    return public_api.answer_public_api_post(ORDER_CREATE_PATH, raw, run, start, client=client)
+
+
+def test_a_client_order_for_a_project_it_does_not_list_is_403_and_starts_nothing(tmp_path):
+    project = _registered_project(tmp_path)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    client = _client_policy(projects=("some-other-project",))
+    status, answer, _headers = _post_order_as(client, _client_order(project), start)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert "nightly-bot" in answer["message"] and answer["message"].endswith("; nothing was run")
+    assert calls == []
+
+
+def test_a_client_order_for_a_project_listed_by_slug_or_by_id_is_202(tmp_path):
+    project = _registered_project(tmp_path)
+    for listed in (project.slug, str(project.id)):
+        calls, start = _recording_order_starter(_fixture_order_record())
+        client = _client_policy(projects=(listed,))
+        # An order needs a cap to start (operator amendment amend1014-luna-mission-fixes B.4).
+        status, answer, _headers = _post_order_as(
+            client, _client_order(project, **{"max-cost-usd": 1}), start)
+        assert status == 202, answer
+        assert len(calls) == 1
+
+
+def test_a_client_order_naming_several_projects_is_held_to_every_one(tmp_path):
+    """R-1244, DECISION F205 D6: an order over several projects is inside a client's policy only
+    when every project it names is."""
+    from packages.orchestration.project_registry import register_project_repo
+
+    first = _registered_project(tmp_path)
+    second_repo = tmp_path / "second-route-repo"
+    second_repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(second_repo)], check=True)
+    second = register_project_repo("second-route-repo", second_repo)
+    text = (f"---\nproject: {first.slug}\nproject: {second.slug}\nmax-cost-usd: 1\n---\n"
+            "Add a line saying hello to README.md\n")
+
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order_as(_client_policy(projects=(first.slug,)), text, start)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert calls == []
+
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order_as(
+        _client_policy(projects=(first.slug, str(second.id))), text, start)
+    assert status == 202, answer
+    assert len(calls) == 1
+
+
+def test_an_order_naming_a_second_project_no_one_registered_is_409_and_starts_nothing(tmp_path):
+    first = _registered_project(tmp_path)
+    text = (f"---\nproject: {first.slug}\nproject: nowhere\n---\n"
+            "Add a line saying hello to README.md\n")
+    calls, start = _recording_order_starter(_fixture_order_record())
+
+    status, answer, _headers = _post_order_as(None, text, start)
+
+    assert (status, answer["error"]) == (409, "api_order_project_unknown")
+    assert "'nowhere'" in answer["message"] and calls == []
+
+
+@pytest.mark.parametrize("ceiling_key,header", [
+    ("max_total_tokens", "max-total-tokens"), ("max_provider_calls", "max-provider-calls")])
+def test_a_client_order_is_held_to_its_ceilings(tmp_path, ceiling_key, header):
+    project = _registered_project(tmp_path)
+    client = _client_policy(projects=(project.slug,), **{ceiling_key: 1000})
+    for ceilings in ({}, {header: 1001}):
+        calls, start = _recording_order_starter(_fixture_order_record())
+        status, answer, _headers = _post_order_as(
+            client, _client_order(project, **ceilings), start)
+        assert (status, answer["error"]) == (403, "api_client_policy_refused"), ceilings
+        assert header + ":" in answer["message"]
+        assert calls == []
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order_as(
+        client, _client_order(project, **{header: 1000}), start)
+    assert status == 202, answer
+    assert len(calls) == 1
+
+
+def test_a_client_apply_needs_its_may_apply(tmp_path):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    path = f"/api/v1/jobs/{full}/apply"
+    calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(
+        path, b"{}", run, client=_client_policy(projects=(project.slug,), may_apply=False))
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert answer["message"].endswith("; nothing was run")
+    assert calls == []
+    status, _answer, _headers = public_api.answer_public_api_post(
+        path, b"{}", run, client=_client_policy(projects=(project.slug,), may_apply=True))
+    assert status == 200
+    assert calls == [(full, ["job", "apply", "--approve", f"--repo={tmp_path}", "--json", "--",
+                             full])]
+
+
+def test_a_client_order_outside_its_projects_through_the_socket_handler_starts_nothing(
+        tmp_path):
+    """Through a real handler made by `socket_handler_class`: the client's order outside its
+    projects is 403, the ledger holds one line for it naming the client, and no order starts."""
+    import socketserver
+
+    from packages.orchestration.serve_paths import serve_paths
+
+    project = _registered_project(tmp_path)
+    _write_clients([_client_entry(projects=["some-other-project"])])
+    paths = serve_paths()
+    launcher = SR.OrderLauncher(paths, argv_prefix=[str(tmp_path / "no-such-program")])
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path / "client-403.sock"
+    server = _Server(str(sock_path), socket_handler_class(
+        SERVER_TOKEN, runner=SR.CommandRunner(paths), orders=launcher))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        status, body, _headers = _unix_request(
+            sock_path, "POST", ORDER_CREATE_PATH, headers=_bearer(CLIENT_TOKEN),
+            body=json.dumps({"order": _client_order(project)}).encode("utf-8"))
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+
+    assert (status, body["error"]) == (403, "api_client_policy_refused")
+    records = [r for r in _ledger_records() if r["path"] == ORDER_CREATE_PATH]
+    assert len(records) == 1
+    assert records[0]["status"] == 403
+    assert records[0]["error"] == "api_client_policy_refused"
+    assert records[0]["client"] == "nightly-bot"
+    assert list(paths.orders_dir.glob("*")) == []
+
+
+def test_the_page_states_the_clients_file_and_the_policy_refusal():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    token_section = hand_written[hand_written.index("## The token"):
+                                 hand_written.index("## The envelope")]
+    assert "clients.json" in token_section
+    assert "api_client_policy_refused" in hand_written
+    assert "Until the next slice" not in page
+    assert "max_provider_calls" in hand_written
+
+
+# -- a client token's jobs and budget answers (S6b-2, DECISION F253 D17) ---------
+
+#: The three routes that act on one job: kind to path template and body.
+_JOB_WRITES = {
+    "decision": ("/api/v1/jobs/{job}/decisions/plan:x", {"reason": "approve"}),
+    "decline": ("/api/v1/jobs/{job}/decline", {"reason": "not wanted"}),
+    "apply": ("/api/v1/jobs/{job}/apply", {}),
+}
+
+
+def _client_job_write(kind: str, job: str, client):
+    """Post the KIND write for JOB as CLIENT; the (status, answer) and the runner's calls."""
+    template, body = _JOB_WRITES[kind]
+    calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(
+        template.replace("{job}", job), json.dumps(body).encode("utf-8"), run, client=client)
+    return status, answer, calls
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_job_of_another_project_is_403_and_runs_nothing(tmp_path, kind):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    client = _client_policy(projects=("some-other-project",), may_apply=True)
+    status, answer, calls = _client_job_write(kind, full, client)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert "nightly-bot" in answer["message"] and full in answer["message"]
+    assert answer["message"].endswith("; nothing was run")
+    assert calls == []
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_job_of_a_project_it_lists_by_slug_or_id_runs(tmp_path, kind):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    for listed in (project.slug, str(project.id)):
+        client = _client_policy(projects=(listed,), may_apply=True)
+        status, answer, calls = _client_job_write(kind, full, client)
+        assert status == 200, answer
+        assert len(calls) == 1
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_job_of_no_project_is_403_and_runs_nothing(tmp_path, kind):
+    full = _saved_job_of_project("", str(tmp_path))
+    client = _client_policy(projects=("demo",), may_apply=True)
+    status, answer, calls = _client_job_write(kind, full, client)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert calls == []
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_value_that_names_no_job_runs_the_command_as_before(kind):
+    client = _client_policy(projects=("demo",), may_apply=True)
+    status, _answer, calls = _client_job_write(kind, "0123abcd", client)
+    assert status == 200
+    assert len(calls) == 1
+
+
+def _budget_answer_as(client, decision: str, job: str, answers: list[str]):
+    calls, run = _recording_runner()
+    raw = json.dumps({"reason": "extend", "answer": answers}).encode("utf-8")
+    status, answer, _headers = public_api.answer_public_api_post(
+        f"/api/v1/jobs/{job}/decisions/{decision}", raw, run, client=client)
+    return status, answer, calls
+
+
+@pytest.mark.parametrize("decision", ["budget:r1", "budget_exhausted"])
+@pytest.mark.parametrize("limit,ceiling", [("max_total_tokens", 1000), ("max_provider_calls", 5)])
+def test_a_client_budget_answer_above_its_ceiling_is_403_and_runs_nothing(
+        tmp_path, decision, limit, ceiling):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    client = _client_policy(projects=(project.slug,), **{limit: ceiling})
+    status, answer, calls = _budget_answer_as(client, decision, full, [f"{limit}={ceiling + 1}"])
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert limit in answer["message"] and answer["message"].endswith("; nothing was run")
+    assert calls == []
+    status, answer, calls = _budget_answer_as(client, decision, full, [f"{limit}={ceiling}"])
+    assert status == 200, answer
+    assert len(calls) == 1
+
+
+def test_a_client_answer_of_a_decision_that_is_not_a_budget_decision_is_not_held_to_a_ceiling(
+        tmp_path):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    client = _client_policy(projects=(project.slug,), max_total_tokens=1000)
+    status, answer, calls = _budget_answer_as(client, "plan:x", full, ["max_total_tokens=5000"])
+    assert status == 200, answer
+    assert len(calls) == 1
+
+
+def test_a_client_decline_of_a_job_of_another_project_through_the_socket_handler_runs_nothing(
+        tmp_path):
+    """Through a real handler made by `socket_handler_class`: the decline is 403, the ledger holds
+    one line for it naming the client, and the runner never runs a command."""
+    import socketserver
+
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    _write_clients([_client_entry(projects=["some-other-project"])])
+    ran: list[tuple[str, list[str]]] = []
+
+    class _RecordingRunner:
+        def run(self, job_id: str, argv: list[str]) -> dict | None:
+            ran.append((job_id, argv))
+            return _OK_ENVELOPE
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path / "client-decline-403.sock"
+    server = _Server(str(sock_path), socket_handler_class(
+        SERVER_TOKEN, runner=_RecordingRunner()))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    path = f"/api/v1/jobs/{full}/decline"
+    try:
+        status, body, _headers = _unix_request(
+            sock_path, "POST", path, headers=_bearer(CLIENT_TOKEN),
+            body=json.dumps({"reason": "not wanted"}).encode("utf-8"))
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+
+    assert (status, body["error"]) == (403, "api_client_policy_refused")
+    records = [r for r in _ledger_records() if r["path"] == path]
+    assert len(records) == 1
+    assert records[0]["status"] == 403
+    assert records[0]["error"] == "api_client_policy_refused"
+    assert records[0]["client"] == "nightly-bot"
+    assert ran == []
+
+
+# -- a write on a job whose record cannot be read (R-1204) -----------------------
+
+
+def _saved_job_with_unreadable_record(project_id: str, repo_path: str) -> str:
+    """The full id of a saved job whose record's `tasks` was then rewritten to `5`, which parses
+    as JSON into the wrong shape."""
+    from packages.orchestration.data_paths import job_record_path
+
+    full = _saved_job_of_project(project_id, repo_path)
+    path = job_record_path(full)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["tasks"] = 5
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return full
+
+
+def test_an_apply_post_for_a_job_whose_record_cannot_be_read_is_passed_on_as_sent(tmp_path):
+    """R-1204: the record is passed on as a missing one is, with no `--repo`, and nothing raises."""
+    full = _saved_job_with_unreadable_record("", str(tmp_path))
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post(f"/api/v1/jobs/{full}/apply", {}, run)
+    assert status == 200
+    assert calls == [(full, ["job", "apply", "--approve", "--json", "--", full])]
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_job_whose_record_cannot_be_read_is_403_and_runs_nothing(
+        tmp_path, kind):
+    """R-1204: the unreadable record has no project keys, so no list of projects reaches it."""
+    project = _registered_project(tmp_path)
+    full = _saved_job_with_unreadable_record(str(project.id), str(tmp_path))
+    client = _client_policy(
+        projects=(project.slug, str(project.id), "demo", "some-other-project"), may_apply=True)
+    status, answer, calls = _client_job_write(kind, full, client)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert answer["message"].endswith("; nothing was run")
+    assert calls == []
+
+
+# -- the route that starts a job's run (S7a, DECISION F253 D18) ------------------
+
+RUN_PATH = "/api/v1/jobs/{job}/run"
+
+
+def _run_record(job_id: str) -> SR.RunRecord:
+    return SR.RunRecord(job_id=job_id, pid=4242, started_at="2026-01-01T00:00:00Z",
+                        out_log="/data/serve/runs/out", err_log="/data/serve/runs/err")
+
+
+def _recording_run_starter(outcome: object = None):
+    """A stand-in run starter that records `(job, options)`; it returns the job's `RunRecord`,
+    or raises OUTCOME when that is an exception."""
+    calls: list[tuple[str, list[str]]] = []
+
+    def start(job: str, options: list[str]):
+        calls.append((job, list(options)))
+        if isinstance(outcome, Exception):
+            raise outcome
+        return _run_record(job)
+
+    return calls, start
+
+
+def _post_run(job: str, body: object, start, client=None) -> tuple[int, dict, dict[str, str]]:
+    raw = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
+    _run_calls, run = _recording_runner()
+    return public_api.answer_public_api_post(
+        RUN_PATH.replace("{job}", job), raw, run, client=client, start_run=start)
+
+
+def test_the_run_route_is_pinned_with_its_body_and_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES
+                 if r.path == RUN_PATH and r.method == "POST")
+    assert (route.method, route.twin) == ("POST", "job.run")
+    assert route.body == (("builder_provider", "string"), ("reviewer_provider", "string"))
+    assert route.refusals == ()
+    assert route.refusal_default is None
+    assert route.starts_run is True
+    assert "job_already_running" in route.description
+
+
+def test_a_run_post_starts_the_run_by_the_full_id_and_answers_202_with_its_record(monkeypatch):
+    # The answer reads `lost`; the grace it would wait for an end is not what this test is about.
+    monkeypatch.setattr(SR, "RECORDED_END_GRACE_SECONDS", 0)
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    status, body, headers = _post_run(full, {}, start)
+    assert (status, headers) == (202, {})
+    # The stand-in record names a process no run of this job owns and a log that does not exist,
+    # so the poll's two added keys read `lost` and no answer (DECISION F253 D20 (4)).
+    assert body == {"schema_version": 1, "ok": True, **_run_record(full).to_json(),
+                    "state": "lost", "answer": None}
+    assert sorted(body) == sorted(
+        ["schema_version", "ok", "job_id", "pid", "started_at", "out_log", "err_log",
+         "exit_code", "ended_at", "state", "answer"])
+    assert calls == [(full, [])]
+
+
+def test_a_run_post_passes_the_builder_then_the_reviewer_provider():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    body = {"reviewer_provider": "fake", "builder_provider": "fake"}
+    assert _post_run(full, body, start)[0] == 202
+    assert calls == [(full, ["--builder-provider=fake", "--reviewer-provider=fake"])]
+    calls.clear()
+    assert _post_run(full, {"reviewer_provider": "ollama"}, start)[0] == 202
+    assert calls == [(full, ["--reviewer-provider=ollama"])]
+
+
+def test_a_run_post_by_a_job_prefix_starts_the_full_id():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    assert _post_run(full[:8], {}, start)[0] == 202
+    assert calls == [(full, [])]
+
+
+@pytest.mark.parametrize("value, status, token", [
+    ("not-a-job", 404, "invalid_job_id"),
+    ("6f1c2a9e-3b4d-4c5e-8f7a-0b1c2d3e4f5a", 404, "job_not_found"),
+    ("0123abcd", 404, "job_not_found"),
+])
+def test_a_run_post_for_no_job_is_refused_and_starts_nothing(value, status, token):
+    calls, start = _recording_run_starter()
+    got, answer, _headers = _post_run(value, {}, start)
+    assert (got, answer["ok"], answer["error"]) == (status, False, token)
+    assert calls == []
+
+
+def test_a_run_post_for_a_job_whose_record_cannot_be_read_is_404_and_starts_nothing(tmp_path):
+    full = _saved_job_with_unreadable_record("", str(tmp_path))
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(full, {}, start)
+    assert (status, answer["error"]) == (404, "job_not_found")
+    assert calls == []
+
+
+def test_a_run_post_by_a_prefix_two_jobs_share_is_400_and_starts_nothing():
+    first = _saved_job_in("")
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    twin = first[:-1] + ("0" if first[-1] != "0" else "1")
+    shutil.copytree(data_root / "jobs" / first, data_root / "jobs" / twin)
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(first[:8], {}, start)
+    assert (status, answer["error"]) == (400, "ambiguous_job_id")
+    assert sorted(answer["matches"]) == sorted([first, twin])
+    assert calls == []
+
+
+def test_a_run_post_whose_starter_refuses_is_409_with_the_starters_own_token():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter(
+        SR.RunRefused("job_already_running", f"the serve supervisor is already running job {full}"))
+    status, answer, _headers = _post_run(full, {}, start)
+    assert (status, answer["error"]) == (409, "job_already_running")
+    assert full in answer["message"]
+    assert len(calls) == 1
+
+
+def test_a_run_post_whose_starter_raises_oserror_is_500_api_command_failed():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter(OSError("cannot start"))
+    status, answer, _headers = _post_run(full, {}, start)
+    assert (status, answer["error"]) == (500, "api_command_failed")
+    assert len(calls) == 1
+
+
+def test_a_run_post_with_no_run_starter_is_405():
+    full = _saved_job_in("")
+    status, answer, _headers = _post_run(full, {}, None)
+    assert (status, answer["error"]) == (405, "api_method_not_allowed")
+
+
+@pytest.mark.parametrize("body", [
+    {"max_total_tokens": 5}, {"test_command": "true"}, {"builder_provider": 3},
+    {"reviewer_provider": ["fake"]}, b"not json", b"[]",
+])
+def test_a_run_post_body_that_is_not_the_routes_own_is_400_and_starts_nothing(body):
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(full, body, start)
+    assert (status, answer["error"]) == (400, "api_body_invalid")
+    assert calls == []
+
+
+def test_a_clients_run_of_a_job_of_another_project_is_403_and_starts_nothing(tmp_path):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(
+        full, {}, start, client=_client_policy(projects=("some-other-project",)))
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert answer["message"].endswith("; nothing was run")
+    assert calls == []
+    status, _answer, _headers = _post_run(
+        full, {}, start, client=_client_policy(projects=(project.slug,)))
+    assert status == 202
+    assert calls == [(full, [])]
+
+
+def test_the_cockpits_own_server_answers_a_run_post_405(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "POST", "/api/v1/jobs/j1/run", headers=_bearer(SERVER_TOKEN))
+    assert (status, body["error"]) == (405, "api_method_not_allowed")
+
+
+def test_the_page_names_the_run_route_and_its_running_refusal():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    assert "## Runs" in hand_written
+    assert "/api/v1/jobs/{job}/run" in hand_written
+    assert "job_already_running" in hand_written
+
+
+RETRY_PATH = "/api/v1/jobs/{job}/retry"
+
+
+def test_the_retry_route_is_pinned_with_its_body_and_its_options():
+    """R-1331 (DECISION F307 D22): the route a story's `retry` names starts `remedy job run --retry`."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == RETRY_PATH)
+    assert (route.method, route.twin, route.starts_run) == ("POST", "job.run", True)
+    assert route.body == (("builder_provider", "string"), ("reviewer_provider", "string"))
+    assert (route.refusals, route.refusal_default) == ((), None)
+    assert route.run_options == ("--retry",)
+    assert {r.path for r in public_api.PUBLIC_API_ROUTES if r.run_options} == {RETRY_PATH}
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "/api/v1/jobs/{job}/retry" in page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+
+
+def test_a_retry_post_starts_the_run_with_retry_first_then_the_providers():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    _run_calls, run = _recording_runner()
+    raw = json.dumps({"builder_provider": "fake"}).encode("utf-8")
+    status, _answer, _headers = public_api.answer_public_api_post(
+        RETRY_PATH.replace("{job}", full[:8]), raw, run, start_run=start)
+    assert status == 202
+    assert calls == [(full, ["--retry", "--builder-provider=fake"])]
+    assert _post_run(full, {"builder_provider": "fake"}, start)[0] == 202
+    assert calls[1] == (full, ["--builder-provider=fake"])
+
+
+# -- a body string that holds a NUL character (R-1205) ---------------------------
+
+
+def _refused_for_the_key(status: int, answer: dict, key: str) -> None:
+    assert (status, answer["error"]) == (400, "api_body_invalid")
+    assert f"'{key}' must not hold a NUL character" in answer["message"]
+
+
+def test_a_decision_post_whose_reason_or_answer_holds_a_nul_is_400_and_runs_nothing():
+    calls, run = _recording_runner()
+    status, answer, _headers = _post("/api/v1/jobs/j1/decisions/d1", {"reason": "a\u0000b"}, run)
+    _refused_for_the_key(status, answer, "reason")
+    status, answer, _headers = _post(
+        "/api/v1/jobs/j1/decisions/d1", {"answer": ["fine", "a\u0000b"]}, run)
+    _refused_for_the_key(status, answer, "answer")
+    assert calls == []
+
+
+def test_a_decline_post_whose_reason_holds_a_nul_is_400_and_runs_nothing():
+    calls, run = _recording_runner()
+    status, answer, _headers = _post(
+        DECLINE_PATH.replace("{job}", "j1"), {"reason": "a\u0000b"}, run)
+    _refused_for_the_key(status, answer, "reason")
+    assert calls == []
+
+
+def test_an_order_post_whose_deadline_holds_a_nul_is_400_and_starts_nothing(tmp_path):
+    slug = _registered_project_slug(tmp_path)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order(
+        {"order": _order_text(slug), "deadline": "x\u0000y"}, start)
+    _refused_for_the_key(status, answer, "deadline")
+    assert calls == []
+
+
+def test_a_run_post_whose_builder_provider_holds_a_nul_is_400_and_starts_nothing():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(full, {"builder_provider": "fa\u0000ke"}, start)
+    _refused_for_the_key(status, answer, "builder_provider")
+    assert calls == []
+
+
+def test_the_rendering_of_the_run_route_names_the_runs_record_not_the_twins_command():
+    rows = [line for line in public_api.render_public_api_markdown().splitlines()
+            if line.startswith(f"| `POST` | `{RUN_PATH}` |")]
+    assert len(rows) == 1
+    assert "the run's record, as the supervisor's `RunLauncher` writes it" in rows[0]
+    assert "remedy job run --json" not in rows[0]
+
+
+# -- the read route that polls a run (R-1208, DECISION F253 D20) --
+
+
+def _run_command_answer(job: str, *, ok: bool = True) -> dict:
+    """`remedy client run <job> --json`'s real standard output, as a subprocess, parsed.
+
+    A refusal exits nonzero but still prints the envelope to stdout, so `ok` only selects which
+    exit this call expects.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "client", "run", job, "--json"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+    )
+    if ok:
+        assert result.returncode == 0, result.stderr
+    else:
+        assert result.returncode != 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_the_run_poll_route_is_pinned_with_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES
+                 if r.path == RUN_PATH and r.method == "GET")
+    assert (route.method, route.twin) == ("GET", "client.run")
+    assert route.refusals == (("run_not_found", 404),)
+    assert public_api.PUBLIC_API_VERSION == "1.27"
+
+
+def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
+    from tests.cli.test_client_run_cmd import _start_ended_run
+
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    full = _saved_job_in("")
+    _start_ended_run(data_root, full)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{full}/run", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    assert body["state"] == "ended" and body["exit_code"] == 0
+    assert body["answer"] == {"ok": True, "job_id": full, "stand_in": True}
+    assert body == _run_command_answer(full)
+    prefix_status, prefix_body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{full[:8]}/run", headers=_bearer(SERVER_TOKEN))
+    assert prefix_status == 200, prefix_body
+    assert prefix_body == body
+
+
+def test_the_run_poll_route_refuses_a_job_with_no_run_record(tcp_server):
+    full = _saved_job_in("")
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{full}/run", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body == _run_command_answer(full, ok=False)
+    assert body["error"] == "run_not_found"
+
+
+def test_the_run_poll_route_refuses_a_value_that_is_no_id(tcp_server):
+    """R-1309: a value no job id holds is refused before the twin is asked; R-1219's twin answer
+    holds for every value that reaches it."""
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/jobs/..%2Fx/run", headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body == {"schema_version": 1, "ok": False, "error": "api_path_invalid",
+                    "message": "the job in '/api/v1/jobs/..%2Fx/run' must not hold '/' or a NUL character"}
+
+
+# -- the refusals the two starts make before anything starts are the route's own (R-1219) --
+# `remedy do` words the same tokens for an order file it was given by name and for its own
+# `--new-mission` option, and `remedy job run` does not read the job before its run starts, so no
+# command answers these with the same envelope: the page says so, and each is held whole here.
+
+
+def _refusal(error: str, message: str, **payload) -> dict:
+    return {"schema_version": 1, "ok": False, "error": error, "message": message, **payload}
+
+
+@pytest.mark.parametrize("body, status, envelope", [
+    ({}, 400, _refusal("api_body_invalid", "'order' is required")),
+    ({"order": "---\nnot a valid line\n---\nDo it\n"}, 400, _refusal(
+        "order_file_invalid_header", "order.md: line 2 ('not a valid line') is not `key: value`.")),
+    ({"order": "---\n---\n   \n"}, 400, _refusal(
+        "order_file_empty", "order.md carries no order text.")),
+    ({"order": "---\nmax-cost-usd: 1\n---\nDo it\n"}, 409, _refusal(
+        "api_order_project_unknown",
+        "the order's header names no project, so it is not known where to run it; nothing was run")),
+    ({"order": "---\nproject: no-such-project-xyz\n---\nDo it\n"}, 409, _refusal(
+        "api_order_project_unknown", "the order's header names the project "
+        "'no-such-project-xyz', which is not registered as exactly one; nothing was run")),
+])
+def test_the_order_starts_own_refusals_are_held_whole(body, status, envelope):
+    calls, start = _recording_order_starter(_fixture_order_record())
+    assert _post_order(body, start)[:2] == (status, envelope)
+    assert calls == []
+
+
+def test_the_order_starts_refusal_of_a_key_a_running_mission_records_is_held_whole(
+        registered_project_slug, monkeypatch):
+    from types import SimpleNamespace
+
+    _stand_in_running_mission(monkeypatch, SimpleNamespace(id="m-running", status="active"))
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    answer = _post_order(
+        {"order": _order_text(registered_project_slug), "order_key": "k-1"}, start)[:2]
+    assert answer == (409, _refusal(
+        "order_already_running", "the order key 'k-1' still has unfinished jobs in mission "
+        "m-running (active); let them finish or stop them, or send the order with new_mission "
+        "true to run it again as one more order of the same mission; nothing was run",
+        mission_id="m-running"))
+    assert calls == []
+
+
+@pytest.mark.parametrize("value, envelope", [
+    ("not-a-job", _refusal("invalid_job_id", "No job matches 'not-a-job'. Try: remedy job list.")),
+    ("6f1c2a9e-3b4d-4c5e-8f7a-0b1c2d3e4f5a", _refusal(
+        "job_not_found", "job 6f1c2a9e-3b4d-4c5e-8f7a-0b1c2d3e4f5a has no record that can be "
+        "read; nothing was run")),
+    ("0123abcd", _refusal("job_not_found", "No job matches '0123abcd'.")),
+])
+def test_the_run_starts_own_refusals_of_a_value_that_names_no_job_are_held_whole(value, envelope):
+    calls, start = _recording_run_starter()
+    assert _post_run(value, {}, start)[:2] == (404, envelope)
+    assert calls == []
+
+
+def test_the_run_starts_own_refusals_of_a_job_it_can_name_are_held_whole(tmp_path):
+    unreadable = _saved_job_with_unreadable_record("", str(tmp_path))
+    calls, start = _recording_run_starter()
+    assert _post_run(unreadable, {}, start)[:2] == (404, _refusal(
+        "job_not_found", f"job {unreadable} has no record that can be read; nothing was run"))
+    first = _saved_job_in("")
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    twin = first[:-1] + ("0" if first[-1] != "0" else "1")
+    shutil.copytree(data_root / "jobs" / first, data_root / "jobs" / twin)
+    matches = sorted([first, twin])
+    listed = "\n".join(f"  {match[:8]}" for match in matches)
+    assert _post_run(first[:8], {}, start)[:2] == (400, _refusal(
+        "ambiguous_job_id", f"ambiguous job id prefix '{first[:8]}' matches 2 jobs:\n{listed}",
+        matches=matches))
+    assert calls == []
+    running = SR.RunRefused("job_already_running", f"the serve supervisor is already running "
+                            f"job {unreadable}")
+    _calls, refusing = _recording_run_starter(running)
+    assert _post_run(unreadable, {}, refusing)[:2] == (404, _refusal(
+        "job_not_found", f"job {unreadable} has no record that can be read; nothing was run"))
+    assert _post_run(first, {}, refusing)[:2] == (409, _refusal(
+        "job_already_running", f"the serve supervisor is already running job {unreadable}"))
+    _calls, failing = _recording_run_starter(OSError("cannot start"))
+    assert _post_run(first, {}, failing)[:2] == (500, _refusal(
+        "api_command_failed",
+        f"the run for '/api/v1/jobs/{first}/run' could not be started; nothing runs"))
+
+
+def test_the_page_says_the_two_starts_refusals_are_the_routes_own():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    orders = hand_written[hand_written.index("## Orders"):hand_written.index("## Runs")]
+    runs = hand_written[hand_written.index("## Runs"):]
+    for section in (orders, runs):
+        assert "are the route's own" in " ".join(section.split()), section[:40]
+
+
+# -- the 202 answers equal what the commands that read what they start print (R-1212) --
+
+#: A stand-in for `remedy do run` and for `remedy job run`: prints one envelope and exits 0.
+_PRINTS_ONE_ENVELOPE = 'import json; print(json.dumps({"ok": True, "stand_in": "r1212"}))'
+
+
+def test_the_order_create_202_answer_equals_what_client_order_prints(
+        registered_project_slug):
+    """R-1212: the route's 202 body is the envelope `remedy client order <order> --json` prints."""
+    paths = serve_paths(Path(os.environ["REMEDY_DATA_DIR"]))
+    launcher = SR.OrderLauncher(paths, argv_prefix=[sys.executable, "-c", _PRINTS_ONE_ENVELOPE])
+    started = launcher.start("do a thing", [])
+    assert launcher.wait(started.order_id, timeout=30) == 0
+    record = SR.read_order_record(paths, started.order_id)
+    assert record is not None and record.ended_at is not None
+
+    calls, start = _recording_order_starter(record)
+    status, body, _headers = _post_order({"order": _order_text(registered_project_slug)}, start)
+
+    assert status == 202, body
+    assert len(calls) == 1
+    assert body["answer"] == {"ok": True, "stand_in": "r1212"}
+    assert body == _order_command_answer(record.order_id)
+
+
+def test_the_run_202_answer_equals_what_client_run_prints():
+    """R-1212: the route's 202 body is the envelope `remedy client run <job> --json` prints."""
+    job = _saved_job_in("")
+    paths = serve_paths(Path(os.environ["REMEDY_DATA_DIR"]))
+    launcher = SR.RunLauncher(
+        paths, argv_for=lambda job_id: [sys.executable, "-c", _PRINTS_ONE_ENVELOPE, job_id])
+    launcher.start(job)
+    assert launcher.wait(job, timeout=30) == 0
+    record = SR.read_run_record(paths, job)
+    assert record is not None and record.ended_at is not None
+
+    def start(job_id: str, options: list[str]):
+        return record
+
+    status, body, _headers = _post_run(job, {}, start)
+
+    assert status == 202, body
+    assert body["state"] == "ended"
+    assert body["answer"] == {"ok": True, "stand_in": "r1212"}
+    assert body == _run_command_answer(job)
+
+
+# -- the page's section "A client's test" names what the gate test's fixture uses (R-1215) --
+
+GATE_TEST_PATH = "tests/orchestration/test_public_api_gate_paths.py"
+
+
+def test_the_clients_test_section_names_what_the_gate_tests_fixture_uses():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    heading = "## A client's test"
+    assert page.count(heading) == 1
+    after = page[page.index(heading) + len(heading):]
+    next_heading = after.find("\n## ")
+    section = after if next_heading < 0 else after[:next_heading]
+    # A line break inside a code span is a space for a reader of the page.
+    section = " ".join(section.split())
+    for needle in ("REMEDY_DATA_DIR", "REMEDY_SERVE_API_PORT", "remedy serve start --json",
+                   "api_port", "serve/serve.token", "remedy project register --repo",
+                   "remedy serve stop --json", GATE_TEST_PATH):
+        assert needle in section, needle
+    gate_source = (REPO_ROOT / GATE_TEST_PATH).read_text(encoding="utf-8")
+    for needle in ("REMEDY_SERVE_API_PORT", '"serve", "start", "--json"', '"api_port"',
+                   '"serve.token"', '"project", "register", "--repo"',
+                   '"serve", "stop", "--json"'):
+        assert needle in gate_source, needle
+
+
+# -- the logs route resolves the job and respects a client token (operator amendment
+# -- amend1014-luna-mission-fixes B.3) -----------------------------------------------
+
+
+def _saved_job_with_id(job_id: str, project_id: str = "") -> str:
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_id=job_id, job_title="logs-route-job", user_prompt="p",
+                  tasks=[TaskEntry(title="t")], project_id=project_id)
+    save_job_plan(job)
+    return str(job.job_id)
+
+
+def test_the_logs_route_refuses_an_ambiguous_prefix_and_an_unknown_job():
+    _saved_job_with_id("abcd120000000000")
+    _saved_job_with_id("abcd121111111111")
+
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/abcd12/logs")
+    assert (status, body["error"]) == (400, "ambiguous_job_id")
+    # As the proof route answers: a prefix no job matches, and a full id with no record.
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/feed99/logs")
+    assert (status, body["error"]) == (404, "invalid_job_id")
+    status, body, _headers = public_api.answer_public_api_get(f"/api/v1/jobs/{uuid4()}/logs")
+    assert (status, body["error"]) == (404, "job_not_found")
+
+
+def test_the_logs_route_holds_a_client_token_to_its_projects(tmp_path):
+    project = _registered_project(tmp_path)
+    own = _saved_job_of_project(str(project.id), str(tmp_path / "client-route-repo"))
+    other = _saved_job_of_project(str(uuid4()), str(tmp_path))
+    client = _client_policy(projects=(project.slug,))
+
+    status, body, _headers = public_api.answer_public_api_get(
+        f"/api/v1/jobs/{other}/logs", client=client)
+    assert (status, body["error"]) == (403, "api_client_policy_refused")
+    status, body, _headers = public_api.answer_public_api_get(
+        f"/api/v1/jobs/{own}/logs", client=client)
+    assert status == 200 and body["job_id"] == own
+
+
+# -- the write route that addresses a steering note to one task (DECISION F303 D2, D3) ----------
+
+NOTE_PATH = "/api/v1/jobs/{job}/note"
+
+
+def test_the_note_route_is_pinned_with_its_body_and_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == NOTE_PATH)
+    assert (route.method, route.twin) == ("POST", "job.steer")
+    assert route.body == (("task", "string"), ("text", "string"))
+    assert route.positional_body == ("text",)
+    assert route.refusal_default == 409
+    assert route.refusals == (
+        ("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400),
+        ("invalid_message", 400), ("unknown_task", 404),
+    )
+    assert "`api`" in route.description and "job_not_steerable" in route.description
+    assert public_api.PUBLIC_API_VERSION == "1.27"
+
+
+def test_the_note_route_takes_a_steering_note_for_one_task(tmp_path):
+    """DECISION F303 D2 (3), D3: the twin `job.steer` runs for real, over a bare TCP handler
+    wired with a `CommandRunner` and over the supervisor's own socket handler — the two doors a
+    write is ever served on — exactly as the decline route's tests drive a write."""
+    import socketserver
+
+    from packages.core.models import RunState
+    from packages.orchestration import steering
+    from packages.orchestration.pingpong_job import TASK_PASSED, JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_title="note-route-job", user_prompt="p", state=RunState.RUNNING,
+                 tasks=[TaskEntry(task_id="T001", title="Pick a font"),
+                        TaskEntry(task_id="T002", title="Ship it", status=TASK_PASSED)])
+    save_job_plan(job)
+    full = str(job.job_id)
+    path = NOTE_PATH.replace("{job}", full)
+    paths = serve_paths()
+    runner = SR.CommandRunner(paths)
+
+    class _WritableHandler(_RemedyHandler):
+        server_token = SERVER_TOKEN
+        target_job_id = ""
+        command_runner = runner
+
+    tcp = ThreadingHTTPServer(("127.0.0.1", 0), _WritableHandler)
+    tcp_thread = threading.Thread(target=tcp.serve_forever, daemon=True)
+    tcp_thread.start()
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path / "note-route.sock"
+    unix = _Server(str(sock_path), socket_handler_class(SERVER_TOKEN, runner=runner))
+    unix_thread = threading.Thread(target=unix.serve_forever, daemon=True)
+    unix_thread.start()
+
+    def post_tcp(body: dict, headers: dict[str, str] | None = _bearer(SERVER_TOKEN)) -> tuple[int, dict]:
+        conn = HTTPConnection("127.0.0.1", tcp.server_address[1], timeout=10)
+        try:
+            conn.request("POST", path, body=json.dumps(body).encode("utf-8"), headers=headers or {})
+            resp = conn.getresponse()
+            raw = resp.read()
+            status = resp.status
+        finally:
+            conn.close()
+        return status, (json.loads(raw) if raw else {})
+
+    def post_unix(body: dict, at: str = path, headers: dict[str, str] | None = None) -> tuple[int, dict]:
+        status, resp_body, _headers = _unix_request(
+            sock_path, "POST", at, headers=headers if headers is not None else _bearer(SERVER_TOKEN),
+            body=json.dumps(body).encode("utf-8"))
+        return status, resp_body
+
+    try:
+        status, body = post_tcp({"task": "T001", "text": "hi"}, headers={})
+        assert status == 401 and body["error"] == "api_token_invalid"
+        status, body = post_unix({"task": "T001", "text": "hi"}, headers={})
+        assert status == 401 and body["error"] == "api_token_invalid"
+
+        # the acceptance: once over TCP, once over the socket, each a real `job steer` child
+        status, body = post_tcp({"task": "T001", "text": "Use the smaller fixture"})
+        assert status == 200, body
+        assert body["ok"] is True and body["task_id"] == "T001"
+        first_id = body["message_id"]
+
+        status, body = post_unix({"task": "T001", "text": "--looks-like-a-flag"})
+        assert status == 200, body
+        verbatim_id = body["message_id"]
+
+        records = {r["message_id"]: r for r in steering.list_steering_messages(full)}
+        assert (records[first_id]["text"], records[first_id]["channel"],
+               records[first_id]["task_id"]) == ("Use the smaller fixture", "api", "T001")
+        assert records[verbatim_id]["text"] == "--looks-like-a-flag"
+        recorded_before = len(records)
+
+        # each refusal, with its own status and token, and no refusal writes a record
+        status, body = post_unix({"task": "no-such-task", "text": "hi"})
+        assert (status, body["error"]) == (404, "unknown_task")
+        status, body = post_unix({"task": "T001", "text": ""})
+        assert (status, body["error"]) == (400, "invalid_message")
+        status, body = post_unix({"task": "T002", "text": "hi"})
+        assert (status, body["error"]) == (409, "task_not_steerable")
+        status, body = post_unix({"task": "T001", "text": "hi", "extra": "x"})
+        assert (status, body["error"]) == (400, "api_body_invalid")
+        status, body = post_unix({"task": "T001", "text": "hi"}, at=NOTE_PATH.replace("{job}", "none"))
+        assert (status, body["error"]) == (404, "invalid_job_id")
+
+        job.state = RunState.COMPLETED
+        save_job_plan(job)
+        status, body = post_unix({"task": "T001", "text": "hi"})
+        assert (status, body["error"]) == (409, "job_not_steerable")
+
+        assert len(steering.list_steering_messages(full)) == recorded_before
+    finally:
+        tcp.shutdown()
+        tcp_thread.join(10)
+        tcp.server_close()
+        unix.shutdown()
+        unix_thread.join(10)
+        unix.server_close()
+
+
+def test_a_client_note_for_a_job_of_another_project_through_the_socket_handler_runs_nothing(
+        tmp_path):
+    """As the decline route's own client-scope test: through a real handler made by
+    `socket_handler_class`, the note is 403, the ledger names the client, and no steering record
+    is written."""
+    import socketserver
+
+    from packages.orchestration import steering
+
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    _write_clients([_client_entry(projects=["some-other-project"])])
+    ran: list[tuple[str, list[str]]] = []
+
+    class _RecordingRunner:
+        def run(self, job_id: str, argv: list[str]) -> dict | None:
+            ran.append((job_id, argv))
+            return _OK_ENVELOPE
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path / "client-note-403.sock"
+    server = _Server(str(sock_path), socket_handler_class(SERVER_TOKEN, runner=_RecordingRunner()))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    path = f"/api/v1/jobs/{full}/note"
+    try:
+        status, body, _headers = _unix_request(
+            sock_path, "POST", path, headers=_bearer(CLIENT_TOKEN),
+            body=json.dumps({"task": "T001", "text": "steer it"}).encode("utf-8"))
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+
+    assert (status, body["error"]) == (403, "api_client_policy_refused")
+    records = [r for r in _ledger_records() if r["path"] == path]
+    assert len(records) == 1
+    assert records[0]["status"] == 403
+    assert records[0]["error"] == "api_client_policy_refused"
+    assert records[0]["client"] == "nightly-bot"
+    assert ran == []
+    assert steering.list_steering_messages(full) == []
+
+
+def test_an_order_without_a_cost_cap_is_refused_at_the_door_and_starts_nothing(
+        registered_project_slug):
+    """Operator amendment amend1014-luna-mission-fixes B.4: refused with `remedy do`'s own token
+    and sentence before the order is started, not only once it is polled."""
+    from packages.orchestration.serve_paths import serve_paths
+
+    calls, start = _recording_order_starter(_fixture_order_record())
+    text = f"---\nproject: {registered_project_slug}\n---\nAdd a line saying hello to README.md\n"
+
+    status, answer, _headers = _post_order({"order": text}, start)
+
+    assert (status, answer["error"]) == (400, "order_file_no_cost_cap")
+    assert "an unattended order without a cap is refused" in answer["message"]
+    assert calls == []
+    paths = serve_paths()
+    keys = paths.root / "order-keys"
+    assert not keys.exists() or not any(keys.iterdir())
+
+
+def test_the_story_route_answers_the_client_story_command(tcp_server, unix_server):
+    """Operator amendment amend1015-face-migration Phase 1.1 (DECISION amend1015f D14)."""
+    from packages.orchestration.client_story import job_client_story
+    from packages.orchestration.client_story_words import story_problems
+    from packages.orchestration.pingpong_job import require_job_plan
+
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/story")
+    assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
+        "GET", "client.story",
+        (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (), ())
+    assert public_api.PUBLIC_API_VERSION == "1.27"
+    job_id = _saved_job_with_id("abc1230000000000")
+    expected = build_ok(**job_client_story(job_id, require_job_plan(job_id)))
+    assert expected["state"] == "queued" and story_problems(expected) == []     # exec-1017c: not "planning"
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    for status, body, _headers in ask("/api/v1/jobs/abc123/story", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert body == expected
+        # DECISION F303 D2 (4): a queued job with a pending task can still take a note.
+        assert body["note_open"] is True and "$" not in json.dumps(body)
+    for status, body, _headers in ask("/api/v1/jobs/abc123/story?state=1", _bearer(SERVER_TOKEN)):
+        assert (status, body["error"]) == (400, "api_query_invalid")
+    for status, body, _headers in ask("/api/v1/jobs/abc123/story"):
+        assert status == 401, body
+
+
+def test_the_story_route_refuses_an_ambiguous_prefix_and_an_unknown_job():
+    _saved_job_with_id("abcd120000000000")
+    _saved_job_with_id("abcd121111111111")
+
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/abcd12/story")
+    assert (status, body["error"]) == (400, "ambiguous_job_id")
+    assert sorted(body["matches"]) == ["abcd120000000000", "abcd121111111111"]
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/feed99/story")
+    assert (status, body["error"]) == (404, "invalid_job_id")
+    status, body, _headers = public_api.answer_public_api_get(f"/api/v1/jobs/{uuid4()}/story")
+    assert (status, body["error"]) == (404, "job_not_found")
+
+
+def test_the_story_route_holds_a_client_token_to_its_projects(tmp_path):
+    project = _registered_project(tmp_path)
+    own = _saved_job_of_project(str(project.id), str(tmp_path / "client-route-repo"))
+    other = _saved_job_of_project(str(uuid4()), str(tmp_path))
+    client = _client_policy(projects=(project.slug,))
+
+    status, body, _headers = public_api.answer_public_api_get(
+        f"/api/v1/jobs/{other}/story", client=client)
+    assert (status, body["error"]) == (403, "api_client_policy_refused")
+    status, body, _headers = public_api.answer_public_api_get(
+        f"/api/v1/jobs/{own}/story", client=client)
+    assert status == 200 and body["job_id"] == own and body["order"] == "Client policy prompt"
+
+
+def _running_job_with_id(job_id: str) -> str:
+    """A saved RUNNING job with one running task, for the `now` and `insight` route tests."""
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import TASK_RUNNING, JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_id=job_id, job_title="insight-route-job", user_prompt="p",
+                 tasks=[TaskEntry(title="t", status=TASK_RUNNING)], state=RunState.RUNNING)
+    save_job_plan(job)
+    return str(job.job_id)
+
+
+def _write_insight_pulse(job_id: str, *, stream: list | None = None) -> None:
+    """A bound worker pulse for JOB_ID (DECISION F311 D2's shape): `worker` reads set."""
+    from datetime import datetime, timezone
+
+    from packages.common.secure_fs import durable_write_json
+    from packages.orchestration.data_paths import worker_pulse_path
+    from packages.orchestration.worker_pulse import WORKER_PULSE_VERSION
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    path = worker_pulse_path(job_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    durable_write_json(path, {
+        "version": WORKER_PULSE_VERSION, "job_id": job_id, "bound_at": now,
+        "role": "builder", "provider": "pi", "model": "m", "round": 1,
+        "call_kind": "attempt", "call_started_at": None, "call_ended_at": None,
+        "last_output_at": now, "stream": stream or [],
+    })
+
+
+def test_the_now_route_answers_the_running_jobs_entry_and_workers(tcp_server, unix_server):
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/now")
+    assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
+        "GET", "client.now", (), (), ())
+    assert public_api.PUBLIC_API_VERSION == "1.27"
+    job_id = _running_job_with_id("abc1234444444444")
+    _write_insight_pulse(job_id)
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    for status, body, _headers in ask("/api/v1/now", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        [entry] = body["jobs"]
+        assert entry["job"] == job_id and entry["worker"] is not None
+        assert body["workers"] == {"running": 1, "free": None}
+    for status, body, _headers in ask("/api/v1/now"):
+        assert status == 401, body
+
+
+def test_the_insight_route_answers_the_stream_and_advice(tcp_server, unix_server):
+    route = next(r for r in public_api.PUBLIC_API_ROUTES
+                if r.path == "/api/v1/jobs/{job}/insight")
+    assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
+        "GET", "client.insight",
+        (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (),
+        ("lines",))
+    stream = [{"at": f"t{n}", "role": "builder", "kind": "system", "text": str(n)} for n in range(5)]
+    job_id = _running_job_with_id("abcdef0000000000")
+    _write_insight_pulse(job_id, stream=stream)
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    for status, body, _headers in ask(
+        f"/api/v1/jobs/{job_id[:8]}/insight?lines=2", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert [e["text"] for e in body["stream"]] == ["3", "4"]
+        assert body["advice"]
+    for status, body, _headers in ask(
+        f"/api/v1/jobs/{job_id}/insight?lines=abc", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert len(body["stream"]) == 5     # not a whole number: the default slice
+    for status, body, _headers in ask(
+        f"/api/v1/jobs/{job_id}/insight?lines=", _bearer(SERVER_TOKEN)):
+        assert (status, body["error"]) == (400, "api_query_invalid")
+    for status, body, _headers in ask("/api/v1/jobs/feed99/insight", _bearer(SERVER_TOKEN)):
+        assert status == 404
+    status, body, _headers = public_api.answer_public_api_get(f"/api/v1/jobs/{uuid4()}/insight")
+    assert (status, body["error"]) == (404, "job_not_found")
+    _saved_job_with_id("aaaa990000000000")
+    _saved_job_with_id("aaaa990000000001")
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/aaaa99/insight")
+    assert (status, body["error"]) == (400, "ambiguous_job_id")
+
+
+def test_the_diff_route_answers_the_client_diff_command(tcp_server, unix_server, tmp_path):
+    """Operator order amend1015-final-closure E3 (DECISION amend1015c D5): one job's change, from git."""
+    from packages.orchestration.client_diff import job_client_diff
+    from packages.orchestration.pingpong_job import parse_job_file, require_job_plan, run_job
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
+
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/diff")
+    assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
+        "GET", "client.diff",
+        (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400),
+         ("diff_not_ready", 409), ("diff_unavailable", 409)), (), ())
+    repo = tmp_path / "diff-route-repo"
+    repo.mkdir()
+    subprocess.run("git init -q && git config user.email t@t && git config user.name t "
+                   "&& echo '# demo' > README.md && git add -A && git commit -qm init",
+                   shell=True, cwd=repo, check=True)
+    job = parse_job_file("# Job: diff\n\n## Task 1\nDo a thing.\n\nAcceptance:\n- done\n", str(repo))
+    run_job(job.job_id, builder_provider=FakeProvider(), reviewer_provider=FakeProvider(),
+            repair_rounds=2)
+    expected = build_ok(**job_client_diff(job.job_id, require_job_plan(job.job_id)))
+    assert expected["state"] == "prepared" and len(expected["files"]) == 1
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    for status, body, _headers in ask(f"/api/v1/jobs/{job.job_id}/diff", _bearer(SERVER_TOKEN)):
+        assert (status, body) == (200, expected)
+    for status, body, _headers in ask(f"/api/v1/jobs/{job.job_id}/diff?x=1", _bearer(SERVER_TOKEN)):
+        assert (status, body["error"]) == (400, "api_query_invalid")
+    for status, body, _headers in ask(f"/api/v1/jobs/{job.job_id}/diff"):
+        assert status == 401, body
+    planned = _saved_job_with_id("abc9870000000000")
+    status, body, _headers = public_api.answer_public_api_get(f"/api/v1/jobs/{planned}/diff")
+    assert (status, body["error"]) == (409, "diff_not_ready")
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/feed99/diff")
+    assert (status, body["error"]) == (404, "invalid_job_id")
+
+
+def test_the_execution_route_answers_the_client_execution_command(monkeypatch):
+    """exec-1017 D6: the server's offer, the same envelope `remedy client execution --json` prints."""
+    from packages.orchestration.execution_options import execution_capabilities
+
+    monkeypatch.setattr("packages.orchestration.pi_provider._ollama_models", lambda host: ["m:latest"])
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/execution")
+    assert (route.method, route.twin, route.refusals) == ("GET", "client.execution", ())
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/execution")
+    assert status == 200 and body == {"ok": True, **execution_capabilities()} | {
+        key: body[key] for key in body if key not in execution_capabilities()}

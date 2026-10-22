@@ -30,7 +30,7 @@ from packages.orchestration.pingpong_job import (
     run_job,
     save_job_plan,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.plan_editing import consume_plan_approval, edit_plan
 from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.task_deliverables import record_llm_task_deliverables

@@ -90,9 +90,9 @@ class TestPatchApplyTestLoop:
 class TestHeadlessSmokeNosBrowserLaunch:
     """The door's handler logs nothing to stderr."""
 
-    def test_ui_server_stderr_no_traceback(self):
+    def test_serve_http_handler_stderr_no_traceback(self):
         """UI server suppresses logging — no Python tracebacks in normal use."""
-        from packages.orchestration.ui_server import _RemedyHandler
+        from packages.orchestration.serve_http_handler import _RemedyHandler
         handler = _RemedyHandler.__new__(_RemedyHandler)
         # log_message is overridden to suppress
         handler.log_message("test %s", "msg")  # should not raise
@@ -543,8 +543,8 @@ class TestCommandDiscoveryRuntimeSafety:
 
 class TestNoBroadExceptAndDegradedSignals:
     def test_no_broad_except_exception_in_dashboard(self):
-        """No broad 'except Exception' in ui_server.py touched paths."""
-        src = Path("packages/orchestration/ui_server.py").read_text()
+        """No broad 'except Exception' in serve_http_handler.py touched paths."""
+        src = Path("packages/orchestration/serve_http_handler.py").read_text()
         tree = ast.parse(src)
         for node in ast.walk(tree):
             if isinstance(node, ast.ExceptHandler):

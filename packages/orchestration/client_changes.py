@@ -9,6 +9,11 @@ changed, or when the record of a mission it belongs to changed, because that rec
 contract the job's approval card reads (R-1240); a mission when its own record changed. The
 overlap covers a write that lands between two reads at the same second. This module reads only
 and never writes.
+
+Remedy deliberately does not watch the cost ledger (R-1305): it is one file per project whose rows
+carry each call's own time, not the time they were written, so it cannot say which job a late
+write changed. A job's `cost`, `calls` and `tokens` therefore refresh when the job itself is listed
+again, and the digest always has them; the changes route says so.
 """
 from __future__ import annotations
 
@@ -25,7 +30,7 @@ from packages.orchestration.dod_gate import result_path
 from packages.orchestration.job_apply import _job_apply_records_dir
 from packages.orchestration.mission_state import list_missions_safe, mission_dir_for_project
 from packages.orchestration.pingpong_job import load_job_plan_safe
-from packages.orchestration.project_registry import _list_projects_readonly
+from packages.orchestration.project_registry import list_projects_readonly
 from packages.orchestration.timeline import load_run_events
 
 #: D4 (2): a write that lands within this many seconds of a cursor is still reported, so a record
@@ -198,7 +203,7 @@ def _changed_missions(cutoff: datetime) -> tuple[list[dict[str, Any]], bool, lis
     skipped_files: list[str] = []
     missions: list[dict[str, Any]] = []
 
-    for project in _list_projects_readonly():
+    for project in list_projects_readonly():
         project_id = str(project.id)
         project_missions, mission_degraded, mission_skipped = list_missions_safe(project_id)
         degraded = degraded or mission_degraded

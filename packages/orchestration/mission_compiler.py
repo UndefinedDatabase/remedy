@@ -750,12 +750,12 @@ def plan_mission(
     (:func:`milestones_in_progress`): rewriting the route under running work
     would leave that work serving a plan that no longer exists.
 
-    Nothing here starts anything.  It compiles, it writes evidence, and it
-    updates one record.
+    Nothing here starts anything: it compiles, writes evidence and updates one record.
     """
     from packages.orchestration.mission_state import (
         load_mission,
         mission_evidence_dir,
+        repo_mission_lock,
         set_mission_plan,
     )
 
@@ -768,8 +768,8 @@ def plan_mission(
             f"{len(in_progress)} milestone(s) are already in progress "
             f"({', '.join(in_progress)}) because "
             f"{len(current_order_links(mission))} job(s) are linked to its current order. "
-            f"Start a new mission for a different route, or achieve/abandon "
-            f"this one (remedy mission achieve|abandon {mission.id[:12]}).")
+            f"A different route is a new order, which this mission plans afresh: "
+            f"remedy do \"<order>\" (mission {mission.id[:12]}).")
 
     prompt_traces: list[Any] = []
     goal = mission.orders[-1].text if mission.orders else mission.goal
@@ -799,20 +799,22 @@ def plan_mission(
 
     write_planner_criteria(project_id, mission.id, plan, root)
 
-    previous = mission.mission_plan if isinstance(mission.mission_plan, dict) else None
-    versions = list((previous or {}).get(PLAN_VERSIONS_KEY, []))
-    if previous:
-        # Operator amendment amend1014-luna-mission-fixes A.1: the previous body goes in
-        # WITHOUT its own chain, so each plan adds one flat version and nothing nests.
-        versions.append({k: v for k, v in previous.items() if k != PLAN_VERSIONS_KEY})
-    version = len(versions) + 1
+    with repo_mission_lock(project_id, root):  # R-1300: the chain is read again after the provider call
+        mission = load_mission(project_id, mission.id, root)
+        previous = mission.mission_plan if isinstance(mission.mission_plan, dict) else None
+        versions = list((previous or {}).get(PLAN_VERSIONS_KEY, []))
+        if previous:
+            # Operator amendment amend1014-luna-mission-fixes A.1: the previous body goes in
+            # WITHOUT its own chain, so each plan adds one flat version and nothing nests.
+            versions.append({k: v for k, v in previous.items() if k != PLAN_VERSIONS_KEY})
+        version = len(versions) + 1
 
-    body = plan.model_dump()
-    body[PLAN_VERSIONS_KEY] = versions
-    body[PLAN_VERSION_KEY] = version
+        body = plan.model_dump()
+        body[PLAN_VERSIONS_KEY] = versions
+        body[PLAN_VERSION_KEY] = version
 
-    path = write_mission_plan_md(plan, evidence_dir, goal, version=version)
-    updated = set_mission_plan(project_id, mission.id, body, root)
+        path = write_mission_plan_md(plan, evidence_dir, goal, version=version)
+        updated = set_mission_plan(project_id, mission.id, body, root)
 
     return MissionPlanOutcome(
         mission=updated,

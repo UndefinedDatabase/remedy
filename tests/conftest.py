@@ -143,6 +143,7 @@ def _data_root_fingerprint(root):
     an atomic replace, so the pollution R-0803 exists for still shows.
     """
     import os
+    root = os.fspath(root)   # R-1419: os.walk yields str, so a Path root never equalled its own top
     if not os.path.lexists(root):
         return None
     entries = []
@@ -155,6 +156,44 @@ def _data_root_fingerprint(root):
         if depth + 1 >= DATA_ROOT_GUARD_DEPTH:
             dirnames[:] = []
     return sorted(entries)
+
+
+#: The data-root classes a serve supervisor and its clients write on their own while a run lasts:
+#: its call ledger, its socket, process id and run registry, its operations log, and the project
+#: records it rewrites as it serves them, measured on the operator's machine (R-1411).
+SUPERVISOR_OWN_CLASSES = ("api", "serve", "logs", "projects")
+
+
+def _foreign_supervisor_answers(root) -> bool:
+    """True when a serve supervisor answers on ROOT's socket as the run starts (R-1411).
+
+    No test starts one there, because every test runs on a data root of its own, so one that
+    answers then was started by someone else: on the operator's machine, the installed service.
+    """
+    from pathlib import Path
+
+    from packages.orchestration.serve_daemon import socket_answers
+    from packages.orchestration.serve_paths import serve_paths
+
+    try:
+        return socket_answers(serve_paths(Path(root)).socket)
+    except OSError:
+        return False
+
+
+def _data_root_guard_verdict(before, after, foreign_supervisor: bool) -> tuple[list[str], list[str]]:
+    """(the changed entries the run is held to, the changed entries excused) between two readings.
+
+    R-1411: while a supervisor this run did not start served the root, a change inside the classes
+    it writes for itself (``SUPERVISOR_OWN_CLASSES``) is its own and is excused; every other change
+    still fails the run, as R-0803 asks. Without such a supervisor nothing is excused.
+    """
+    import os
+    changed = sorted({entry[0] for entry in set(before or ()) ^ set(after or ())})
+    if not foreign_supervisor:
+        return changed, []
+    own = [path for path in changed if path.split(os.sep, 1)[0] in SUPERVISOR_OWN_CLASSES]
+    return [path for path in changed if path not in own], own
 
 
 def pytest_configure(config):
@@ -178,7 +217,7 @@ def pytest_configure(config):
         from packages.orchestration.data_paths import resolve_data_root
         root = resolve_data_root()
         reset_config()
-        config._remedy_data_root_guard = (root, _data_root_fingerprint(root))
+        config._remedy_data_root_guard = (root, _data_root_fingerprint(root), _foreign_supervisor_answers(root))
         # amend0930-test-load: the controller lowers its own priority (workers and child
         # processes inherit it) and notes the start of the run record. The record path is read
         # first and then blanked, so a pytest run started BY a test records nothing (C3).
@@ -261,14 +300,19 @@ def pytest_sessionfinish(session, exitstatus):
     recorded = getattr(session.config, "_remedy_data_root_guard", None)
     if recorded is None:
         return
-    root, before = recorded
+    root, before, foreign_supervisor = recorded
     after = _data_root_fingerprint(root)
     if after == before:
         return
-    before_set, after_set = set(before or ()), set(after or ())
-    changed = sorted({e[0] for e in before_set ^ after_set})
-    session.exitstatus = pytest.ExitCode.TESTS_FAILED
+    changed, excused = _data_root_guard_verdict(before, after, foreign_supervisor)
     reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if excused and reporter is not None:
+        reporter.write_line(
+            f"R-1411: {len(excused)} entries of the configured data root {root} changed in the folders "
+            f"a supervisor this run did not start and its clients write; not counted: {excused[:10]}")
+    if not changed:
+        return
+    session.exitstatus = pytest.ExitCode.TESTS_FAILED
     if reporter is not None:
         reporter.write_line(
             f"R-0803: the test run changed the configured data root {root} "
@@ -444,7 +488,7 @@ def _restore_cwd():
     RELATIVE path breaks:
 
         FileNotFoundError: 'scripts/remedy_smoke.sh'
-        FileNotFoundError: 'packages/orchestration/ui_server.py'
+        FileNotFoundError: 'packages/orchestration/serve_http_handler.py'
 
     Whether a victim runs before or after the offender depends on the xdist
     schedule, so it presents as flake. Restoring the directory after every test
@@ -520,7 +564,7 @@ def pytest_collection_modifyitems(items):
         parts = item.path.parts
         if "ui_contracts" in parts:
             item.add_marker(pytest.mark.ui_contract)
-        if "ui_server" in parts:
+        if "serve_http_handler" in parts:
             item.add_marker(pytest.mark.integration)
 
         # File-based marks

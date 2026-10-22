@@ -457,7 +457,7 @@ class TestPreCallBudgetCheck:
             raw_text: str = ""
             stream_cap_reached: bool = False
 
-        from packages.orchestration.pingpong_loop import _call_with_retry
+        from packages.orchestration.pingpong_provider_call import _call_with_retry
 
         call_count = 0
         def fake_call():
@@ -499,7 +499,7 @@ class TestPreCallBudgetCheck:
             raw_text: str = ""
             stream_cap_reached: bool = False
 
-        from packages.orchestration.pingpong_loop import _call_with_retry
+        from packages.orchestration.pingpong_provider_call import _call_with_retry
 
         result = FakeResult()
         out = _call_with_retry(

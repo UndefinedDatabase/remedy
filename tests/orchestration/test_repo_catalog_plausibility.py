@@ -92,6 +92,15 @@ def test_read_lockfile_packages_only_reads_the_root_not_subdirectories(tmp_path)
     assert errors == {}
 
 
+def test_a_toml_lock_with_no_package_table_reads_as_no_names(tmp_path):
+    """R-1302: a project with no dependencies writes a lock with no `[[package]]` table."""
+    (tmp_path / "poetry.lock").write_text('[metadata]\nlock-version = "2.0"\n', encoding="utf-8")
+    (tmp_path / "uv.lock").write_text('package = "not a list"\n', encoding="utf-8")
+    packages, errors = read_lockfile_packages(tmp_path)
+    assert packages == {"poetry.lock": frozenset()}
+    assert list(errors) == ["uv.lock"]
+
+
 def test_read_lockfile_packages_reports_a_broken_lockfile(tmp_path):
     (tmp_path / "package-lock.json").write_text("not valid json {{{", encoding="utf-8")
     packages, errors = read_lockfile_packages(tmp_path)

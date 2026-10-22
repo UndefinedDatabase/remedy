@@ -1,0 +1,3 @@
+Read from: the job branch remedy/job-09fe11ff74a542bd
+docs_index_guide_registration | docs/README.md | the Guides section has no link to `guides/http-clients.md` | `docs/guides/http-clients.md` ships
+doc_config_keys | docs/guides/environment.md | backticks the config key `self_use.builder_has_network` | `self_use.builder_has_network` is not a registered config key

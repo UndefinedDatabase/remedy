@@ -101,7 +101,7 @@ class TestPartialPublicationConverges:
             parse_job_file,
             run_job,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         from packages.orchestration.safe_points import request_stop
 
         job = parse_job_file("# Job: r\n\n## Task 1\nx\n\nAcceptance:\n- y\n", str(repo))

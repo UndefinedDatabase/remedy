@@ -136,8 +136,12 @@ def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tm
     assert len(missions) == 1
     assert missions[0]["order_source_path"] == str(order_file)
     assert missions[0]["job_ids"] == [job_id]
+    # R-1282, R-1417: the mission names the one order the file gave it, and the job that order.
+    [order] = missions[0]["orders"]
+    assert order["job_ids"] == [job_id]
     job = _digest_job(digest, job_id)
     assert job["mission_id"] == mission_id
+    assert job["order_id"] == order["order_id"]
     assert job["state"] == "stopped"
     assert set(job["cost"]) == {"basis", "value_usd"}
     assert Path(job["evidence"]["run_manifest_path"]).is_file()

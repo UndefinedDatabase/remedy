@@ -25,7 +25,7 @@ from packages.orchestration.context_compiler import (
     render_compiled_context_text,
 )
 from packages.orchestration.pingpong_loop import build_repo_context, run_pingpong
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 _GOAL = "harden the payment gateway retry path"
 

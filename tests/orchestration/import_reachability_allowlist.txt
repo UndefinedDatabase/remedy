@@ -14,6 +14,7 @@ apps.cli.command_catalog_certificate
 apps.cli.command_catalog_client
 apps.cli.command_catalog_do
 apps.cli.command_catalog_doctor
+apps.cli.command_catalog_job_run
 apps.cli.command_catalog_mission
 apps.cli.command_catalog_project
 apps.cli.command_catalog_stats
@@ -243,10 +244,13 @@ packages.orchestration.job_certificate_sources
 packages.orchestration.job_certificate_verify
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
+packages.orchestration.job_report
+packages.orchestration.job_retry
 packages.orchestration.job_input_definition
 packages.orchestration.job_insight
 packages.orchestration.job_plan
 packages.orchestration.job_run_ending
+packages.orchestration.job_run_finish
 packages.orchestration.job_runner
 packages.orchestration.job_stop_now
 packages.orchestration.job_tokens
@@ -288,6 +292,7 @@ packages.orchestration.ownership_phrases
 packages.orchestration.patch_apply
 packages.orchestration.patch_intent
 packages.orchestration.path_utils
+packages.orchestration.paths_text
 packages.orchestration.pause_control
 packages.orchestration.permission_matrix
 packages.orchestration.permissions
@@ -300,6 +305,9 @@ packages.orchestration.pingpong_evidence
 packages.orchestration.pingpong_job
 packages.orchestration.pingpong_loop
 packages.orchestration.pingpong_provider
+packages.orchestration.pingpong_provider_call
+packages.orchestration.pingpong_provider_fake
+packages.orchestration.pingpong_provider_ollama
 packages.orchestration.plan_editing
 packages.orchestration.planner_cancel
 packages.orchestration.planner_models
@@ -321,6 +329,7 @@ packages.orchestration.prompt_segments
 packages.orchestration.prompt_trace
 packages.orchestration.proof_chain
 packages.orchestration.proposed_tasks
+packages.orchestration.provider_names
 packages.orchestration.provider_timeouts
 packages.orchestration.provider_token_evidence
 packages.orchestration.public_api
@@ -416,7 +425,7 @@ packages.orchestration.token_truth
 packages.orchestration.tool_sandbox
 packages.orchestration.toolchain
 packages.orchestration.trust_report
-packages.orchestration.ui_server
+packages.orchestration.serve_http_handler
 packages.orchestration.verified_repair
 packages.orchestration.verifier
 packages.orchestration.verifier_profiles

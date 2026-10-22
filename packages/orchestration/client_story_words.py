@@ -29,15 +29,15 @@ STORY_STEP_IDS: tuple[str, ...] = ("reading", "planning", "building", "checking"
 STORY_STEP_STATUSES: tuple[str, ...] = ("waiting", "running", "done", "skipped", "failed")
 
 #: The one next step the story names; `decline` is offered beside `apply` by every client and is
-#: never the one next step on its own. `retry` is named by no state since amend1015c D3: no route
-#: re-attempts a task that ended blocked (R-1331), and the list only grows. `run` starts a queued job
+#: never the one next step on its own. `retry` retries a job a run left blocked at a task that ended
+#: blocked or failed, `POST /api/v1/jobs/{job}/retry` (R-1331). `run` starts a queued job
 #: that waits for nothing, `resume` a stopped one; both are `POST /api/v1/jobs/{job}/run` (exec-1017c).
 STORY_NEXT_ACTIONS: tuple[str, ...] = ("apply", "decline", "answer", "retry", "none", "run", "resume")
 #: How a job that has not ended is ended for good, the story's `end` (exec-1018b, R-1360): a completed
 #: result waiting for its apply is declined, any other open job abandoned; `end` is null once it ended.
 STORY_END_ACTIONS: tuple[str, ...] = ("abandon", "decline")
 
-#: Every phrase key a step carries, each with the names of its arguments.
+#: Every phrase key a step or the story's `dirty_start` carries, each with the names of its arguments.
 STORY_PHRASES: dict[str, tuple[str, ...]] = {
     "found_files": ("n", "first"),
     "planned_tasks": ("n",),
@@ -55,6 +55,7 @@ STORY_PHRASES: dict[str, tuple[str, ...]] = {
     "waiting_for_apply": ("n",),
     "applied": ("n",),
     "declined": (),
+    "dirty_start": ("captured", "preserved"),
 }
 
 #: Every reason key `state_detail.reason` carries while the job is stopped or failed. `stopped` is a
@@ -150,6 +151,7 @@ def story_problems(story: dict[str, object]) -> list[str]:
     nxt = story.get("next") or {}
     if not isinstance(nxt, dict) or nxt.get("action") not in STORY_NEXT_ACTIONS:
         problems.append("next.action is not in the closed list")
+    problems += _word_problems(story.get("dirty_start"), STORY_PHRASES, "dirty_start")
     end = story.get("end")
     if end is not None and (not isinstance(end, dict) or end.get("action") not in STORY_END_ACTIONS):
         problems.append("end.action is not in the closed list")

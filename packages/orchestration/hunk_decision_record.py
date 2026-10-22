@@ -10,7 +10,7 @@ DELIBERATE ABSENCE — IT APPLIES NOTHING. It does not import
 ``packages/orchestration/hunk_apply.py``, ``packages/orchestration/source_apply.py`` or any other
 applicator, it touches no repository, and it never learns whether the approved set would apply
 cleanly. That is a CONSTRAINT rather than an oversight, and it exists to satisfy in SUBSTANCE the
-guard ``TestCommandDoorImportGuard`` in ``tests/ui_server/test_command_channel.py`` states in
+guard ``TestCommandDoorImportGuard`` in ``tests/serve_http_handler/test_command_channel.py`` states in
 words: "the write door ENQUEUES, it never applies". That guard's ``_door_imports`` walks the AST
 of the door's own methods and collects DIRECT imports only, so a door importing a module that
 imports the applier would PASS it while running the applier inside an HTTP handler — defeating the
@@ -19,7 +19,7 @@ it, so this module, which the door will import, drags nothing.
 
 DELIBERATE ABSENCE — IT PERSISTS NOTHING. It MUTATES ``job.metadata`` and returns; writing the job
 back to disk is the CALLER's, exactly as ``escalation.answer_task_decision`` answers a decision and
-leaves the persisting call to the door. ``packages/orchestration/ui_server.py``'s
+leaves the persisting call to the door. ``packages/orchestration/serve_http_handler.py``'s
 ``_dispatch_decision_resolve`` says so in as many words, and DECISION F009 D21 makes both halves
 one effect there. So this module imports no storage either, and a reader who came looking for the
 write should stop at this paragraph: there is none here, and that is on purpose.

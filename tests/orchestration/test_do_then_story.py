@@ -36,7 +36,7 @@ JOB_ID = re.compile(r"remedy job apply ([0-9a-f]{16}) --repo")
 CLIENT_TOKEN = "story-gate-client-token-0123456789abcdef"
 #: The test-only failure: every FakeProvider built in the child has an unavailable builder.
 FAILING_SITECUSTOMIZE = '''\
-import packages.orchestration.pingpong_provider as _provider
+import packages.orchestration.pingpong_provider_fake as _provider
 
 _init = _provider.FakeProvider.__init__
 
@@ -199,6 +199,9 @@ def test_a_done_run_reads_done_and_its_apply_lands_once(gate: Gate) -> None:
     assert story["next"] == {"action": "apply", "route": {
         "method": "POST", "path": f"/api/v1/jobs/{gate.done_job}/apply"}}
     assert story["numbers"]["rounds"] >= 1
+    # R-1323: the fake reports tokens, so the story's figures are measured, never empty.
+    assert story["numbers"]["tokens_in"] > 0 and story["numbers"]["tokens_out"] > 0
+    assert building["tokens"] is not None
     assert story["note_open"] is False
 
     route = story["next"]["route"]
@@ -217,30 +220,43 @@ def test_a_done_run_reads_done_and_its_apply_lands_once(gate: Gate) -> None:
     assert time.monotonic() - gate.started < GATE_SECONDS
 
 
-def test_a_failed_run_reads_failed_and_offers_no_retry(gate: Gate) -> None:
-    """amend1015c D3 (R-1331): a run of the failed job through its run route, with a provider
-    that works, re-attempts nothing and the job reads failed again, so the story offers none."""
+def test_a_failed_run_offers_a_retry_that_runs_its_task_again(gate: Gate) -> None:
+    """R-1331 (DECISION F307 D22): a plain run of the failed job through its run route, with a
+    provider that works, re-attempts nothing and the job reads failed again; the story's `retry`
+    route runs the task again and the job ends done."""
     story = _story(gate, gate.failed_job)
 
     assert story["state"] == "failed"
     reason = story["state_detail"]["reason"]
     assert reason["key"] in STORY_REASONS
     assert reason == {"key": "provider_unavailable", "args": {"provider": "fake"}}
-    assert story["next"] == {"action": "none", "route": None}
+    retry = {"action": "retry",
+             "route": {"method": "POST", "path": f"/api/v1/jobs/{gate.failed_job}/retry"}}
+    assert story["next"] == retry
     assert story["changes"] == []
 
-    path = f"/api/v1/jobs/{gate.failed_job}/run"
-    status, record = gate.api.call("POST", path, {"builder_provider": "fake",
-                                                  "reviewer_provider": "fake"})
+    providers = {"builder_provider": "fake", "reviewer_provider": "fake"}
+    _run_to_its_end(gate, f"/api/v1/jobs/{gate.failed_job}/run", providers)
+    again = _story(gate, gate.failed_job)
+    assert (again["state"], again["next"]) == ("failed", retry)
+
+    _run_to_its_end(gate, again["next"]["route"]["path"], providers)
+    retried = _story(gate, gate.failed_job)
+    assert retried["state"] == "done", retried
+    assert retried["next"]["action"] == "apply"
+    assert time.monotonic() - gate.started < 3 * GATE_SECONDS
+
+
+def _run_to_its_end(gate: Gate, path: str, body: dict) -> None:
+    """POST PATH, a route that starts the job's run, then poll the run until it has ended."""
+    status, record = gate.api.call("POST", path, body)
     assert status == 202, record
+    poll = f"/api/v1/jobs/{record['job_id']}/run"
     deadline = time.monotonic() + GATE_SECONDS
     while record.get("state") == "running" and time.monotonic() < deadline:
         time.sleep(0.2)
-        status, record = gate.api.call("GET", path)
+        status, record = gate.api.call("GET", poll)
     assert record["state"] == "ended", record
-    again = _story(gate, gate.failed_job)
-    assert (again["state"], again["next"]["action"]) == ("failed", "none")
-    assert time.monotonic() - gate.started < 2 * GATE_SECONDS
 
 
 def test_an_unknown_token_may_not_read_a_story(gate: Gate) -> None:

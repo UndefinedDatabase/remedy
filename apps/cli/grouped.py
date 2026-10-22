@@ -587,7 +587,11 @@ def _dispatch(
 
     DECISION F203 D2: every command writes to the operations log, and the
     catch-all writes the unexpected error with its traceback to that log only.
+
+    R-1313: a `remedy.toml` that cannot be read is the operator's file, not a Remedy
+    defect, so it is answered `config_invalid` with exit code 2 and writes no crash report.
     """
+    from packages.orchestration.budget_resolution import BudgetConfigError
     from packages.orchestration.structured_log import (
         FILE_ONLY_ATTR,
         configure_stream_logging_only,
@@ -599,6 +603,9 @@ def _dispatch(
         # reads the configuration, and a file that cannot be read is answered like any error.
         try:
             configure_structured_logging()
+        except BudgetConfigError as exc:
+            configure_stream_logging_only()
+            fail("config_invalid", str(exc), json_output=_wants_json(raw), exit_code=2)
         except Exception:
             configure_stream_logging_only()
             raise
@@ -607,7 +614,7 @@ def _dispatch(
         raise
     except Exception as exc:  # noqa: BLE001 — the whole point is the catch-all
         from packages.orchestration.crash_report import write_crash_report
-        from packages.orchestration.self_health import home_relative_text
+        from packages.orchestration.paths_text import home_relative_text
 
         logging.getLogger(__name__).error(
             "command %s ended on an unexpected error", command_id,

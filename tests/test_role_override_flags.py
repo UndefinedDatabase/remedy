@@ -247,6 +247,7 @@ class TestJobRunProviderWiring:
         import packages.orchestration.job_evidence as job_evidence
         import packages.orchestration.pingpong_job as pingpong_job
         from apps.cli.grouped import main
+        from packages.orchestration import job_report
 
         calls: list[dict] = []
 
@@ -255,7 +256,7 @@ class TestJobRunProviderWiring:
             return pingpong_job.JobPlan(job_id=job_id)
 
         monkeypatch.setattr(pingpong_job, "run_job", fake_run_job)
-        monkeypatch.setattr(pingpong_job, "export_job_report", lambda job: {"job_id": job.job_id})
+        monkeypatch.setattr(job_report, "export_job_report", lambda job: {"job_id": job.job_id})
         monkeypatch.setattr(
             job_evidence, "mirror_job_run_into_ledger",
             lambda job_id: {"ledger_mirrored": True, "error": None},

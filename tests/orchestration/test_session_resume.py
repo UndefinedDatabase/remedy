@@ -57,9 +57,9 @@ from packages.orchestration.pingpong_provider import (
     BuilderOutput,
     ClaudeCliProvider,
     ClaudeProvider,
-    FakeProvider,
     ReviewerOutput,
 )
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 
 class TestSupportsResumeDefaultsFalse:

@@ -792,7 +792,7 @@ class TestOnProviderAttemptCallback:
         )
 
     def test_callback_fires_on_success(self):
-        from packages.orchestration.pingpong_loop import ProviderAttempt, _call_with_retry
+        from packages.orchestration.pingpong_provider_call import ProviderAttempt, _call_with_retry
         result = self._make_result()
         out = self._make_output()
         captured = []
@@ -811,7 +811,7 @@ class TestOnProviderAttemptCallback:
     def test_callback_fires_on_retry(self):
         from unittest.mock import patch
 
-        from packages.orchestration.pingpong_loop import _call_with_retry
+        from packages.orchestration.pingpong_provider_call import _call_with_retry
         from packages.orchestration.provider_timeouts import RETRY_BACKOFFS
         result = self._make_result()
         call_count = 0
@@ -826,7 +826,7 @@ class TestOnProviderAttemptCallback:
         captured = []
         # The retry's backoff is a real sleep of RETRY_BACKOFFS[0] seconds (30); patch the
         # seam the sibling retry tests patch, and prove the one wait still happens.
-        with patch("packages.orchestration.pingpong_loop._time.sleep") as mock_sleep:
+        with patch("packages.orchestration.pingpong_provider_call._time.sleep") as mock_sleep:
             _call_with_retry(
                 call_fn,
                 result=result,
@@ -840,7 +840,7 @@ class TestOnProviderAttemptCallback:
         assert captured[1].is_retry
 
     def test_no_callback_no_error(self):
-        from packages.orchestration.pingpong_loop import _call_with_retry
+        from packages.orchestration.pingpong_provider_call import _call_with_retry
         result = self._make_result()
         out = self._make_output()
         _call_with_retry(
@@ -855,7 +855,7 @@ class TestOnProviderAttemptCallback:
     def test_callback_receives_usage_actuals(self):
         from types import SimpleNamespace
 
-        from packages.orchestration.pingpong_loop import _call_with_retry
+        from packages.orchestration.pingpong_provider_call import _call_with_retry
         result = self._make_result()
         ua = SimpleNamespace(input_tokens=100, output_tokens=50)
         out = self._make_output(usage_actuals=ua)

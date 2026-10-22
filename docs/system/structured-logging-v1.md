@@ -13,6 +13,10 @@ happened during a night's run can be looked up in the morning. The log is operat
 never evidence: no verdict, proof or closure reads it, and the job's own timeline and evidence
 stay the record of what a job did.
 
+Only Remedy's own modules write their information lines to it: the setup lowers the `packages`
+and `apps` loggers to `logging.level` and leaves every other logger as it was, so a library that
+Remedy uses adds its warnings and errors to the log but never its information lines.
+
 ## Where it is
 
 The file is `<data root>/logs/remedy.log`. The folder is readable by the owner only (0700) and so
@@ -40,9 +44,11 @@ written, so a secret that reaches a message or a traceback is written as `[REDAC
 Every event the job timeline records is also written to this log as one INFO line on the logger
 `packages.orchestration.run_log`, carrying the event's job id, its task id and, as `run_id`, the
 id of the task's execution, which is the ping-pong run id under `<data root>/runs/`. A job's
-lines can therefore be found by its job id in the order they happened. Code that knows the ids
-may bind them for everything it logs with `bind_log_context`; an id a record already carries
-wins over a bound one.
+lines can therefore be found by its job id in the order they happened. A job binds its job id for
+everything it logs while it runs, and a ping-pong run binds its job id, task id and run id for
+everything it logs, a run started on its own included, so every line a run writes carries them.
+Other code that knows the ids may bind them with `bind_log_context`, or around a whole function
+with `bind_call_log_context`; an id a record already carries wins over a bound one.
 
 ## The terminal
 
@@ -79,8 +85,8 @@ lines yet: its logs view belongs to F303, the feature that puts the cockpit on t
 |---|---|---|---|
 | `logging.level` | `REMEDY_LOG_LEVEL` | `INFO` | The lowest level written to the file; an unknown name falls back to `INFO` and writes one warning naming it |
 | `logging.json_lines` | `REMEDY_LOG_JSON_LINES` | true | JSON lines, or plain text lines when false |
-| `logging.max_bytes` | `REMEDY_LOG_MAX_BYTES` | 10000000 | The size at which the file is rotated |
-| `logging.backup_count` | `REMEDY_LOG_BACKUP_COUNT` | 5 | How many rotated files are kept |
+| `logging.max_bytes` | `REMEDY_LOG_MAX_BYTES` | 10000000 | The size at which the file is rotated; a value below 1024 is raised to 1024 and writes one warning naming it |
+| `logging.backup_count` | `REMEDY_LOG_BACKUP_COUNT` | 5 | How many rotated files are kept; a value below 1 is raised to 1 and writes one warning naming it |
 
 ## What it deliberately does not do
 

@@ -13,17 +13,19 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import functools
+import inspect
 import json
 import logging
 import logging.handlers
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, TypeVar, cast
 
 from packages.orchestration.config import RemedyConfig, get_config
 from packages.orchestration.data_paths import data_class_dir
@@ -31,11 +33,6 @@ from packages.orchestration.stream_evidence import redact_text
 
 # The one file name of the operations log inside its folder.
 LOG_FILE_NAME = "remedy.log"
-
-# The keys of every JSON line, in order; the text line carries the same fields.
-LOG_FIELD_NAMES: tuple[str, ...] = (
-    "ts", "level", "logger", "message", "job_id", "task_id", "run_id",
-)
 
 # The three ids a record carries so one night's work can be looked up by job, task or run.
 LOG_CONTEXT_KEYS: tuple[str, ...] = ("job_id", "task_id", "run_id")
@@ -48,6 +45,16 @@ DEFAULT_LOG_MAX_BYTES = 10_000_000
 
 # The rotated files kept when `logging.backup_count` does not read as an integer.
 DEFAULT_LOG_BACKUP_COUNT = 5
+
+# The smallest rotation size accepted: 0 would be a file that never rotates (R-1312, DECISION F307 D2).
+MIN_LOG_MAX_BYTES = 1024
+
+# The fewest rotated files kept: 0 would truncate the file at each rotation (R-1312).
+MIN_LOG_BACKUP_COUNT = 1
+
+# The loggers every Remedy module logs under; only these are lowered to the configured level,
+# so a library's INFO never reaches the file (R-1293, DECISION F307 D2).
+REMEDY_LOGGER_NAMES: tuple[str, ...] = ("packages", "apps")
 
 _KNOWN_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
@@ -69,8 +76,9 @@ _CONTEXT_VARS: dict[str, ContextVar[str | None]] = {
     "run_id": remedy_log_run_id,
 }
 
-# The root logger's level before the first configure since the last reset; None when not saved.
-_SAVED_ROOT_LEVEL: list[int] = []
+# The levels of `REMEDY_LOGGER_NAMES` before the first configure since the last reset; None when
+# not saved.
+_saved_logger_levels: dict[str, int] | None = None
 
 
 # Binds ids for the code inside the block; an argument left None leaves that id as it was.
@@ -89,9 +97,36 @@ def bind_log_context(
             var.reset(token)
 
 
-# The three ids bound now, keyed in the order of `LOG_CONTEXT_KEYS`.
-def current_log_context() -> dict[str, str | None]:
-    return {key: _CONTEXT_VARS[key].get() for key in LOG_CONTEXT_KEYS}
+# The function `bind_call_log_context` decorates, kept as its own type.
+_DecoratedCall = TypeVar("_DecoratedCall", bound=Callable[..., Any])
+
+
+# WHY: a whole call carries the ids its own arguments name, so every record it logs is found by them (R-1279).
+def bind_call_log_context(
+    *, job_id: str = "", task_id: str = "", run_id: str = "", mint_run_id: Callable[[], str] | None = None,
+) -> Callable[[_DecoratedCall], _DecoratedCall]:
+    """Decorate a function so each call binds, for the whole call, the ids its own arguments carry.
+
+    Each keyword names the parameter that carries that id; an id passed empty or not at all leaves the
+    binding as the caller made it. With ``mint_run_id``, a call given no run id is given a fresh one, so
+    the run and every record it logs carry the same id (DECISION F307 D16).
+    """
+
+    def decorate(fn: _DecoratedCall) -> _DecoratedCall:
+        signature = inspect.signature(fn)
+
+        @functools.wraps(fn)
+        def call(*args: Any, **kwargs: Any) -> Any:
+            if mint_run_id is not None and run_id and not signature.bind_partial(*args, **kwargs).arguments.get(run_id):
+                kwargs[run_id] = mint_run_id()
+            arguments = signature.bind_partial(*args, **kwargs).arguments
+            names = (("job_id", job_id), ("task_id", task_id), ("run_id", run_id))
+            with bind_log_context(**{key: arguments.get(name) or None for key, name in names if name}):
+                return fn(*args, **kwargs)
+
+        return cast(_DecoratedCall, call)
+
+    return decorate
 
 
 # Stamps the bound ids on a record; an id the record already carries (`extra=`) wins.
@@ -125,18 +160,19 @@ class JsonLogFormatter(logging.Formatter):
         return json.dumps(entry, ensure_ascii=False)
 
 
-# One plain line per record for a reader without a JSON tool; redacted like the JSON line.
+# One plain line per record for a reader without a JSON tool; the message and the exception are
+# redacted on their own, like the JSON line's, so the time, level and ids survive (R-1280).
 class TextLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         line = (
             f"{log_timestamp(record.created)} {record.levelname} {record.name} "
             f"job={getattr(record, 'job_id', None) or '-'} "
             f"task={getattr(record, 'task_id', None) or '-'} "
-            f"run={getattr(record, 'run_id', None) or '-'} {record.getMessage()}"
+            f"run={getattr(record, 'run_id', None) or '-'} {redact_text(record.getMessage())}"
         )
         if record.exc_info:
-            line += "\n" + self.formatException(record.exc_info)
-        return redact_text(line)
+            line += "\n" + redact_text(self.formatException(record.exc_info))
+        return line
 
 
 # Several processes share the file (the supervisor runs every job as a process of its own), so a
@@ -232,9 +268,16 @@ def configure_structured_logging(
     as_json = bool(resolved.get("logging.json_lines"))
     max_bytes = _int_or_default(resolved.get("logging.max_bytes"), DEFAULT_LOG_MAX_BYTES)
     backup_count = _int_or_default(resolved.get("logging.backup_count"), DEFAULT_LOG_BACKUP_COUNT)
+    raised = [
+        (key, value, floor) for key, value, floor in (
+            ("logging.max_bytes", max_bytes, MIN_LOG_MAX_BYTES),
+            ("logging.backup_count", backup_count, MIN_LOG_BACKUP_COUNT),
+        ) if value < floor
+    ]
+    max_bytes = max(max_bytes, MIN_LOG_MAX_BYTES)
+    backup_count = max(backup_count, MIN_LOG_BACKUP_COUNT)
 
     root_logger = logging.getLogger()
-    _SAVED_ROOT_LEVEL.append(root_logger.level)
     _install_stream_handler(root_logger)
 
     path = logs_dir(root) / LOG_FILE_NAME
@@ -247,10 +290,21 @@ def configure_structured_logging(
     setattr(handler, _MARKER, True)
     root_logger.addHandler(handler)
 
-    root_logger.setLevel(min(level, logging.WARNING))
+    _lower_remedy_loggers(min(level, logging.WARNING))
     if unknown_name is not None:
         logging.getLogger(__name__).warning("unknown logging.level %r; INFO is used", unknown_name)
+    for key, value, floor in raised:
+        logging.getLogger(__name__).warning("%s %d is below its floor; %d is used", key, value, floor)
     return path
+
+
+# Saves the levels of Remedy's own loggers and lowers them; the root logger, and with it every
+# library's logger, keeps its level (R-1293). The terminal still gets WARNING at any file level.
+def _lower_remedy_loggers(level: int) -> None:
+    global _saved_logger_levels
+    _saved_logger_levels = {name: logging.getLogger(name).level for name in REMEDY_LOGGER_NAMES}
+    for name in REMEDY_LOGGER_NAMES:
+        logging.getLogger(name).setLevel(level)
 
 
 # The terminal's handler: the bare message at WARNING and above, file-only records left out.
@@ -267,21 +321,21 @@ def _install_stream_handler(root_logger: logging.Logger) -> None:
 # configuration itself cannot be read (operator amendment amend1014-luna-mission-fixes B.1).
 def configure_stream_logging_only() -> None:
     reset_structured_logging()
-    root_logger = logging.getLogger()
-    _SAVED_ROOT_LEVEL.append(root_logger.level)
-    _install_stream_handler(root_logger)
+    _install_stream_handler(logging.getLogger())
 
 
-# Removes and closes every handler this module installed and restores the root level it found.
+# Removes and closes every handler this module installed and restores the logger levels it found.
 def reset_structured_logging() -> None:
+    global _saved_logger_levels
     root_logger = logging.getLogger()
     for handler in list(root_logger.handlers):
         if getattr(handler, _MARKER, False):
             root_logger.removeHandler(handler)
             handler.close()
-    if _SAVED_ROOT_LEVEL:
-        root_logger.setLevel(_SAVED_ROOT_LEVEL[0])
-        _SAVED_ROOT_LEVEL.clear()
+    if _saved_logger_levels is not None:
+        for name, saved in _saved_logger_levels.items():
+            logging.getLogger(name).setLevel(saved)
+        _saved_logger_levels = None
 
 
 # The log files of the folder, oldest first: `remedy.log.<n>` by descending n, then `remedy.log`.

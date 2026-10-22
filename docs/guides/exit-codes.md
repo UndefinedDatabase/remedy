@@ -24,7 +24,7 @@ and the code ever disagree, the test is red.
 |---|---|---|
 | 0 | ok | The command did what it was asked, including finding nothing to do or honouring a pending stop request. |
 | 1 | failed | The command ran and did not do what was asked — a refusal, a failed operation, a red check, drift found; the general failure and the code of every refusal no narrower meaning claims. |
-| 2 | usage | The invocation itself is wrong — an unknown command, or a missing, invalid, unrecognised or conflicting argument — and nothing was attempted. |
+| 2 | usage | The invocation itself is wrong — an unknown command, a missing, invalid, unrecognised or conflicting argument, or a remedy.toml that cannot be read — and nothing was attempted. |
 | 3 | not_ready | The invocation is well formed, but what it names is absent or not in a state the command can act on. |
 | 4 | environment | The machine lacks a prerequisite the command cannot supply, such as a git repository. |
 

@@ -12,7 +12,7 @@ this door starts no process of its own (operator question Q4).
 Modelled on `job_stop_cmd.py`: the same job id resolution, the same usage and
 unknown-job exits (2 and 3), and the same JSON envelope with `schema_version` 1.
 Both commands share `pause_control.pause_job_command` and `unpause_job_command`
-with the write door (`packages/orchestration/ui_server.py`), so the CLI and the
+with the write door (`packages/orchestration/serve_http_handler.py`), so the CLI and the
 browser answer identically for the same request.
 """
 from __future__ import annotations

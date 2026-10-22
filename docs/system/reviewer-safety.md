@@ -54,7 +54,7 @@ scripts/remedy_pytest.sh tests/orchestration/test_event_replay.py -q --cache-cle
 scripts/remedy_pytest.sh tests/cli -q --cache-clear
 
 # UI server tests
-scripts/remedy_pytest.sh tests/ui_server -q --cache-clear
+scripts/remedy_pytest.sh tests/serve_http_handler -q --cache-clear
 ```
 
 ### Before Final Handoff (one full baseline)

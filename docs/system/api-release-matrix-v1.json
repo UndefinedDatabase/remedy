@@ -1,8 +1,8 @@
 {
  "schema": "remedy_api_release_matrix_v1",
  "baseline": "1.17",
- "current": "1.25",
- "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.25; a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
+ "current": "1.27",
+ "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.27 but `orders.plan_source`, a key no record ever carried (1.27); a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
  "versions": [
   {
    "version": "1.18",
@@ -260,6 +260,81 @@
      "after": "true"
     }
    ]
+  },
+  {
+   "version": "1.26",
+   "pr": null,
+   "branch": "feature/f307-findings-paydown-v9",
+   "added": [
+    "mission answer key `orders.repo_path`: the repository root an order was accepted for (F307, DECISION F307 D11)"
+   ],
+   "value_changes": []
+  },
+  {
+   "version": "1.27",
+   "pr": null,
+   "branch": "feature/f307-findings-paydown-v9",
+   "added": [
+    "digest and changes mission key `orders` (`order_id`, `kind`, `created_at`, `source_path`, `source_sha256`, `job_ids`) and job key `order_id` (F307, DECISION F307 D19)",
+    "route `POST /api/v1/jobs/{job}/retry` and the `--retry` option of `remedy job run`, which put a blocked job's tasks that ended blocked or failed back to pending before its run (F307, DECISION F307 D22)",
+    "story key `dirty_start` with the phrase `dirty_start` (`captured`, `preserved`), and the digest's job key `dirty_start` (`captured`, `preserved`), the dirty paths a job started from (F307, DECISION F307 D23)"
+   ],
+   "value_changes": [
+    {
+     "field": "the envelope's `error`, the exit code and `exit_codes`' meaning of code 2",
+     "case": "any command run with a remedy.toml that cannot be read",
+     "before": "`unhandled_command_error`, exit code 1, and a crash report written",
+     "after": "`config_invalid`, exit code 2, no crash report; code 2's meaning names the file (F307, DECISION F307 D17)"
+    },
+    {
+     "field": "the status, the body and the ledger line of a request",
+     "case": "PATCH, HEAD or OPTIONS under /api/v1",
+     "before": "501 as an HTML page, no ledger line, and a `Server` header naming the Python version",
+     "after": "401 `api_token_invalid` without the token, 405 `api_method_not_allowed` with it, one ledger line, and `Server: Remedy` (F307, DECISION F307 D18)"
+    },
+    {
+     "field": "`api_method_not_allowed`'s message",
+     "case": "PUT or DELETE under /api/v1",
+     "before": "this server answers only GET under /api/v1; writes are answered by the supervisor that `remedy serve start` starts",
+     "after": "<method> is not answered under /api/v1; its routes answer GET and POST (F307, DECISION F307 D18)"
+    },
+    {
+     "field": "`api_query_invalid`'s message",
+     "case": "a query key a route takes, given twice, empty, or as a flag other than true or false",
+     "before": "'<key>' is not a valid query key for '<path>'; it accepts ...",
+     "after": "'<key>' in '<path>' takes one value, true or false; or: takes one value that is not empty (F307, DECISION F307 D18)"
+    },
+    {
+     "field": "the status and the error of a GET",
+     "case": "a path value that begins with '-', or holds '/' or a NUL character once decoded",
+     "before": "the route's own answer",
+     "after": "400 `api_path_invalid`, as on a write (F307, DECISION F307 D18)"
+    },
+    {
+     "field": "the mission answer key `orders.plan_source`",
+     "case": "every answer that carries a mission",
+     "before": "listed in the answer's key tree, never written",
+     "after": "gone from the key tree; no record ever carried it (F307, DECISION F307 D19)"
+    },
+    {
+     "field": "the story's `numbers.tokens_in` and `numbers.tokens_out`, a step's `tokens`, and the digest's `tokens`",
+     "case": "a run on the fake providers",
+     "before": "null: the fake reported no tokens",
+     "after": "the fake's fixed figures; its cost stays unmeasured (F307, DECISION F307 D20)"
+    },
+    {
+     "field": "the story's `ended_at`",
+     "case": "a job a run left blocked",
+     "before": "its stop time or its newest run-log event: the job kept no finish time",
+     "after": "the time the run that blocked it ended (F307, DECISION F307 D21)"
+    },
+    {
+     "field": "the story's `next`",
+     "case": "a job a run left blocked at a task that ended blocked or failed",
+     "before": "`none`, with no route",
+     "after": "`retry`, `POST /api/v1/jobs/{job}/retry` (F307, DECISION F307 D22)"
+    }
+   ]
   }
  ],
  "inventory": {
@@ -349,6 +424,7 @@
    "POST /api/v1/jobs/{job}/decisions/{decision}": "1.17",
    "POST /api/v1/jobs/{job}/decline": "1.17",
    "POST /api/v1/jobs/{job}/note": "1.25",
+   "POST /api/v1/jobs/{job}/retry": "1.27",
    "POST /api/v1/jobs/{job}/run": "1.17",
    "POST /api/v1/jobs/{job}/stop": "1.18",
    "POST /api/v1/orders": "1.17",
@@ -372,6 +448,7 @@
    "changed_file_in_rounds": "1.17",
    "changed_files": "1.17",
    "declined": "1.17",
+   "dirty_start": "1.27",
    "found_files": "1.17",
    "no_file_changed": "1.17",
    "no_test_command": "1.17",
@@ -445,6 +522,7 @@
   },
   "story_keys": {
    "changes": "1.17",
+   "dirty_start": "1.27",
    "end": "1.21",
    "ended_at": "1.17",
    "job_id": "1.17",

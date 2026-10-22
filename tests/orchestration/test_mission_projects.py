@@ -8,21 +8,27 @@ mission spans. Every test writes under ``tmp_path``, passed as ``root=``.
 from __future__ import annotations
 
 import json
+from uuid import uuid4
 
 import pytest
 
 from packages.orchestration.mission_followup import continue_mission
-from packages.orchestration.mission_record import Mission, MissionJobLink
+from packages.orchestration.mission_record import (
+    Mission,
+    MissionJobLink,
+    MissionOrderBatch,
+    follow_up_target,
+)
 from packages.orchestration.mission_state import (
     MISSION_ROLE_FOLLOW_UP,
     MISSION_ROLE_INITIAL,
-    MissionError,
     MissionProjectError,
     create_mission,
     link_job_to_mission,
     load_mission,
     mission_for_job,
     mission_record_path,
+    save_mission,
 )
 from packages.orchestration.pingpong_job import JobPlan, list_job_plans, save_job_plan
 
@@ -41,6 +47,15 @@ def _record(tmp_path, mission) -> dict:
     return json.loads(mission_record_path(mission.project_id, mission.id, tmp_path).read_text())
 
 
+def _legacy_umbrella(tmp_path, goal: str = "two repositories") -> Mission:
+    """The legacy record an umbrella mission once was, written directly: `create_mission` writes
+    no mission over several projects any more (DECISION F307 D12)."""
+    mission = Mission(id=uuid4().hex, project_id=_LEAD, goal=goal,
+                      created_at="2026-01-01T00:00:00+00:00", project_ids=(_LEAD, _OTHER))
+    save_mission(mission, tmp_path)
+    return mission
+
+
 class TestTheRecordOfOneProjectKeepsItsBytes:
     def test_a_mission_of_one_project_writes_no_project_list_and_no_link_project(self, tmp_path):
         mission = create_mission(_LEAD, "one repository", root=tmp_path)
@@ -50,25 +65,17 @@ class TestTheRecordOfOneProjectKeepsItsBytes:
         assert "project_ids" not in record
         assert [sorted(link) for link in record["job_links"]] == [["created_at", "job_id", "role"]]
 
-    def test_naming_only_its_own_project_is_a_mission_of_one_project(self, tmp_path):
-        mission = create_mission(_LEAD, "one repository", project_ids=[_LEAD], root=tmp_path)
-        assert mission.project_ids == ()
-        assert "project_ids" not in _record(tmp_path, mission)
-        assert mission.spanned_project_ids() == (_LEAD,)
-
 
 class TestAMissionOverSeveralProjects:
     def test_the_record_names_the_projects_its_own_first_and_reads_back(self, tmp_path):
-        mission = create_mission(_LEAD, "two repositories", project_ids=(_LEAD, _OTHER),
-                                 root=tmp_path)
+        mission = _legacy_umbrella(tmp_path)
         assert _record(tmp_path, mission)["project_ids"] == [_LEAD, _OTHER]
         loaded = load_mission(_LEAD, mission.id, tmp_path)
         assert loaded.project_ids == (_LEAD, _OTHER)
         assert loaded.spanned_project_ids() == (_LEAD, _OTHER)
 
     def test_each_link_records_the_project_its_job_works_in(self, tmp_path):
-        mission = create_mission(_LEAD, "two repositories", project_ids=(_LEAD, _OTHER),
-                                 root=tmp_path)
+        mission = _legacy_umbrella(tmp_path)
         first, second = _job(tmp_path, _LEAD), _job(tmp_path, _OTHER)
         link_job_to_mission(_LEAD, mission.id, first, MISSION_ROLE_INITIAL, root=tmp_path)
         link_job_to_mission(_LEAD, mission.id, second, MISSION_ROLE_FOLLOW_UP, root=tmp_path)
@@ -80,8 +87,7 @@ class TestAMissionOverSeveralProjects:
         assert mission_for_job(second, tmp_path).id == mission.id
 
     def test_a_job_of_a_project_the_mission_does_not_span_is_refused(self, tmp_path):
-        mission = create_mission(_LEAD, "two repositories", project_ids=(_LEAD, _OTHER),
-                                 root=tmp_path)
+        mission = _legacy_umbrella(tmp_path)
         before = mission_record_path(_LEAD, mission.id, tmp_path).read_bytes()
         with pytest.raises(MissionProjectError, match=_STRANGER):
             link_job_to_mission(_LEAD, mission.id, _job(tmp_path, _STRANGER), MISSION_ROLE_INITIAL,
@@ -89,8 +95,7 @@ class TestAMissionOverSeveralProjects:
         assert mission_record_path(_LEAD, mission.id, tmp_path).read_bytes() == before
 
     def test_a_job_without_a_record_is_refused(self, tmp_path):
-        mission = create_mission(_LEAD, "two repositories", project_ids=(_LEAD, _OTHER),
-                                 root=tmp_path)
+        mission = _legacy_umbrella(tmp_path)
         with pytest.raises(MissionProjectError, match="no readable record"):
             link_job_to_mission(_LEAD, mission.id, "0123456789abcdef", MISSION_ROLE_INITIAL,
                                 root=tmp_path)
@@ -98,20 +103,6 @@ class TestAMissionOverSeveralProjects:
 
 
 class TestTheProjectsMustFit:
-    @pytest.mark.parametrize("project_ids", [
-        (_OTHER, _LEAD),            # its own project is not first
-        (_LEAD, _OTHER, _LEAD),     # a project twice
-        (_OTHER,),                  # one project that is not its own
-    ])
-    def test_create_refuses_projects_that_do_not_fit(self, tmp_path, project_ids):
-        with pytest.raises(MissionProjectError):
-            create_mission(_LEAD, "two repositories", project_ids=project_ids, root=tmp_path)
-        assert not (tmp_path / "missions").exists()
-
-    def test_create_refuses_a_project_id_that_cannot_be_a_path(self, tmp_path):
-        with pytest.raises(MissionError):
-            create_mission(_LEAD, "two repositories", project_ids=(_LEAD, "../x"), root=tmp_path)
-
     @pytest.mark.parametrize("project_ids", [
         "proj-toolbox", [_LEAD], [_OTHER, _LEAD], [_LEAD, _OTHER, _OTHER]])
     def test_a_record_whose_projects_do_not_fit_will_not_read(self, project_ids):
@@ -138,8 +129,7 @@ class TestTheNextJobContinuesWhereTheChainIs:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
     def _chain(self, tmp_path, last_repo: str = "/repos/brain"):
-        mission = create_mission(_LEAD, "two repositories", project_ids=(_LEAD, _OTHER),
-                                 root=tmp_path)
+        mission = _legacy_umbrella(tmp_path)
         first = JobPlan(job_title="the toolbox part", project_id=_LEAD, repo_path="/repos/toolbox")
         last = JobPlan(job_title="the brain part", project_id=_OTHER, repo_path=last_repo)
         for job, role in ((first, MISSION_ROLE_INITIAL), (last, MISSION_ROLE_FOLLOW_UP)):
@@ -176,3 +166,34 @@ class TestTheNextJobContinuesWhereTheChainIs:
         following = continue_mission(_LEAD, mission.id, "next", root=tmp_path)
 
         assert (following.project_id, following.repo_path) == (_LEAD, "")
+
+
+class TestFollowUpTargetOfASecondRepository:
+    """DECISION F307 D11: a one-project mission keyed to a second repository continues there."""
+
+    def test_a_second_repositorys_mission_answers_it_and_a_canonical_one_answers_nothing(self):
+        batch = MissionOrderBatch(order_id="o1", repo_path="/repos/second")
+        second = Mission(id="m1", project_id=_LEAD, goal="g",
+                         repo=f"{_LEAD}:abc123def456", orders=(batch,))
+        assert follow_up_target(second, None) == {
+            "project_id": _LEAD, "repo_path": "/repos/second"}
+
+        canonical = Mission(id="m2", project_id=_LEAD, goal="g", repo=_LEAD, orders=(batch,))
+        assert follow_up_target(canonical, None) == {}
+
+    def test_the_newest_of_two_recorded_repositories_is_answered(self):
+        """R-1415: `Mission.order_repo_path` reads the newest batch that records one, not the
+        oldest, and skips a newest batch that records none."""
+        older = MissionOrderBatch(order_id="o1", repo_path="/repos/older")
+        newer = MissionOrderBatch(order_id="o2", repo_path="/repos/newer")
+        mission = Mission(id="m1", project_id=_LEAD, goal="g",
+                         repo=f"{_LEAD}:abc123def456", orders=(older, newer))
+        assert follow_up_target(mission, None) == {
+            "project_id": _LEAD, "repo_path": "/repos/newer"}
+
+        newest_recorded_none = MissionOrderBatch(order_id="o2")
+        mission_newest_none = Mission(id="m2", project_id=_LEAD, goal="g",
+                                      repo=f"{_LEAD}:abc123def456",
+                                      orders=(older, newest_recorded_none))
+        assert follow_up_target(mission_newest_none, None) == {
+            "project_id": _LEAD, "repo_path": "/repos/older"}

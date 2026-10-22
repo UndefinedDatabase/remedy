@@ -154,7 +154,7 @@ def test_the_builder_and_the_reviewer_are_given_the_orders_own_words_not_a_summa
         make_repo, capsys, monkeypatch):
     """The semantics of an order reach both roles: the reviewer can only fail wrong content, even in
     the right file, if it is shown what the order meant (amend1016p D3 asks it to)."""
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     seen: dict[str, list[str]] = {"build": [], "review": []}
     for method in ("build", "review"):

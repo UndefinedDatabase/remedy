@@ -7,12 +7,14 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
 from packages.core.models import RunState
 from packages.orchestration.data_paths import job_dir, run_dir
-from packages.orchestration.mission_state import create_mission, link_job_to_mission
+from packages.orchestration.mission_record import Mission, MissionOrderBatch
+from packages.orchestration.mission_state import create_mission, link_job_to_mission, save_mission
 from packages.orchestration.mission_upkeep import (
     LINE_JOB_CLOSED,
     LINE_UPKEEP_NOT_NEEDED,
@@ -43,6 +45,7 @@ from packages.orchestration.mission_upkeep import (
     upkeep_has_work,
     upkeep_ledger_path,
     upkeep_preview,
+    upkeep_target,
 )
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
@@ -629,7 +632,7 @@ class TestAReplacementThroughARun:
     def test_the_chain_from_the_round_to_the_upkeep_plan(self, data_root, tmp_path):
         from packages.orchestration.config import reset_config
         from packages.orchestration.pingpong_job import parse_job_file, run_job
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         from packages.orchestration.project_registry import RemyProject, save_project
 
         repo = tmp_path / "importer-repo"
@@ -740,8 +743,11 @@ class TestTheUpkeepOfAMissionOverSeveralProjects:
         """Five completed jobs, three in the first project and two in the second, the second last;
         a finding open in one job of each project."""
         repos = {PROJECT: tmp_path / "first-repo", self.OTHER: tmp_path / "second-repo"}
-        mission = create_mission(PROJECT, "Keep both repositories working",
-                                 project_ids=(PROJECT, self.OTHER))
+        mission = Mission(id=uuid4().hex, project_id=PROJECT,
+                          goal="Keep both repositories working",
+                          created_at="2026-01-01T00:00:00+00:00",
+                          project_ids=(PROJECT, self.OTHER))
+        save_mission(mission)
         jobs = []
         for index, project in enumerate((PROJECT, PROJECT, PROJECT, self.OTHER, self.OTHER)):
             job = JobPlan(job_title=f"job {index}", state=RunState.COMPLETED, project_id=project,
@@ -771,3 +777,27 @@ class TestTheUpkeepOfAMissionOverSeveralProjects:
         assert outcome.plan["repository"] == str(repos[self.OTHER])
         assert outcome.plan["findings"] == [finding_key(str(jobs[3].job_id), "T001", "F-TASK-001")]
         assert str(jobs[0].job_id) not in compile_upkeep_step(outcome.plan)
+
+
+def test_upkeep_target_of_a_mission_keyed_to_a_second_repository_answers_that_repository():
+    """DECISION F307 D11: `upkeep_target` reuses `follow_up_target`'s answer for a one-project
+    mission keyed to a second repository, the same as for a mission over several projects."""
+    batch = MissionOrderBatch(order_id="o1", repo_path="/repos/second")
+    mission = Mission(id="m1", project_id=PROJECT, goal="g",
+                      repo=f"{PROJECT}:abc123def456", orders=(batch,))
+
+    assert upkeep_target(mission) == (PROJECT, "/repos/second")
+
+
+def test_an_order_batch_has_no_plan_source_and_reads_a_record_that_held_one():
+    """R-1311, DECISION F307 D19: `plan_source` is gone from `MissionOrderBatch`; a record a
+    pre-repair batch wrote with the key still reads, because the reader ignores an unknown key."""
+    batch = MissionOrderBatch(order_id="o1")
+
+    assert "plan_source" not in batch.to_json()
+    assert not hasattr(batch, "plan_source")
+
+    loaded = MissionOrderBatch.from_json({"order_id": "o1", "plan_source": "x"})
+
+    assert "plan_source" not in loaded.to_json()
+    assert not hasattr(loaded, "plan_source")

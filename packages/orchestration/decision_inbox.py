@@ -8,7 +8,7 @@ question has been waiting, how much work waits behind it, and whether the write
 door can answer it at all.
 
 Scoping is BY JOB and the route enforces it: ``/api/jobs/<job_id>/decisions``
-loads exactly one job through ``ui_server._load_job``.  Remedy deliberately does
+loads exactly one job through ``serve_http_handler._load_job``.  Remedy deliberately does
 NOT take a project argument here and never reads a second job — a cross-job
 inbox would need a scoping rule the route does not have, so it is not offered.
 
@@ -76,7 +76,7 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     """Whether the write door's ``decision.resolve`` can answer this card.
 
     MEASURED against the door itself, not against the card's type.  The door
-    ``ui_server._dispatch_decision_resolve`` now has TWO branches, and this
+    ``serve_http_handler._dispatch_decision_resolve`` now has TWO branches, and this
     predicate mirrors every refusal of theirs that is a property of the JOB.
     The door ALSO refuses a malformed ``args.answers`` (DECISION F031 D26), and
     this predicate deliberately does NOT mirror that one: it is a property of

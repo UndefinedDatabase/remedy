@@ -808,10 +808,14 @@ class TestRuntimeFlowRunner:
             t.join(timeout=70.0)
         assert not any(t.is_alive() for t in threads), "a racer thread did not finish"
 
+        assert all(ev is not None for ev in results)
+        # R-1306: at least one racer passes, or both failing would pass this test vacuously.
+        assert any(ev.status == STATUS_PASSED for ev in results), [(ev.status, ev.reason) for ev in results]
         for ev in results:
-            assert ev is not None
             if ev.status == STATUS_PASSED:
                 assert "flow-app: listening on" in ev.output_tail
+            else:
+                assert ev.reason == REASON_APP_START_FAILED, (ev.status, ev.reason)
         # The two checks may not overlap in time, so only the property every
         # interleaving keeps is asserted here; the squatter test above is the
         # deterministic proof.

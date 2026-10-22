@@ -1,7 +1,7 @@
 """F292 T001 — the plan read (DECISION F292 D1 (1)): `plan_editing.plan_view`, served by
 `remedy job plan-show --json`, so every reader of a plan reads one answer — the plan's version, its approval, whether it is open for
 editing and why not, and each planned task with its dependencies, its acceptance and the
-task entry that runs it. Moved here from `tests/ui_server/test_dashboard_plan.py` when the
+task entry that runs it. Moved here from `tests/serve_http_handler/test_dashboard_plan.py` when the
 old cockpit's dashboard `plan` section, which wrapped this read, was deleted (amend1015f D27).
 """
 from __future__ import annotations

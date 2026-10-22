@@ -1,17 +1,13 @@
 """Job Task Runner — sequential multi-task execution with review/repair gates.
 
-Parses a Markdown job file into ordered tasks, executes each through the
-existing ping-pong loop (Builder → tests → Reviewer → repair), and applies
-passed results into an isolated job workspace. The real target repo is never
-mutated.
+Parses a Markdown job file into ordered tasks, executes each through the existing ping-pong loop
+(Builder → tests → Reviewer → repair), and applies passed results into an isolated job workspace.
+The real target repo is never mutated. The job report lives in `packages/orchestration/job_report.py`.
 
 Public API:
     parse_job_file(text, repo_path) -> JobPlan
     plan_job_from_file(job_file_path, repo_path) -> JobPlan
     run_job(job_id, ...) -> JobPlan
-    export_job_report(job) -> dict
-    format_job_report_text(job) -> str
-    collect_blocked_task_findings(job, full=False) -> list[dict]
     load_job_plan(job_id) -> JobPlan | None
 """
 
@@ -29,17 +25,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-# F272 T002: the closed types JobPlan's administrative fields carry. Imported at
-# module level and not under TYPE_CHECKING because `_import_job` reconstructs
-# them at runtime from the job record's plain JSON.
+# F272 T002: the closed types JobPlan's administrative fields carry. Imported at module level and not
+# under TYPE_CHECKING because `_import_job` reconstructs them at runtime from the job record's plain JSON.
 from packages.common.secure_fs import durable_write
 from packages.core.models import Artifact, Budget, JobFences, RunState
 
-# F260 D2: one minting function per KIND of id. This module names JOBs, TASKs and
-# EPISODEs, so it mints through data_paths rather than spelling uuid4 inline.
-# Module-level and not function-scoped: the default_factory of JobPlan and of
-# TaskEntry below is read when the class body runs, which a local import could
-# never reach.
+# F260 D2: one minting function per KIND of id. This module names JOBs, TASKs and EPISODEs, so it mints through
+# data_paths rather than spelling uuid4 inline. Module-level and not function-scoped: the default_factory of JobPlan
+# and of TaskEntry below is read when the class body runs, which a local import could never reach.
 from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id, mint_task_id
 from packages.orchestration.execution_config import (
     ExecutionConfig,
@@ -48,6 +41,8 @@ from packages.orchestration.execution_config import (
     resolve_job_execution_config,
 )
 from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
+from packages.orchestration.job_run_finish import stamp_blocked_job_finish
+from packages.orchestration.structured_log import bind_call_log_context
 from packages.orchestration.verified_repair import final_task_test_command
 
 if TYPE_CHECKING:
@@ -541,8 +536,8 @@ def load_job_plan_safe(job_id: str, root: Path | None = None) -> tuple[JobPlan |
     ``(None, False)`` when no record exists, ``(None, True)`` when one exists and
     cannot be read, ``(plan, False)`` on success. No input makes this raise:
     ``OSError``, ``JSONDecodeError`` and ``KeyError`` are what ``load_job_plan``
-    already catches, and ``ValueError`` and ``TypeError`` are what ``_import_job``
-    raises on a record whose JSON parses into the wrong shapes.
+    already catches, and ``ValueError``, ``TypeError`` and ``AttributeError`` what
+    ``_import_job`` raises on a record whose JSON parses into the wrong shapes (R-1413).
     """
     from packages.orchestration.data_paths import job_record_path
 
@@ -551,7 +546,7 @@ def load_job_plan_safe(job_id: str, root: Path | None = None) -> tuple[JobPlan |
         return (None, False)
     try:
         return (_import_job(_json.loads(job_file.read_text())), False)
-    except (OSError, _json.JSONDecodeError, KeyError, ValueError, TypeError):
+    except (OSError, _json.JSONDecodeError, KeyError, ValueError, TypeError, AttributeError):
         return (None, True)
 
 
@@ -2443,6 +2438,8 @@ def _writes_ownership_ledger(fn):
 
 
 @_writes_ownership_ledger
+@bind_call_log_context(job_id="job_id")
+@stamp_blocked_job_finish
 def run_job(
     job_id: str,
     *,
@@ -3797,60 +3794,7 @@ def run_job(
             job.finished_at = datetime.now(timezone.utc).isoformat()
 
             # Final job review — job-level review after all per-task reviewers pass
-            try:
-                from packages.orchestration.data_paths import job_dir
-                from packages.orchestration.final_job_review import build_final_job_review
-
-                _task_verdicts_fjr = [
-                    {"task_id": t.task_id, "verdict": t.reviewer_verdict or t.final_status or ""}
-                    for t in job.tasks
-                ]
-                _task_summaries_fjr = [t.title or "" for t in job.tasks]
-                _task_diffs_fjr = [
-                    (getattr(t, "safe_diff_summary", "") or "")[:2000]
-                    for t in job.tasks
-                ]
-                _fjr = build_final_job_review(
-                    job_goal=job.job_title,
-                    task_plan=[{"task_id": t.task_id, "title": t.title} for t in job.tasks],
-                    task_summaries=_task_summaries_fjr,
-                    task_diffs=_task_diffs_fjr,
-                    task_verdicts=_task_verdicts_fjr,
-                    test_evidence={},
-                    gate_verdicts=[],
-                    job_id=job.job_id,
-                )
-                _fjr_dir = job_dir(job.job_id)
-                _fjr_dir.mkdir(parents=True, exist_ok=True)
-                (_fjr_dir / "final_job_review.json").write_text(
-                    _json.dumps(_fjr, indent=2) + "\n"
-                )
-
-                # If findings exist, persist final_job_repair_loop.json
-                if _fjr.get("findings"):
-                    from packages.orchestration.final_job_review import build_final_job_repair_loop
-                    _repair_loop = build_final_job_repair_loop(
-                        findings=_fjr["findings"],
-                        repair_tasks=[],
-                        re_review_verdict=_fjr["verdict"],
-                        rounds=0,
-                        budget=0,
-                    )
-                    (_fjr_dir / "final_job_repair_loop.json").write_text(
-                        _json.dumps(_repair_loop, indent=2) + "\n"
-                    )
-            except Exception as exc:  # noqa: BLE001 — a lost review is recorded as a blocking one
-                # The job stays complete, but a review that could not be written must not read as
-                # "no review", which the final verifier passes: write one that blocks instead.
-                job.metadata["final_job_review_error"] = type(exc).__name__
-                from packages.orchestration.data_paths import job_dir as _fjr_job_dir
-                _fjr_path = _fjr_job_dir(job.job_id) / "final_job_review.json"
-                if not _fjr_path.exists():
-                    _fjr_path.parent.mkdir(parents=True, exist_ok=True)
-                    _fjr_path.write_text(_json.dumps({
-                        "job_id": job.job_id, "verdict": "BLOCKED", "findings": [],
-                        "review_error": type(exc).__name__,
-                    }, indent=2) + "\n")
+            _write_final_job_review(job)
 
         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
             job.state = JOB_PAUSED
@@ -3877,6 +3821,55 @@ def run_job(
     finally:
         # The job runner — not the task loop — owns the worktree's cleanup.
         _finalize_job_workspace(job, job_handle)
+
+# WHY: step (3) of `run_job`'s boundary, begun (DECISION F307 D28): the final job review is one terminal step.
+def _write_final_job_review(job: JobPlan) -> None:
+    """Write the completed JOB's final review, and its repair loop when it has findings, or a blocking one."""
+    try:
+        from packages.orchestration.data_paths import job_dir
+        from packages.orchestration.final_job_review import build_final_job_review
+
+        _task_verdicts_fjr = [{"task_id": t.task_id, "verdict": t.reviewer_verdict or t.final_status or ""}
+                              for t in job.tasks]
+        _task_summaries_fjr = [t.title or "" for t in job.tasks]
+        _task_diffs_fjr = [(getattr(t, "safe_diff_summary", "") or "")[:2000] for t in job.tasks]
+        _fjr = build_final_job_review(
+            job_goal=job.job_title,
+            task_plan=[{"task_id": t.task_id, "title": t.title} for t in job.tasks],
+            task_summaries=_task_summaries_fjr,
+            task_diffs=_task_diffs_fjr,
+            task_verdicts=_task_verdicts_fjr,
+            test_evidence={},
+            gate_verdicts=[],
+            job_id=job.job_id,
+        )
+        _fjr_dir = job_dir(job.job_id)
+        _fjr_dir.mkdir(parents=True, exist_ok=True)
+        (_fjr_dir / "final_job_review.json").write_text(
+            _json.dumps(_fjr, indent=2) + "\n"
+        )
+
+        # If findings exist, persist final_job_repair_loop.json
+        if _fjr.get("findings"):
+            from packages.orchestration.final_job_review import build_final_job_repair_loop
+            _repair_loop = build_final_job_repair_loop(findings=_fjr["findings"], repair_tasks=[],
+                                                       re_review_verdict=_fjr["verdict"], rounds=0, budget=0)
+            (_fjr_dir / "final_job_repair_loop.json").write_text(
+                _json.dumps(_repair_loop, indent=2) + "\n"
+            )
+    except Exception as exc:  # noqa: BLE001 — a lost review is recorded as a blocking one
+        # The job stays complete, but a review that could not be written must not read as
+        # "no review", which the final verifier passes: write one that blocks instead.
+        job.metadata["final_job_review_error"] = type(exc).__name__
+        from packages.orchestration.data_paths import job_dir as _fjr_job_dir
+        _fjr_path = _fjr_job_dir(job.job_id) / "final_job_review.json"
+        if not _fjr_path.exists():
+            _fjr_path.parent.mkdir(parents=True, exist_ok=True)
+            _fjr_path.write_text(_json.dumps({
+                "job_id": job.job_id, "verdict": "BLOCKED", "findings": [],
+                "review_error": type(exc).__name__,
+            }, indent=2) + "\n")
+
 
 #: JobPlan worktree states that a resume may pick up.
 JOB_RECOVERABLE_STATES = frozenset({"active", "retained", "failed_recoverable"})
@@ -4022,391 +4015,6 @@ def _build_task_prompt(
         parts.append(task.acceptance)
 
     return "\n".join(parts)
-
-
-# ---------------------------------------------------------------------------
-# Job report (Step 4831, 4839, 4840)
-# ---------------------------------------------------------------------------
-
-def _task_veto_report_map(job: JobPlan) -> dict[str, dict[str, Any]]:
-    """The report's and the export's own veto lookup (DECISION F027 D7 (3)): the fold's
-    own `job.metadata["task_vetoes"]` record for a task first, and the control files for a
-    veto no run has folded yet — mirrors `task_veto._event_unreachable`'s own unreachable
-    reading for an entry not already folded. A `TaskVetoError` reading the control files is
-    swallowed: it costs the report nothing beyond the entries it could not read, and a job
-    with no veto at all sees no key here, so its report and export stay byte for byte
-    unchanged."""
-    out: dict[str, Any] = dict((job.metadata or {}).get("task_vetoes") or {})
-
-    from packages.orchestration import task_veto as _tv
-
-    try:
-        entries = _tv.vetoed_tasks(job.job_id)
-    except _tv.TaskVetoError:
-        return out
-
-    all_ids = {e.task_id for e in entries}
-    for entry in entries:
-        if entry.task_id in out:
-            continue
-        other_ids = all_ids - {entry.task_id}
-        unreachable = [
-            tid for tid in _tv.veto_unreachable(job.tasks, [entry.task_id])
-            if tid not in other_ids
-        ]
-        out[entry.task_id] = {**entry.to_json(), "unreachable_task_ids": unreachable}
-    return out
-
-
-def _task_steering_not_consumed_map(job: JobPlan) -> dict[str, list[dict[str, Any]]]:
-    """The report's and the export's own steering-note lookup (F030 T001, DECISION F030 D1):
-    for every task whose status is neither ``TASK_PENDING`` nor ``TASK_RUNNING`` — its round
-    loop is done and will never consume another note — the notes addressed to it that no round
-    ever consumed, each as ``{"message_id", "text", "received_at"}`` in arrival order. A task
-    with none is omitted, so a job with no such note exports the same keys as before. The job's
-    steering records and consumption markers are read ONCE for the whole job, not once per
-    task, mirroring `_task_veto_report_map`'s own single read. A `SteeringError` reading them
-    (a tampered record) is swallowed exactly as that function swallows a `TaskVetoError`: it
-    costs the report nothing beyond the notes it could not read.
-    """
-    from packages.orchestration import steering as _st
-
-    try:
-        records = _st.list_steering_messages(job.job_id)
-        markers = _st.list_steering_consumptions(job.job_id)
-    except _st.SteeringError:
-        return {}
-
-    out: dict[str, list[dict[str, Any]]] = {}
-    for task in job.tasks:
-        if task.status in (TASK_PENDING, TASK_RUNNING):
-            continue
-        notes = [
-            {"message_id": r["message_id"], "text": r["text"], "received_at": r["received_at"]}
-            for r in records
-            if _st.note_task_id(r) == task.task_id and r["message_id"] not in markers
-        ]
-        if notes:
-            out[task.task_id] = notes
-    return out
-
-
-def export_job_report(job: JobPlan) -> dict[str, Any]:
-    """Export a JSON-serializable job report."""
-    # Function-scoped, like every other data_paths import in this module. The
-    # single use below sits inside a compound boolean, where a missing import is
-    # a runtime NameError on the worktree path only — so it is bound HERE, at
-    # the top of the function, where it is visible to a reader.
-    from packages.orchestration.data_paths import job_dir
-
-    veto_map = _task_veto_report_map(job)
-    steering_map = _task_steering_not_consumed_map(job)
-    task_reports = []
-    for t in job.tasks:
-        report = {
-            "task_id": t.task_id,
-            "source_heading_number": t.source_heading_number,
-            "title": t.title,
-            "status": t.status,
-            "run_id": t.run_id,
-            "final_status": t.final_status,
-            "test_passed": t.test_passed,
-            "reviewer_verdict": t.reviewer_verdict,
-            "repair_rounds_used": t.repair_rounds_used,
-            "repair_rounds_allowed": t.repair_rounds_allowed,
-            "safe_diff_files": t.safe_diff_files,
-            "error": t.error,
-            "apply_manifest": _export_apply_manifest(t.apply_manifest),
-            "proof_summary": _export_proof_summary(t.proof_summary),
-        }
-        veto_info = veto_map.get(t.task_id)
-        if veto_info is not None:
-            report["veto"] = {
-                "reason": veto_info.get("reason", ""),
-                "actor": veto_info.get("actor", ""),
-                "requested_at": veto_info.get("requested_at", ""),
-                "unreachable_task_ids": list(veto_info.get("unreachable_task_ids") or []),
-            }
-        notes = steering_map.get(t.task_id)
-        if notes is not None:
-            report["steering_not_consumed"] = notes
-        task_reports.append(report)
-
-    # F006: a completed worktree job's execution workspace is deliberately gone.
-    # Availability of the hand-off is decided by the worktree cleanup status plus a
-    # verified job-level result.diff — never by "is that directory still there?".
-    # The recorded relative worktree path is kept as audit data.
-    has_workspace_changes = False
-    handoff_available = False
-    if job.isolation_mode == "worktree":
-        handoff_available = bool(
-            job.result_diff_path
-            and job.result_diff_sha256
-            and (job_dir(job.job_id) / job.result_diff_path).is_file()
-        )
-        has_workspace_changes = handoff_available and any(
-            t.status == TASK_APPLIED for t in job.tasks
-        )
-    elif job.job_workspace_path:
-        ws = Path(job.job_workspace_path)
-        if ws.exists():
-            has_workspace_changes = any(
-                t.status == TASK_APPLIED for t in job.tasks
-            )
-            handoff_available = has_workspace_changes
-
-    next_cmd = _suggest_next_command(job)
-
-    pending_count = sum(1 for t in job.tasks if t.status == TASK_PENDING)
-
-    return {
-        "job_id": job.job_id,
-        "job_title": job.job_title,
-        "status": job.state.value if isinstance(job.state, RunState) else job.state,
-        "repo_path": job.repo_path,
-        "job_workspace_path": job.job_workspace_path,
-        "created_at": job.created_at,
-        "finished_at": job.finished_at,
-        "tasks": task_reports,
-        "has_workspace_changes": has_workspace_changes,
-        "isolation_mode": job.isolation_mode,
-        "worktree": {
-            "branch": job.worktree_branch,
-            "path": job.worktree_path,          # repo-relative audit path
-            "base_commit": job.worktree_base_commit,
-            "head": job.worktree_head,
-            "cleanup_status": job.worktree_cleanup_status,
-            "workspace_expected_present": (
-                job.isolation_mode == "worktree"
-                and job.worktree_cleanup_status != "clean"
-            ),
-        },
-        "handoff_available": handoff_available,
-        "result_diff": (
-            {
-                "path": job.result_diff_path,
-                "sha256": job.result_diff_sha256,
-                "size_bytes": job.result_diff_size_bytes,
-            }
-            if job.result_diff_path else None
-        ),
-        "next_command": next_cmd,
-        "target_guard": _export_target_guard(job.target_guard),
-        # F010: the job-level post-mortem, and the reason one could not be written. A
-        # recording failure that did not survive `_persist_job` was a recording failure the
-        # evidence export could never see.
-        "postmortem": {
-            "path": job.postmortem_path,      # evidence-relative, never absolute
-            "error": job.postmortem_error,
-        },
-        "repair_rounds_allowed": job.repair_rounds_allowed,
-        "repair_rounds_source": job.repair_rounds_source,
-        "pending_tasks": pending_count,
-        "execution_config": _export_execution_config(job.execution_config),
-        "context_strategy": {
-            "strategy": "task_bounded_sequential_job",
-            "previous_task_summary_limit": _PREVIOUS_SUMMARY_LIMIT,
-            "full_job_history_in_prompt": False,
-            "full_repo_in_prompt": False,
-        },
-        "warning": (
-            "Real target repo was NOT mutated. "
-            "Changes exist only in the isolated job workspace."
-        ),
-    }
-
-
-#: How many of one blocked task's last-round findings `job show` prints; `--full`
-#: prints every one (R-0806).
-BLOCKED_TASK_FINDINGS_CAP = 10
-
-
-def collect_blocked_task_findings(job: JobPlan, *, full: bool = False) -> list[dict[str, Any]]:
-    """The reviewer findings of the LAST round of every blocked task (R-0806).
-
-    One entry per task whose status is ``blocked``, in task order. Each finding is
-    copied verbatim from the task's run record (``id``, ``severity``, ``file``,
-    ``summary``), at most ``BLOCKED_TASK_FINDINGS_CAP`` of them unless ``full``.
-    This feeds a read view, so it never raises: a task with no run id, or whose run
-    record is missing or unreadable, reports no findings.
-    """
-    from packages.orchestration.pingpong_loop import load_run
-
-    entries: list[dict[str, Any]] = []
-    for task in job.tasks:
-        if task.status != TASK_BLOCKED:
-            continue
-        round_number = None
-        findings: list[dict[str, Any]] = []
-        try:
-            run = load_run(task.run_id) if task.run_id else None
-        except (OSError, ValueError):
-            run = None
-        rounds = run.get("rounds") if isinstance(run, dict) else None
-        if isinstance(rounds, list) and rounds and isinstance(rounds[-1], dict):
-            last = rounds[-1]
-            round_number = last.get("round")
-            reviewer = last.get("reviewer")
-            recorded = reviewer.get("findings") if isinstance(reviewer, dict) else None
-            if isinstance(recorded, list):
-                findings = [
-                    {key: finding.get(key, "") for key in ("id", "severity", "file", "summary")}
-                    for finding in recorded
-                    if isinstance(finding, dict)
-                ]
-        shown = findings if full else findings[:BLOCKED_TASK_FINDINGS_CAP]
-        entries.append({
-            "task_id": task.task_id,
-            "run_id": task.run_id,
-            "round": round_number,
-            "findings": shown,
-            "findings_total": len(findings),
-            "findings_omitted": len(findings) - len(shown),
-        })
-    return entries
-
-
-def format_job_report_text(job: JobPlan) -> str:
-    """Format a human-readable job report."""
-    lines = [
-        f"Job {job.job_id}: {job.job_title}",
-        f"Status: {job.state}",
-        f"Repo: {job.repo_path}",
-        "",
-        "Tasks:",
-    ]
-
-    steering_map = _task_steering_not_consumed_map(job)
-    for t in job.tasks:
-        status_icon = {
-            TASK_PENDING: " ",
-            TASK_RUNNING: ">",
-            TASK_PASSED: "+",
-            TASK_APPLIED: "*",
-            TASK_BLOCKED: "!",
-            TASK_FAILED: "X",
-            TASK_SKIPPED: "-",
-            TASK_VETOED: "/",
-        }.get(t.status, "?")
-
-        line = f"  [{status_icon}] {t.task_id}: {t.title} — {t.status}"
-        if t.run_id:
-            line += f" (run: {t.run_id})"
-        lines.append(line)
-
-        if t.reviewer_verdict:
-            lines.append(f"      Reviewer: {t.reviewer_verdict}")
-        if t.repair_rounds_used:
-            lines.append(
-                f"      Repair: {t.repair_rounds_used}/{t.repair_rounds_allowed}"
-            )
-        if t.apply_manifest and t.apply_manifest.applied_files:
-            lines.append(
-                f"      Applied: {len(t.apply_manifest.applied_files)} files"
-            )
-        if t.error:
-            lines.append(f"      Error: {t.error}")
-        for note in steering_map.get(t.task_id, []):
-            lines.append(
-                "      Steering not consumed: “" + note["text"].replace("\n", "\n        ") + "”"
-            )
-
-    lines.append("")
-
-    # F035 T002 (DECISION F035 D3): the whole ownership ledger, worded through the one
-    # catalog in `ownership_phrases.py`, replaces the per-task `Vetoed by` line above — one
-    # dialect for who did what, instead of the same fact stated twice in two wordings. A job
-    # with no entry prints no section at all, so its report is byte for byte unchanged; a
-    # ledger that cannot be read prints one line naming the error rather than silently
-    # dropping the section.
-    from packages.orchestration.ownership import OwnershipError, build_ownership_ledger
-    from packages.orchestration.ownership_phrases import ownership_sentences
-
-    try:
-        ledger = build_ownership_ledger(job)
-    except (OwnershipError, OSError) as exc:
-        lines.append(f"Ownership: the ledger could not be read — {exc}")
-        lines.append("")
-    else:
-        titles = {t.task_id: t.title for t in job.tasks}
-        sentences = ownership_sentences(ledger, titles=titles)
-        if sentences:
-            lines.append("Ownership:")
-            for sentence in sentences:
-                lines.append("  - " + sentence.replace("\n", "\n    "))
-            lines.append("")
-
-    if job.repair_rounds_source:
-        disabled = " (disabled)" if job.repair_rounds_allowed == 0 else ""
-        lines.append(
-            f"Repair: {job.repair_rounds_allowed} rounds"
-            f" (source: {job.repair_rounds_source}){disabled}"
-        )
-
-    pending_count = sum(1 for t in job.tasks if t.status == TASK_PENDING)
-    if job.state == JOB_PAUSED and pending_count > 0:
-        lines.append(f"Paused: {pending_count} tasks pending")
-        # F025 S6: an OPERATOR pause says who paused it and why; a task-scope one
-        # also names what it withheld. A `max_tasks` pause carries no record (S1),
-        # so this block is silent for it, unchanged from before this round.
-        if job.pause:
-            lines.append(
-                f"Paused by {job.pause.get('source', '')}: {job.pause.get('reason', '')}"
-            )
-            if job.pause.get("scope") == "task":
-                withheld = job.pause.get("withheld_task_ids") or []
-                lines.append(f"Withheld tasks: {', '.join(withheld)}")
-
-    ec = job.execution_config
-    if ec:
-        lines.append(f"Builder: {ec.builder} (source: {ec.builder_source})")
-        lines.append(f"Reviewer: {ec.reviewer} (source: {ec.reviewer_source})")
-        lines.append(f"Max rounds: {ec.max_rounds} (source: {ec.max_rounds_source})")
-        tc = ec.test_command
-        if tc:
-            tc_display = tc[:80] + "..." if len(tc) > 80 else tc
-            lines.append(f"Test command: {tc_display} (source: {ec.test_command_source})")
-        if ec.claude_cli_write_mode != "none":
-            lines.append(
-                f"Write mode: {ec.claude_cli_write_mode}"
-                f" (source: {ec.claude_cli_write_mode_source})"
-            )
-        if job.state == JOB_PAUSED:
-            lines.append("Continuation config: persisted from previous run")
-
-    if any(t.status == TASK_APPLIED for t in job.tasks):
-        lines.append("Job workspace has accumulated changes.")
-    lines.append(
-        "WARNING: Real target repo was NOT mutated. "
-        "Changes exist only in the isolated job workspace."
-    )
-
-    next_cmd = _suggest_next_command(job)
-    if next_cmd:
-        lines.append(f"\nNext: {next_cmd}")
-
-    return "\n".join(lines)
-
-
-def _suggest_next_command(job: JobPlan) -> str:
-    """Suggest the next CLI command based on job state.
-
-    For paused jobs with persisted config, the short command is safe — config
-    is restored from persistence. The report text shows the config that will
-    be used.
-    """
-    if job.state == JOB_PLANNED:
-        return f"remedy job run {job.job_id}"
-    if job.state == JOB_PAUSED:
-        return f"remedy job run {job.job_id}"
-    if job.state == JOB_COMPLETED:
-        return f"remedy job apply {job.job_id} --repo . --dry-run"
-    if job.state == JOB_BLOCKED:
-        return f"remedy job show {job.job_id} --full"
-    pending = [t for t in job.tasks if t.status == TASK_PENDING]
-    if pending:
-        return f"remedy job run {job.job_id}"
-    return ""
 
 
 def job_evidence_dir(job_id: str):

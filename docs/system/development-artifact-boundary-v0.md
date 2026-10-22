@@ -45,6 +45,11 @@ addresses are refused; binary attachments, symlinks and other non-regular entrie
 well. Historical Git objects are not
 rewritten by this forward-looking guard.
 
+One addition is not new content: a line a commit adds to `.agent/live_review_archive.md` that the
+same commit deletes from `.agent/live_review.md` is the ledger rotation's verbatim move of a record
+Git already holds, and it is not scanned again; a second copy of it, or the same line added to any
+other file, is (DECISION F307 D3).
+
 ## Current legacy dependencies
 
 All current `.agent/live_review.md` reads are in development/self-dogfood paths.

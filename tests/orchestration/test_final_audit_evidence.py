@@ -9,18 +9,18 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 class TestCockpitBridgeAdapter:
     def test_load_job_accepts_uuid(self):
-        from packages.orchestration.ui_server import _load_job
+        from packages.orchestration.serve_http_handler import _load_job
         _, err = _load_job("not-a-valid-id-at-all!!!!")
         assert err is not None
 
     def test_load_job_returns_not_found_for_missing_plan(self):
-        from packages.orchestration.ui_server import _load_job
+        from packages.orchestration.serve_http_handler import _load_job
         _, err = _load_job("deadbeef12345678")
         assert err is not None
         assert err[0] == 404
 
     def test_evidence_index_resolution(self, tmp_path):
-        from packages.orchestration.ui_server import _resolve_evidence_dir
+        from packages.orchestration.serve_http_handler import _resolve_evidence_dir
         result = _resolve_evidence_dir("nonexistent_job_id_12345678")
         assert result is None
 

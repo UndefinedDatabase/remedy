@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -79,9 +80,11 @@ from packages.orchestration.mission_contract import (
     render_contract_lines,
     write_mission_contract,
 )
+from packages.orchestration.mission_record import MissionOrderBatch
 from packages.orchestration.mission_state import (
     create_mission,
     load_mission,
+    save_mission,
     set_mission_contract,
 )
 from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
@@ -981,6 +984,20 @@ def _answer(job_id: str, decision_id: str, answer: str) -> dict[str, Any]:
     return record
 
 
+def _git(path: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=path, check=True, capture_output=True)
+
+
+def _repo(tmp_path: Path, name: str) -> Path:
+    """A real git repository under *tmp_path* (copied from `tests/orchestration/test_repo_mission.py`
+    so this module does not import across test modules)."""
+    path = tmp_path / name
+    path.mkdir()
+    _git(path, "init", "-q")
+    _git(path, "-c", "user.email=a@b", "-c", "user.name=n", "commit", "-q", "--allow-empty", "-m", "x")
+    return path
+
+
 class TestTheRemainderDecision:
     """D9 (1): one decision, on the latest job's first task, naming every blocker."""
 
@@ -1130,6 +1147,34 @@ class TestTheRemainderAnswer:
         assert amendment["id"] == "A001"
         assert amendment["criteria"] == ["C001", "C002"]
         assert "C002, C003 as C001, C002" in amendment["understood"]
+
+    def test_the_remainder_of_a_second_repositorys_mission_is_accepted_into_that_repository(
+            self, tmp_path, monkeypatch):
+        """DECISION F307 D11: the remainder continues in the mission's own repository, not the
+        project's canonical one (R-1415: a canonical repository A is also present, so the
+        remainder fails this test if it is accepted into `project_repo_root(owner)` instead)."""
+        import packages.orchestration.repo_mission as repo_mission
+        from packages.orchestration.mission_contract import start_remainder_follow_up_mission
+        from packages.orchestration.repo_mission import repo_key
+
+        repo_a = str(_repo(tmp_path, "repo-a"))
+        repo_b = str(_repo(tmp_path, "repo-b"))
+        project = SimpleNamespace(id=PROJECT, slug=PROJECT, name=PROJECT,
+                                  canonical_repo_path=repo_a, repo_paths=[repo_a, repo_b])
+        monkeypatch.setattr(repo_mission, "project_by_id", lambda project_id: project)
+        key = repo_key(project, repo_b)
+
+        mission_id, job_id, decision_id = self._raised(tmp_path, monkeypatch)
+        mission = load_mission(PROJECT, mission_id, tmp_path)
+        save_mission(replace(mission, repo=key, orders=(MissionOrderBatch(
+            order_id="o0", repo_path=repo_b),)), tmp_path)
+        record = _answer(job_id, decision_id, "yes")
+
+        follow_up_id = start_remainder_follow_up_mission(job_id, record, root=tmp_path)
+
+        follow_up = load_mission(PROJECT, follow_up_id, tmp_path)
+        assert follow_up.repo == key
+        assert follow_up.orders[-1].repo_path == repo_b
 
     def test_no_creates_nothing(self, tmp_path, monkeypatch):
         from packages.orchestration.mission_contract import start_remainder_follow_up_mission

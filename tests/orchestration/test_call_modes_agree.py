@@ -1,14 +1,15 @@
 """R-0827 — the provider's transport vocabulary and the manifest's must agree.
 
-`packages/orchestration/pingpong_provider.py` stamps a `mode` on every prepared
+`packages/orchestration/pingpong_provider.py` and the two provider modules moved out of it,
+`pingpong_provider_ollama.py` and `pingpong_provider_fake.py`, stamp a `mode` on every prepared
 call input; `packages/orchestration/run_manifest.py` rejects any call whose mode
 is outside `VALID_CALL_MODES`. Nothing related the two, so the `ollama` provider
 — the one this repository's own `resolve_role_config` returns for both roles —
 stamped a mode the manifest writer refused, and every run on it ended with
 `run_manifest_write_failed`. These tests are that missing relation.
 
-The provider source is read through the imported module's own `__file__` rather
-than through a repo-relative path, so the file parsed here is always the file
+The provider sources are read through the imported modules' own `__file__` rather
+than through a repo-relative path, so the files parsed here are always the files
 the constant imported below runs beside, editable install or worktree alike.
 """
 from __future__ import annotations
@@ -16,23 +17,25 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from packages.orchestration import pingpong_provider
+from packages.orchestration import pingpong_provider, pingpong_provider_fake, pingpong_provider_ollama
 from packages.orchestration.run_manifest import VALID_CALL_MODES
 
-PROVIDER_SOURCE = Path(pingpong_provider.__file__).resolve()
+PROVIDER_SOURCES = tuple(Path(module.__file__).resolve() for module in (
+    pingpong_provider, pingpong_provider_ollama, pingpong_provider_fake))
 
 
 def stamped_modes() -> dict[str, list[int]]:
-    """Every string literal the provider passes as the keyword `mode=` to a call.
+    """Every string literal the provider modules pass as the keyword `mode=` to a call.
 
     Literals are collected from the whole keyword-value subtree, not only from a
     bare `ast.Constant`, because one site stamps a conditional
     (`mode="api-structured" if structured else "api-legacy"`) and both of its
     branches are modes the manifest will see.
     """
-    tree = ast.parse(PROVIDER_SOURCE.read_text(encoding="utf-8"))
     modes: dict[str, list[int]] = {}
-    for node in ast.walk(tree):
+    nodes = [node for source in PROVIDER_SOURCES
+             for node in ast.walk(ast.parse(source.read_text(encoding="utf-8")))]
+    for node in nodes:
         if not isinstance(node, ast.Call):
             continue
         for keyword in node.keywords:
@@ -49,12 +52,15 @@ class TestTheProviderStampsOnlyModesTheManifestAccepts:
         """Non-vacuity: a collector that finds nothing would pass the next test."""
         modes = stamped_modes()
         assert modes, (
-            f"no `mode=` keyword string literal found in {PROVIDER_SOURCE} — the "
+            f"no `mode=` keyword string literal found in {PROVIDER_SOURCES} — the "
             f"collector, not the provider, is what changed"
         )
         assert "fake" in modes, (
             "the fake provider's own mode is missing from the collected set, so "
             "the collector is not reading the provider's call sites"
+        )
+        assert {"ollama-legacy", "ollama-native"} <= set(modes), (
+            "the Ollama provider's modes are missing, so the collector does not read its module"
         )
 
     def test_every_stamped_mode_is_a_valid_call_mode(self) -> None:
@@ -63,7 +69,7 @@ class TestTheProviderStampsOnlyModesTheManifestAccepts:
         modes = stamped_modes()
         unknown = {m: lines for m, lines in modes.items() if m not in VALID_CALL_MODES}
         assert not unknown, (
-            f"{PROVIDER_SOURCE.name} stamps modes that "
+            f"{[source.name for source in PROVIDER_SOURCES]} stamp modes that "
             f"run_manifest.VALID_CALL_MODES rejects: "
             f"{sorted((m, lines) for m, lines in unknown.items())} — every run on the "
             f"affected transport ends with run_manifest_write_failed (R-0827)"

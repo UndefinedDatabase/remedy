@@ -645,18 +645,23 @@ def test_a_job_of_an_abandoned_mission_no_longer_waits_for_its_apply(root, tmp_p
 def test_a_mission_over_two_projects_names_both_and_each_job_its_repository(root, tmp_path):
     """DECISION F205 D6: the mission, listed under its first project, names both projects, and
     each job names its repository, the second project's job naming the mission too."""
+    from uuid import uuid4
+
+    from packages.orchestration.mission_record import Mission
     from packages.orchestration.mission_state import (
         MISSION_ROLE_FOLLOW_UP,
         MISSION_ROLE_INITIAL,
-        create_mission,
         link_job_to_mission,
+        save_mission,
     )
     from packages.orchestration.project_registry import register_project_repo
 
     toolbox, brain = (register_project_repo(name, _git_folder(tmp_path / name))
                       for name in ("toolbox", "brain"))
     lead, other = str(toolbox.id), str(brain.id)
-    mission = create_mission(lead, "Two repositories", project_ids=(lead, other))
+    mission = Mission(id=uuid4().hex, project_id=lead, goal="Two repositories",
+                      created_at="2026-01-01T00:00:00+00:00", project_ids=(lead, other))
+    save_mission(mission)
     first = JobPlan(job_title="toolbox part", project_id=lead, repo_path=str(tmp_path / "toolbox"))
     second = JobPlan(job_title="brain part", project_id=other, repo_path=str(tmp_path / "brain"))
     for job, role in ((first, MISSION_ROLE_INITIAL), (second, MISSION_ROLE_FOLLOW_UP)):
@@ -685,6 +690,113 @@ def test_a_mission_of_one_project_names_that_project_alone(root, tmp_path):
     [project] = build_client_digest(now=NOW)["projects"]
 
     assert [entry["project_ids"] for entry in project["missions"]] == [[project_id]]
+
+
+# ── a mission's orders and a job's order (R-1282, DECISION F307 D19) ───────
+
+
+def test_a_missions_entry_names_each_order_with_the_jobs_it_asked_for(root, tmp_path):
+    """A mission's `orders` lists both batches oldest first, each with exactly the jobs whose
+    link names it; a legacy link with no `order_id` names neither batch's `job_ids`."""
+    from uuid import uuid4
+
+    from packages.orchestration.mission_record import Mission, MissionJobLink, MissionOrderBatch
+    from packages.orchestration.mission_state import (
+        MISSION_ROLE_FOLLOW_UP,
+        MISSION_ROLE_INITIAL,
+        save_mission,
+    )
+    from packages.orchestration.project_registry import register_project_repo
+
+    project_id = str(register_project_repo("orders", _git_folder(tmp_path / "orders")).id)
+    first = MissionOrderBatch(order_id="o1", kind="build", created_at="2026-01-01T00:00:00+00:00",
+                              source_path="/orders/first.md", source_sha256="a" * 64)
+    second = MissionOrderBatch(order_id="o2", kind="loop", created_at="2026-01-02T00:00:00+00:00",
+                               source_path="/orders/second.md", source_sha256="b" * 64)
+    legacy, job_a, job_b, job_c = (
+        JobPlan(job_title=title, project_id=project_id, repo_path=str(tmp_path / "orders"))
+        for title in ("legacy", "a", "b", "c"))
+    for job in (legacy, job_a, job_b, job_c):
+        save_job_plan(job)
+    links = (
+        MissionJobLink(job_id=str(legacy.job_id), role=MISSION_ROLE_INITIAL,
+                       created_at="2026-01-01T00:00:00+00:00"),
+        MissionJobLink(job_id=str(job_a.job_id), role=MISSION_ROLE_FOLLOW_UP,
+                       created_at="2026-01-01T00:01:00+00:00", order_id="o1"),
+        MissionJobLink(job_id=str(job_b.job_id), role=MISSION_ROLE_FOLLOW_UP,
+                       created_at="2026-01-01T00:02:00+00:00", order_id="o1"),
+        MissionJobLink(job_id=str(job_c.job_id), role=MISSION_ROLE_FOLLOW_UP,
+                       created_at="2026-01-02T00:01:00+00:00", order_id="o2"),
+    )
+    mission = Mission(id=uuid4().hex, project_id=project_id, goal="Orders",
+                      created_at="2026-01-01T00:00:00+00:00", job_links=links,
+                      orders=(first, second))
+    save_mission(mission)
+
+    digest = build_client_digest(now=NOW)
+
+    [project] = digest["projects"]
+    [entry] = project["missions"]
+    assert entry["orders"] == [
+        {"order_id": "o1", "kind": "build", "created_at": "2026-01-01T00:00:00+00:00",
+         "source_path": "/orders/first.md", "source_sha256": "a" * 64,
+         "job_ids": [str(job_a.job_id), str(job_b.job_id)]},
+        {"order_id": "o2", "kind": "loop", "created_at": "2026-01-02T00:00:00+00:00",
+         "source_path": "/orders/second.md", "source_sha256": "b" * 64,
+         "job_ids": [str(job_c.job_id)]},
+    ]
+
+
+def test_a_job_entry_names_its_order(root, tmp_path):
+    """A job of the second batch reads its `order_id`; the legacy-linked job and a job of no
+    mission both read null."""
+    from uuid import uuid4
+
+    from packages.orchestration.mission_record import Mission, MissionJobLink, MissionOrderBatch
+    from packages.orchestration.mission_state import (
+        MISSION_ROLE_FOLLOW_UP,
+        MISSION_ROLE_INITIAL,
+        save_mission,
+    )
+    from packages.orchestration.project_registry import register_project_repo
+
+    project_id = str(register_project_repo("job-orders", _git_folder(tmp_path / "job-orders")).id)
+    first = MissionOrderBatch(order_id="o1", created_at="2026-01-01T00:00:00+00:00")
+    second = MissionOrderBatch(order_id="o2", created_at="2026-01-02T00:00:00+00:00")
+    legacy, ordered, unlinked = (
+        JobPlan(job_title=title, project_id=project_id, repo_path=str(tmp_path / "job-orders"))
+        for title in ("legacy", "ordered", "unlinked"))
+    for job in (legacy, ordered, unlinked):
+        save_job_plan(job)
+    links = (
+        MissionJobLink(job_id=str(legacy.job_id), role=MISSION_ROLE_INITIAL,
+                       created_at="2026-01-01T00:00:00+00:00"),
+        MissionJobLink(job_id=str(ordered.job_id), role=MISSION_ROLE_FOLLOW_UP,
+                       created_at="2026-01-02T00:01:00+00:00", order_id="o2"),
+    )
+    mission = Mission(id=uuid4().hex, project_id=project_id, goal="Job orders",
+                      created_at="2026-01-01T00:00:00+00:00", job_links=links,
+                      orders=(first, second))
+    save_mission(mission)
+
+    digest = build_client_digest(now=NOW)
+
+    order_ids = {entry["job_id"]: entry["order_id"] for entry in digest["jobs"]}
+    assert order_ids[str(ordered.job_id)] == "o2"
+    assert order_ids[str(legacy.job_id)] is None
+    assert order_ids[str(unlinked.job_id)] is None
+
+
+def test_a_mission_with_no_order_batches_reads_orders_empty(root, tmp_path):
+    from packages.orchestration.mission_state import create_mission
+    from packages.orchestration.project_registry import register_project_repo
+
+    project_id = str(register_project_repo("no-orders", _git_folder(tmp_path / "no-orders")).id)
+    create_mission(project_id, "No orders yet")
+
+    [project] = build_client_digest(now=NOW)["projects"]
+
+    assert [entry["orders"] for entry in project["missions"]] == [[]]
 
 
 # ── a completed job's approval card (F304 T005, DECISION F304 D10) ──────────

@@ -1,8 +1,9 @@
 """F205, DECISION F205 D4 — one order names several projects; `remedy do` plans one job per repository.
 
 The projects `a` and `b` are registered by `remedy init`, each in its own repository, and the order
-file's header names both, `a` first. The walk plans one job in each project's repository under one
-mission that spans both and lives in `a`; under a commit flag each job is applied and committed in
+file's header names both, `a` first. The walk plans one job in each project's repository, each
+under its own repository's one mission as a batch of the order, the two sharing one correlation
+id (DECISION amend1011b D4); under a commit flag each job is applied and committed in
 its own repository, and `--push` pushes each repository once. `--project`, `--repo`, a project
 without a repository, an unknown project and a force flag are refused.
 

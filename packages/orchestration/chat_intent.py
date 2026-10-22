@@ -30,7 +30,7 @@ CHAT_AVAILABLE_ACTIONS = (
 )
 
 #: Every verb T002's first round can reach, each with the write door's own argument names
-#: (DECISION F038 D6) — the names `packages/orchestration/ui_server.py`'s `_dispatch_*`
+#: (DECISION F038 D6) — the names `packages/orchestration/serve_http_handler.py`'s `_dispatch_*`
 #: methods read off `payload["args"]`, not the command line's. An empty tuple means the
 #: door needs nothing beyond `command` and `client_nonce`.
 CHAT_VERB_REQUIRED_ARGS: dict[str, tuple[str, ...]] = {

@@ -16,7 +16,8 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.pingpong_loop import run_pingpong
-from packages.orchestration.pingpong_provider import ClaudeProvider, FakeProvider
+from packages.orchestration.pingpong_provider import ClaudeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.prompt_segments import (
     PromptSegmentRegistry,
     SegmentStabilityRank,

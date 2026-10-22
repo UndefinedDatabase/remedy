@@ -20,7 +20,7 @@ def report_task_origin(t: Any) -> str:
     """DECISION F028 D8: a task's provenance, read off its own plan inputs —
     `inputs["plan"]["origin"]` when `inputs["plan"]` is a dict and that value
     is a non-empty string, else "" (P6: not recorded, never guessed).  Mirrors
-    `ui_server._task_origin` (DECISION F028 D6 (1)); the report reads the
+    `serve_http_handler._task_origin` (DECISION F028 D6 (1)); the report reads the
     job's own tasks directly rather than importing the UI server, so the
     report and the server agree by reading the same shape independently
     rather than by sharing an import.

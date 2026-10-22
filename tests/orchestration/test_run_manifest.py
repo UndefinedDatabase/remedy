@@ -63,7 +63,7 @@ def repo(tmp_path):
 
 
 def _prov():
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
     return FakeProvider(pass_on_round=1, fail_on_round=99)
 
 
@@ -566,7 +566,7 @@ class TestSharedCallIdentity:
     def test_failed_call_shares_identity_with_postmortem(self, data_root, repo):
         from packages.orchestration.pingpong_job import parse_job_file, run_job
         from packages.orchestration.pingpong_loop import load_run
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         job = parse_job_file(_JOB, str(repo))
         b = FakeProvider(builder_error="provider_unavailable: boom")

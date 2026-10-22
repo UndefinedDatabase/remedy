@@ -168,7 +168,7 @@ class TestF146ReadOnlyInvariant:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.project_registry import (
             RemyProject,
-            _list_projects_readonly,
+            list_projects_readonly,
             save_project,
         )
         p = RemyProject(name="Test", slug="test")
@@ -178,7 +178,7 @@ class TestF146ReadOnlyInvariant:
         before = f.read_bytes()
         mtime = f.stat().st_mtime_ns
 
-        _list_projects_readonly()
+        list_projects_readonly()
 
         assert f.read_bytes() == before
         assert f.stat().st_mtime_ns == mtime

@@ -209,7 +209,7 @@ class TestF010AndF012ShareOneCallIdentity:
         refused one of them the two features would be naming different calls."""
         from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
         from packages.orchestration.pingpong_loop import load_run
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         def prov():
             return FakeProvider(pass_on_round=1, fail_on_round=99)

@@ -1,7 +1,7 @@
 """Ping-pong provider adapters — Builder and Reviewer providers.
 
 Defines the provider protocol and concrete implementations:
-  - FakeProvider: deterministic, for automated tests
+  - FakeProvider: in pingpong_provider_fake.py (structural step (3))
   - ClaudeProvider: real Claude API calls via anthropic SDK
 
 No provider executes unless explicitly selected via CLI.
@@ -185,197 +185,6 @@ class PingPongProvider(Protocol):
         max_output_chars: int = 50000,
         resume: str | None = None,
     ) -> ReviewerOutput: ...
-
-
-# ---------------------------------------------------------------------------
-# Fake provider (deterministic, for tests)
-# ---------------------------------------------------------------------------
-
-class FakeProvider:
-    """Deterministic fake provider for automated testing.
-
-    Round 1: Builder makes changes, Reviewer finds issues.
-    Round 2: Builder repairs, Reviewer passes.
-    Configurable via constructor for different test scenarios.
-    """
-
-    def __init__(
-        self,
-        *,
-        builder_files: list[str] | None = None,
-        fail_on_round: int = 1,
-        pass_on_round: int = 2,
-        max_rounds_before_block: int = 99,
-        builder_error: str = "",
-        reviewer_error: str = "",
-        malformed_review: bool = False,
-        malformed_review_recoverable: bool = False,
-        supports_resume: bool = False,
-        fake_session_id: str = "",
-        resume_fails: bool = False,
-    ) -> None:
-        self._builder_files = builder_files or ["docs/README.md"]
-        self._supports_resume = supports_resume
-        self._fake_session_id = fake_session_id
-        self._resume_fails = resume_fails
-        self._fail_round = fail_on_round
-        self._pass_round = pass_on_round
-        self._max_block = max_rounds_before_block
-        self._builder_error = builder_error
-        self._reviewer_error = reviewer_error
-        self._malformed_review = malformed_review
-        self._malformed_review_recoverable = malformed_review_recoverable
-        self._build_count = 0
-        self._review_count = 0
-
-    @property
-    def name(self) -> str:
-        return "fake"
-
-    @property
-    def supports_resume(self) -> bool:
-        return self._supports_resume
-
-    def build(
-        self,
-        prompt: str,
-        *,
-        timeout_sec: int = 120,
-        max_output_chars: int = 50000,
-        resume: str | None = None,
-    ) -> BuilderOutput:
-        self._build_count += 1
-        if self._builder_error:
-            return BuilderOutput(
-                error=self._builder_error,
-                provider="fake",
-            )
-        # F106 T002c: a test-only way to simulate a resume attempt that
-        # errors, so the fallback-once path in pingpong_loop.py has
-        # something real to fall back FROM. Only fires when a resume was
-        # actually requested on a provider that claims to support it —
-        # never on a plain (non-resume) call.
-        if resume and self._supports_resume and self._resume_fails:
-            return BuilderOutput(
-                error="resume_lost: session context unavailable",
-                provider="fake",
-            )
-        is_repair = self._build_count > 1
-        # F106 T002a: honor an incoming resume request only when this fake was
-        # constructed to support it — an unsupported provider's output is
-        # byte-identical whether or not a caller passes ``resume``.
-        resume_used = bool(resume) and self._supports_resume
-        usage_actuals = (
-            {"session_id": self._fake_session_id} if self._fake_session_id else None
-        )
-        return BuilderOutput(
-            summary=f"{'Repair' if is_repair else 'Initial'} changes (round {self._build_count})",
-            files_changed=list(self._builder_files),
-            commands_suggested=[],
-            assumptions=["Minimal changes only"],
-            provider="fake",
-            duration_ms=50,
-            tokens_used=100,
-            usage_actuals=usage_actuals,
-            resume_used=resume_used,
-            resume_session_ref=resume if resume_used else "",
-            prepared_input=prepare_call_input(
-                prompt=prompt, model="fake", mode="fake",
-                options={"max_output_chars": max_output_chars}),
-        )
-
-    def review(
-        self,
-        prompt: str,
-        *,
-        timeout_sec: int = 120,
-        max_output_chars: int = 50000,
-        resume: str | None = None,
-    ) -> ReviewerOutput:
-        # F106 T002c: a test-only way to simulate a resume attempt that
-        # errors, so the fallback-once path in pingpong_loop.py has
-        # something real to fall back FROM. Only fires when a resume was
-        # actually requested on a provider that claims to support it —
-        # never on a plain (non-resume) call.
-        if resume and self._supports_resume and self._resume_fails:
-            return ReviewerOutput(
-                error="resume_lost: session context unavailable",
-                provider="fake",
-            )
-        out = self._review_impl(prompt, timeout_sec=timeout_sec,
-                                max_output_chars=max_output_chars)
-        # F106 T002b: honor an incoming resume request only when this fake
-        # was constructed to support it — mirrors FakeProvider.build (T002a).
-        out.resume_used = bool(resume) and self._supports_resume
-        out.resume_session_ref = resume if out.resume_used else ""
-        if self._fake_session_id:
-            out.usage_actuals = {"session_id": self._fake_session_id}
-        out.prepared_input = prepare_call_input(
-            prompt=prompt, model="fake", mode="fake",
-            options={"max_output_chars": max_output_chars})
-        return out
-
-    def _review_impl(
-        self,
-        prompt: str,
-        *,
-        timeout_sec: int = 120,
-        max_output_chars: int = 50000,
-    ) -> ReviewerOutput:
-        self._review_count += 1
-        if self._reviewer_error:
-            return ReviewerOutput(
-                error=self._reviewer_error,
-                provider="fake",
-            )
-        if self._malformed_review:
-            return ReviewerOutput(
-                verdict="",
-                raw_text="not valid json {{{",
-                error="malformed_output: no JSON found in reviewer response",
-                provider="fake",
-            )
-        if self._malformed_review_recoverable and self._review_count == 1:
-            return ReviewerOutput(
-                verdict="",
-                raw_text="Here is my review:\n{bad json",
-                error="malformed_output: JSON parse error",
-                provider="fake",
-            )
-        if self._review_count >= self._max_block:
-            return ReviewerOutput(
-                verdict="blocked",
-                summary="Max rounds reached",
-                provider="fake",
-            )
-        if self._review_count >= self._pass_round:
-            return ReviewerOutput(
-                verdict="pass",
-                confidence="high",
-                summary="All changes look correct after repair.",
-                provider="fake",
-                duration_ms=30,
-                tokens_used=80,
-            )
-        # Findings on early rounds
-        return ReviewerOutput(
-            verdict="needs_repair",
-            findings=[
-                ReviewFinding(
-                    id=f"R-{self._review_count:04d}",
-                    severity="medium",
-                    file=self._builder_files[0] if self._builder_files else "",
-                    summary="Missing verification note",
-                    details="The change is incomplete — add a verification note.",
-                    required_fix="Add a verification note at the end of the file.",
-                ),
-            ],
-            confidence="medium",
-            summary=f"Found 1 issue in round {self._review_count}.",
-            provider="fake",
-            duration_ms=30,
-            tokens_used=80,
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -1088,6 +897,7 @@ class ClaudeCliProvider:
         stream_evidence_dir: str | None = None,
         stream_rel_prefix: str = "",
         stream_max_bytes: int | None = None,
+        stream_counters: dict[tuple[int, str], int] | None = None,
     ) -> None:
         self._cwd = cwd
         self._write_mode = write_mode
@@ -1102,12 +912,11 @@ class ClaudeCliProvider:
         self._stream_rel_prefix = stream_rel_prefix
         self._stream_max_bytes = stream_max_bytes
         self._last_stream_capture: Any = None
-        # Every provider call gets its own directory, so an F001 retry, a
-        # reviewer parse retry or a repair-round call can never overwrite an
-        # earlier stream.
+        # Every provider call gets its own directory, so an F001 retry, a reviewer parse retry or a
+        # repair-round call never overwrites an earlier stream; a role's backup links share it (R-1278).
         self._stream_round = 1
         self._stream_kind = "attempt"
-        self._stream_counters: dict[tuple[int, str], int] = {}
+        self._stream_counters: dict[tuple[int, str], int] = {} if stream_counters is None else stream_counters
         self._last_stream_call_id = ""
         self._last_stream_refs: list[str] = []
 
@@ -1746,206 +1555,6 @@ class ClaudeCliProvider:
             )
 
 
-# ---------------------------------------------------------------------------
-# Ollama provider (local server, ping-pong protocol)
-# ---------------------------------------------------------------------------
-
-#: This provider's built-in default model. Resolved from the single alias table
-#: (packages/orchestration/model_aliases.py) so no concrete model id is spelled
-#: out here; an upgrade repoints the alias, not this file. The host default
-#: mirrors packages/providers/ollama_builder/provider.py.
-_DEFAULT_OLLAMA_MODEL = resolve_model_alias("ollama-default")
-_DEFAULT_OLLAMA_HOST = "http://localhost:11434"
-
-
-class OllamaPingPongProvider:
-    """Builder/Reviewer provider backed by a local Ollama server.
-
-    WHY this class exists beside ``packages/providers/ollama_builder`` and
-    ``packages/providers/ollama_planner``: those two speak the
-    ``TaskExecutionContext``/``PlannerOutput`` shapes of the autorun and mission
-    layers and cannot be handed to ``run_pingpong``. This class implements the
-    :class:`PingPongProvider` protocol (``name``/``supports_resume``/``build``/
-    ``review``) over the SAME local surface those two reach — the ``ollama``
-    package's chat endpoint, host from ``REMEDY_OLLAMA_HOST``, default
-    ``http://localhost:11434`` — so ``role_config.DEFAULT_PROVIDER == "ollama"``
-    is actually constructible through :func:`create_provider` on the ping-pong
-    job path that self-use runs and ``remedy job run`` both use
-    (finding R-0761).
-
-    Every transport, HTTP or rate-limit failure this provider reports carries
-    the ``provider_error:`` prefix. That prefix is load-bearing, not cosmetic:
-    ``ReviewerOutput.verdict`` defaults to ``"blocked"``, so the loop's reject
-    predicate would classify a transport error as a review REJECT — and never
-    retry or pace it — were the prefix absent (invariant of finding R-0378).
-    Malformed model output keeps the separate ``malformed_output:`` idiom, which
-    is what routes it to the loop's single parse retry instead.
-
-    Remedy deliberately does NOT do quality fallback or per-role local model
-    routing here — that is feature F113. This provider only makes the product
-    default constructible and callable.
-    """
-
-    def __init__(
-        self,
-        *,
-        model: str = "",
-        host: str = "",
-        num_predict: int | None = None,
-    ) -> None:
-        self._model = model or _DEFAULT_OLLAMA_MODEL
-        self._host = (
-            host or os.environ.get("REMEDY_OLLAMA_HOST") or _DEFAULT_OLLAMA_HOST
-        )
-        self._num_predict = num_predict
-
-    @property
-    def name(self) -> str:
-        return "ollama"
-
-    @property
-    def supports_resume(self) -> bool:
-        # No server-side session to resume: each chat call is stateless.
-        return False
-
-    @property
-    def resume_unsupported_reason(self) -> str:
-        # WHY: DECISION F287 D7 — names, for an offered relaunch session, why
-        # this provider never resumes one.
-        return "an Ollama chat call keeps no conversation between calls"
-
-    @property
-    def model(self) -> str:
-        return self._model
-
-    @property
-    def host(self) -> str:
-        return self._host
-
-    def _call_options(self) -> dict[str, Any]:
-        """The material request knobs — also what the F012 fingerprint binds."""
-        return {"num_predict": self._num_predict}
-
-    def _call(
-        self,
-        prompt: str,
-        *,
-        timeout_sec: int,
-        max_output_chars: int,
-        format_schema: dict[str, Any] | None = None,
-    ) -> tuple[str, int, int]:
-        """Call the local Ollama server. Returns (text, duration_ms, tokens_used).
-
-        ``format_schema`` is the server's NATIVE structured-output enforcement
-        (out of band, never duplicated into the prompt), the same shape the
-        claude-cli path gets from ``--json-schema``.
-        """
-        try:
-            import ollama
-        except ImportError as exc:
-            raise RuntimeError(
-                "ollama package not installed. "
-                "Install with: pip install ollama  or  pip install 'remedy[ollama]'"
-            ) from exc
-
-        client = ollama.Client(host=self._host, timeout=float(timeout_sec))
-        options = {k: v for k, v in self._call_options().items() if v is not None}
-        start = time.monotonic()
-        response = client.chat(
-            model=self._model,
-            messages=[{"role": "user", "content": prompt}],
-            **({"format": format_schema} if format_schema is not None else {}),
-            **({"options": options} if options else {}),
-        )
-        elapsed_ms = int((time.monotonic() - start) * 1000)
-        text = getattr(response.message, "content", "") or ""
-        tokens = int(getattr(response, "eval_count", 0) or 0)
-        if len(text) > max_output_chars:
-            text = text[:max_output_chars] + "\n[OUTPUT TRUNCATED]"
-        return text, elapsed_ms, tokens
-
-    def build(
-        self,
-        prompt: str,
-        *,
-        timeout_sec: int = 120,
-        max_output_chars: int = 50000,
-        resume: str | None = None,
-    ) -> BuilderOutput:
-        # F012: the builder prompt is sent verbatim — fingerprint the exact bytes.
-        _pi = prepare_call_input(
-            prompt=prompt, model=self._model, mode="ollama-legacy",
-            options=self._call_options())
-        try:
-            text, dur, tokens = self._call(
-                prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
-            )
-            return BuilderOutput(
-                summary=text[:500],
-                files_changed=extract_builder_files_from_text(text),
-                raw_text=text,
-                provider="ollama",
-                duration_ms=dur,
-                tokens_used=tokens,
-                actual_missing_reason="provider_actuals_unavailable",
-                prepared_input=_pi,
-            )
-        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
-            return BuilderOutput(
-                error=f"provider_error: {type(exc).__name__}: {exc}",
-                provider="ollama",
-                actual_missing_reason="provider_error",
-                prepared_input=_pi,
-            )
-
-    def review(
-        self,
-        prompt: str,
-        *,
-        timeout_sec: int = 120,
-        max_output_chars: int = 50000,
-        resume: str | None = None,
-    ) -> ReviewerOutput:
-        structured = _reviewer_structured_enabled()
-        if structured:
-            # The caller has already built the exact effective prompt; it is sent
-            # verbatim and the schema is enforced NATIVELY, out of band, so the
-            # fingerprint records it as a schema rather than as prompt bytes.
-            full_prompt = prompt
-            format_schema: dict[str, Any] | None = _ReviewVerdictSchema.model_json_schema()
-            _pi = prepare_call_input(
-                prompt=full_prompt, model=self._model, mode="ollama-native",
-                schema=_to_json_schema_str(_ReviewVerdictSchema),
-                options=self._call_options())
-        else:
-            full_prompt = prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
-            format_schema = None
-            _pi = prepare_call_input(
-                prompt=full_prompt, model=self._model, mode="ollama-legacy",
-                options=self._call_options())
-        try:
-            text, dur, tokens = self._call(
-                full_prompt, timeout_sec=timeout_sec,
-                max_output_chars=max_output_chars, format_schema=format_schema,
-            )
-            out = (
-                _parse_reviewer_structured(text, dur, tokens, provider="ollama")
-                if structured
-                else _parse_reviewer_json(text, dur, tokens, provider="ollama")
-            )
-            out.actual_missing_reason = "provider_actuals_unavailable"
-            out.prepared_input = _pi
-            return out
-        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
-            return ReviewerOutput(
-                error=f"provider_error: {type(exc).__name__}: {exc}",
-                error_class="provider_error",
-                provider="ollama",
-                actual_missing_reason="provider_error",
-                prepared_input=_pi,
-            )
-
-
 # --- Provider factory -------------------------------------------------------
 
 def create_provider(name: str, *, model: str = "") -> PingPongProvider:
@@ -1957,7 +1566,8 @@ def create_provider(name: str, *, model: str = "") -> PingPongProvider:
         return ClaudeProvider(model=model) if model else ClaudeProvider()
     if name == "claude-cli":
         return ClaudeCliProvider(model=model)
-    if name == "ollama":
+    if name == "ollama":  # F307: the Ollama provider lives in a module of its own
+        from packages.orchestration.pingpong_provider_ollama import OllamaPingPongProvider
         return OllamaPingPongProvider(model=model)
     raise RuntimeError(
         f"Unknown provider: {name!r}. Available: fake, claude, claude-cli, ollama (pi is built per role by create_role_provider)"

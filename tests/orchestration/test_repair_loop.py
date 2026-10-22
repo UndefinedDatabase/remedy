@@ -22,10 +22,10 @@ from packages.orchestration.pingpong_loop import (
     validate_reviewer_output,
 )
 from packages.orchestration.pingpong_provider import (
-    FakeProvider,
     ReviewerOutput,
     ReviewFinding,
 )
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 # ---------------------------------------------------------------------------
 # Fixtures

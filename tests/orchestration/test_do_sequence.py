@@ -187,3 +187,55 @@ def test_a_plan_of_only_checking_artifacts_is_refused_for_an_open_order():
     with pytest.raises(OrderJobPlanError,
                        match="every task only makes a checking artifact the order did not ask for"):
         _deliverable_task_plan(plan, "Super, jetzt mach ein schickes design", ".")
+
+
+def test_a_plan_step_that_fails_takes_its_order_back_out_of_the_mission(tmp_path, monkeypatch):
+    """R-1298, DECISION F307 D10: an order whose planning fails leaves no empty batch current, and
+    the order before it is the mission's current one again."""
+    from packages.orchestration import do_sequence, mission_compiler
+    from packages.orchestration.do_context import DO_STEP_FAILED, DoContext
+    from packages.orchestration.mission_state import MissionError, MissionOrder, load_mission
+    from packages.orchestration.project_registry import resolve_project
+    from packages.orchestration.repo_mission import accept_order
+
+    _registered = __import__("tests.orchestration.test_do_sequence_order_digest",
+                             fromlist=["_registered_repo"])._registered_repo
+    repo = _registered(tmp_path, monkeypatch)
+    project = resolve_project(repo)
+    mission, first = accept_order(project, repo, MissionOrder(text="the order before"))
+
+    def planner_down(*_args, **_kwargs):
+        raise MissionError("the planner is down")
+
+    monkeypatch.setattr(mission_compiler, "plan_mission", planner_down)
+    ctx = DoContext(order="add a readme", project=project, repo_root=str(repo), no_llm=True)
+
+    status, detail = do_sequence._step_plan(ctx)
+
+    after = load_mission(str(project.id), mission.id)
+    assert status == DO_STEP_FAILED and "the planner is down" in detail and "taken back" in detail
+    assert [batch.order_id for batch in after.orders] == [first.order_id]
+    assert after.order.text == "the order before"
+
+
+def test_a_contract_template_that_fails_takes_the_order_back_out_of_the_mission(tmp_path, monkeypatch):
+    """R-1298: the plan step's other failure, an unknown `--contract` template, takes the order back too."""
+    from packages.orchestration import do_sequence
+    from packages.orchestration.do_context import DO_STEP_FAILED, DoContext
+    from packages.orchestration.mission_state import MissionOrder, load_mission
+    from packages.orchestration.project_registry import resolve_project
+    from packages.orchestration.repo_mission import accept_order
+
+    _registered = __import__("tests.orchestration.test_do_sequence_order_digest",
+                             fromlist=["_registered_repo"])._registered_repo
+    repo = _registered(tmp_path, monkeypatch)
+    project = resolve_project(repo)
+    mission, first = accept_order(project, repo, MissionOrder(text="the order before"))
+    ctx = DoContext(order="add a readme", project=project, repo_root=str(repo), no_llm=True,
+                    contract_template="no-such-template")
+
+    status, detail = do_sequence._step_plan(ctx)
+
+    after = load_mission(str(project.id), mission.id)
+    assert status == DO_STEP_FAILED and "no-such-template" in detail and "taken back" in detail
+    assert [batch.order_id for batch in after.orders] == [first.order_id]

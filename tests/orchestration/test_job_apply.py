@@ -14,7 +14,7 @@ from packages.orchestration.pingpong_job import (
     parse_job_file,
     run_job,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 _TWO_TASK_JOB = """\
 # Job: Apply Test

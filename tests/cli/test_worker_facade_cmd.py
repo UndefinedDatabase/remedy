@@ -184,6 +184,29 @@ class TestDoctorCore:
             detail = str(check.get("detail", ""))
             assert len(detail) <= 200, f"Detail too long: {detail[:50]}..."
 
+    def test_core_answers_the_health_shape_through_its_table_and_scrubber(self, capsys, monkeypatch):
+        """R-1291: one check shape, one table, one scrubber for both doctor commands."""
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        from packages.orchestration import dead_model_list as dml
+        from packages.orchestration.paths_text import report_safe_text
+
+        def _boom(path=None):
+            raise dml.DeadModelListError("/home/someone/x.json: api_key=sk-123 is unreadable")
+
+        monkeypatch.setattr(dml, "load_dead_models", _boom)
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        assert all(set(check) == {"check", "level", "detail", "hint"} for check in out["checks"])
+        assert all(check["level"] in ("PASS", "FAIL") for check in out["checks"])
+        [entry] = [c for c in out["checks"] if c["check"] == "dead_model_list"]
+        assert entry["detail"] == "~/x.json: api_key=*** is unreadable"
+        assert entry["detail"] == report_safe_text("/home/someone/x.json: api_key=sk-123 is unreadable", limit=120)
+        assert out["blockers"] == [c["check"] for c in out["checks"] if c["level"] == "FAIL"]
+        _cmd_doctor_core(_ns(json=False))
+        text = capsys.readouterr().out
+        assert "  [FAIL] dead_model_list: ~/x.json: api_key=*** is unreadable\n" in text
+        assert "  [PASS] fast_test_lane: scripts/remedy_test_fast.sh\n" in text
+
     def test_core_text_output(self, capsys):
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
         _cmd_doctor_core(_ns(json=False))
@@ -306,8 +329,8 @@ class TestDoctorCoreFromAnotherDirectory:
         out = json.loads(capsys.readouterr().out)
 
         by_name = {c["check"]: c for c in out["checks"]}
-        assert by_name["fast_test_lane"]["ok"] is True
-        assert by_name["full_test_lane"]["ok"] is True
+        assert by_name["fast_test_lane"]["level"] == "PASS"
+        assert by_name["full_test_lane"]["level"] == "PASS"
         assert "fast_test_lane" not in out["blockers"]
         assert "full_test_lane" not in out["blockers"]
 
@@ -366,7 +389,8 @@ class TestDoctorCoreSafeErr:
         assert "tok_xyz" not in raw
         assert "api_key=***" in raw
 
-    def test_mnt_tmp_users_redacted(self, monkeypatch, capsys):
+    def test_users_redacted_and_mount_and_temp_paths_named_as_they_are(self, monkeypatch, capsys):
+        """R-1291: the one scrubber writes a home folder `~`; `/mnt/` and `/tmp/` are no home folder."""
         import importlib
         orig = importlib.import_module
 
@@ -384,9 +408,8 @@ class TestDoctorCoreSafeErr:
         _cmd_doctor_core(_ns(json=True))
         out = json.loads(capsys.readouterr().out)
         raw = json.dumps(out)
-        assert "/mnt/" not in raw
-        assert "/tmp/" not in raw
-        assert "/Users/" not in raw
+        assert "/Users/" not in raw and "~/.config/z" in raw
+        assert "/mnt/data/x" in raw and "/tmp/build/y" in raw
 
 
 # ---------------------------------------------------------------------------
@@ -533,7 +556,7 @@ class TestDoctorCoreDeadModels:
         out = json.loads(capsys.readouterr().out)
         entry = [c for c in out["checks"] if c["check"] == "dead_model_list"]
         assert len(entry) == 1
-        assert entry[0]["ok"] is False
+        assert entry[0]["level"] == "FAIL"
         assert "dead_model_list" in out["blockers"]
         assert out["ready"] is False
         assert out["warnings"] == []

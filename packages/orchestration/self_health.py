@@ -3,7 +3,7 @@
 DECISION F199 D1 fixes the shape: every check answers one `HealthCheckResult`
 (PASS, WARN or FAIL, a detail and a hint that names what to do). No check
 repairs, moves or deletes anything, and no check calls a provider; each one
-only reads. Round 2 wires these checks into the command.
+only reads, except `logs`, which writes one probe file of its own and removes it (R-1292). Round 2 wires these checks into the command.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import os
 import shutil
 import sqlite3
 import subprocess
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -22,11 +22,13 @@ from packages.orchestration.budget_resolution import resolve_min_free_disk_bytes
 from packages.orchestration.config import RemedyConfig, get_config, validate_config
 from packages.orchestration.data_paths import projects_dir, resolve_data_root
 from packages.orchestration.data_reclaim import reclaim_preview_bytes
-from packages.orchestration.project_registry import _list_projects_readonly
+from packages.orchestration.paths_text import report_safe_text
+from packages.orchestration.project_registry import list_projects_readonly
 from packages.orchestration.repository_snapshot import (
-    _SNAPSHOT_DIR_NAME,
-    _check_snapshot_integrity,
+    SNAPSHOT_DIR_NAME,
+    check_snapshot_integrity,
 )
+from packages.orchestration.structured_log import LOG_FILE_NAME, logs_dir
 from packages.orchestration.token_ledger import LEDGER_FILENAME
 from packages.orchestration.worktrees import WorktreeError, list_worktrees
 
@@ -54,16 +56,8 @@ class HealthCheckResult:
         }
 
 
-# A detail must not leak the operator's home folder into a pasted report.
-def home_relative_text(text: str, home: Path | None = None) -> str:
-    home_text = str(home if home is not None else Path.home())
-    if home_text == "/":
-        return text
-    return text.replace(home_text, "~")
-
-
 def _result(check: str, level: str, detail: str, hint: str = "") -> HealthCheckResult:
-    return HealthCheckResult(check, level, home_relative_text(detail), hint)
+    return HealthCheckResult(check, level, report_safe_text(detail), hint)
 
 
 def _first_three(items: list[str]) -> str:
@@ -169,7 +163,7 @@ SNAPSHOT_HINT: str = (
 def _snapshot_problems(snapshot_dir: Path) -> str:
     """The hash problems of one snapshot folder, joined by ", "; "" when none."""
     try:
-        integrity = _check_snapshot_integrity(snapshot_dir)
+        integrity = check_snapshot_integrity(snapshot_dir)
     except (AttributeError, TypeError):
         # A manifest that is valid JSON but not an object (a list, a number).
         return "its manifest cannot be read"
@@ -193,7 +187,7 @@ def check_snapshot_manifests(
 ) -> HealthCheckResult:
     data_root = root if root is not None else resolve_data_root()
     manifests = sorted(
-        data_root.glob(f"workspaces/*/{_SNAPSHOT_DIR_NAME}/*/manifest.json"),
+        data_root.glob(f"workspaces/*/{SNAPSHOT_DIR_NAME}/*/manifest.json"),
         key=_manifest_sort_key, reverse=True)[:sample]
     if not manifests:
         return _result("snapshots", HEALTH_PASS, "no workspace snapshot exists yet")
@@ -224,7 +218,7 @@ WORKTREE_HINT: str = (
 def _registered_repositories() -> list[str]:
     """Every registered project's repository folders that exist, without duplicates."""
     repos: list[str] = []
-    for project in _list_projects_readonly():
+    for project in list_projects_readonly():
         candidates = (
             [project.canonical_repo_path] if project.canonical_repo_path
             else list(project.repo_paths))
@@ -403,6 +397,39 @@ def check_crash_reports(root: Path | None = None) -> HealthCheckResult:
         f"the newest is {rel}", CRASH_HINT)
 
 
+# The one next step for an operations log that cannot be written.
+LOGS_HINT: str = (
+    "make the named folder writable for this user, or free disk space under it; until then Remedy "
+    "drops every line of its operations log silently"
+)
+
+
+# Check `logs`: the operations log can still be written. The one check that writes: one probe file of
+# its own, removed at once, so a dead log is reported instead of losing lines unseen (R-1292).
+def check_logs_writable(root: Path | None = None) -> HealthCheckResult:
+    folder = logs_dir(root)
+    # The folder is made by the first line written, so while it does not exist the probe goes
+    # into the data root and the check never makes it.
+    target = folder if folder.is_dir() else folder.parent
+    if not target.is_dir():
+        return _result("logs", HEALTH_PASS, "no data root yet; the first command that logs makes it")
+    probe = target / f".remedy-health-probe-{os.getpid()}"
+    try:
+        descriptor = os.open(probe, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.write(descriptor, b"probe\n")
+        finally:
+            os.close(descriptor)
+        probe.unlink()
+        log_file = folder / LOG_FILE_NAME
+        if log_file.exists():
+            os.close(os.open(log_file, os.O_WRONLY | os.O_APPEND))
+    except OSError as error:
+        return _result(
+            "logs", HEALTH_WARN, f"the operations log under {folder} cannot be written: {error}", LOGS_HINT)
+    return _result("logs", HEALTH_PASS, f"the operations log under {folder} can be written")
+
+
 # The fixed order `remedy doctor health` prints the checks in.
 def run_health_checks(root: Path | None = None) -> tuple[HealthCheckResult, ...]:
     return (
@@ -415,6 +442,7 @@ def run_health_checks(root: Path | None = None) -> tuple[HealthCheckResult, ...]
         check_staging_copies(root),
         check_disk_floor(),
         check_crash_reports(root),
+        check_logs_writable(root),
     )
 
 
@@ -430,6 +458,17 @@ def health_verdict(results: tuple[HealthCheckResult, ...] | list[HealthCheckResu
 # Only a FAIL makes the command exit non-zero; a WARN is told, not enforced.
 def health_exit_code(results: tuple[HealthCheckResult, ...] | list[HealthCheckResult]) -> int:
     return 1 if any(result.level == HEALTH_FAIL for result in results) else 0
+
+
+# The text lines both doctor commands print for their checks, so the two tables cannot drift (R-1291).
+def health_check_lines(checks: Iterable[Mapping[str, Any]]) -> list[str]:
+    """Each check as `[LEVEL] check: detail`, and its hint as a `fix:` line below it."""
+    lines: list[str] = []
+    for check in checks:
+        lines.append(f"  [{check['level']}] {check['check']}: {check['detail']}")
+        if check.get("hint"):
+            lines.append(f"         fix: {check['hint']}")
+    return lines
 
 
 # The document `remedy doctor health --json` and the public API's health route both answer.

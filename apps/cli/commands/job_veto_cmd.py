@@ -5,7 +5,7 @@ Modelled on `job_plan_cmd.py`: the task argument is resolved through
 `job_plan_cmd._resolve_task_arg` exactly as `job edit-task` resolves it — the
 task's own id or its unique id in the job plan, as `remedy job plan-show` prints
 them. The write channel shares `task_veto.veto_task_command` with the write door
-(`packages/orchestration/ui_server.py`), so the CLI and the browser answer
+(`packages/orchestration/serve_http_handler.py`), so the CLI and the browser answer
 identically for the same request.
 
 Exit codes follow the CLI contract (docs/guides/exit-codes.md): 2 when the

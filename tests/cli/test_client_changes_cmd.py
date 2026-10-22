@@ -2,7 +2,7 @@
 
 Through the command line as a subprocess, on the scratch data root `tests/conftest.py`'s autouse
 fixture sets (inherited by the child process through its copy of `os.environ`), the way
-`tests/ui_server/test_public_api.py`'s `_seed_project_job_and_decision` seeds one. Every
+`tests/serve_http_handler/test_public_api.py`'s `_seed_project_job_and_decision` seeds one. Every
 subprocess's `cwd` is outside this repository, so, as every other CLI subprocess test in this
 suite does (`tests/cli/test_golden_path.py`, `tests/cli/runtime_helpers.py` and others), its
 `PYTHONPATH` is pinned to this repository's own root — never an unrelated `apps` package another
@@ -45,7 +45,7 @@ def _remedy(args: list[str], cwd: Path) -> tuple[int, str]:
 def _seed_project_job_and_decision(tmp_path: Path) -> str:
     """Put one project, one job and one open decision on the current data root; the job id.
 
-    Copied from `tests/ui_server/test_public_api.py`'s `_seed_project_job_and_decision`.
+    Copied from `tests/serve_http_handler/test_public_api.py`'s `_seed_project_job_and_decision`.
     """
     repo = tmp_path / "seed-repo"
     repo.mkdir()

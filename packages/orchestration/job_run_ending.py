@@ -39,3 +39,11 @@ def blocked_rerun_reason(job: Any, prior_error: str = "") -> str:
         return ""
     return prior_error or "; ".join(
         f"task_{task.task_id}_blocked: {task.error or task.final_status or task.status}" for task in stuck)
+
+
+def job_is_retryable(job: Any) -> bool:
+    """True when JOB reads blocked and a task of it ended blocked or failed: a retry puts such a
+    task back to pending before the run (R-1331, DECISION F307 D22), a plain run never runs it."""
+    if str(getattr(getattr(job, "state", None), "value", getattr(job, "state", ""))) != "blocked":
+        return False
+    return any(str(getattr(task, "status", "") or "") in _STUCK for task in getattr(job, "tasks", ()) or ())

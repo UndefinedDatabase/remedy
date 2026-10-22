@@ -29,7 +29,7 @@ def _make_task_run(tmp_path, monkeypatch, *, task_text="", task_file=True, goal=
         export_pingpong_json,
         run_pingpong,
     )
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     p = FakeProvider()
     demo = tmp_path / "repo"
@@ -234,7 +234,7 @@ class TestExistingFlowsUnbroken:
     def test_short_goal_still_works(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -247,7 +247,7 @@ class TestExistingFlowsUnbroken:
     def test_existing_next_commands(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -259,7 +259,7 @@ class TestExistingFlowsUnbroken:
     def test_existing_provider_evidence(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -273,7 +273,7 @@ class TestExistingFlowsUnbroken:
     def test_existing_token_accounting(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -306,7 +306,7 @@ class TestRunReportRendering:
             export_pingpong_json,
             run_pingpong,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -375,7 +375,7 @@ class TestRunReportRendering:
             export_pingpong_json,
             run_pingpong,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -393,7 +393,7 @@ class TestRunReportRendering:
             export_pingpong_json,
             run_pingpong,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -418,7 +418,7 @@ class TestExistingFlows:
             export_pingpong_json,
             run_pingpong,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -435,7 +435,7 @@ class TestExistingFlows:
             export_pingpong_json,
             run_pingpong,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -458,7 +458,7 @@ class TestExistingFlows:
             export_pingpong_json,
             run_pingpong,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         repo = tmp_path / "repo"
         repo.mkdir()

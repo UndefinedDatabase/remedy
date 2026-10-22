@@ -22,7 +22,7 @@ from packages.orchestration.pingpong_job import (
     parse_job_file,
     run_job,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.self_use_findings import describe_self_use_run_defects
 
 _ONE_TASK_JOB = "# Job: Demo\n\n## Task 1\nDo the thing.\n\nAcceptance:\n- it is done\n"

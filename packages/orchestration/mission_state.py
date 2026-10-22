@@ -8,10 +8,10 @@ evidence and no results — those stay on the jobs, where they already live.
 
 What a mission deliberately is NOT:
 
-* It is not created for you.  Nothing in this module ever creates a mission as
-  a side effect of running work.  A mission exists because a human ran
-  ``remedy mission start`` or answered the plan-approval opt-in with yes — the
-  opt-in defaults to NO (P2).  A plain do-flow leaves no mission behind.
+* It is not created per run.  A repository has ONE lasting mission (DECISION
+  amend1011b D1 to D3): the first order given to the repository (``remedy do``,
+  ``remedy mission start``, the public API) creates it through
+  ``repo_mission.accept_order``, and every later order is a batch under it.
 * It is not a second job store.  A link is a job id and a role, nothing more.
   ``mission show`` reads each job's terminal state from the job store at read
   time, so a mission can never disagree with the jobs it points at.
@@ -47,8 +47,13 @@ building the plan that way and validating it, never by asking a model nicely.
 
 from __future__ import annotations
 
+import fcntl
 import json
+import os
 import re
+import threading
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -80,7 +85,6 @@ from packages.orchestration.mission_record import (
     MissionOrder,
     MissionProjectError,
     MissionVerifyFirstError,
-    check_spanned_project_ids,
 )
 
 #: A goal is operator input: it is small, or it is not a goal.
@@ -150,6 +154,58 @@ def project_ids_with_missions(root: Path | None = None) -> list[str]:
     if not base.is_dir():
         return []
     return sorted(p.name for p in base.iterdir() if p.is_dir())
+
+
+# ---------------------------------------------------------------------------
+# The per-project lock (moved from repo_mission.py, R-1300, DECISION F307 D7)
+# ---------------------------------------------------------------------------
+
+LOCK_FILENAME = ".repo-mission.lock"
+
+# The lock files the running thread holds, so a writer called under the lock does not wait for itself.
+_HELD_MISSION_LOCKS = threading.local()
+
+
+def _held_mission_lock_paths() -> set[str]:
+    paths = getattr(_HELD_MISSION_LOCKS, "paths", None)
+    if paths is None:
+        paths = _HELD_MISSION_LOCKS.paths = set()
+    return paths
+
+
+@contextmanager
+def repo_mission_lock(project_id: str, root: Path | None = None) -> Iterator[None]:
+    """Hold the exclusive per-project lock that makes a read, a change and a save of a mission one
+    step. The thread that holds it may take it again, so a writer called under it, as
+    `link_order_job` calls `link_job_to_mission`, does not wait for itself (R-1300)."""
+    directory = mission_dir_for_project(project_id, root)
+    lock_path = str(directory / LOCK_FILENAME)
+    held = _held_mission_lock_paths()
+    if lock_path in held:
+        yield
+        return
+    directory.mkdir(parents=True, exist_ok=True)
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        held.add(lock_path)
+        try:
+            yield
+        finally:
+            held.discard(lock_path)
+    finally:
+        os.close(fd)
+
+
+# Loads, changes and saves one mission under its project's lock (R-1300). The mission is read once
+# before the lock is taken, so a mission that does not exist raises without a lock file being made.
+def _update_mission(project_id: str, mission_id: str, change: Callable[[Mission], Mission],
+                    root: Path | None = None) -> Mission:
+    load_mission(project_id, mission_id, root)
+    with repo_mission_lock(project_id, root):
+        updated = change(load_mission(project_id, mission_id, root))
+        save_mission(updated, root)
+    return updated
 
 
 # ---------------------------------------------------------------------------
@@ -241,15 +297,14 @@ def list_missions(project_id: str, root: Path | None = None) -> list[Mission]:
 
 
 def create_mission(project_id: str, goal: str, *,
-                   project_ids: tuple[str, ...] | list[str] = (),
                    now: datetime | None = None,
                    root: Path | None = None) -> Mission:
-    """Create and persist a mission.  This is the ONLY way one comes into being.
+    """Create and persist a mission of ONE project.  This is the ONLY way one comes into being.
 
-    Called by ``remedy mission start`` and by the plan-approval opt-in — never
-    as a side effect of running work.  *project_ids* names every project a mission
-    over several repositories spans, *project_id* first (DECISION F205 D2); one
-    project, or none given, makes the record every mission had before.
+    Called through ``repo_mission`` when a repository gets its one mission, and by
+    the gauntlet.  A mission spanning several projects is, since DECISION F307 D12,
+    never created here — it is only ever a legacy record read back
+    (DECISION amend1011b D4), through ``Mission.from_json``.
     """
     text = str(goal).strip()
     if not text:
@@ -259,21 +314,12 @@ def create_mission(project_id: str, goal: str, *,
             f"mission goal exceeds {MAX_MISSION_GOAL_CHARS} characters "
             f"(got {len(text)})")
     lead = _validate_path_id(project_id, "project id")
-    spanned = tuple(_validate_path_id(project, "project id") for project in project_ids)
-    if spanned == (lead,):
-        spanned = ()
-    if spanned:
-        try:
-            check_spanned_project_ids(lead, spanned)
-        except ValueError as exc:
-            raise MissionProjectError(str(exc)) from exc
     mission = Mission(
         id=uuid4().hex,
         project_id=lead,
         goal=text,
         status=MISSION_STATUS_ACTIVE,
         created_at=_utc_now_iso(now),
-        project_ids=spanned,
     )
     save_mission(mission, root)
     return mission
@@ -302,13 +348,6 @@ def mission_for_job(job_id: str, root: Path | None = None) -> Mission | None:
 MISSION_ENDED_STATUSES = (MISSION_STATUS_ACHIEVED, MISSION_STATUS_ABANDONED)
 
 
-def running_mission_for_order_file(source_path: str, root: Path | None = None) -> Mission | None:
-    """See `repo_mission.running_mission_for_order_file` (DECISION amend1011b D5)."""
-    from packages.orchestration.repo_mission import running_mission_for_order_file as running
-
-    return running(source_path, root)
-
-
 def link_job_to_mission(project_id: str, mission_id: str, job_id: str,
                         role: str = MISSION_ROLE_FOLLOW_UP, *,
                         order_id: str = "",
@@ -328,39 +367,41 @@ def link_job_to_mission(project_id: str, mission_id: str, job_id: str,
             f"unknown mission job role {role!r} (expected one of "
             f"{', '.join(MISSION_ROLES)})")
 
-    mission = load_mission(project_id, mission_id, root)
-    holder = mission_for_job(job_id, root)
-    if holder is not None:
-        raise MissionJobAlreadyLinkedError(str(job_id), holder.id)
+    load_mission(project_id, mission_id, root)    # a missing mission raises before a lock file is made
+    with repo_mission_lock(project_id, root):     # R-1300
+        mission = load_mission(project_id, mission_id, root)
+        holder = mission_for_job(job_id, root)
+        if holder is not None:
+            raise MissionJobAlreadyLinkedError(str(job_id), holder.id)
 
-    if mission.job_links and role == MISSION_ROLE_INITIAL:
-        raise MissionLinkRoleError(
-            f"mission {mission.id} already has an initial job "
-            f"({mission.job_links[0].job_id}) — later jobs are follow_up")
-    if not mission.job_links and role != MISSION_ROLE_INITIAL:
-        raise MissionLinkRoleError(
-            f"mission {mission.id} has no jobs yet — the first link is "
-            f"{MISSION_ROLE_INITIAL}, not {role}")
+        if mission.job_links and role == MISSION_ROLE_INITIAL:
+            raise MissionLinkRoleError(
+                f"mission {mission.id} already has an initial job "
+                f"({mission.job_links[0].job_id}) — later jobs are follow_up")
+        if not mission.job_links and role != MISSION_ROLE_INITIAL:
+            raise MissionLinkRoleError(
+                f"mission {mission.id} has no jobs yet — the first link is "
+                f"{MISSION_ROLE_INITIAL}, not {role}")
 
-    project = ""
-    if mission.project_ids:
-        found = _linked_job_project(job_id, root)
-        if found is None:
-            raise MissionProjectError(
-                f"job {job_id} has no readable record, so mission {mission.id}, which spans "
-                f"several projects, cannot tell which of them it works in")
-        if found not in mission.project_ids:
-            raise MissionProjectError(
-                f"job {job_id} works in project {found or '(none)'}, which mission "
-                f"{mission.id} does not span ({', '.join(mission.project_ids)})")
-        project = found
+        project = ""
+        if mission.project_ids:
+            found = _linked_job_project(job_id, root)
+            if found is None:
+                raise MissionProjectError(
+                    f"job {job_id} has no readable record, so mission {mission.id}, which spans "
+                    f"several projects, cannot tell which of them it works in")
+            if found not in mission.project_ids:
+                raise MissionProjectError(
+                    f"job {job_id} works in project {found or '(none)'}, which mission "
+                    f"{mission.id} does not span ({', '.join(mission.project_ids)})")
+            project = found
 
-    link = MissionJobLink(job_id=str(job_id), role=role,
-                          created_at=_utc_now_iso(now), project_id=project,
-                          order_id=order_id)
-    updated = replace(mission, job_links=(*mission.job_links, link))
-    save_mission(updated, root)
-    return updated
+        link = MissionJobLink(job_id=str(job_id), role=role,
+                              created_at=_utc_now_iso(now), project_id=project,
+                              order_id=order_id)
+        updated = replace(mission, job_links=(*mission.job_links, link))
+        save_mission(updated, root)
+        return updated
 
 
 def _linked_job_project(job_id: str, root: Path | None) -> str | None:
@@ -400,10 +441,8 @@ def set_mission_status(project_id: str, mission_id: str, status: str,
         raise MissionError(
             f"unknown mission status {status!r} (expected one of "
             f"{', '.join(MISSION_STATUSES)})")
-    mission = load_mission(project_id, mission_id, root)
-    updated = replace(mission, status=status)
-    save_mission(updated, root)
-    return updated
+    return _update_mission(
+        project_id, mission_id, lambda mission: replace(mission, status=status), root)
 
 
 def set_mission_plan(project_id: str, mission_id: str,
@@ -418,10 +457,8 @@ def set_mission_plan(project_id: str, mission_id: str,
     """
     if plan_body is not None and not isinstance(plan_body, dict):
         raise MissionError("a mission plan body must be an object")
-    mission = load_mission(project_id, mission_id, root)
-    updated = replace(mission, mission_plan=plan_body)
-    save_mission(updated, root)
-    return updated
+    return _update_mission(
+        project_id, mission_id, lambda mission: replace(mission, mission_plan=plan_body), root)
 
 
 def set_mission_order(project_id: str, mission_id: str,
@@ -437,10 +474,8 @@ def set_mission_order(project_id: str, mission_id: str,
     """
     if order is not None and not isinstance(order, MissionOrder):
         raise MissionError("a mission order must be a MissionOrder")
-    mission = load_mission(project_id, mission_id, root)
-    updated = replace(mission, order=order)
-    save_mission(updated, root)
-    return updated
+    return _update_mission(
+        project_id, mission_id, lambda mission: replace(mission, order=order), root)
 
 
 def set_mission_contract(project_id: str, mission_id: str,
@@ -457,10 +492,8 @@ def set_mission_contract(project_id: str, mission_id: str,
     """
     if contract is not None and not isinstance(contract, dict):
         raise MissionError("a mission contract body must be an object")
-    mission = load_mission(project_id, mission_id, root)
-    updated = replace(mission, contract=contract)
-    save_mission(updated, root)
-    return updated
+    return _update_mission(
+        project_id, mission_id, lambda mission: replace(mission, contract=contract), root)
 
 
 def resolve_mission_id(project_id: str, raw: str,

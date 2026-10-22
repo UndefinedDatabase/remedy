@@ -259,7 +259,7 @@ class TestStreamProcessLifecycle:
         assert (_call_dir(out) / RAW_STREAM_FILENAME).is_file()
 
     def test_cap_result_is_not_retried_as_transport_error(self):
-        from packages.orchestration.pingpong_loop import _call_with_retry  # noqa
+        from packages.orchestration.pingpong_provider_call import _call_with_retry  # noqa
         # A cap result short-circuits the retry classifier.
         from packages.orchestration.pingpong_provider import BuilderOutput
         out = BuilderOutput(error="stream_cap_reached: cap", provider="claude-cli",
@@ -526,8 +526,8 @@ class TestPerAttemptStreamLayout:
         from packages.orchestration.pingpong_loop import (
             PingPongResult,
             _build_provider_evidence,
-            _record_attempt,
         )
+        from packages.orchestration.pingpong_provider_call import _record_attempt
         prov, _ = self._prov(tmp_path, monkeypatch)
         result = PingPongResult(builder_provider="claude-cli", reviewer_provider="claude-cli")
         prov.begin_stream_call(1, "attempt")
@@ -551,9 +551,9 @@ class TestPerAttemptStreamLayout:
         from packages.orchestration.pingpong_loop import (
             PingPongResult,
             _build_provider_evidence,
-            _record_attempt,
         )
         from packages.orchestration.pingpong_provider import BuilderOutput
+        from packages.orchestration.pingpong_provider_call import _record_attempt
         result = PingPongResult(builder_provider="fake", reviewer_provider="fake")
         _record_attempt(result, BuilderOutput(provider="fake"), "builder", "fake")
         ev = _build_provider_evidence(result)

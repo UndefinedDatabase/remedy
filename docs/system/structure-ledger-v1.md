@@ -53,14 +53,16 @@ commit with no alias left behind, and changes the tests in their import lines on
   task's result becomes a function of its own; (5) the budget helpers become one object in a
   module of their own, holding the accumulators. Outside those steps, F308 moved the split of a
   task whose context exceeds its class cap to `split_task_over_class_cap` in
-  `packages/orchestration/run_task_list.py`.
+  `packages/orchestration/run_task_list.py`. Step (3), begun by F307: the final job review,
+  `_write_final_job_review` in the same file; the veto's terminal reading and the end state follow.
 - `run_pingpong` (`packages/orchestration/pingpong_loop.py`). Boundary: the builder, test and
   reviewer phases its own banners name, and the target snapshot check written out four times.
   Steps: (1) the snapshot check becomes one function each place calls, each keeping its own exit
   from the loop; (2) the two retries without a resumed session become one function; (3) the
   builder's and the reviewer's prompt composition become a function each; (4) the closing record
   of the run becomes a function of its own. Step (5), done by F141: the builder's context,
-  `build_builder_context` in `packages/orchestration/builder_context.py`.
+  `build_builder_context` in `packages/orchestration/builder_context.py`. Step (6), done by F307:
+  the construction of the two role providers is one block whose two calls share their options.
 - `list_decisions` (`packages/orchestration/decision_queue.py`). Boundary: its nine numbered
   sections, one per source of decisions. Steps: (1) the three largest sections — plan approvals,
   escalations and budget stops — become a function each that returns its decisions; (2) the other
@@ -69,7 +71,7 @@ commit with no alias left behind, and changes the tests in their import lines on
   independent writes, the review subject, and the ordered chain of gates. Steps: (1) one task's
   evidence becomes a function of its own; (2) the review subject becomes a function of its own;
   (3) the gate chain becomes a function of its own, in exactly its present order.
-- `_RemedyHandler._handle_command_submission` (`packages/orchestration/ui_server.py`). Boundary:
+- `_RemedyHandler._handle_command_submission` (`packages/orchestration/serve_http_handler.py`). Boundary:
   the chain of command clauses after the shared checks, each repeating the same accept, refuse
   and fail tail. Steps: (1) the shared tail becomes one method, taken by one clause at a time;
   (2) the chain becomes a table from command to its handler; the clauses with a shape of their own
@@ -88,7 +90,9 @@ commit with no alias left behind, and changes the tests in their import lines on
   (2) the context assembly becomes a function; (3) the safe point becomes a function.
 - `doctor_core_report` (`apps/cli/commands/worker_facade_cmd.py`). Boundary: its five banner
   sections. Steps: (1) the three nested helpers for dead model ids move to the module; (2) each
-  section becomes a function of its own, keeping the order of the checks it appends.
+  section becomes a function of its own, keeping the order of the checks it appends. Step (1),
+  done by F307: `_dead_origin`, `_dead_provenance_short` and `_dead_provenance`, which take the
+  shipped entries as an argument.
 - `_apply_from_workspace` (`packages/orchestration/job_apply.py`). Boundary: its banner phases —
   validation, refusals, the durable record before any write, the write, then verify, test, commit
   and push. Steps: (1) the steps after the write become a function each; (2) the validation phase
@@ -100,7 +104,7 @@ commit with no alias left behind, and changes the tests in their import lines on
 - `summarize_trust_report` (`packages/orchestration/trust_report.py`). Boundary: its ten numbered
   sections. Steps: (1) each section becomes a function that answers its lines, the patch intents
   and the artifacts first.
-- `_build_dashboard` (`packages/orchestration/ui_server.py`). Boundary: its commented sections that
+- `_build_dashboard` (`packages/orchestration/serve_http_handler.py`). Boundary: its commented sections that
   feed one answer. Steps: (1) the task list and the activity become a function each; (2) the
   lifecycle and the phases become a function; the proof chain is built once and passed in.
 - `main` (`scripts/build_review_zip.py`). Boundary: the three phases its comments name and the one
@@ -159,7 +163,8 @@ commit with no alias left behind, and changes the tests in their import lines on
   (2) the budgets resolved from the flags become a function of their own; (3) the answer becomes a
   function of its own, once the client-interface tests, which key the answer's sites by this
   function, read them through the function that gives them. Until a step is taken, a feature's
-  edits of this function are line-neutral (DECISION F055 D3).
+  edits of this function are line-neutral (DECISION F055 D3). Step (1), done by F307: the
+  refusals, `refuse_job_run_before_it_starts` in `apps/cli/commands/job_run_refusals.py`.
 - `_cmd_status` (`apps/cli/commands/status_cmd.py`). Boundary: the scope and project it reads,
   the jobs grouped by state, the counts of open decisions and pending stops, the runtime's state,
   and its answer, the JSON document or the text lines. Steps: (1) the counts of open decisions and
@@ -196,18 +201,23 @@ with the code that calls it.
 - `packages/orchestration/pingpong_job.py`: the job model and its store, the job report, and the
   stop and park path, each to a module of its own; `run_job` stays. Step (1), done by F306: the
   execution configuration and its two serializers, `packages/orchestration/execution_config.py`.
+  Step (2), done by F307: the job report, `packages/orchestration/job_report.py`.
   Outside those steps, F308 moved the split of a task whose context exceeds its class cap to
   `split_task_over_class_cap` in `packages/orchestration/run_task_list.py`.
-- `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the context
-  pack and the prompt builders, the staging, diff and target guard, and the export and token
-  accounting, each to a module of its own. Step (1), done by F058: the construction of a role's
-  provider, `packages/orchestration/role_provider_factory.py`. Step (2), done by F058, the first
-  part of the export: a call's own fields and the reader of a parked run's sessions,
-  `packages/orchestration/pingpong_call_record.py`.
-- `packages/orchestration/ui_server.py`: the command channel's checks, each to a module of its
+- `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the provider
+  call with its retry and its booking, the context pack and the prompt builders, the staging, diff
+  and target guard, and the export and token accounting, each to a module of its own. Step (1),
+  done by F058: the construction of a role's provider,
+  `packages/orchestration/role_provider_factory.py`. Step (2), done by F058, the first part of the
+  export: a call's own fields and the reader of a parked run's sessions,
+  `packages/orchestration/pingpong_call_record.py`. Step (3), done by F307: the provider call —
+  `ProviderAttempt`, the two stream hints, the attempt booking, the rate-limit wait and
+  `_call_with_retry` — `packages/orchestration/pingpong_provider_call.py`; the failure status,
+  the call identity and the post-mortem stay, beside the run that calls them.
+- `packages/orchestration/serve_http_handler.py`: the command channel's checks, each to a module of its
   own. The event stream, the dashboard builders, the launch helpers and the frontend's automatic
-  build with its T20 ignore were deleted with the old cockpit (amend1015f D19 and D3), and the
-  file's rename is registered for F307 (R-1330).
+  build with its T20 ignore were deleted with the old cockpit (amend1015f D19 and D3), and F307
+  renamed the file from `ui_server.py` for what it serves (R-1330).
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
   evidence view, and the manual-completion check, each to a module under `packages/`.
 - `apps/cli/command_catalog.py`: the types and the argument shorthands to
@@ -219,7 +229,8 @@ with the code that calls it.
   `apps/cli/command_catalog_project.py`. Step (4), done by F199: the `doctor` group,
   `apps/cli/command_catalog_doctor.py`. Step (5), done by F055: the `do` group,
   `apps/cli/command_catalog_do.py`. Step (6), done by amend1015f: the `client` group,
-  `apps/cli/command_catalog_client.py`.
+  `apps/cli/command_catalog_client.py`. Step (7), done by F307: the `job run` entry,
+  `apps/cli/command_catalog_job_run.py`.
 - `packages/orchestration/job_evidence.py`: the manual-completion bundle, the verification runner,
   and the run-manifest cross-checks with the postmortems, each to a module of its own.
 - `packages/orchestration/job_apply.py`: the result model, the history, commit and push policy,
@@ -236,7 +247,10 @@ with the code that calls it.
 - `packages/orchestration/pingpong_provider.py`: the claude CLI's command line, the output
   contracts, the parsing of the reviewer's answer, the fake provider and the Ollama provider, each
   to a module of its own. Step (1), done by F302: the claude CLI's command line,
-  `packages/orchestration/claude_cli_command.py`.
+  `packages/orchestration/claude_cli_command.py`. Step (2), done by F307: the Ollama provider,
+  `packages/orchestration/pingpong_provider_ollama.py`, which `create_provider` imports when it
+  builds one. Step (3), done by F307: the fake provider,
+  `packages/orchestration/pingpong_provider_fake.py`.
 - `packages/orchestration/config.py`: `ConfigKeySpec` to `packages/orchestration/config_key_spec.py`,
   then the key registry one contiguous group at a time, each to a module of its own that
   `_CONFIG_KEY_SPECS` splices in at the group's own place, so the registry and the environment guide
@@ -281,15 +295,15 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1434 | `packages/orchestration/pingpong_job.py` | `run_job` |
-| 1274 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
+| 1381 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1262 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 887 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
-| 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
+| 455 | `packages/orchestration/serve_http_handler.py` | `_RemedyHandler._handle_command_submission` |
 | 352 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
-| 355 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
+| 295 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
 | 346 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
 | 334 | `scripts/build_review_manifest.py` | `build_manifest_from_snapshot` |
 | 320 | `packages/orchestration/trust_report.py` | `summarize_trust_report` |
@@ -316,7 +330,7 @@ with the code that calls it.
 | 211 | `packages/orchestration/pingpong_loop.py` | `compose_builder_prompt` |
 | 209 | `packages/orchestration/proof_chain.py` | `build_proof_chain` |
 | 206 | `apps/cli/commands/runtime_cmd.py` | `_serve_supervisor` |
-| 205 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
+| 183 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
 | 161 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
@@ -341,7 +355,7 @@ with the code that calls it.
 | 159 | `packages/orchestration/run_manifest.py` | `validate_input_snapshot` |
 | 159 | `packages/orchestration/self_use_runner.py` | `run_next_self_use_item` |
 | 158 | `packages/orchestration/file_provenance.py` | `build_file_provenance` |
-| 157 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
+| 151 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
 | 155 | `packages/orchestration/budget_decision.py` | `answer_budget_decision` |
 | 155 | `packages/orchestration/task_injection.py` | `answer_injection_shortfall` |
 | 152 | `scripts/build_observability_index.py` | `build_observability_index` |
@@ -352,13 +366,13 @@ with the code that calls it.
 | 145 | `packages/orchestration/context_coverage.py` | `derive_context_coverage` |
 | 103 | `apps/cli/commands/dev.py` | `_dev_status` |
 | 143 | `packages/orchestration/pingpong_job.py` | `_stop_job` |
-| 143 | `packages/orchestration/pingpong_loop.py` | `_call_with_retry` |
+| 140 | `packages/orchestration/pingpong_provider_call.py` | `_call_with_retry` |
 | 143 | `packages/orchestration/token_authority.py` | `validate_token_truth` |
 | 142 | `packages/orchestration/repository_snapshot.py` | `build_snapshot_truth` |
 | 142 | `packages/orchestration/stream_evidence.py` | `run_streamed_command` |
 | 142 | `packages/orchestration/worktree_resume.py` | `prepare_worktree_resume` |
 | 141 | `packages/orchestration/job_evidence.py` | `_write_run_manifest_export` |
-| 141 | `packages/orchestration/ui_server.py` | `_RemedyHandler._read_command_payload` |
+| 141 | `packages/orchestration/serve_http_handler.py` | `_RemedyHandler._read_command_payload` |
 | 140 | `apps/cli/commands/job.py` | `_cmd_plan_job_local` |
 | 140 | `packages/orchestration/builder_bridge.py` | `run_builder_bridge_loop` |
 | 140 | `packages/orchestration/change_set.py` | `derive_change_set` |
@@ -371,7 +385,7 @@ with the code that calls it.
 | 134 | `packages/orchestration/project_brain_aggregate.py` | `build_project_brain_aggregate` |
 | 134 | `packages/orchestration/token_cost_policy.py` | `build_token_cost_policy` |
 | 133 | `packages/orchestration/pingpong_provider.py` | `ClaudeCliProvider._call_reviewer_structured` |
-| 133 | `packages/orchestration/ui_server.py` | `_RemedyHandler._dispatch_decision_resolve` |
+| 133 | `packages/orchestration/serve_http_handler.py` | `_RemedyHandler._dispatch_decision_resolve` |
 | 131 | `packages/orchestration/failure_stats.py` | `collect_failures` |
 | 131 | `packages/orchestration/pingpong_loop.py` | `_aggregate_usage_actuals` |
 | 131 | `packages/orchestration/review_scope.py` | `build_review_scope_packet` |
@@ -390,13 +404,13 @@ with the code that calls it.
 | 125 | `packages/orchestration/run_manifest.py` | `write_run_manifest` |
 | 124 | `packages/orchestration/pingpong_job.py` | `_write_run_manifest_record` |
 | 124 | `packages/orchestration/task_injection.py` | `apply_injection_to_job` |
-| 123 | `packages/orchestration/pingpong_job.py` | `export_job_report` |
+| 123 | `packages/orchestration/job_report.py` | `export_job_report` |
 | 123 | `packages/orchestration/pingpong_loop.py` | `_build_provider_evidence` |
 | 123 | `scripts/build_review_manifest.py` | `evaluate_ready_gate_matrix` |
 | 122 | `packages/orchestration/artifact_contract_gate.py` | `check_stream_artifacts` |
 | 122 | `packages/orchestration/pingpong_job.py` | `_import_job` |
 | 121 | `packages/orchestration/project_summary.py` | `build_project_summary` |
-| 120 | `packages/orchestration/pingpong_job.py` | `format_job_report_text` |
+| 120 | `packages/orchestration/job_report.py` | `format_job_report_text` |
 | 120 | `packages/orchestration/scope_fences.py` | `_load_fence_spec_effective` |
 | 120 | `packages/orchestration/spec_compliance.py` | `build_spec_compliance_checklist` |
 | 120 | `packages/orchestration/study.py` | `run_study` |
@@ -438,18 +452,18 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 5331 | `packages/orchestration/pingpong_job.py` |
-| 5192 | `packages/orchestration/pingpong_loop.py` |
-| 1826 | `packages/orchestration/ui_server.py` |
+| 4939 | `packages/orchestration/pingpong_job.py` |
+| 4921 | `packages/orchestration/pingpong_loop.py` |
+| 1824 | `packages/orchestration/serve_http_handler.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
-| 2293 | `apps/cli/command_catalog.py` |
+| 2255 | `apps/cli/command_catalog.py` |
 | 2541 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 1898 | `scripts/remedy_smoke.sh` |
 | 1983 | `packages/runtimes/dev_server.py` |
-| 1964 | `packages/orchestration/pingpong_provider.py` |
+| 1574 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1545 | `packages/orchestration/config.py` |

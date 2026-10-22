@@ -11,7 +11,7 @@ and assertion (c) reds if it forgets to, and a new orphan module wired into the
 graph reds assertion (b).
 
 WHY THE WALK IS STATIC. The closure is computed by parsing each module with
-`ast`, never by importing it. Importing the cockpit — `packages.orchestration.ui_server`
+`ast`, never by importing it. Importing the cockpit — `packages.orchestration.serve_http_handler`
 — runs module-level side effects, and a guard that has to boot the product in
 order to describe it is not a guard.
 
@@ -45,7 +45,7 @@ ENTRY_POINTS = (
     "apps.cli.commands.mission_cmd",     # the mission path
     "packages.orchestration.self_use_runner",  # the self-use runner
     "apps.cli.commands.teacher_cmd",     # the teacher
-    "packages.orchestration.ui_server",  # the write door and the public API handler
+    "packages.orchestration.serve_http_handler",  # the write door and the public API handler
 )
 
 # A dotted name is first-party when its first segment is one of these.
