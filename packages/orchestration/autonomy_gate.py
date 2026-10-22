@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 from packages.orchestration.data_paths import data_class_dir, resolve_data_root
 
 if TYPE_CHECKING:  # import-light at runtime: config.py's types are only named here
-    from packages.orchestration.config import ConfigSource, RemedyConfig
+    from packages.orchestration.config import ConfigSource, ConfigValue, RemedyConfig
 
 # F078's levels, spelled with their L — never autonomy_readiness's 0 to 7 scale.
 AUTONOMY_LEVELS: tuple[str, ...] = ("L2", "L3", "L4", "L5")
@@ -160,7 +160,18 @@ def _resolve_relative_path(value: str | None, source: ConfigSource,
     from packages.orchestration.config import ConfigSource
 
     base = project_path if source == ConfigSource.PROJECT else user_path
+    assert base is not None, "a relative value read from a config file names that file"
     return str((Path(base).parent / value).resolve())
+
+
+# WHY: every autonomy key is in the schema with a default, so a key with no resolved value is a
+# broken schema, never an operator's configuration.
+def _autonomy_value(cfg: RemedyConfig, key: str) -> ConfigValue:
+    """The resolved `ConfigValue` of autonomy KEY; `KeyError` when the schema holds no such key."""
+    cv = cfg.get_value(key)
+    if cv is None:
+        raise KeyError(f"{key} has no resolved value")
+    return cv
 
 
 def _reject_env_sourced_keys(cfg: RemedyConfig) -> None:
@@ -298,7 +309,7 @@ def load_autonomy_policy(
 
     _reject_env_sourced_keys(cfg)
 
-    level_value = cfg.get_value("autonomy.level")
+    level_value = _autonomy_value(cfg, "autonomy.level")
 
     # (b) no config file set a level: the built-in default, reading and writing nothing.
     if level_value.source == ConfigSource.DEFAULT:
@@ -314,8 +325,8 @@ def load_autonomy_policy(
             f"The autonomy level {level!r} in {path} is not one of L2, L3, L4 or L5."
         )
 
-    evidence_value = cfg.get_value("autonomy.gauntlet_evidence")
-    change_adr_value = cfg.get_value("autonomy.change_adr")
+    evidence_value = _autonomy_value(cfg, "autonomy.gauntlet_evidence")
+    change_adr_value = _autonomy_value(cfg, "autonomy.change_adr")
     evidence = _resolve_relative_path(
         evidence_value.value, evidence_value.source, report.project_path, report.user_path)
     change_adr = _resolve_relative_path(
@@ -542,9 +553,8 @@ def _idea_start_records(path: Path) -> list[dict[str, Any]]:
 # rather than failing inside a comparison (session 1's note on round 3, booked at F078 R4).
 def _idea_cap_number(cfg: RemedyConfig, key: str, *, whole: bool) -> float:
     """The L5 cap KEY as read, or `AutonomyConfigError` unless it is a number of at least 0."""
-    value = cfg.get_value(key).value
-    kinds: tuple[type, ...] = (int,) if whole else (int, float)
-    if isinstance(value, bool) or not isinstance(value, kinds) or value < 0:
+    value = _autonomy_value(cfg, key).value
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or (whole and isinstance(value, float)) or value < 0:
         kind = "a whole number" if whole else "a number"
         raise AutonomyConfigError(f"{key} is {value!r}, and it must be {kind} of at least 0.")
     return value
@@ -571,7 +581,7 @@ def claim_idea_start(
 
     cfg = config if config is not None else get_config()
     _reject_env_sourced_keys(cfg)
-    max_effort = cfg.get_value("autonomy.idea_max_effort").value
+    max_effort = _autonomy_value(cfg, "autonomy.idea_max_effort").value
     if max_effort not in AUTONOMY_EFFORT_BANDS:
         raise AutonomyConfigError(
             f"autonomy.idea_max_effort is {max_effort!r}, and it must be low, medium or high."
