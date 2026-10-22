@@ -879,6 +879,27 @@ class TestEveryRealCallIsBooked:
         )
         assert not hasattr(fp.build("p1"), "failover_calls")
 
+    def test_a_held_primary_whose_first_link_serves_alone_still_carries_that_one_call(self):
+        """R-1422 (continuation of R-1276): during a hold the first link serves with ONE call, and
+        the booking must read that call's own provider and model, never the primary's."""
+        from types import SimpleNamespace
+
+        from packages.orchestration.pingpong_provider_call import _record_attempt
+
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        fp.build("p1")                      # primary fails, the link serves, the hold opens
+        clock.now = 10
+        out = fp.build("p2")                # held: the link serves first, with one call
+        assert out is link_provider.last_build_output
+        assert out.failover_disclosure.used.provider == "claude-cli"
+        assert out.failover_disclosure.used.model == "opus"
+        assert out.failover_calls == (FailoverCall("claude-cli", "opus", None),)
+        rows = _record_attempt(SimpleNamespace(builder_model="sonnet"), out, "builder", "claude-cli")
+        assert [(row.provider, row.model) for row in rows] == [("claude-cli", "opus")]
+
     def test_a_held_primary_that_serves_after_its_links_carries_them_all(self):
         clock = _ListClock()
         primary = _StubProvider("claude-cli", build_error=_DOWN)
