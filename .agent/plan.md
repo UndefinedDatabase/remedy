@@ -7,14 +7,14 @@ transport, timeouts, retries, failover, pacing and evidence; the goldens stay by
 import guard stays green.
 
 ## Current Step
-Round 3, T003: the usage of a call that is not streamed from the adapter, the stream and error
-classes kept with the loop's evidence, the re-export deleted, the docs (DECISION F315 D3).
+Round 4, the closure's integration-gate round: the checklist's consolidation pass, the self-use
+item run to its approval gate, and the feature's one full suite with its CPU cost.
 
 ## Next Steps
-1. The closure sequence: the integration gate round with the one full suite, the checklist
-   consolidation and the self-use item; then the evidence round; then the closing round.
+1. A repair round for every bad node id, when the suite is red; otherwise the evidence bundle and
+   the review package.
+2. The closing round: the Built State, the rotation, the STATUS line, the README, the pull request.
 
 ## Risks
 - A process that runs a job without the command line or the test configuration finds an empty
-  slot; the provider reports it as a provider error, by design (D2 (4)).
-- `pingpong_provider.py` and the loop are held by the structure ledger: no listed function grows.
+  slot; the self-use script installs the registry itself for that reason (DECISION F315 D2).
