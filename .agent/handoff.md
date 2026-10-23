@@ -18,7 +18,7 @@ run — Schätzung
 | Head before this handoff | `79adde111` |
 | Findings | R-1422, R-1423, R-1424 resolved; R-1425 registered OPEN, owner F314 |
 | Open findings | 11: R-1246, R-1281, R-1326, R-1351, R-1353, R-1418, R-1421, R-1425 to R-1428 (all F314's) |
-| Merge | NOT merged: second hosted run red; operator question Q24 |
+| Merge | merged on the operator's answer to Q24 (DECISION fix1022 D2) |
 | Contract | public API and client interface 1.27 → 1.28 |
 | mypy 2.3.1, `packages apps` | before: 440 errors in 110 files (`main` at `4ded1afbe`); after: 410 errors in 100 files |
 
@@ -112,6 +112,6 @@ R-1423 `assert 5 == 9`; R-1424 the generic sentence and `budget_limit_not_raised
 
 ## Next
 
-1. The operator answers Q24: merge pull request 381 as it stands, or repair R-1427 and R-1428 first.
+1. F314 repairs R-1427 and R-1428 and reads the next hosted run.
 2. F314 owns R-1425's remaining growth (`pingpong_loop`, `pingpong_provider`,
    `role_provider_factory`, `do_sequence`) and the question of a mypy ratchet.

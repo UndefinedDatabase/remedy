@@ -31354,3 +31354,14 @@ repair is the workflow's sandbox step on this branch; the order allows one more 
 red run is not merged.
 
 HOW TO REVERSE: revert the branch's commits; each finding's repair is its own commit.
+
+## DECISION fix1022 D2 — the operator's answer to Q24: merge pull request 381 as it stands (2026-10-23)
+
+THE PROBLEM: the order's second and last hosted run, 39861110995, was red on two nodes, R-1427 and
+R-1428, neither in code the branch changed; the order forbids merging a second red run without the
+operator, so Q24 asked.
+
+THE DECISION: the operator answered "mergen" on 2026-10-23: pull request 381 merges as it stands,
+and R-1427 and R-1428 stay OPEN for F314. Q24 is deleted from `.agent/operator_questions.md`.
+
+HOW TO REVERSE: revert the merge commit of pull request 381.

@@ -7,12 +7,10 @@ R-1422 (failover booking during a hold), R-1423 (`used.minutes` of a running job
 for F314).
 
 ## Current Step
-Stopped: the second hosted run is red on R-1427 and R-1428; pull request 381 is open and unmerged,
-waiting on the operator's answer to Q24.
+Done: the operator answered Q24 "mergen" (DECISION fix1022 D2); pull request 381 merges.
 
 ## Next Steps
-1. The operator answers Q24: merge pull request 381 as it stands, or repair R-1427 and
-   R-1428 and dispatch one more hosted run.
+1. F314 owns R-1425 to R-1428.
 
 ## Risks
 - ORIG_BRANCH (`feature/f074-estimate-calibration`) was deleted by the Open PR Gate merge of
