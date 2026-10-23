@@ -99,3 +99,16 @@ def test_the_check_compares_a_clock_key_by_type_and_every_other_key_by_value():
         "case.stall_reason: 'none' became 'no_output'"]
     assert _differences({"jobs": [{"job": "a"}]}, {"jobs": []}, "case") == ["case.jobs: 1 items became 0"]
     assert _differences({"a": 1}, {"b": 1}, "case") == ["case.a: missing", "case.b: new"]
+
+
+def test_the_recorded_order_story_reads_two_milestones_a_running_pair_and_a_waiting_job():
+    """amend1023 D11: the order's story as the kit reads it."""
+    story = _answer("client-order-story-running")
+    assert story["client"] == "orb-universe"
+    [mission] = story["missions"]
+    assert [milestone["id"] for milestone in mission["milestones"]] == ["M001", "M002"]
+    jobs = [job for milestone in mission["milestones"] for job in milestone["jobs"]]
+    assert [(job["number"], job["state"]) for job in jobs] == [(1, "running"), (2, "running"), (3, "waiting")]
+    assert jobs[0]["tool"] == "edit" and jobs[0]["round"] == {"n": 1, "max": 3}
+    assert jobs[2]["state_detail"] == {"after_job": 1, "after_job_id": WORKING_JOB_ID}
+    assert jobs[2]["round"] is None and jobs[2]["tool"] is None

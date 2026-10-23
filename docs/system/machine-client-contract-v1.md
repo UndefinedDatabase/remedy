@@ -312,6 +312,17 @@ Since interface 1.28 the `minutes` of a job entry's `budget.used` in `remedy cli
 `remedy client insight` are measured to now for a running job, to its last active moment otherwise;
 before, a running job's minutes stopped at its last safe-point persist (R-1423).
 
+Since interface 1.29 (operator amendment amend1023-universe-trust): `remedy client order-story
+<order>` tells an order's whole story, its missions, milestones and jobs, each job's state in the
+closed words `order_job_states` under `story`, the criterion a blocked job did not meet, its tasks
+done and total, the round and tool of the job that runs, and the client that gave the order; the
+jobs of `remedy client order` carry `mission_id` and `blocking_criterion`; a job's story carries
+`scope_findings` (`criterion_dropped`, `file_removed`); an order file's header may say `shape:
+single-job`; `remedy client execution` answers `host_tools`, and over HTTP a client the operator
+granted `host_tools` with `remedy client grant-host-tools` is offered `claude-cli` and the planner
+choice. `remedy client show`, `grant-host-tools` and `revoke-host-tools` are operator commands of
+this machine and are not part of this interface.
+
 ## What Remedy never does on a machine order
 
 - It never applies without `--approve`, and never commits or pushes without their own flags.
@@ -335,7 +346,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.28`.
+Interface version: `1.29`.
 
 ### Envelope
 
@@ -375,6 +386,8 @@ Story next actions: `apply`, `decline`, `answer`, `retry`, `none`, `run`, `resum
 Story end actions: `abandon`, `decline`.
 Story questions: `patch_approval`, `stop_reason`, `test_failure`, `token_budget`, `memory_review`, `task_plan_approval`, `task_decision`, `proposal`, `other`.
 Story verification statuses: `passed`, `failed`, `not_run`, `not_required`, `pending`.
+Story scope findings: `criterion_dropped`, `file_removed`.
+Order story job states: `planned`, `waiting`, `running`, `blocked`, `done`, `applied`, `stopped`, `cancelled`, `declined`, `failed`.
 Story phrase `found_files`: `n`, `first`.
 Story phrase `planned_tasks`: `n`.
 Story phrase `working_on_file`: `file`, `round`.
@@ -941,7 +954,7 @@ Keys under the answer keys: see below.
 - `insight`: `advice`, `model_server_states`, `phases`, `stall_reasons`, `stream_kinds`
 - `operations`: `arguments`, `command`, `command_id`, `description`, `exit_codes`, `refusal_tokens`
   - `arguments`: `help`, `name`, `option`, `repeatable`, `required`, `takes_value`
-- `story`: `end_actions`, `next_actions`, `phrases`, `questions`, `reasons`, `states`, `step_ids`, `step_statuses`, `verification_statuses`
+- `story`: `end_actions`, `next_actions`, `order_job_states`, `phrases`, `questions`, `reasons`, `scope_findings`, `states`, `step_ids`, `step_statuses`, `verification_statuses`
   - `phrases`: `*`
   - `reasons`: `*`
 
@@ -956,7 +969,7 @@ Description: Show what this server offers an execution: each role's providers wi
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `budgets`, `lanes`, `observability`, `order_flags`, `phases`, `review_report`, `roles`, `verification`.
+Answer keys: `budgets`, `host_tools`, `lanes`, `observability`, `order_flags`, `phases`, `review_report`, `roles`, `verification`.
 Keys under the answer keys: see below.
 
 - `budgets`: `an_order_needs_one_cap`, `body_strings`, `order_header_caps`, `pi_per_call`, `profiles`
@@ -1017,7 +1030,7 @@ Answer keys: `answer`, `cancel`, `ended_at`, `exit_code`, `jobs`, `order_file`, 
 Keys under the answer keys: see below.
 
 - `cancel`: `reason`, `requested_at`, `source`
-- `jobs`: `executable`, `job_id`, `phase`, `state`, `story`, `tasks`, `title`, `verification`, `waiting_reason`, `waits_for`
+- `jobs`: `blocking_criterion`, `executable`, `job_id`, `mission_id`, `phase`, `state`, `story`, `tasks`, `title`, `verification`, `waiting_reason`, `waits_for`
   - `tasks`: `current`, `done`, `total`
 
 #### `remedy client run`
@@ -1047,7 +1060,7 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
+Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
@@ -1058,6 +1071,7 @@ Keys under the answer keys: see below.
 - `next`: `action`, `route`
   - `route`: `method`, `path`
 - `numbers`: `calls`, `duration_s`, `model_turns`, `rounds`, `tokens_in`, `tokens_out`
+- `scope_findings`: `key`, `path`, `text`
 - `state_detail`: `changed_files`, `decision_id`, `file`, `question`, `reason`, `round`
   - `reason`: `args`, `key`
     - `args`: `*`
@@ -1156,6 +1170,28 @@ Keys under the answer keys: see below.
 
 - `cancel`: `reason`, `requested_at`, `source`
 - `jobs`: `before`, `job_id`, `job_status`, `outcome`
+
+#### `remedy client order-story`
+
+Command id: `client.order-story`.
+Description: Read the story of an order (an order file or text) the supervisor started, in closed words a client translates: who gave it, its missions and milestones, each Job's state, the criterion a blocked Job did not meet, its tasks done and total, and the round and tool of the Job that runs (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `order` | no | yes | yes | no | The order id the supervisor answered when it started your order file or text |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `order_not_found`.
+Answer keys: `client`, `missions`, `order_id`, `phase`, `state`.
+Keys under the answer keys: see below.
+
+- `missions`: `milestones`, `mission_id`
+  - `milestones`: `goal`, `id`, `jobs`
+    - `jobs`: `job_id`, `number`, `round`, `state`, `state_detail`, `story`, `tasks`, `title`, `tool`
+      - `round`: `max`, `n`
+      - `state_detail`: `after_job`, `after_job_id`, `criterion`
+      - `tasks`: `done`, `total`
 
 #### `remedy doctor health`
 
