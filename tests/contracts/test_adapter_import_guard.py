@@ -7,7 +7,8 @@ adapter under `packages/providers/adapters/` is reached through the registry lin
 (`apps/cli/commands/worker.py`) and each adapter's own tests import. This guard parses every
 Python file under `packages/orchestration/` and `packages/contracts/` with `ast` and fails on
 any import — top-level or inside a function — of `packages.providers.adapters` or a module
-beneath it.
+beneath it, including a `from packages.providers import adapters` whose module joined by a dot
+to the imported name forms one.
 """
 from __future__ import annotations
 
@@ -43,6 +44,10 @@ def import_guard_violations(source: str) -> list[int]:
         elif isinstance(node, ast.ImportFrom):
             if node.module and _is_forbidden(node.module):
                 lines.append(node.lineno)
+            elif node.module and any(
+                _is_forbidden(f"{node.module}.{alias.name}") for alias in node.names
+            ):
+                lines.append(node.lineno)
     return lines
 
 
@@ -75,4 +80,14 @@ def test_the_checker_reports_a_function_body_import_of_the_reference_adapter():
 
 def test_the_checker_reports_no_violation_for_the_contract_module():
     clean_fixture = "from packages.contracts.adapter_contract import WorkerAdapter\n"
+    assert import_guard_violations(clean_fixture) == []
+
+
+def test_the_checker_reports_an_adapter_imported_as_a_name_from_its_parent_package():
+    violation_fixture = "from packages.providers import adapters\n"
+    assert len(import_guard_violations(violation_fixture)) == 1
+
+
+def test_the_checker_reports_no_violation_for_an_unrelated_name_from_the_same_parent():
+    clean_fixture = "from packages.providers import claude_planner\n"
     assert import_guard_violations(clean_fixture) == []
