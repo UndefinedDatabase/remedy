@@ -315,8 +315,6 @@ class TestGenerateThenRunEndToEnd:
             "described here.\n",
             encoding="utf-8",
         )
-        # The standing order (DECISION F279 D7) is pointed at a missing file: this test is the
-        # ledger tier's generate-to-run cycle, and the order tier would answer first.
         generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path)
         assert generated is not None
         assert generated.provenance.startswith("generated (self-use-generator tier 1")
@@ -751,8 +749,7 @@ class TestThreeConsecutiveItemsOnAnEmptyLedger:
         monkeypatch.setattr(dead_model_list, "load_dead_models", _fake_load_dead_models)
         monkeypatch.setattr(dead_model_list, "dead_model_ids", _fake_dead_model_ids)
 
-        # An empty ledger (Tier 1 offers nothing) and an order path pointing
-        # at a missing file (Tier 0 offers nothing), on every generator call.
+        # An empty ledger (Tier 1 offers nothing), on every generator call.
         ledger_path = tmp_path / "live_review.md"
         ledger_path.write_text("", encoding="utf-8")
         queue_path = _write_queue(tmp_path, [])
@@ -890,11 +887,11 @@ class TestASelfUseRunRepairsCodeNeverBookkeeping:
 
 
 class TestAnExcusedHandlerItemRunsToTheApprovalGate:
-    """T5_F291.md T003: on a queue dry for tiers 0 to 3, three consecutive requests give three
+    """T5_F291.md T003: on a queue dry for tiers 1 to 3, three consecutive requests give three
     different items, and the first, a Tier 4 item, runs to the approval gate within the default
     budget. Tiers 2 and 3 are dried the way the generator's own tests dry them, Tier 1 by an empty
-    ledger and Tier 0 by a missing order, and the source root is a fixture tree, so no item
-    depends on the real repository's marks.
+    ledger, and the source root is a fixture tree, so no item depends on the real repository's
+    marks.
     """
 
     def test_three_requests_the_first_run_to_the_approval_gate(

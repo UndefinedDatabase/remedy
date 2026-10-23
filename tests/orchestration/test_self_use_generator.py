@@ -1273,7 +1273,7 @@ class TestExcusedHandlerTier:
         """Only the excuse AFTER the mark — the `rest` group — is read, never the whole line."""
         root = tmp_path / "src"
         _write_source(root, "packages/alpha.py",
-                      "try:\n    pass\nexcept DebtQueueError:  # noqa: BLE001 — never a crash\n    pass\n")
+                      "try:\n    pass\nexcept Exception as debt:  # noqa: BLE001 — never a crash\n    pass\n")
         entries = _drain(tmp_path, root)
         assert all(not e.provenance.startswith("generated (self-use-generator tier 4")
                    for e in entries)

@@ -188,8 +188,8 @@ def parse_order_budget(job_markdown: str) -> dict[str, int | float]:
 
     WHY IT LIVES IN THE ORDER FILE (R-1044): the runner's built-in bound — one
     task, eight calls, six dollars — was written for a single-finding repair
-    item, and the order tier hands the same runner a five-task standing order
-    it cannot begin to fit. The order knows what it costs; the runner does not.
+    item, and a queue item may be a five-task order it cannot begin to fit.
+    The order knows what it costs; the runner does not.
 
     Raises:
         SelfUseRunError: the line is present but cannot be read. A standing
