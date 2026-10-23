@@ -15,11 +15,9 @@ def test_core_models_import():
 
 def test_contracts_interfaces_import():
     from packages.contracts.interfaces import (
-        LLMWorker,
         MemoryGateway,
         RuntimeProvider,
     )
-    assert LLMWorker is not None
     assert MemoryGateway is not None
     assert RuntimeProvider is not None
 
@@ -62,6 +60,6 @@ def test_artifact_provenance():
 def test_interfaces_are_protocols():
     from typing import Protocol
 
-    from packages.contracts.interfaces import LLMWorker, MemoryGateway, RuntimeProvider
-    for iface in (LLMWorker, MemoryGateway, RuntimeProvider):
+    from packages.contracts.interfaces import MemoryGateway, RuntimeProvider
+    for iface in (MemoryGateway, RuntimeProvider):
         assert issubclass(iface, Protocol)

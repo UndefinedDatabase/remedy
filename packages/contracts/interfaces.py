@@ -8,32 +8,9 @@ Any conforming class satisfies the contract via structural subtyping.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
 from typing import Protocol, runtime_checkable
 
-from packages.core.models import Artifact
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-
-
-@runtime_checkable
-class LLMWorker(Protocol):
-    """Executes a Task and produces an Artifact.
-
-    Work flows through structured Task objects, not raw prompt strings.
-    No provider-specific assumptions.
-    """
-
-    async def execute(self, task: TaskEntry) -> Artifact:
-        """Execute the task and return the resulting artifact."""
-        ...
-
-    async def stream(self, task: TaskEntry) -> AsyncIterator[str]:
-        """Stream output tokens while executing a task.
-
-        Note: streams str tokens rather than a full Artifact — full streaming
-        artifact support is deferred to a later step.
-        """
-        ...
+from packages.orchestration.pingpong_job import JobPlan
 
 
 @runtime_checkable
