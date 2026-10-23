@@ -17,7 +17,8 @@ run — Schätzung
 | Branch | `feature/fix1022-review-findings`, from `main` at `4ded1afbe` (the merge of pull request 380, F074, merged by this session's Open PR Gate) |
 | Head before this handoff | `79adde111` |
 | Findings | R-1422, R-1423, R-1424 resolved; R-1425 registered OPEN, owner F314 |
-| Open findings | 9: R-1246, R-1281, R-1326, R-1351, R-1353, R-1418, R-1421, R-1425, R-1426 (all F314's) |
+| Open findings | 11: R-1246, R-1281, R-1326, R-1351, R-1353, R-1418, R-1421, R-1425 to R-1428 (all F314's) |
+| Merge | NOT merged: second hosted run red; operator question Q24 |
 | Contract | public API and client interface 1.27 → 1.28 |
 | mypy 2.3.1, `packages apps` | before: 440 errors in 110 files (`main` at `4ded1afbe`); after: 410 errors in 100 files |
 
@@ -80,7 +81,11 @@ R-1423 `assert 5 == 9`; R-1424 the generic sentence and `budget_limit_not_raised
    and `1 failed, 22 passed` per stage, the same 166 nodes in 3.10 and 3.12, all
    `sandbox_unavailable` (no Bubblewrap on the runner). None is in a test file this branch changed.
    Registered as R-1426 (Low, F314); repaired in the workflow at `a8abb7c94`.
-2. The second and last run is recorded in the pull request; a red second run is not merged.
+2. Run 39861110995 over `694f9aec4`: red, but 166 failures fell to 2: `17708 passed` / `1 failed, 17707 passed`
+   and `1 failed, 5607 passed` per column. R-1427 (`test_do_order_budget`, both columns, `TypeError`)
+   and R-1428 (`test_tool_sandbox` disk search, 3.12 only, timeout), both green locally, registered
+   Low for F314. A second red run is never merged: pull request 381 stays OPEN and question Q24
+   waits for the operator.
 
 ## Deviations & assumptions
 
@@ -107,6 +112,6 @@ R-1423 `assert 5 == 9`; R-1424 the generic sentence and `budget_limit_not_raised
 
 ## Next
 
-1. Push, open the pull request, dispatch hosted CI once, merge only when every check is green.
+1. The operator answers Q24: merge pull request 381 as it stands, or repair R-1427 and R-1428 first.
 2. F314 owns R-1425's remaining growth (`pingpong_loop`, `pingpong_provider`,
    `role_provider_factory`, `do_sequence`) and the question of a mypy ratchet.
