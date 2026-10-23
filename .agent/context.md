@@ -1,20 +1,20 @@
-# Context — F133 Provider trust score
+# Context — F151 Worker adapter contract v2
 
 ## Active Branch
-`feature/f133-provider-trust-score`, from `main` at `11fda065b` (the merge of pull request 381).
+`feature/f151-worker-adapter-contract`, from `main` at `4232c579e` (the merge of pull request 382).
 
 ## Scope
-F133 as `docs/roadmap/features/T7_F133.md` states it, in the order of DECISION F133 D1: T001 the
-inventory, T002 the aggregation, T003 the stats view and the routing-context note. The open findings
-are all F314's; F133 takes none.
+F151 as `docs/roadmap/features/T8_F151.md` states it, in the order of DECISION F151 D1: T001 the
+inventory, T002 the contract and its conformance kit, T003 the reference adapter, the import guard
+and the registry linkage. The open findings are all F314's; F151 takes none.
 
 ## Do not touch
-Routing decisions, tournament machinery, promotion discipline (the feature file's Do-not-touch).
-Trust informs routing and never overrides it.
+Loop transport, retries and evidence, routing policy semantics, registry storage (the feature
+file's Do-not-touch). Adapters build invocations and map outputs; they never retry or time out.
 
 ## Active assumptions
-- The deleted provider-trust pair stays deleted (DECISION F133 D1).
-- A metric with no recorded source is shown as missing, never estimated.
+- The deleted `worker_registry` and main builder adapter stay deleted (DECISION F151 D1).
+- The reference adapter changes no behaviour: its goldens equal today's outputs.
 
 ## Constraints
 - Under 500 insertions per commit; commit subjects carry no leading-slash tokens.

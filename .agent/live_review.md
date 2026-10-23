@@ -1,26 +1,27 @@
-# Live Review — F133 Provider trust score
+# Live Review — F151 Worker adapter contract v2
 
-> Round-by-round review record, re-headed at the F133 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F074, whose STATUS
-> line went `[x]` on its own branch; pull request 380 merged it into `main` as `4ded1afbe`. Operator
-> order fix1022-review-findings then ran on its own branch, registered R-1422 to R-1428 here and
-> merged as pull request 381, `11fda065b`, on the operator's answer to Q24. No verdict is pending
-> booking: F074's rounds 1 to 4 are booked below, its closing round is its branch's terminator
-> (§4 item 13), and fix1022 was an operator order whose record is its own findings. Only the
-> heading, this paragraph and the Steps section below are rewritten; everything else from the
-> Findings heading to the end of the file as it stood at `11fda065b` is carried forward
-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The open
-> set at `11fda065b`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`, holds 11
-> ids — R-1246, R-1281, R-1326, R-1351, R-1353, R-1418, R-1421 and R-1425 to R-1428 — every one
-> owned by F314, so F133 takes none of them.
+> Round-by-round review record, re-headed at the F151 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F133, whose STATUS
+> line went `[x]` on its own branch at `90159ce0e`; this session's Open PR Gate merged pull
+> request 382 into `main` as `4232c579e`, whose tree equals `90159ce0e`'s. F133's round 7 was
+> reviewed after its own handback, so operator amendment amend0827-process-diet rule 1 books its
+> verdict here, in the first commit of the next round that is happening anyway; its gate entry is
+> appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
+> section below are rewritten; everything else from the Findings heading to the end of the file as
+> it stood at `4232c579e` is carried forward BYTE-IDENTICAL, and finding ids continue the
+> monotonic R-XXXX series across the re-head. The open set at `4232c579e`, computed with
+> `open_finding_ids` from `scripts/rotate_live_review.py`, holds 11 ids — R-1246, R-1281, R-1326,
+> R-1351, R-1353, R-1418, R-1421 and R-1425 to R-1428 — every one owned by F314, so F151 takes none
+> of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F133 D1's, which also writes the feature file's slice list. The first
-round claims F133, re-heads this record and lands T001, the findings pass, as a committed inventory
-that is reviewed before any code is authored. Then T002, the metric aggregation with its windows,
-floors and goldens; then T003, `remedy stats trust`, the recommendation line and the routing-context
-note; then the closure.
+THE ORDER BELOW IS DECISION F151 D1's, which also writes the feature file's slice list. The first
+round claims F151, re-heads this record and lands T001, the findings pass, as a committed inventory
+that is reviewed before any code is authored. Then T002, the contract module, the conformance kit
+and its recorded samples, proved against a deliberately broken toy adapter; then T003, today's
+builder path wrapped as the reference adapter with golden equality, the import guard and the
+registry linkage; then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -197,3 +198,5 @@ Gate: F133 R4 — the F133 round 4 entry, over `0ccfa43d4`..`c2ba89ee2` (7 commi
 Gate: F133 R5 — the F133 round 5 entry, the closure's integration gate, over `c2ba89ee2`..`9d3218f4d` (6 commits, each single-parent; insertions by `git show --shortstat`: `050037b8b` 307, `b33ba738d` 54, `3a3be02bf` 4, `fda9e0d89` 134, `2b8fec7e4` 28, `9d3218f4d` 213). VERDICT PASS. The reviewer's `verify.py` read every line `True` and the last line `ALL True`: C1's four files and C3's checklist page equal the prepared snapshots, C2 touches the plan-view test file and appends exactly one Landed paragraph to this record, C4 touches the queue and `.agent/selfuse_f133/` only, and no file of C4, C5 or C6 holds a machine path. C1 and C3 were dry-run by the reviewer in a disposable worktree at `c2ba89ee2` before the block was emitted: `tests/docs`, the state-file guards and the block lint read `428 passed`. C2's two tests close R-1434, which the reviewer red-proofed in a disposable worktree at `9d3218f4d`. The self-use item SU-077, "Narrow the excused handler at apps/cli/commands/worker_facade_cmd.py:421", ran as job `e4e3a67ccd5b4a19` to its approval gate on `claude-cli` `claude-sonnet-4-6` for both roles: `completed`, T001 `applied_to_job_workspace` with the reviewer's `pass`, never applied; its branch narrows the handler to `(ImportError, AttributeError, OSError, SyntaxError)` and lowers the blind-handler ratchet to 281. `describe_self_use_run_defects` returned nothing, so the run raises no finding. The closure's one full suite read `23494 passed, 11 skipped, 1 warning in 369.40s (0:06:09)` with exit 0 on `fda9e0d89`, no bad node id and no leftover process, the reflog unchanged during the run. The cost script exited 0 at 1401.83 CPU seconds, 5.0 percent above F074's 1334.99 and within the 10 percent limit. The worker declared two harmless deviations: the branch check before C3 and C5 ran joined to a read-only git command rather than on its own, and the push carried `-u`. The integrity check read `fail_count` 0 and the open set 12 ids.
 
 Gate: F133 R6 — the F133 round 6 entry, the closure's evidence round, over `9d3218f4d`..`7ccbe2632` (3 commits, each single-parent; insertions by `git show --shortstat`: `45cd08fc8` 125, `74e60a86c` 302, `7ccbe2632` 182). VERDICT PASS. The reviewer's `verify.py` read every line `True` and the last line `ALL True`: C1's three files and C2's evidence script equal the prepared snapshots, and the handoff holds no machine path. The evidence script is F074's with its base, round, directory, job id, title, feature id, run id and test files changed; the reviewer's collect-only precheck at `9d3218f4d` read 12366 node ids with 251 deselected and no id the packaging scan refuses. The staging reclaim previewed nothing, so no apply ran. The evidence job `f133r6e1001` ran on `74e60a86c` with both ancestry counts 32, 12366 node ids collected and 251 deselected, the planted red control caught, `12360 passed, 6 skipped` with exit 0, `validate_verification_tests` without problems and `is_valid_current_run True`. The review package `remedy-review-20261023-145010-READY_FOR_REVIEW.zip` reads `READY_FOR_REVIEW`; the reviewer read its SHA-256 `eea6f24c275d5f09d8434e4e05c6f64dc5f7c72bf0f7f8c1cbd47c181855a8dc`, `is_zipfile` True, `testzip()` None and its manifest's subject from `11fda065b` to `74e60a86c` over 32 commits itself. The integrity check read `fail_count` 0 and the open set 11 ids, all owned by F314.
+
+Gate: F133 R7 — the F133 round 7 entry, the closing round, over `7ccbe2632`..`90159ce0e` (3 commits, each single-parent; insertions by `git show --shortstat`: `d6ca86af0` 252, `ef8e9a6b5` 44, `90159ce0e` 136). VERDICT PASS. The reviewer of F151's first session ran the round 7 reviewer's `verify.py` against the three commits in a disposable detached worktree at `90159ce0e`: every line read `True` except the branch check, which a detached worktree cannot meet and which the round 7 handback read `True` in the primary checkout before each commit; each commit is single-parent and carries its `F133 R7 Cn` subject, each names exactly its ordered paths with the numstat its manifest states, C3 carries the handoff beside them, and every committed file equals the prepared snapshot byte for byte, among them both ledger files of C2's rotation. No commit of the round exceeds 500 insertions. The reviewer re-ran the round's gate 3 in the primary checkout on `main` at `4232c579e`, whose tree equals `90159ce0e`'s, and read `658 passed` with exit 0 and the integrity check at six checks `pass` with `fail_count` 0. Pull request 382 had no hosted check, which operator amendment amend1011-manual-hosted-ci makes the normal state, and this session's Open PR Gate merged it into `main` as `4232c579e`; the open set there holds 11 ids, all owned by F314.
