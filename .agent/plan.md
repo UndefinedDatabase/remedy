@@ -6,8 +6,8 @@ building, stream and usage mapping, isolation) with a reusable conformance kit, 
 wrapped as the reference adapter with golden equality, and orchestration importing only the contract.
 
 ## Current Step
-Round 7, the closure's integration gate: the checklist's consolidation pass, the self-use item run
-to its approval gate and never applied, and the feature's one full suite with its CPU cost.
+Round 8, the closure's first repair round: R-1441, the docs page's command name, and the one full
+suite run again on the repaired tree, the tree that ships.
 
 ## Next Steps
 1. The evidence round: the evidence job and the review package.
@@ -15,4 +15,4 @@ to its approval gate and never applied, and the feature's one full suite with it
    request, left unmerged.
 
 ## Risks
-- A red full suite or a self-use run defect becomes a repair round before the evidence round.
+- A second red suite becomes the second of at most three repair rounds.
