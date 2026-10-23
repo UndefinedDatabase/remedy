@@ -3,11 +3,11 @@
 > Status (F133, 2026-10-23): the trust home `model_trust_score.py` with its four metrics, its
 > window, floor and snapshot (T002), the trust view `remedy stats trust` with the matrix, the
 > change against the prior window, the cost basis read from the ledger and the clear leader's
-> recommendation line per role (T003, round 3), are built. Open: the informational routing note in
-> `remedy job plan-show`, the one-home guard and the end-to-end (round 4). The per-tier summary
-> beside `tier_outcomes.py` that T003's design sketched is WITHDRAWN (DECISION F133 D3 (3)): the
-> per-tier record stays `tier_outcomes.py`'s own. DECISIONs F133 D1, D2 and D3 in
-> `.agent/decisions.md`; the feature is `docs/roadmap/features/T7_F133.md`.
+> recommendation line per role (T003), and the informational routing note in `remedy job
+> plan-show` with its one-home guard and its end-to-end over the command line (T003, round 4), are
+> built. The per-tier summary beside `tier_outcomes.py` that T003's design sketched is WITHDRAWN
+> (DECISION F133 D3 (3)): the per-tier record stays `tier_outcomes.py`'s own. DECISIONs F133 D1 to
+> D4 in `.agent/decisions.md`; the feature is `docs/roadmap/features/T7_F133.md`.
 
 Remedy's provider-trust pair (`provider_trust.py`, `provider_trust_verification.py`) was deleted at
 `0242c0a3b`: it gated an externally produced patch candidate, keyed by candidate and job, and
@@ -103,17 +103,43 @@ The JSON's `recommendations` carries the same answer per role shown: `role`, `le
 (`leader`/`too_few_eligible`/`no_margin`); `leader` and `runner_up` are `null` whenever there is no
 recommendation. This is a RECOMMENDATION for a human to read, never an automatic change: Remedy
 does not change a route by itself, and adopting one still goes through config and an ADR under
-`docs/agents/model_routing_policy.md`'s promotion rule. The informational routing note that reads
-this signal inside `remedy job plan-show` ("trust suggests otherwise") is round 4's.
+`docs/agents/model_routing_policy.md`'s promotion rule.
+
+## The informational routing note ("trust suggests otherwise")
+DECISION F133 D4. `trust_routing_note(table, role, configured_model)` answers one role's note, or
+`""` when there is nothing to say: a note is returned only when `role` has a clear leader
+(`trust_leader`), `configured_model` is not empty, is not that leader, and has its own row for
+`role` that is not THIN. `remedy job plan-show` prints one such line per role, builder then
+reviewer, right after the plan's two heading lines (the job id, its version and approval, and the
+editable/not-editable line) and before the calibrated-band notes (F074) and the task list — reading
+the job's own `execution_config.builder_model`/`reviewer_model` and the trust table of the
+registered project that owns the job's repository, through the three trust settings. The note's
+words are fixed:
+
+> "Trust suggests otherwise for \<role\>: \<configured\> is configured, with a pass quota of
+> \<C\>% over \<c\> settled tasks, while \<leader\> leads with \<P\>% over \<p\> in the last \<W\>
+> days. This note is informational: the route is unchanged, and a change is made through config
+> and an ADR."
+
+THE ROUTE IS NEVER CHANGED: the note only READS the job's record; `plan-show`'s JSON form is
+unchanged by it, because that shape is the plan view the cockpit serves too (DECISION F292 D1
+(1)). A job with no execution config, a repository no registered project owns, a malformed
+`model_routing.trust_*` setting or an unreadable ledger prints no note and never fails the view, as
+the calibration note (`_calibrated_band_notes`) does not.
+
+## The one-home guard
+DECISION F133 D4 (4). A test reads every file `git ls-files` tracks under `packages/` and `apps/`
+and fails when a name of the four metrics (`pass_quota`, `repair_need`, `format_error_rate`,
+`cost_per_pass`) occurs outside `model_trust_score.py`, `stats_trust_cmd.py` or the plan view's
+note caller (`job_plan_cmd.py`), or when a module other than `model_trust_score.py` has a name
+containing `trust_score` or `provider_trust` — the one trust home stays the only aggregation of
+trust, by construction rather than by review.
 
 ## Deliberate absences
 - Remedy deliberately does not read `tier_outcomes.query_tier_outcomes` here: that function writes
   to the ledger on every call and keeps no window, so the per-tier record stays
   `tier_outcomes.py`'s own and this module computes nothing per tier (DECISION F133 D3 (3)) — no
   second aggregation of rounds, retries or cost exists.
-- Remedy deliberately does not print an informational routing note in `remedy job plan-show` yet:
-  it is round 4's, and until it lands a contradiction between trust and the configured route is
-  visible only by reading this view directly.
 - Remedy deliberately does not guess a model for an unjoinable call, count an unsettled task
   toward an outcome, or invent a cost basis nothing reported.
 - Remedy deliberately does not refresh the snapshot in the background; a read does it when the
