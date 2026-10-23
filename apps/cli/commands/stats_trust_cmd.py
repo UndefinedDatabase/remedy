@@ -93,6 +93,14 @@ def _project_repo(project_id: str) -> str | None:
     return getattr(project, "canonical_repo_path", None) or None
 
 
+def _table_payload(table: Any, *, role: str | None) -> dict[str, Any]:
+    """``table.to_json()``, with its rows kept to one role when ``role`` is given."""
+    payload = table.to_json()
+    if role is not None:
+        payload["rows"] = [row for row in payload["rows"] if row["role"] == role]
+    return payload
+
+
 def _changes_payload(table: Any, prior: Any, *, role: str | None) -> list[dict[str, Any]]:
     changes = []
     for row in table.rows:
@@ -140,7 +148,7 @@ def _cmd_stats_trust(*, project: str | None = None, role: str | None = None,
         sample_floor=settings["sample_floor"], window_end=prior_now)
     if json_output:
         emit_ok(version=TRUST_OUTPUT_VERSION, max_age_seconds=settings["max_age_seconds"], role=role,
-                table=table.to_json(), prior=prior.to_json(),
+                table=_table_payload(table, role=role), prior=_table_payload(prior, role=role),
                 changes=_changes_payload(table, prior, role=role))
     else:
         print(render_trust_text(table, prior, max_age_seconds=settings["max_age_seconds"], now=now, role=role))

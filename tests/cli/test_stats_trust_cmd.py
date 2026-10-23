@@ -1,0 +1,171 @@
+"""F133 T003 — `remedy stats trust`, the model trust view.
+
+A real git repository is registered under the test's own data root, its cost ledger, job records
+and provider evidence are written as a project's would be, and the command runs as a user runs it,
+through the grouped CLI.
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import pytest
+
+from apps.cli.command_catalog import get_command
+from apps.cli.commands import collect_all_handlers
+from packages.orchestration.data_paths import job_evidence_dir, job_record_path, resolve_data_root
+from packages.orchestration.model_trust_score import model_trust_snapshot_path
+from packages.orchestration.token_ledger import CallRecord, record_call
+
+RECENT = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+OLD = (datetime.now(timezone.utc) - timedelta(days=100)).isoformat()
+
+
+def _run(argv: list[str], capsys) -> tuple[int, str]:
+    from apps.cli.grouped import main
+
+    try:
+        code = main(argv)
+    except SystemExit as exc:
+        code = exc.code
+    return code or 0, capsys.readouterr().out
+
+
+@pytest.fixture
+def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from packages.orchestration.project_registry import register_project_repo
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    repo = tmp_path / "trusted"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    return register_project_repo("Trusted", repo)
+
+
+def _task(project, job: str, task: str, *, status: str, repair_rounds: int, role: str, model: str,
+          cost: float | None, ts: str = RECENT, seq: int = 1, is_parse_retry: bool = False) -> None:
+    root = resolve_data_root()
+    path = job_record_path(job, root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"tasks": [
+        {"task_id": task, "status": status, "repair_rounds_used": repair_rounds}]}), encoding="utf-8")
+    ev_dir = job_evidence_dir(job, root) / "task_runs" / task
+    ev_dir.mkdir(parents=True, exist_ok=True)
+    (ev_dir / "provider_evidence.json").write_text(json.dumps({"provider_attempts": [
+        {"seq": seq, "round": 1, "role": role, "model": model, "is_parse_retry": is_parse_retry}]}),
+        encoding="utf-8")
+    assert record_call(CallRecord(
+        call_id=f"{job}:{task}:{seq}", job_id=job, task_id=task, role=role, model=None, ts_utc=ts,
+        tokens_in=100, tokens_out=10, cost_usd=cost,
+        cost_basis="unknown" if cost is None else "provider_reported"), project_id=str(project.id))
+
+
+def _seed(project) -> None:
+    for k in range(1, 21):
+        _task(project, f"jobstrong{k:02d}", "T001", status="passed", repair_rounds=0, role="builder",
+              model="claude-strong-v1", cost=0.02)
+    for k in range(1, 4):
+        _task(project, f"jobthin{k:02d}", "T001", status="passed", repair_rounds=1, role="builder",
+              model="claude-thin-v1", cost=0.01)
+
+
+def test_the_command_is_catalogued_read_only_and_handled():
+    entry = get_command("stats.trust")
+    assert entry.action_class == "read_only" and entry.supports_json
+    assert "stats.trust" in collect_all_handlers()
+
+
+def test_the_text_shows_each_row_with_its_columns_dashes_and_thin_marker(project, capsys):
+    _seed(project)
+    code, out = _run(["stats", "trust", "--project", project.slug], capsys)
+    assert code == 0, out
+    lines = out.splitlines()
+    assert lines[0] == (f"Model trust of project {project.id}, measured from its cost ledger, job "
+                        "records and provider evidence")
+    assert lines[1].startswith("Window: the last 90 days, tasks whose latest call is at or after ")
+    assert lines[1].endswith("Floor: 20 settled tasks per model and role.")
+    assert lines[2].startswith("Measured at ")
+    header = lines[3].split()
+    assert header == ["role", "model", "tasks", "pass", "quota", "repair/task", "format", "err",
+                      "cost/pass", "Δ", "pass", "quota"]
+    rows = lines[4:6]
+    joined = "\n".join(rows)
+    assert "claude-strong-v1" in joined and "claude-thin-v1" in joined
+    assert "3/20 thin" in joined  # the thin model's 3 settled tasks against the floor of 20
+    strong_row = next(r for r in rows if "claude-strong-v1" in r)
+    assert "20" in strong_row and "thin" not in strong_row
+    assert "new" in joined
+    assert lines[-1] == "Unattributed calls: 0. Unsettled tasks: 0."
+
+
+def test_the_json_carries_the_table_the_prior_table_and_the_changes(project, capsys):
+    _seed(project)
+    code, out = _run(["stats", "trust", "--project", project.slug, "--json"], capsys)
+    assert code == 0, out
+    body = json.loads(out)
+    assert body["ok"] is True and body["version"] == 1
+    assert {"table", "prior", "changes"} <= body.keys()
+    assert body["table"]["project_id"] == str(project.id)
+    assert body["prior"]["project_id"] == str(project.id)
+    models = {row["model"] for row in body["table"]["rows"]}
+    assert {"claude-strong-v1", "claude-thin-v1"} <= models
+    changes = {c["model"]: c for c in body["changes"]}
+    assert changes["claude-strong-v1"]["new"] is True
+    assert changes["claude-strong-v1"]["pass_quota_change"] is None
+
+
+def test_role_keeps_only_that_roles_rows(project, capsys):
+    _seed(project)
+    _task(project, "jobreviewer01", "T001", status="passed", repair_rounds=0, role="reviewer",
+          model="claude-reviewer-v1", cost=0.01)
+    code, out = _run(["stats", "trust", "--project", project.slug, "--role", "reviewer", "--json"], capsys)
+    assert code == 0, out
+    body = json.loads(out)
+    assert {row["role"] for row in body["table"]["rows"]} == {"reviewer"}
+    assert {c["role"] for c in body["changes"]} == {"reviewer"}
+
+
+def test_the_prior_window_shows_the_change_and_new_for_an_absent_row(project, capsys):
+    window_days = 90
+    now = datetime.now(timezone.utc)
+    prior_ts = (now - timedelta(days=window_days + 10)).isoformat()
+    # A model present in BOTH the current and the prior window: its pass quota changes.
+    _task(project, "jobprior01", "T001", status="passed", repair_rounds=0, role="builder",
+          model="claude-both-v1", cost=0.01, ts=prior_ts)
+    _task(project, "jobnow01", "T001", status="failed", repair_rounds=0, role="builder",
+          model="claude-both-v1", cost=0.01)
+    # A model present only now: "new".
+    _task(project, "jobnew01", "T001", status="passed", repair_rounds=0, role="builder",
+          model="claude-only-now-v1", cost=0.01)
+    code, out = _run(["stats", "trust", "--project", project.slug, "--json"], capsys)
+    assert code == 0, out
+    body = json.loads(out)
+    changes = {c["model"]: c for c in body["changes"]}
+    assert changes["claude-only-now-v1"]["new"] is True
+    assert changes["claude-both-v1"]["new"] is False
+    assert changes["claude-both-v1"]["pass_quota_change"] == pytest.approx(0.0 - 1.0)
+
+
+def test_a_project_with_no_ledger_says_so(project, capsys):
+    code, out = _run(["stats", "trust", "--project", project.slug], capsys)
+    assert code == 0, out
+    assert out.splitlines()[1] == "This project has no cost ledger yet, so no model has a trust row."
+    assert not model_trust_snapshot_path(str(project.id)).exists()
+
+
+def test_no_project_is_refused(tmp_path, monkeypatch, capsys):
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    monkeypatch.chdir(tmp_path)
+    code, out = _run(["stats", "trust", "--json"], capsys)
+    assert code == 1
+    assert json.loads(out)["error"] == "no_project"
+
+
+def test_a_malformed_setting_is_refused_as_a_usage_error(project, capsys):
+    Path(project.canonical_repo_path, "remedy.toml").write_text(
+        "[remedy.model_routing]\ntrust_sample_floor = -4\n", encoding="utf-8")
+    code, out = _run(["stats", "trust", "--project", project.slug, "--json"], capsys)
+    assert code == 2
+    assert json.loads(out)["error"] == "invalid_trust_setting"

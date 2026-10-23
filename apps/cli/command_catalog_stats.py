@@ -154,7 +154,7 @@ STATS_COMMANDS: tuple[CommandEntry, ...] = (
             "Every model and role seen inside the window: pass quota, repair rounds per task, "
             "format-error rate per call, cost per pass with its basis, and the pass quota's change "
             "against the prior window of the same length. Read-only on the ledger, job records and "
-            "provider evidence; measures again when the saved table is old."
+            "the run's own provider evidence; measures again when the saved table is old."
         ),
         action_class="read_only",
         supports_json=True,
