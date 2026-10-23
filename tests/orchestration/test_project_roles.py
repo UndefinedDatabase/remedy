@@ -1,4 +1,4 @@
-"""R-1326, DECISION F314 D4 — the project's own `[roles]` table of `.remedy/config.toml`.
+"""R-1326, DECISIONs F314 D4 and D5 — the project's own `[roles]` table of `.remedy/config.toml`.
 
 One test per answer `read_project_roles` can give, and one per refusal it raises. Every test
 writes its own `.remedy/config.toml` under `tmp_path`; none drives a job or a provider.
@@ -32,13 +32,13 @@ class TestTheAnswers:
         _write_config(tmp_path, '[runtime]\ncmd = ["npm", "run", "dev"]\n')
         assert read_project_roles(tmp_path) == {}
 
-    def test_all_three_keys_are_read(self, tmp_path: Path) -> None:
+    def test_both_keys_are_read(self, tmp_path: Path) -> None:
         _write_config(
             tmp_path,
-            '[roles]\nbuilder = "claude-cli"\nreviewer = "fake"\nplanner = "ollama"\n',
+            '[roles]\nbuilder = "claude-cli"\nreviewer = "fake"\n',
         )
         assert read_project_roles(tmp_path) == {
-            "builder": "claude-cli", "reviewer": "fake", "planner": "ollama"}
+            "builder": "claude-cli", "reviewer": "fake"}
 
 
 class TestTheRefusals:
@@ -83,7 +83,8 @@ class TestTheRefusals:
         with pytest.raises(ProjectRolesError, match="cannot write files"):
             read_project_roles(tmp_path)
 
-    def test_a_planner_outside_the_planner_providers_is_refused(self, tmp_path: Path) -> None:
-        _write_config(tmp_path, '[roles]\nplanner = "fake"\n')
-        with pytest.raises(ProjectRolesError, match="which is not a planner"):
+    def test_a_planner_key_is_refused(self, tmp_path: Path) -> None:
+        """DECISION F314 D5 (2): the table does not yet choose the planner (R-1448)."""
+        _write_config(tmp_path, '[roles]\nplanner = "ollama"\n')
+        with pytest.raises(ProjectRolesError, match="--planner-provider"):
             read_project_roles(tmp_path)

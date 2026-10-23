@@ -402,19 +402,6 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
   walk actually used is the one its prompt traces and the mission plan
   record name.
 
-A project may also name its builder and reviewer once, in a `[roles]` table of its own
-`.remedy/config.toml`, instead of passing a provider option on every order (R-1326, DECISION
-F314 D4). An explicit option on the command line and a continued job's own persisted record both
-come first; the table comes next; the product default comes last. A run that takes a role's
-provider from the table records its source as `roles`. An unknown provider name, or a builder the
-table names that cannot write files (such as `ollama`), is refused before any step.
-
-```toml
-[roles]
-builder = "claude-cli"
-reviewer = "fake"
-```
-
 - `--run-unattended` — run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push
 - `--no-ui` — deprecated and inert: the old cockpit was deleted, so it opens nothing; still
   accepted so existing scripts keep working
@@ -444,6 +431,21 @@ reviewer = "fake"
   `push`. In a walk of one job an `unmet` criterion refuses before anything is
   applied; in a walk of several the commits land and the push is refused. A
   refused or failed push leaves every commit where it landed and exits 1
+
+A project may also name its builder and reviewer once, in a `[roles]` table of its own
+`.remedy/config.toml`, instead of passing a provider option on every order (R-1326, DECISION
+F314 D4). An explicit option on the command line and a continued job's own persisted record both
+come first; the table comes next; the product default comes last. A run that takes a role's
+provider from the table records its source as `roles`. An unknown provider name, or a builder the
+table names that cannot write files (such as `ollama`), is refused when its job starts, before the
+builder or the reviewer is called. The planner is chosen with `--planner-provider` or
+`planner.provider` of `remedy.toml`; the table refuses a `planner` key (DECISION F314 D5).
+
+```toml
+[roles]
+builder = "claude-cli"
+reviewer = "claude-cli"
+```
 
 ## Refused before any step
 

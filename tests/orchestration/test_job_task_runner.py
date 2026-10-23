@@ -47,6 +47,7 @@ from packages.orchestration.pingpong_job import (
     validate_job_task_result,
 )
 from packages.orchestration.pingpong_provider_fake import FakeProvider
+from packages.orchestration.project_roles import ProjectRolesError
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -2489,6 +2490,41 @@ class TestConfigSourceAudit:
         text = format_job_report_text(result)
         assert "(source: cli)" in text
         assert "Max rounds: 5" in text
+
+    def test_first_run_takes_providers_from_the_project_roles_table(
+        self, isolate_data_root, demo_repo
+    ):
+        """R-1446, DECISIONs F314 D4/D5: with no provider name and no injected provider object,
+        `run_job` resolves both roles from the project's own `[roles]` table of
+        `.remedy/config.toml`."""
+        remedy_dir = demo_repo / ".remedy"
+        remedy_dir.mkdir()
+        (remedy_dir / "config.toml").write_text(
+            '[roles]\nbuilder = "fake"\nreviewer = "fake"\n', encoding="utf-8")
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(job.job_id)
+        ec = result.execution_config
+        assert ec.builder == "fake"
+        assert ec.builder_source == "roles"
+        assert ec.reviewer == "fake"
+        assert ec.reviewer_source == "roles"
+
+    def test_a_project_roles_table_that_cannot_be_used_stops_the_job_before_any_call(
+        self, isolate_data_root, demo_repo
+    ):
+        """R-1446: a table `run_job` cannot use (an unknown builder) raises `ProjectRolesError`
+        before either role's injected provider is ever called."""
+        remedy_dir = demo_repo / ".remedy"
+        remedy_dir.mkdir()
+        (remedy_dir / "config.toml").write_text(
+            '[roles]\nbuilder = "nobody"\n', encoding="utf-8")
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        builder = _pass_provider()
+        reviewer = _pass_provider()
+        with pytest.raises(ProjectRolesError):
+            run_job(job.job_id, builder_provider=builder, reviewer_provider=reviewer)
+        assert builder._build_count == 0
+        assert reviewer._review_count == 0
 
 
 # ---------------------------------------------------------------------------
