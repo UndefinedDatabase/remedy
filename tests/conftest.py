@@ -230,6 +230,11 @@ def pytest_configure(config):
     import tempfile
     config._remedy_import_data_root = tempfile.mkdtemp(prefix="remedy-import-data-")
     os.environ["REMEDY_DATA_DIR"] = config._remedy_import_data_root
+    # DECISION F315 D2: the command line fills the worker adapter slot in `main`; a test that
+    # calls the loop or a provider directly finds the same installation, once per process.
+    from packages.orchestration.worker_adapter_slot import install_worker_adapters
+    from packages.providers.adapters.adapter_registry import WORKER_ADAPTERS_BY_REF
+    install_worker_adapters(WORKER_ADAPTERS_BY_REF)
 
 
 def pytest_xdist_auto_num_workers(config):

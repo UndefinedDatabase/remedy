@@ -472,6 +472,10 @@ def main(argv: list[str] | None = None) -> None:
     if _pre_scan_help(argv):
         return
 
+    # WHY: the wiring layer fills the worker adapter slot before any command runs (DECISION F315 D2).
+    from packages.orchestration.worker_adapter_slot import install_worker_adapters
+    from packages.providers.adapters.adapter_registry import WORKER_ADAPTERS_BY_REF
+    install_worker_adapters(WORKER_ADAPTERS_BY_REF)
     parser = build_parser()
 
     raw = argv if argv is not None else sys.argv[1:]

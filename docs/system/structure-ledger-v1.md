@@ -385,7 +385,7 @@ with the code that calls it.
 | 135 | `packages/orchestration/run_manifest.py` | `validate_call_ledgers` |
 | 134 | `packages/orchestration/project_brain_aggregate.py` | `build_project_brain_aggregate` |
 | 134 | `packages/orchestration/token_cost_policy.py` | `build_token_cost_policy` |
-| 133 | `packages/orchestration/pingpong_provider.py` | `ClaudeCliProvider._call_reviewer_structured` |
+| 130 | `packages/orchestration/pingpong_provider.py` | `ClaudeCliProvider._call_reviewer_structured` |
 | 133 | `packages/orchestration/serve_http_handler.py` | `_RemedyHandler._dispatch_decision_resolve` |
 | 131 | `packages/orchestration/failure_stats.py` | `collect_failures` |
 | 131 | `packages/orchestration/pingpong_loop.py` | `_aggregate_usage_actuals` |
@@ -464,7 +464,7 @@ with the code that calls it.
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 1898 | `scripts/remedy_smoke.sh` |
 | 1983 | `packages/runtimes/dev_server.py` |
-| 1574 | `packages/orchestration/pingpong_provider.py` |
+| 1573 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1545 | `packages/orchestration/config.py` |

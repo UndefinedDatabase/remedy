@@ -24,9 +24,9 @@ from packages.orchestration.call_identity import (
     prepare_call_input,
 )
 
-# DECISION F302 D1: the claude CLI's command line lives in a module of its own; this module
-# imports the names it uses, and every other consumer imports from it (operator amendment amend1014-luna-mission-fixes D.2).
-from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL, build_claude_cli_args
+# DECISION F302 D1: the claude CLI's command line lives in a module of its own. Since DECISION F315 D2 the
+# installed adapter builds every call's; `build_claude_cli_args` stays importable here for its old readers.
+from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL, build_claude_cli_args  # noqa: F401
 from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.planner_cancel import planner_cancel_check
@@ -57,6 +57,7 @@ from packages.orchestration.token_actuals import (
 from packages.orchestration.token_actuals import (
     parse_cli_envelope as _parse_cli_envelope,
 )
+from packages.orchestration.worker_adapter_slot import adapter_cli_argv
 
 # ---------------------------------------------------------------------------
 # Provider output contracts
@@ -1055,9 +1056,16 @@ class ClaudeCliProvider:
             pass
         return self._cli_version
 
+    # WHY: every call's command line is the installed claude-cli adapter's (DECISION F315 D2).
+    def _adapter_argv(self, claude: str, role: str, prompt: str, json_schema: str, resume: str,
+                      *, streaming: bool = False) -> list[str]:
+        return adapter_cli_argv(
+            "claude-cli", role, prompt, model=self._model, json_schema=json_schema, resume=resume,
+            claude_path=claude, write_mode=self._write_mode, streaming=streaming)
+
     def _call_streamed(
         self, claude: str, prompt: str, *, timeout_sec: int, max_output_chars: int,
-        json_schema: str = "", resume: str = "",
+        json_schema: str = "", resume: str = "", role: str = "builder",
     ) -> tuple[str, int, int, dict[str, Any] | None, str]:
         """F004 opt-in path: run the CLI in stream-json and capture evidence.
 
@@ -1076,10 +1084,7 @@ class ClaudeCliProvider:
         if not self._stream_evidence_dir:
             raise RuntimeError("stream evidence enabled but no stream_evidence_dir was provided")
 
-        argv = build_claude_cli_args(
-            claude, prompt, write_mode=self._write_mode, model=self._model,
-            stream_evidence=True, json_schema=json_schema, resume_session=resume,
-        )
+        argv = self._adapter_argv(claude, role, prompt, json_schema, resume, streaming=True)
         call_dir = self._allocate_stream_call_dir()
         run = run_streamed_command(
             argv, call_dir, timeout_sec=timeout_sec,
@@ -1142,7 +1147,7 @@ class ClaudeCliProvider:
 
     def _call(
         self, prompt: str, *, timeout_sec: int, max_output_chars: int,
-        json_schema: str = "", resume: str = "",
+        json_schema: str = "", resume: str = "", role: str = "builder",
     ) -> tuple[str, int, int, dict[str, Any] | None, str]:
         """Call claude CLI. Returns (text, duration_ms, tokens_used, usage_actuals, actual_missing_reason).
 
@@ -1155,13 +1160,10 @@ class ClaudeCliProvider:
         claude = self._get_claude_path()
         if self._stream_evidence:
             return self._call_streamed(
-                claude, prompt, timeout_sec=timeout_sec,
-                max_output_chars=max_output_chars, json_schema=json_schema, resume=resume,
+                claude, prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+                json_schema=json_schema, resume=resume, role=role,
             )
-        argv = build_claude_cli_args(
-            claude, prompt, write_mode=self._write_mode, model=self._model,
-            json_schema=json_schema, resume_session=resume,
-        )
+        argv = self._adapter_argv(claude, role, prompt, json_schema, resume)
         start = time.monotonic()
         try:
             proc = _guarded_cli_run(argv, timeout_sec=timeout_sec, cwd=self._cwd)
@@ -1232,8 +1234,8 @@ class ClaudeCliProvider:
         if self._stream_evidence:
             try:
                 text, dur, tokens, usage, _amr = self._call_streamed(
-                    claude, prompt, timeout_sec=timeout_sec,
-                    max_output_chars=max_output_chars, json_schema=json_schema, resume=resume,
+                    claude, prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+                    json_schema=json_schema, resume=resume, role="reviewer",
                 )
             except _StreamNonZeroExit as exc:
                 # A native structured-output failure stays a parse failure even
@@ -1285,10 +1287,7 @@ class ClaudeCliProvider:
                 value_text=text, duration_ms=dur, tokens=tokens, usage_actuals=usage,
             )
 
-        argv = build_claude_cli_args(
-            claude, prompt, write_mode=self._write_mode, model=self._model,
-            json_schema=json_schema, resume_session=resume,
-        )
+        argv = self._adapter_argv(claude, "reviewer", prompt, json_schema, resume)
         start = time.monotonic()
         try:
             proc = _guarded_cli_run(argv, timeout_sec=timeout_sec, cwd=self._cwd)
@@ -1520,7 +1519,7 @@ class ClaudeCliProvider:
             full_prompt = prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
             text, dur, tokens, usage, amr = self._call(
                 full_prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
-                resume=resume,
+                resume=resume, role="reviewer",
             )
             out = _parse_reviewer_json(text, dur, tokens, provider="claude-cli")
             out.usage_actuals = usage
