@@ -3,9 +3,11 @@
 > Status (F151, 2026-10-23): the contract `packages/contracts/adapter_contract.py`, its
 > conformance kit `packages/contracts/adapter_conformance_kit.py`, the claude-cli reference adapter
 > `packages/providers/adapters/claude_cli_reference.py`, the adapter registry, the `adapter_ref`
-> link of the worker list and the import guard are built. The ping-pong loop still calls its
-> providers directly; no job runs through an adapter yet. DECISIONs F151 D1 to D5 in
+> link of the worker list and the import guard are built. DECISIONs F151 D1 to D5 in
 > `.agent/decisions.md`; the feature is `docs/roadmap/features/T8_F151.md`.
+> Status (F315 T002, 2026-10-23): every claude-cli call a job makes takes its command line from
+> the installed adapter, through the worker adapter slot below; the provider still maps the
+> output, the usage and the errors itself (DECISION F315 D2).
 
 Remedy's neutrality promise needs one interface that every vendor's backend fills in the same way,
 so that adding a backend never touches orchestration. This page names that interface, the kit
@@ -85,3 +87,16 @@ and `packages/contracts/` and fails on any import of `packages.providers.adapter
 beneath it, whether named as the module or as a name imported from its parent, at the top of a
 file or inside a function; only the wiring layer under `apps/` and the
 adapters' own tests reach a concrete adapter.
+
+## The worker adapter slot
+`packages/orchestration/worker_adapter_slot.py` is how a concrete adapter reaches the loop without
+an import the guard refuses. `main` in `apps/cli/grouped.py` calls `install_worker_adapters` with
+the registry's classes before any command runs, so every job a command starts, the supervisor's
+included, finds them; `tests/conftest.py` installs the same registry for tests that call the loop
+directly. `installed_worker_adapter(adapter_ref, **settings)` builds the installed adapter for a
+provider's binary path, write mode and streaming flag, and `adapter_cli_argv` returns the command
+line it builds for one call of a role. `ClaudeCliProvider` takes the command line of its builder
+call, its free-text and structured reviewer calls and its streamed calls from there; the reviewer's
+write mode is the adapter's rule, read-only. An empty slot raises `WorkerAdapterNotInstalled`,
+which the provider reports as a provider error: Remedy deliberately keeps no second command-line
+builder as a fallback. The provider's own version probe is not a call the adapter builds.

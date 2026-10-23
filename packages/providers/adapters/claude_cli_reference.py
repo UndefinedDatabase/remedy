@@ -5,10 +5,10 @@
 shared error predicates ``_classify_error_text`` asks — and re-implements none of them. The
 ping-pong loop and its seams keep owning transport, timeouts, every retry, failover, rate
 pacing and per-call evidence (DECISION F151 D2 (2)); this module only builds an invocation and
-maps a provider's raw output back onto the typed contract shapes. The loop still calls
-``ClaudeCliProvider`` directly and is not rewired through this adapter in F151 (D4 (8)); the
-adapter registry (``adapter_registry.py``, DECISION F151 D5) reaches it for ``remedy worker show``,
-and the feature registered after F151, "The loop runs through the adapter", rewires the loop.
+maps a provider's raw output back onto the typed contract shapes. The adapter registry
+(``adapter_registry.py``, DECISION F151 D5) reaches it for ``remedy worker show``, and the command
+line installs that registry into the worker adapter slot, from which ``ClaudeCliProvider`` takes
+the command line of every call (DECISION F315 D2); the provider still maps the output itself.
 """
 from __future__ import annotations
 

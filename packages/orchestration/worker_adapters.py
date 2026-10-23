@@ -69,8 +69,8 @@ _SPECS: tuple[WorkerProviderSpec, ...] = (
         execution_mode="external_harness",
         status="available",
         notes=("Anthropic Claude Code CLI as builder and reviewer; its reference adapter "
-               "claude-cli builds the invocation and maps its output. The loop still calls the "
-               "CLI provider directly."),
+               "claude-cli builds the command line of every call the loop makes; the loop still "
+               "maps the output itself."),
         adapter_ref="claude-cli",
     ),
     WorkerProviderSpec(
