@@ -314,7 +314,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 7 — Routing v2: the history (operator ruling amend1006-luna-control-plane)
 
-- [~] F133 — Provider trust score
+- [x] F133 — Provider trust score (T001–T003 complete; accepted 2026-10-23 · live review PASS — ACCEPTED · Evidence job f133r6e1001 · package remedy-review-20261023-145010-READY_FOR_REVIEW.zip · SHA-256 eea6f24c275d5f09d8434e4e05c6f64dc5f7c72bf0f7f8c1cbd47c181855a8dc · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 74e60a86c8fcdddc780bf9d172883489e0605ce3)
 
 ## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane)
 

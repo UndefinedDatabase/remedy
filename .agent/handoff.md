@@ -1,182 +1,173 @@
-# Handback — F133 round 6
+# Handback — F133 round 7 (closing round)
 
 ## Session
 
-SESSION 1 of feature F133 · round 6 · rounds so far 6.
+SESSION 1 of feature F133 · round 7 · rounds so far 7.
 
-Context self-assessment: every prepared file this round used (`block.md`, both `c1-*` and the
-`c2-*` evidence script, `launch.py`, `wait.py`, `verify.py`) was checked against `digests.txt`'s
-sha256 before use, the whole block, `docs/agents/handback_template.md`,
-`docs/roadmap/STATUS_closure_protocol.md` and `.agent/authored/f074-r4.md` (the analogous round of
-F074) were read in full before acting, and every number below (insertion counts, byte sizes, gate
-readings, the evidence job's and the zip job's own output) was produced by running the thing, not
-recalled.
+Context self-assessment: every prepared file this round (`block.md`, `verify.py`, `manifest.tsv`,
+`gate3.py`, `sim-rotation.txt`, `sim-gate3.txt`, `status_line.txt`, and the ten `c1-*`/`c2-*`/`c3-*`
+snapshot files) was checked against `digests.txt`'s sha256 and `manifest.tsv`'s own per-file sha256
+before use, the whole block, `AGENTS.md`, `docs/agents/handback_template.md` and
+`docs/roadmap/STATUS_closure_protocol.md` algorithm steps 4 and 5 were read in full before acting,
+and every number below (numstats, byte sizes, gate readings, the rotation's own counts) was produced
+by running the thing, never recalled. The session ends here because F133 is closed and the next
+feature starts in a fresh session.
 
-Fortschritt: ~95 % (everything but the closing round is done) — Schätzung
+Fortschritt: 100 % (F133 is accepted; its pull request waits for the next session's Open PR Gate) —
+Schätzung
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | three prepared paths copied and proved byte-identical, then committed: a new `.agent/authored/f133-r6.md`, R-1434's `Landed:` line replaced by the reviewer's `Done:` text plus a new `Gate: F133 R5` entry, and the plan advanced to round 6 |
-| C2 | done | the evidence script copied and proved byte-identical, committed alone, pushed |
-| A1 | done | preview read "Reclaimable: nothing", would free 0 B in 0 paths; no candidate, so `--apply` was skipped |
-| A2 | done | evidence job run once, exit 0; `12366` node ids collected, `251` deselected; pytest `12360 passed, 0 failed, 6 skipped`; `is_valid_current_run True`, `validation_errors []` |
-| A3 | done | zip built on the first attempt; `PACKAGE_STATUS=READY_FOR_REVIEW`, no sandbox-write refusal, no retry needed |
-| C3 | done | this handback |
-| Gate 1 | done | `git status --porcelain` empty; `verify.py` every line `True`, last line `ALL True` (`C3` read `absent` at that time) |
-| Gate 2 | done | `evidence.exit` read `exit 0 wall 1741.3`; `zip.exit` read `exit 0 wall 17.1` |
-| Gate 3 | done | `fail_count` 0 (6 checks, all `pass`); the open set reads the eleven ordered ids; `git status --porcelain` empty |
-
-## Evidence and package
-
-Evidence job id `f133r6e1001` (quoted from the job summary's `"job_id": "f133r6e1001"`).
-
-A2's lines, quoted verbatim from the evidence script's own output:
-
-```
-head 74e60a86c8fcdddc780bf9d172883489e0605ce3
-ancestry-path count 32
-plain count 32
-collected node ids 12366, deselected 251
-red control: unsafe among the real ids 0 []
-red control: planted id -> a local absolute path
-pytest exit 0, {'passed': 12360, 'failed': 0, 'skipped': 6}, output_hash 8c63852396bd0ebd8a006f4c5e2f20b930fb366c98caeedfbc9e13671676a42e
-validate_verification_tests problems [] passed 12360
-is_valid_current_run True
-validation_errors []
-gates written: ['artifact_contract_gate.json', 'change_provenance_gate.json', 'commit_execution_gate.json', 'fresh_evidence_gate.json', 'runtime_integration_gate.json', 'final_verifier_report.json']
-```
-
-The job summary's decisive fields: `"authority_count": 20`, `"commit_count": 32`, `"verdict": "PASS_WITH_RISKS"`,
-`"manual_completion": true`, `"total_passed": 12360`. The launcher's own `.exit` line: `exit 0 wall 1741.3`.
-
-A3's package, quoted verbatim from the zip build's own output, with this machine's home folder
-written as `~` (the build's own line named an absolute path; the rest of the line is otherwise
-verbatim): `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`,
-`EVIDENCE_AUTHORITATIVE=true`. The build's own JSON line:
-`{"member_count": 2081, "authoritative_count": 20, "symlink_count": 0, "tombstone_count": 0,
-"final_path": "~/Repos/remedy-history/zips/remedy-review-20261023-145010-READY_FOR_REVIEW.zip",
-"final_sha256": "eea6f24c275d5f09d8434e4e05c6f64dc5f7c72bf0f7f8c1cbd47c181855a8dc",
-"publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW", "evidence_authoritative": true,
-"review_subject_alignment": "PASS", "manifest_sha256": "c4b8347a46d0483c931aa9d56970893fd46b2133bf7bbb8cc2aad15d61235986"}`.
-The launcher's own `.exit` line: `exit 0 wall 17.1`.
-
-Package file name: `remedy-review-20261023-145010-READY_FOR_REVIEW.zip`. SHA-256, re-measured by this
-worker with a dedicated `python3` script over the file's bytes (not copied from the build's own
-printed line): `eea6f24c275d5f09d8434e4e05c6f64dc5f7c72bf0f7f8c1cbd47c181855a8dc` — matches the build's
-`final_sha256` exactly. Directory the package ended up in: `~/Repos/remedy-history/zips`.
-`zipfile.is_zipfile` on the package: `True`. `testzip()`: `None`. `.review_zip_manifest.json` inside the
-package, read by this worker directly, `committed_review_subject`: base
-`11fda065bdcf3bbdf08ea2a1b6cbb28b3d2e5f33` (the written-in-full fork point the block names), head
-`74e60a86c8fcdddc780bf9d172883489e0605ce3` (C2's full sha). Accepted HEAD: `74e60a86c8fcdddc780bf9d172883489e0605ce3`.
-
-## Staging reclaim
-
-`python3 -m apps.cli.main data reclaim --orphans` (preview, run once): "Reclaimable: nothing"; every
-listed data-root class (`api`, `autonomy`, `control`, `crash`, `evidence_exports`, `job_apply_records`,
-`job_evidence_index`, `job_logs`, `jobs`, `logs`, `memory`, `missions`, `projects`, `review_reports`,
-`roadmap`, `runs`, `serve`) read `durable`, none refused; "Would free 0 B in 0 paths — nothing deleted;
-re-run with --apply". No candidate was listed, so `--apply` was skipped per the block; the empty reading
-above is the recorded one.
+| C1 | done | five prepared paths copied and proved byte-identical, staged, numstat matched `manifest.tsv` exactly, committed |
+| C2 | done | `scripts/rotate_live_review.py` run once; exit 0 and every line but `written:` matched `sim-rotation.txt`; both ledger files proved byte-identical to their `c2-` snapshots; committed alone |
+| C3 | done | STATUS/README/queue copied and proved byte-identical; all five gates run and read green; this handback written and committed with the three files |
+| Gate 1 | done | `git status --porcelain` showed only the three C3 files; `verify.py` every line `True`, `C3` read `absent`, last line `ALL True` |
+| Gate 2 | done | `status_line.txt`'s content (trailing newline stripped) occurs exactly once in `docs/roadmap/STATUS.md`; it does not begin `- [~]` |
+| Gate 3 | done | `gate3.py` → `exit 0`, `658 passed in 60.44s`, same passed count as `sim-gate3.txt`'s `658 passed`; no `FAILED`/`ERROR`/`SKIPPED` line |
+| Gate 4 | done | `gate3.py`'s integrity line → `integrity exit 0`, `"fail_count": 0`, matching `sim-gate3.txt` |
+| Gate 5 | done | `open_finding_ids` read the eleven ordered ids, exactly `sim-gate3.txt`'s set |
+| Push | done | `git push origin feature/f133-provider-trust-score` succeeded on the first attempt, no HTTP 500 |
+| Pull request | done | `gh pr create` opened pull request from `feature/f133-provider-trust-score` into `main`, not a draft; left unmerged |
 
 ## Range
 
-Review of `9d3218f4d`..`HEAD` (`HEAD` is this handback's own commit).
+Review of `7ccbe2632`..`HEAD` (`HEAD` is this handback's own commit).
 
 ## Commits
 
-### `45cd08fc8` F133 R6 C1: book round 5, resolve R-1434, the plan, the block
+### `d6ca86af0` F133 R7 C1: book round 6, the Built State, save the round 7 block and the PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f133-r6.md` | +118/-0 (new) | byte copy of the block, proved equal to `block.md` (line count 118, sha256 `90780a4485b66b540672d3372b62d082b4838020fcbcefbf5b6c9637f6537f8e`) |
-| `.agent/live_review.md` | +3/-1 | R-1434's `Landed:` paragraph replaced by the reviewer's `Done:` resolution, and a new `Gate: F133 R5` entry appended |
-| `.agent/plan.md` | +4/-6 | rewritten for round 6 |
+| `.agent/authored/f133-r7-pr_body.md` | +68/-0 (new) | byte copy of the prepared PR body, proved equal to it |
+| `.agent/authored/f133-r7.md` | +136/-0 (new) | byte copy of the round's own block, proved equal to it |
+| `.agent/live_review.md` | +2/-0 | round 6's verdict booked |
+| `.agent/plan.md` | +5/-4 | rewritten for round 7 (the closing round) |
+| `docs/roadmap/features/T7_F133.md` | +41/-0 | the feature file's Built State section added |
 
-### `74e60a86c` F133 R6 C2: the evidence script
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f133-r6-create_f133_evidence.py` | +302/-0 (new) | byte copy of the prepared evidence script, proved equal to it |
-
-### this commit — F133 R6 C3: handback
+### `ef8e9a6b5` F133 R7 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | rewritten | this handback, per `docs/agents/handback_template.md`; a handback cannot table the commit that writes it (R-0149 pattern) |
+| `.agent/live_review.md` | +0/-44 | rotated out: 4 gate records and 9 finding pairs (18 records) moved to the archive |
+| `.agent/live_review_archive.md` | +44/-0 | the same 44 lines received |
+
+### this commit — F133 R7 C3: accept F133 in STATUS with its README sync and the self-use queue (+ handback)
+
+C3's own three files, measured before the handoff joined them (`git diff --numstat` against the
+pre-C3 tree):
+
+| Path | +/- | Reason |
+|---|---|---|
+| `README.md` | +11/-3 | `159 of 314`, Tier 7 row `4 \| 17`, F133's Tier 7 entry closes the list |
+| `docs/roadmap/STATUS.md` | +1/-1 | F133's `- [~]` line replaced by the prepared `- [x]` accepted line |
+| `scripts/self_use_queue.json` | +1/-1 | `SU-077`'s `consumed_by` set to `F133` |
+
+Plus, in the same commit (self-reference exception, R-0149 pattern — a handback cannot table the
+commit that writes it):
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | rewritten | this handback, per `docs/agents/handback_template.md` |
 
 ## External actions
 
 - Open PR Gate was run before any write: `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-  returned `[]`, the branch was already `feature/f133-provider-trust-score`, so no new branch was
+  returned `[]`; the branch was already `feature/f133-provider-trust-score`, so no new branch was
   created and no merge was needed.
-- `git push origin feature/f133-provider-trust-score` → run once, immediately after C2, succeeded on
-  the first attempt (`9d3218f4d..74e60a86c`); no HTTP 500, no retry needed.
-- A second push is ordered after this commit (C3), below.
-- No worktree was added or removed by this worker. No pull request created, none merged.
+- `git push origin feature/f133-provider-trust-score` → run once, after this commit, succeeded on
+  the first attempt; no HTTP 500, no retry needed.
+- `gh pr create --repo UndefinedDatabase/remedy --base main --head feature/f133-provider-trust-score --title "F133 — Provider trust score" --body-file .agent/authored/f133-r7-pr_body.md`
+  → run once, succeeded; number and URL are in the worker's reply to the operator (not named here,
+  per the block: the pull request does not exist when this handoff is written).
+- `gh pr list --repo UndefinedDatabase/remedy --state open --json number,headRefName,baseRefName,isDraft`
+  → read after the create, confirmed exactly that one pull request, from
+  `feature/f133-provider-trust-score` into `main`, not a draft.
+- No worktree was added or removed by this worker. No merge. No provider call.
 
 ## Verification
 
-Interpreter: the repository's configured Python 3. All gates were run once, after A3 and before this
-commit, per the block.
+Interpreter: the repository's configured Python 3. All five gates were run once, after C3's three
+files were copied and before this commit, per the block.
 
-Gate 1 — after C2: `git status --porcelain` → empty. `python3 .remedy-wt/f133-r6/prep/verify.py .` →
-every line `True`: both commits single-parent, both carry an `F133 R6 Cn` subject, on the right
-branch, C1's three paths exact and byte-equal to their `c1-` snapshots, C2's one path exact and
-byte-equal to its `c2-` snapshot, `C3` read `absent` (not yet committed), the saved block equal to
-`block.md`; last line `ALL True`.
+Gate 1 — `git status --porcelain` → only `README.md`, `docs/roadmap/STATUS.md`,
+`scripts/self_use_queue.json` modified. `python3 .remedy-wt/f133-r7/prep/verify.py .` → every line
+`True`: both C1 and C2 single-parent, both carry an `F133 R7 Cn` subject, on the right branch, C1's
+five paths and C2's two paths exact and byte-equal to their `c1-`/`c2-` snapshots, `C3` read `absent`
+(not yet committed at gate time) with its three working-tree files byte-equal to their `c3-`
+snapshots; last line `ALL True`.
 
-Gate 2 — `.remedy-wt/f133-r6-worker/evidence.exit` → `exit 0 wall 1741.3`.
-`.remedy-wt/f133-r6-worker/zip.exit` → `exit 0 wall 17.1`. Both readings and the decisive lines each
-job printed are in "Evidence and package" above.
+Gate 2 — the content of `status_line.txt` with its trailing newline stripped occurs exactly once in
+`docs/roadmap/STATUS.md`; it does not begin `- [~]`.
 
-Gate 3 — `python3 -m apps.cli.main integrity check --json` → `"fail_count": 0`, each of 6 checks
-`pass`: `handler_import` (`handlers=197`), `live_review_verdict` (`last Gate verdict PASS`),
-`plan_consistency` (`unchecked=0, context_complete=False`), `relevant_untracked`
-(`untracked=0, relevant=0`), `repo_root_hygiene` (`no reviewer scratch, evidence dir or archive at
-the root`), `high_blockers_open` (`no open blocker/high findings`).
-`python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
+Gate 3 — `python3 .remedy-wt/f133-r7/prep/gate3.py .` → `exit 0`, `658 passed in 60.44s (0:01:00)`
+(seconds differ from the simulation's `73.19s` as the block allows; the passed count, `658`, matches
+`sim-gate3.txt`'s second line exactly); no `FAILED`, `ERROR` or `SKIPPED` line printed.
+
+Gate 4 — the same run's integrity line: `integrity exit 0`, 6 checks all `pass`
+(`handler_import` `handlers=197`, `live_review_verdict` `last Gate verdict PASS`,
+`plan_consistency` `unchecked=0, context_complete=False`, `relevant_untracked`
+`untracked=0, relevant=0`, `repo_root_hygiene` `no reviewer scratch, evidence dir or archive at the
+root`, `high_blockers_open` `no open blocker/high findings`), `"fail_count": 0` — matching
+`sim-gate3.txt` exactly.
+
+Gate 5 — `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
 → `['R-1246', 'R-1281', 'R-1326', 'R-1351', 'R-1353', 'R-1418', 'R-1421', 'R-1425', 'R-1426', 'R-1427', 'R-1428']`
-— exactly the eleven ordered ids. `git status --porcelain` → empty.
+— exactly the eleven ordered ids, all owned by F314.
+
+Gate 6 (post-PR) — `git status --porcelain` empty; `git log --oneline -n 5`; the push's outcome; the
+pull request's number and URL; the `gh pr list` reading. All reported to the operator in this
+worker's reply, per the block ("in your reply only").
 
 ## Authored-text proofs
 
-C1's three paths and C2's one path are all reviewer-authored text applied this round. Each was
-copied from its prepared `c1-*`/`c2-*` file under `.remedy-wt/f133-r6/prep/` by a dedicated `python3`
-script under `.remedy-wt/f133-r6-worker/` (`c1_copy.py`, `c2_copy.py`), each copy proved
-byte-identical by direct bytes equality immediately after the copy and before `git add`; all four
-read `True`. `block.md` itself was separately checked: line count `118` and sha256
-`90780a4485b66b540672d3372b62d082b4838020fcbcefbf5b6c9637f6537f8e`, matching the digest given in the
-prompt and `digests.txt` — confirmed again by `verify.py`'s own "the saved block equals block.md"
-check, which read `True`.
+C1's five paths and C2's two paths are all reviewer-authored or reviewer-produced text applied this
+round. Each was copied from its prepared `c1-*`/`c2-*` file under `.remedy-wt/f133-r7/prep/` (C1) or
+produced by running `scripts/rotate_live_review.py` once (C2) by a dedicated `python3` script under
+`.remedy-wt/f133-r7-worker/` (`c1_copy.py`, `c2_rotate.py`), each proved byte-identical by direct
+bytes equality immediately after (`c1_prove.py`, `c2_prove.py`); all seven pairs read `True`. C3's
+three files were likewise copied (`c3_copy.py`) and proved byte-identical (`c3_prove.py`) before any
+gate ran. `block.md` itself (saved as `.agent/authored/f133-r7.md`) was separately confirmed equal to
+the prepared `block.md` by the digest checked against the prompt's sha256 before any file was used,
+and again by `verify.py`'s own numstat/byte checks for that path.
 
 ## Deviations & assumptions
 
-None. `git branch --show-current` was run as a standalone command, never joined to another, immediately
-before both the C1 and C2 commits, and read `feature/f133-provider-trust-score` both times. Two
-commits this round, C1 and C2, each exactly the paths its own heading names, followed by this
-handback as C3. A1 found no reclaim candidate, so `--apply` was correctly skipped rather than run.
-A2 and A3 each ran exactly once and each succeeded on the first attempt, so the block's one-retry
-allowance for the zip build was not needed. No file outside the paths named per commit was touched.
-No production or test file was edited. No merge, no PR, no STATUS or README edit, no rotation, no
-queue edit, no self-use run, no provider call.
+None. `git branch --show-current` was run as a standalone command, never joined to another,
+immediately before the C1 and C2 commits and immediately before this C3 commit, and read
+`feature/f133-provider-trust-score` every time. Three commits this round — C1, C2, and C3 carrying
+this handback — exactly as the block orders. No file outside the paths the block names per commit
+was touched. No production or test file was edited. `.agent/context.md` and `.agent/decisions.md`
+were read and need no change: the scope, assumptions and constraints they record still hold; this
+round made no new technical decision beyond executing the block. No merge, no rebase, no amend, no
+stash, no provider call, no second test command run alongside gate 3.
 
 ## For the operator, in plain sentences
 
-The evidence of this feature was collected fresh at the accepted head and checked by every validator
-the closure protocol requires, and it came back clean: the full test selection passed, nothing in it
-looked unsafe to publish, and the evidence bundle validated as current. The review package was then
-built from that same clean, pushed state and came back ready for review, stored outside this
-repository's own checkout in this machine's review-package archive.
+Remedy now keeps, for each model and each role it has played in a project, a running record of how
+often its work passed, how much repair it needed, how often its answers could not be read, and what
+a passed task cost; every one of those figures also states how many tasks it rests on and what time
+period it covers. A new view shows this record and offers a suggestion to use a better model for a
+role, but only when one model clearly and consistently leads, and a person can only put that
+suggestion into effect by changing configuration — Remedy never switches the model by itself. A
+job's plan now notes it when that job is set to use a model the record ranks clearly below another
+for the same role, and nothing about the job changes because of that note. This feature's own paid
+self-use run against Remedy's own code stopped cleanly at its normal human approval gate, with no
+defect found. The whole test collection passed on the exact code that ships, using a little more
+computer processing time than the previous feature's closure, and still staying within the allowed
+limit. The review package is named `remedy-review-20261023-145010-READY_FOR_REVIEW.zip` and sits in
+this machine's review-package archive folder, outside this repository's own checkout. A pull request
+for this feature is now open and will be merged automatically at the start of the next working
+session unless the operator merges it sooner.
 
 ## Next
 
 1. Phase 1 rule 1: check whether `.agent/STOP` exists (absent at the time of this handback).
-2. Phase 1 rule 2: the Open PR Gate (no pull request is open for this branch yet).
-3. The reviewer reviews round 6 and books its verdict in the next round's first commit.
-4. The closing round: the Built State, the rotation, SU-077's `consumed_by`, the STATUS flip with the
-   README sync, and the pull request, left unmerged.
+2. The Open PR Gate, which merges F133's pull request in the NEXT session and never in this one.
+3. The booking of round 7's verdict in the next feature's first commit.
+4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md` (`F151 — Worker adapter contract v2`).
 
-Operator questions open: 0. Open findings (the set gate 3 reads): `R-1246`, `R-1281`, `R-1326`,
-`R-1351`, `R-1353`, `R-1418`, `R-1421`, `R-1425`, `R-1426`, `R-1427`, `R-1428` (11).
+Operator questions open: 0. Open findings: 11 (`R-1246`, `R-1281`, `R-1326`, `R-1351`, `R-1353`,
+`R-1418`, `R-1421`, `R-1425`, `R-1426`, `R-1427` and `R-1428`, owned by F314).
