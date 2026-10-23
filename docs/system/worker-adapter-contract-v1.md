@@ -69,7 +69,7 @@ mode and status. Its `adapter_ref` names the v2 adapter that EXECUTES the contra
 record without a reference is a worker still awaiting its adapter; today only `claude_code` names
 one, `claude-cli`. `packages/providers/adapters/adapter_registry.py` resolves a reference to its
 adapter, and `remedy worker show claude_code` prints the adapter and its declared capabilities;
-`remedy workers --json` and `remedy worker show --json` carry `adapter_ref` for every record.
+`remedy worker list --json` and `remedy worker show --json` carry `adapter_ref` for every record.
 
 ## The import guard
 Orchestration and the contracts layer import the contract and never a concrete adapter.
