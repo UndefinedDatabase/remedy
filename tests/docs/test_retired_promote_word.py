@@ -54,6 +54,9 @@ SENSES = frozenset({K1, K2, K3, K4, K5_NODE, K5_STAGE, K5_STORAGE, K5_API, K5_MI
 
 #: path -> (sense, the lowercase tokens that file may carry).
 KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
+    "apps/cli/commands/stats_trust_cmd.py": (K1, frozenset({
+        "promotion",
+    })),
     "docs/README.md": (K1, frozenset({
         "promotion",
     })),
@@ -68,6 +71,9 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
     })),
     "docs/system/architecture.md": (K5_NODE, frozenset({
         "promoted",
+    })),
+    "docs/system/model-trust-score-v1.md": (K1, frozenset({
+        "promotion",
     })),
     "docs/system/remedy-toml-configuration-system-v0.md": (K1, frozenset({
         "promoting", "promotion", "promotion_evidence",
@@ -148,6 +154,9 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
     # any paragraph carrying the word, so no NEW entry can add a token here; the
     # entry goes when SU-025's text leaves the file.
     "scripts/self_use_queue.json": (H, frozenset({
+        "promotion",
+    })),
+    "tests/cli/test_stats_trust_cmd.py": (K1, frozenset({
         "promotion",
     })),
     "tests/docs/test_vocabulary.py": (H, frozenset({

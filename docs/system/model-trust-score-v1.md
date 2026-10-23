@@ -1,11 +1,13 @@
 # Model trust score v1: a model's own record, per role
 
 > Status (F133, 2026-10-23): the trust home `model_trust_score.py` with its four metrics, its
-> window, floor and snapshot (T002), and the first part of the trust view, `remedy stats trust`
-> with the matrix and the change against the prior window (the start of T003), are built. Open:
-> the recommendation line per role, the informational routing note, the per-tier summary beside
-> `tier_outcomes.py`, the one-home guard and the end-to-end (the rest of T003, round 3). DECISIONs
-> F133 D1 and D2 in `.agent/decisions.md`; the feature is `docs/roadmap/features/T7_F133.md`.
+> window, floor and snapshot (T002), the trust view `remedy stats trust` with the matrix, the
+> change against the prior window, the cost basis read from the ledger and the clear leader's
+> recommendation line per role (T003, round 3), are built. Open: the informational routing note in
+> `remedy job plan-show`, the one-home guard and the end-to-end (round 4). The per-tier summary
+> beside `tier_outcomes.py` that T003's design sketched is WITHDRAWN (DECISION F133 D3 (3)): the
+> per-tier record stays `tier_outcomes.py`'s own. DECISIONs F133 D1, D2 and D3 in
+> `.agent/decisions.md`; the feature is `docs/roadmap/features/T7_F133.md`.
 
 Remedy's provider-trust pair (`provider_trust.py`, `provider_trust_verification.py`) was deleted at
 `0242c0a3b`: it gated an externally produced patch candidate, keyed by candidate and job, and
@@ -41,9 +43,12 @@ qualifies.
   its role in a task run whose streams hold a call-scope post-mortem of class `parse` for that
   role — each call counted once.
 - **`cost_per_pass`** — that role's call cost over its settled served tasks, divided by passes,
-  with a basis label that never claims a figure nothing reported: `provider_reported` when every
-  one of those calls reported its cost, `tokens` (the value then being tokens per pass) when every
-  one reported its tokens but not every one its cost, and `unknown` with no value otherwise.
+  with a basis label that never claims a figure nothing reported, read from the ledger's own
+  `cost_basis` column (DECISION F133 D3 (2)): a call is PRICED only when it has a cost figure and a
+  basis other than `unknown`. When every call of the sum is priced, the label is the one basis they
+  all share — `provider_reported` or `price_table` — and `mixed` when they share none; otherwise
+  `tokens` (the value then being tokens per pass) when every call reported its tokens, else
+  `unknown` with no value.
 
 A task is SETTLED when its job record gives it a passing status (`TASK_DONE_STATUSES`) or a
 failing one (`failed`, `blocked`); every other status — `pending`, `running`, `skipped`, `split`,
@@ -67,19 +72,48 @@ with no ledger gets an empty table and no file.
 or the working directory does). It prints the window, the floor, when the table was measured, then
 one row per model and role: the settled tasks (marked `n/floor thin` below the floor), the pass
 quota, the mean repair rounds, the format-error rate with its call count, the cost per pass with
-its basis, and the pass quota's change against the PRIOR window of the same length — `new` when
-the model had no row there. Every absent value is a dash, never a zero. It ends with the
-unattributed calls and the unsettled tasks, so a reader can see what the matrix could not place.
-`--role` keeps one role's rows. `--json` carries the current table, the prior window's table and
-the per-row change, each with a payload version. A project with no ledger says so. A malformed
-`model_routing.trust_*` setting exits 2 and measures nothing.
+its basis and the passes it rests on (R-1431 — e.g. `$0.0123 (provider_reported, 15 passes)`), and
+the pass quota's change against the PRIOR window of the same length, signed (`+4pp`/`-4pp`) — `new`
+when the model had no row there. Every absent value is a dash, never a zero. It ends with the
+unattributed calls and the unsettled tasks, so a reader can see what the matrix could not place,
+then one recommendation line per role shown (below). `--role` keeps one role's rows, in both the
+text view and `--json`. `--json` carries the current table, the prior window's table, the per-row
+change and the per-role recommendations, each with a payload version. A project with no ledger
+says so. A malformed `model_routing.trust_*` setting exits 2 and measures nothing.
+
+## The clear leader and its recommendation
+DECISION F133 D3 (1). Among a role's rows that are not THIN and have a pass quota, the one with
+the highest pass quota is that role's CLEAR LEADER when there are at least two such rows and it
+leads the second-highest by at least `TRUST_LEADER_MARGIN`, ten percentage points (0.10);
+`trust_leader(table, role)` answers it. A tie, a lead below the margin, or fewer than two eligible
+rows means no leader. The view prints exactly one of three wordings, per role shown, after the
+matrix:
+
+- a leader: "Recommendation for \<role\>: consider routing it to \<leader\>, whose pass quota is
+  \<P\>% over \<n\> settled tasks against \<Q\>% for \<runner-up\>, in the last \<W\> days. Adopt
+  it through config and an ADR, as the promotion rule of `docs/agents/model_routing_policy.md`
+  requires; trust never changes a route by itself."
+- too few eligible rows: "No recommendation for \<role\>: fewer than two models have \<floor\>
+  settled tasks in the last \<W\> days."
+- no row clears the margin: "No recommendation for \<role\>: no model leads the next by 10 points
+  in the last \<W\> days."
+
+The JSON's `recommendations` carries the same answer per role shown: `role`, `leader`,
+`runner_up`, the two pass quotas, the leader's settled tasks and the `reason`
+(`leader`/`too_few_eligible`/`no_margin`); `leader` and `runner_up` are `null` whenever there is no
+recommendation. This is a RECOMMENDATION for a human to read, never an automatic change: Remedy
+does not change a route by itself, and adopting one still goes through config and an ADR under
+`docs/agents/model_routing_policy.md`'s promotion rule. The informational routing note that reads
+this signal inside `remedy job plan-show` ("trust suggests otherwise") is round 4's.
 
 ## Deliberate absences
-- Remedy deliberately does not read `tier_outcomes.query_tier_outcomes` here yet: the per-tier
-  summary beside this module's own matrix is round 3's, so no second aggregation of rounds,
-  retries or cost exists in the meantime.
-- Remedy deliberately does not print a recommendation line or an informational routing note: both
-  are round 3's, and until they land this view states figures, never a suggestion.
+- Remedy deliberately does not read `tier_outcomes.query_tier_outcomes` here: that function writes
+  to the ledger on every call and keeps no window, so the per-tier record stays
+  `tier_outcomes.py`'s own and this module computes nothing per tier (DECISION F133 D3 (3)) — no
+  second aggregation of rounds, retries or cost exists.
+- Remedy deliberately does not print an informational routing note in `remedy job plan-show` yet:
+  it is round 4's, and until it lands a contradiction between trust and the configured route is
+  visible only by reading this view directly.
 - Remedy deliberately does not guess a model for an unjoinable call, count an unsettled task
   toward an outcome, or invent a cost basis nothing reported.
 - Remedy deliberately does not refresh the snapshot in the background; a read does it when the

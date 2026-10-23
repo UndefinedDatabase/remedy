@@ -23,6 +23,11 @@ from packages.orchestration.model_trust_score import (
     TRUST_COST_BASIS_MIXED,
     TRUST_COST_BASIS_PRICE_TABLE,
     TRUST_COST_BASIS_TOKENS,
+    TRUST_RECOMMENDATION_LEADER,
+    TRUST_RECOMMENDATION_NO_MARGIN,
+    TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE,
+    ModelTrustRow,
+    ModelTrustTable,
     TrustConfigError,
     TrustMetric,
     build_model_trust_table,
@@ -30,6 +35,7 @@ from packages.orchestration.model_trust_score import (
     model_trust_snapshot_path,
     model_trust_table_from_json,
     resolve_trust_settings,
+    trust_leader,
 )
 from packages.orchestration.token_ledger import CallRecord, record_call, token_ledger_path_for
 
@@ -372,6 +378,54 @@ class TestThin:
         table = build_model_trust_table(PROJECT, now=NOW, sample_floor=5, root=tmp_path)
         assert table.lookup("m-thin", "builder").thin is True
         assert table.lookup("m-fat", "builder").thin is False
+
+
+class TestTrustLeader:
+    """DECISION F133 D3 (1): the clear leader among a role's eligible rows."""
+
+    def _row(self, model: str, *, pass_quota: float | None, thin: bool = False, n: int = 25) -> ModelTrustRow:
+        return ModelTrustRow(
+            role="builder", model=model, pass_quota=TrustMetric(value=pass_quota, n=n),
+            repair_need=TrustMetric(value=0.0, n=n), format_error_rate=TrustMetric(value=0.0, n=n),
+            cost_per_pass=TrustMetric(value=0.01, n=n), cost_basis=COST_BASIS_PROVIDER_REPORTED,
+            settled_tasks=n, thin=thin)
+
+    def _table(self, rows: tuple[ModelTrustRow, ...]) -> ModelTrustTable:
+        return ModelTrustTable(
+            project_id=PROJECT, updated_at=NOW.isoformat(), window_days=90, sample_floor=20,
+            window_start=(NOW - timedelta(days=90)).isoformat(), ledger_present=True, rows=rows,
+            unattributed_calls=0, unsettled_tasks=0)
+
+    def test_the_leader_at_exactly_the_margin(self):
+        table = self._table((self._row("a", pass_quota=0.80), self._row("b", pass_quota=0.70)))
+        rec = trust_leader(table, "builder")
+        assert rec.reason == TRUST_RECOMMENDATION_LEADER
+        assert rec.leader == "a" and rec.runner_up == "b"
+        assert rec.leader_pass_quota == 0.80 and rec.runner_up_pass_quota == 0.70
+
+    def test_just_below_the_margin_is_no_leader(self):
+        table = self._table((self._row("a", pass_quota=0.799), self._row("b", pass_quota=0.70)))
+        rec = trust_leader(table, "builder")
+        assert rec.reason == TRUST_RECOMMENDATION_NO_MARGIN
+        assert rec.leader is None and rec.runner_up is None
+
+    def test_a_thin_row_is_never_a_leader(self):
+        table = self._table((self._row("a", pass_quota=0.95, thin=True), self._row("b", pass_quota=0.70)))
+        rec = trust_leader(table, "builder")
+        assert rec.reason == TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE
+        assert rec.leader is None
+
+    def test_fewer_than_two_eligible_rows(self):
+        table = self._table((self._row("a", pass_quota=0.95),))
+        rec = trust_leader(table, "builder")
+        assert rec.reason == TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE
+        assert rec.leader is None and rec.runner_up is None
+
+    def test_a_tie_is_no_leader(self):
+        table = self._table((self._row("a", pass_quota=0.80), self._row("b", pass_quota=0.80)))
+        rec = trust_leader(table, "builder")
+        assert rec.reason == TRUST_RECOMMENDATION_NO_MARGIN
+        assert rec.leader is None
 
 
 class TestBuildModelTrustTable:

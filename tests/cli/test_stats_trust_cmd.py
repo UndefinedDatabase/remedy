@@ -97,7 +97,11 @@ def test_the_text_shows_each_row_with_its_columns_dashes_and_thin_marker(project
     strong_row = next(r for r in rows if "claude-strong-v1" in r)
     assert "20" in strong_row and "thin" not in strong_row
     assert "new" in joined
-    assert lines[-1] == "Unattributed calls: 0. Unsettled tasks: 0."
+    assert lines[-2] == "Unattributed calls: 0. Unsettled tasks: 0."
+    # `claude-strong-v1` (20 settled tasks) is the only non-thin, eligible row; `claude-thin-v1`'s
+    # 3 settled tasks are below the floor, so there are fewer than two eligible rows to compare.
+    assert lines[-1] == ("No recommendation for builder: fewer than two models have 20 settled "
+                         "tasks in the last 90 days.")
 
 
 def test_the_json_carries_the_table_the_prior_table_and_the_changes(project, capsys):
@@ -232,3 +236,68 @@ def test_a_falling_pass_quota_prints_a_minus_sign_and_a_rising_one_a_plus_sign()
     rising = _format_change(_row(pass_quota_value=0.8), _table(_row(pass_quota_value=0.5)))
     assert falling.startswith("-") and falling.endswith("pp")
     assert rising.startswith("+") and rising.endswith("pp")
+
+
+def test_the_leader_wording_is_the_whole_line():
+    """DECISION F133 D3 (1), wording 1, asserted whole — not a fragment."""
+    from apps.cli.commands.stats_trust_cmd import _format_recommendation
+    from packages.orchestration.model_trust_score import TRUST_RECOMMENDATION_LEADER, TrustRecommendation
+
+    rec = TrustRecommendation(
+        role="builder", leader="claude-strong-v1", leader_pass_quota=0.90, leader_settled_tasks=25,
+        runner_up="claude-weak-v1", runner_up_pass_quota=0.70, reason=TRUST_RECOMMENDATION_LEADER)
+    assert _format_recommendation(rec, window_days=90, sample_floor=20) == (
+        "Recommendation for builder: consider routing it to claude-strong-v1, whose pass quota is "
+        "90% over 25 settled tasks against 70% for claude-weak-v1, in the last 90 days. Adopt it "
+        "through config and an ADR, as the promotion rule of docs/agents/model_routing_policy.md "
+        "requires; trust never changes a route by itself.")
+
+
+def test_the_too_few_eligible_wording_is_the_whole_line():
+    """DECISION F133 D3 (1), wording 2, asserted whole — not a fragment."""
+    from apps.cli.commands.stats_trust_cmd import _format_recommendation
+    from packages.orchestration.model_trust_score import (
+        TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE,
+        TrustRecommendation,
+    )
+
+    rec = TrustRecommendation(
+        role="reviewer", leader=None, leader_pass_quota=None, leader_settled_tasks=None,
+        runner_up=None, runner_up_pass_quota=None, reason=TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE)
+    assert _format_recommendation(rec, window_days=90, sample_floor=20) == (
+        "No recommendation for reviewer: fewer than two models have 20 settled tasks in the last "
+        "90 days.")
+
+
+def test_the_no_margin_wording_is_the_whole_line():
+    """DECISION F133 D3 (1), wording 3, asserted whole — not a fragment."""
+    from apps.cli.commands.stats_trust_cmd import _format_recommendation
+    from packages.orchestration.model_trust_score import TRUST_RECOMMENDATION_NO_MARGIN, TrustRecommendation
+
+    rec = TrustRecommendation(
+        role="builder", leader=None, leader_pass_quota=None, leader_settled_tasks=None,
+        runner_up=None, runner_up_pass_quota=None, reason=TRUST_RECOMMENDATION_NO_MARGIN)
+    assert _format_recommendation(rec, window_days=90, sample_floor=20) == (
+        "No recommendation for builder: no model leads the next by 10 points in the last 90 days.")
+
+
+def test_the_json_carries_the_recommendation_per_role(project, capsys):
+    """DECISION F133 D3 (1): the JSON's `recommendations` names the leader and the runner-up."""
+    _seed(project)
+    for k in range(1, 11):
+        _task(project, f"jobweakpass{k:02d}", "T001", status="passed", repair_rounds=0,
+              role="builder", model="claude-weak-v1", cost=0.015)
+    for k in range(1, 11):
+        _task(project, f"jobweakfail{k:02d}", "T001", status="failed", repair_rounds=0,
+              role="builder", model="claude-weak-v1", cost=0.015)
+    code, out = _run(["stats", "trust", "--project", project.slug, "--json"], capsys)
+    assert code == 0, out
+    body = json.loads(out)
+    recs = {r["role"]: r for r in body["recommendations"]}
+    assert recs.keys() == {"builder"}
+    rec = recs["builder"]
+    assert rec["reason"] == "leader"
+    assert rec["leader"] == "claude-strong-v1" and rec["runner_up"] == "claude-weak-v1"
+    assert rec["leader_pass_quota"] == pytest.approx(1.0)
+    assert rec["runner_up_pass_quota"] == pytest.approx(0.5)
+    assert rec["leader_settled_tasks"] == 20
