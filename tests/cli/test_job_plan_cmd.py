@@ -526,3 +526,55 @@ class TestPlanShowTrustRoutingNote:
         after_config = load_job_plan(job_id).execution_config
         assert (after_config.builder_model, after_config.reviewer_model) == (
             before_config.builder_model, before_config.reviewer_model)
+
+    @pytest.fixture
+    def trust_project_both_roles(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        """A STRONG model (25 passes) and a WEAK one (15 pass, 5 fail), both above the floor, for
+        BOTH the builder and the reviewer role (R-1434)."""
+        import subprocess
+
+        from packages.orchestration.project_registry import register_project_repo
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        project = register_project_repo("Trust plan show both roles", repo)
+        for role in ("builder", "reviewer"):
+            for k in range(1, 26):
+                self._seed_task(project, f"job{role}strong{k:02d}", status="passed", role=role,
+                                model="claude-strong-v1", cost=0.02)
+            for k in range(1, 16):
+                self._seed_task(project, f"job{role}weakpass{k:02d}", status="passed", role=role,
+                                model="claude-weak-v1", cost=0.015)
+            for k in range(1, 6):
+                self._seed_task(project, f"job{role}weakfail{k:02d}", status="failed", role=role,
+                                model="claude-weak-v1", cost=0.015)
+        self.repo = repo
+        return repo
+
+    def test_the_reviewer_note_prints_when_only_the_reviewer_contradicts(
+            self, trust_project_both_roles, capsys):
+        """R-1434: a fixture whose configured reviewer contradicts the reviewer role's clear
+        leader prints the reviewer's note, with the builder already leading and silent."""
+        job_id = self._make_job(trust_project_both_roles, builder_model="claude-strong-v1",
+                                reviewer_model="claude-weak-v1")
+        code, out = _run(["job", "plan-show", job_id], capsys)
+        assert code == 0, out
+        assert "Trust suggests otherwise for builder" not in out
+        assert ("Trust suggests otherwise for reviewer: claude-weak-v1 is configured, with a pass "
+                "quota of 75% over 20 settled tasks, while claude-strong-v1 leads with 100% over "
+                "25 in the last 90 days. This note is informational: the route is unchanged, and "
+                "a change is made through config and an ADR.") in out
+
+    def test_both_notes_print_builder_first_when_both_contradict(
+            self, trust_project_both_roles, capsys):
+        """R-1434: when builder and reviewer both contradict their role's clear leader, both
+        notes print, builder before reviewer."""
+        job_id = self._make_job(trust_project_both_roles, builder_model="claude-weak-v1",
+                                reviewer_model="claude-weak-v1")
+        code, out = _run(["job", "plan-show", job_id], capsys)
+        assert code == 0, out
+        builder_at = out.index("Trust suggests otherwise for builder")
+        reviewer_at = out.index("Trust suggests otherwise for reviewer")
+        assert builder_at < reviewer_at
