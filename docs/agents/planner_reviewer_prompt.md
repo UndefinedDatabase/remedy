@@ -819,6 +819,16 @@ end the response with:
   because F133's one line in `.agent/prose_slips.md` names no lesson the list lacks: a block whose
   ordered wording trips a repository-wide guard that no commit of the block names is item 7's, the
   source guard the block never names. The list stays at 34 items.
+  Consolidated again at F151's closure on 2026-10-23: nothing joined and no two items were merged,
+  because F151's one line in `.agent/prose_slips.md` names no lesson the list lacks: a repair
+  sentence that named a text for a class the shared predicates answer otherwise is item 8's reading
+  of the code that produces the value a sentence asserts. Its six findings were each repaired inside
+  the feature: R-1435 and R-1436, a transport check that refused the failure class it orders
+  returned and read one class of a chain, are item 18's reading of an ordered recipe against the
+  property it must establish; R-1437, R-1438 and R-1440, checks and promises no ordered test could
+  see broken, are item 18's reading of an ordered list of tests, each found by the reviewer's
+  mutations; and R-1439, a guard that read one form of an import, was found by the reviewer's probe
+  of the guard's own checker. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
