@@ -1,28 +1,27 @@
 command: python3 -m pytest -n auto -q
-real exit code: 1
-wall time: 402.8s (the launcher's reading); pytest's own reported wall time: 401.94s (0:06:41)
-summary line: 1 failed, 23669 passed, 11 skipped, 1 warning in 401.94s (0:06:41)
-bad node ids (failed + errors):
-  - tests/cli/test_advertised_commands.py::test_every_operator_facing_advertised_command_exists_in_the_catalog
+real exit code: 0
+wall time: 367.7s (the launcher's reading); pytest's own reported wall time: 366.73s (0:06:06)
+summary line: 23670 passed, 11 skipped, 1 warning in 366.73s (0:06:06)
+bad node ids (failed + errors): NONE
 leftover processes: NONE
-tree it ran on: 931111795 (F151 R7 C3: the closure's self-use item run to its approval gate, never applied)
-tree note: C1 to C3 changed only .agent/ files, the checklist page and the self-use queue
-reflog before: 931111795 HEAD@{2026-10-23 17:05:32 +0200}: commit: F151 R7 C3: the closure's self-use item run to its approval gate, never applied
-reflog after: 931111795 HEAD@{2026-10-23 17:05:32 +0200}: commit: F151 R7 C3: the closure's self-use item run to its approval gate, never applied
+tree it ran on: 7e32f147e (F151 R8 C2: the docs page names the catalog's worker list command)
+tree note: the repair of round 7's one bad node; C1 changed only .agent/ files and C2 one docs page
+reflog before: 7e32f147e HEAD@{2026-10-23 17:19:31 +0200}: commit: F151 R8 C2: the docs page names the catalog's worker list command
+reflog after: 7e32f147e HEAD@{2026-10-23 17:19:31 +0200}: commit: F151 R8 C2: the docs page names the catalog's worker list command
 reflog unchanged during the run: yes
 cost command: python3 scripts/closure_suite_cost.py --feature F151 --record ~/.remedy-loop/test_load.jsonl
 cost exit code: 0
-Test load: 1423.07 CPU seconds, 401.95 wall seconds, 23681 tests collected, exit status 1, recorded 2026-10-23T15:12:19Z
-This closure's suite used 1423.07 CPU seconds, 1.5 percent more than F133's 1401.83, within the 10 percent limit.
+Test load: 1300.34 CPU seconds, 366.77 wall seconds, 23681 tests collected, exit status 0, recorded 2026-10-23T15:25:45Z
+This closure's suite used 1300.34 CPU seconds, 7.2 percent less than F133's 1401.83, within the 10 percent limit.
 The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
 The test modules whose CPU time rose most since F133's closure run:
-  +7.88 s  tests/orchestration/test_subtree_rerun_prepare.py (10.60 -> 18.48)
-  +7.63 s  tests/cli/test_do_sequence_cli.py (35.66 -> 43.29)
-  +6.14 s  tests/cli/test_do_several_projects.py (9.75 -> 15.89)
-  +5.06 s  tests/orchestration/test_token_ledger.py (8.45 -> 13.51)
-  +4.50 s  tests/cli/test_status_cmd.py (7.38 -> 11.88)
-  +3.64 s  tests/orchestration/test_disk_floor.py (1.04 -> 4.68)
-  +3.30 s  tests/orchestration/test_task_deliverables.py (3.82 -> 7.12)
-  +3.21 s  tests/orchestration/test_self_use_runner.py (5.02 -> 8.23)
-  +3.00 s  tests/orchestration/test_run_manifest_zero_call_expectations.py (2.85 -> 5.85)
-  +2.55 s  tests/orchestration/test_run_manifest_integrity.py (5.98 -> 8.53)
+  +3.55 s  tests/orchestration/test_disk_floor.py (1.04 -> 4.59)
+  +1.18 s  tests/orchestration/test_client_diff.py (3.87 -> 5.05)
+  +1.16 s  tests/contracts/test_adapter_import_guard.py (0.00 -> 1.16)
+  +0.93 s  tests/orchestration/test_subtree_rerun_prepare.py (10.60 -> 11.53)
+  +0.87 s  tests/orchestration/test_review_reports.py (3.40 -> 4.27)
+  +0.66 s  tests/orchestration/test_do_then_story.py (4.52 -> 5.18)
+  +0.66 s  tests/orchestration/test_run_manifest_call_task_binding.py (5.36 -> 6.02)
+  +0.63 s  tests/cli/test_job_run_session_resume.py (1.83 -> 2.46)
+  +0.62 s  tests/orchestration/test_run_manifest_task_lifecycle_binding.py (3.07 -> 3.69)
+  +0.57 s  tests/cli/test_pytest_runner.py (9.56 -> 10.13)
