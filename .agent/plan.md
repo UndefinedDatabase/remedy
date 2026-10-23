@@ -6,14 +6,14 @@ building, stream and usage mapping, isolation) with a reusable conformance kit, 
 wrapped as the reference adapter with golden equality, and orchestration importing only the contract.
 
 ## Current Step
-Round 1: claim F151, re-head the review record, DECISION F151 D1, and T001's inventory
-`.agent/f151_inventory.md`, reviewed before any code.
+Round 2: T002, DECISION F151 D2 — `packages/contracts/adapter_contract.py`, the conformance kit
+`packages/contracts/adapter_conformance_kit.py`, and the kit proved against a conforming toy and
+one broken toy per dimension.
 
 ## Next Steps
-1. T002: the contract module, the conformance kit and recorded samples, proved against a broken toy
-   adapter; DECISION F151 D2 names the modules and the ownership table from the inventory.
-2. T003: the reference adapter with golden equality, the import guard, the registry linkage, docs.
-3. The closure sequence.
+1. T003: the `claude-cli` reference adapter with golden equality, the import guard with a violation
+   fixture, the registry linkage, the deletion of `LLMWorker`, and the docs.
+2. The closure sequence.
 
 ## Risks
 - The surviving call path is spread over several modules; wrapping it must not move transport,
