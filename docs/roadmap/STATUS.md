@@ -319,7 +319,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane)
 
 - [x] F151 — Worker adapter contract v2 (T001–T003 complete; accepted 2026-10-23 · live review PASS — ACCEPTED · Evidence job f151r9e1001 · package remedy-review-20261023-180445-READY_FOR_REVIEW.zip · SHA-256 ff7cc953206489a10d4197704b1016b77d5284f5255e8ba34e34aee3b1906f5c · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 76fd568651d04b420027a0f0a233b458fdcc9896)
-- [ ] F315 — The loop runs through the adapter
+- [x] F315 — The loop runs through the adapter (T001–T003 complete; R-1442 open — owned by F314; accepted 2026-10-23 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f315r5e1001 · package remedy-review-20261023-225932-READY_FOR_REVIEW.zip · SHA-256 801509f8c8e53b5beb75a15c42cb3fb057af2091779ee7490e60243ed2c6b0bd · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f00589e3529a23cc58d8b655e35d86ec661ad123)
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 

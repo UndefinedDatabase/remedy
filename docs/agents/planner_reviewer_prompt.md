@@ -829,6 +829,13 @@ end the response with:
   see broken, are item 18's reading of an ordered list of tests, each found by the reviewer's
   mutations; and R-1439, a guard that read one form of an import, was found by the reviewer's probe
   of the guard's own checker. The list stays at 34 items.
+  Consolidated again at F315's closure on 2026-10-23: nothing joined and no two items were merged,
+  because F315 wrote no line to `.agent/prose_slips.md` and raised no finding: every round's block
+  was generated from simulated trees and every worker reading matched them. Two mutations survived
+  the reviewer's first test file in its second round, a streamed reviewer call asked as a builder
+  and a streamed call built without streaming, and the test was tightened before the block was
+  emitted, which is item 18's reading of an ordered list of tests against the property it must
+  establish. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

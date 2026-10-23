@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 import packages.orchestration.pingpong_loop as pingpong_loop
+from packages.orchestration.claude_cli_command import build_claude_cli_args
 from packages.orchestration.data_paths import run_dir, runs_dir
 from packages.orchestration.pingpong_loop import (
     _OVERSIZED_DIFF_THRESHOLD_CHARS,
@@ -43,7 +44,6 @@ from packages.orchestration.pingpong_provider import (
     ReviewFinding,
     _parse_reviewer_json,
     _unwrap_envelope,
-    build_claude_cli_args,
     create_provider,
 )
 from packages.orchestration.pingpong_provider_fake import FakeProvider

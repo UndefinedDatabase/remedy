@@ -168,6 +168,7 @@ class ClaudeCliPlanner:
         import subprocess
 
         from packages.orchestration import pingpong_provider
+        from packages.orchestration.claude_cli_command import build_claude_cli_args
 
         claude_path = shutil.which("claude")
         if not claude_path:
@@ -175,7 +176,7 @@ class ClaudeCliPlanner:
                 "claude CLI not found on PATH. Install Claude Code CLI to use "
                 "--planner-provider claude-cli."
             )
-        argv = pingpong_provider.build_claude_cli_args(
+        argv = build_claude_cli_args(
             claude_path, prompt, write_mode="none", model=self.model,
         )
         try:

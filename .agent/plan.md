@@ -1,17 +1,18 @@
-# Plan — operator amendment amend1023-universe-trust
+# Plan — F315 The loop runs through the adapter
 
 ## Goal
-Five parts from the operator's order of 2026-10-23: (1) the client property `host_tools`; (2) small
-orders stay small; (3) the order's story; (4) the F133 and F151 follow-ups; (5) cancel the probe.
+The ping-pong loop's claude-cli builder and reviewer calls run through `ClaudeCliReferenceAdapter`:
+the adapter builds the invocation and maps what the loop's evidence does not own; the loop keeps
+transport, timeouts, retries, failover, pacing and evidence; the goldens stay byte-equal and the
+import guard stays green.
 
 ## Current Step
-Done: all five parts built (C0–C9), the one full suite run read, repaired, and the affected test
-files re-run green; pull request, merge on local evidence, handback.
+Round 6, the closing round: the Built State, the rotation, SU-079's consumed_by, the STATUS line
+with the README sync, and the pull request, left unmerged.
 
 ## Next Steps
-1. The operator restarts the supervisor on the merged code with its port, then grants
-   `remedy client grant-host-tools orb-universe` and `orb-remedy` (DECISION amend1023 D10).
-2. The next feature under Rule A5 is F315, "The loop runs through the adapter", registered thin.
+1. The next session merges F315's pull request at the Open PR Gate and claims the next feature by
+   Rule A5.
 
 ## Risks
-- Granting `host_tools` before the supervisor restarts locks every client out (D10).
+- R-1442, raised by the closure's self-use run, is open and owned by F314.

@@ -43,14 +43,14 @@ class TestBuilderProviderParse:
 
 class TestProviderModelWiring:
     def test_build_claude_cli_args_includes_model(self):
-        from packages.orchestration.pingpong_provider import build_claude_cli_args
+        from packages.orchestration.claude_cli_command import build_claude_cli_args
         argv = build_claude_cli_args("/usr/bin/claude", "test prompt", model="claude-opus-4-20250514")
         assert "--model" in argv
         idx = argv.index("--model")
         assert argv[idx + 1] == "claude-opus-4-20250514"
 
     def test_build_claude_cli_args_no_model_when_empty(self):
-        from packages.orchestration.pingpong_provider import build_claude_cli_args
+        from packages.orchestration.claude_cli_command import build_claude_cli_args
         argv = build_claude_cli_args("/usr/bin/claude", "test prompt")
         assert "--model" not in argv
 
