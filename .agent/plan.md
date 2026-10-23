@@ -6,12 +6,12 @@ building, stream and usage mapping, isolation) with a reusable conformance kit, 
 wrapped as the reference adapter with golden equality, and orchestration importing only the contract.
 
 ## Current Step
-Round 3: the T002 repair, DECISION F151 D3 — the transport dimension over the whole class chain
-with the failure class exempt (R-1435, R-1436), and one test per unguarded kit check (R-1437).
+Round 4: R-1437's last two pins, and T003's first half under DECISION F151 D4 — the claude-cli
+reference adapter `packages/providers/adapters/claude_cli_reference.py` with its goldens and kit run.
 
 ## Next Steps
-1. T003: the `claude-cli` reference adapter with golden equality, the import guard with a violation
-   fixture, the registry linkage, the deletion of `LLMWorker`, and the docs.
+1. T003's second half: the import guard with a violation fixture, the registry linkage that reaches
+   the adapter, the deletion of `LLMWorker`, the docstrings and the docs page.
 2. The closure sequence.
 
 ## Risks
