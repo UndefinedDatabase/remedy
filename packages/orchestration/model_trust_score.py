@@ -311,3 +311,286 @@ def _own_model(call: tuple[Any, ...], job_id: str, task_id: str, root: Path | No
     return None
 
 
+def _parse_postmortem_roles(job_id: str, task_id: str, root: Path | None) -> set[str]:
+    """Roles whose task run carries a call-scope post-mortem of class ``parse``."""
+    if not (_SAFE_ID_RE.match(job_id) and _SAFE_ID_RE.match(task_id)):
+        return set()
+    from packages.orchestration.data_paths import job_evidence_dir
+    from packages.orchestration.failure_postmortem import FailureClass, collect_task_call_postmortems
+
+    stream_dir = job_evidence_dir(job_id, root) / "task_runs" / task_id / "streams"
+    roles: set[str] = set()
+    for _label, path in collect_task_call_postmortems(task_stream_dir=stream_dir):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict) and data.get("failure_class") == FailureClass.PARSE.value and data.get("role"):
+            roles.add(str(data["role"]))
+    return roles
+
+
+def _format_error_seqs(attempts: list[dict[str, Any]], parse_roles: set[str]) -> set[int]:
+    """Seqs that are format errors (DECISION F133 D2 (4)): a later same-role-and-round parse retry,
+    or the role's last call where a parse post-mortem exists for that role. Counted once per call."""
+    by_role: dict[str, list[dict[str, Any]]] = {}
+    for attempt in attempts:
+        by_role.setdefault(str(attempt.get("role") or ""), []).append(attempt)
+    errors: set[int] = set()
+    for role, alist in by_role.items():
+        seqs = [a.get("seq") for a in alist if isinstance(a.get("seq"), int)]
+        if not seqs:
+            continue
+        max_seq = max(seqs)
+        for attempt in alist:
+            seq = attempt.get("seq")
+            if not isinstance(seq, int):
+                continue
+            rnd = attempt.get("round")
+            later_retry = any(
+                other.get("role") == role and other.get("round") == rnd
+                and isinstance(other.get("seq"), int) and other["seq"] > seq
+                and other.get("is_parse_retry") is True
+                for other in alist
+            )
+            if later_retry:
+                errors.add(seq)
+            elif seq == max_seq and role in parse_roles:
+                errors.add(seq)
+    return errors
+
+
+def _error_seqs(job_id: str, task_id: str, root: Path | None,
+                 attempts_cache: dict[tuple[str, str], list[dict[str, Any]]],
+                 error_cache: dict[tuple[str, str], set[int]]) -> set[int]:
+    key = (job_id, task_id)
+    if key in error_cache:
+        return error_cache[key]
+    attempts = _task_run_attempts(job_id, task_id, root, attempts_cache)
+    parse_roles = _parse_postmortem_roles(job_id, task_id, root)
+    errors = _format_error_seqs(attempts, parse_roles)
+    error_cache[key] = errors
+    return errors
+
+
+def _job_task_status(job_id: str, root: Path | None,
+                      cache: dict[str, dict[str, dict[str, Any]]]) -> dict[str, dict[str, Any]]:
+    """``{task_id: {"status":, "repair_rounds_used":}}`` from the job's own record."""
+    if job_id in cache:
+        return cache[job_id]
+    info: dict[str, dict[str, Any]] = {}
+    if _SAFE_ID_RE.match(job_id):
+        from packages.orchestration.data_paths import job_record_path
+
+        try:
+            record = json.loads(job_record_path(job_id, root).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            record = None
+        tasks = record.get("tasks") if isinstance(record, dict) else None
+        for task in tasks if isinstance(tasks, list) else ():
+            if isinstance(task, dict) and task.get("task_id"):
+                info[str(task["task_id"])] = {
+                    "status": task.get("status"),
+                    "repair_rounds_used": task.get("repair_rounds_used", 0),
+                }
+    cache[job_id] = info
+    return info
+
+
+def _settlement(task_info: dict[str, Any] | None) -> str | None:
+    """"pass", "fail" or None (unsettled — kept out of the outcome metrics)."""
+    from packages.orchestration.pingpong_job import TASK_BLOCKED, TASK_DONE_STATUSES, TASK_FAILED
+
+    if task_info is None:
+        return None
+    status = task_info.get("status")
+    if status in TASK_DONE_STATUSES:
+        return "pass"
+    if status in (TASK_FAILED, TASK_BLOCKED):
+        return "fail"
+    return None
+
+
+def _finalize_row(role: str, model: str, acc: _RowAccumulator, sample_floor: int) -> ModelTrustRow:
+    pass_quota = TrustMetric(
+        value=(acc.passes / acc.settled_tasks) if acc.settled_tasks else None, n=acc.settled_tasks)
+    repair_need = TrustMetric(
+        value=(acc.repair_sum / acc.settled_tasks) if acc.settled_tasks else None, n=acc.settled_tasks)
+    format_error_rate = TrustMetric(
+        value=(acc.calls_error / acc.calls_total) if acc.calls_total else None, n=acc.calls_total)
+    if acc.passes == 0:
+        cost_basis, cost_value = COST_BASIS_UNKNOWN, None
+    elif acc.cost_known:
+        cost_basis, cost_value = COST_BASIS_PROVIDER_REPORTED, acc.cost_sum / acc.passes
+    elif acc.tokens_known:
+        cost_basis, cost_value = TRUST_COST_BASIS_TOKENS, acc.tokens_sum / acc.passes
+    else:
+        cost_basis, cost_value = COST_BASIS_UNKNOWN, None
+    cost_per_pass = TrustMetric(value=cost_value, n=acc.passes)
+    return ModelTrustRow(
+        role=role, model=model, pass_quota=pass_quota, repair_need=repair_need,
+        format_error_rate=format_error_rate, cost_per_pass=cost_per_pass, cost_basis=cost_basis,
+        settled_tasks=acc.settled_tasks, thin=acc.settled_tasks < sample_floor)
+
+
+def build_model_trust_table(
+    project_id: str,
+    *,
+    now: datetime,
+    window_days: int = DEFAULT_TRUST_WINDOW_DAYS,
+    sample_floor: int = DEFAULT_TRUST_SAMPLE_FLOOR,
+    root: Path | None = None,
+    window_end: datetime | None = None,
+) -> ModelTrustTable:
+    """Measure ``project_id``'s ledger: one row per model and role seen inside the window.
+
+    A task is in the window when its latest call is no older than ``window_days`` before ``now``
+    and, when ``window_end`` is given, no newer than it — the trust view's one addition over the
+    estimate calibration's own window test, needed to measure a PRIOR window that does not overlap
+    the current one; ``window_end=None`` (every other caller) measures exactly as calibration does,
+    with no upper bound. Read-only on the ledger; raises ``sqlite3.Error`` when it cannot be read.
+    """
+    from packages.orchestration.token_ledger import token_ledger_path_for
+
+    window_start = now - timedelta(days=window_days)
+    ledger_path = token_ledger_path_for(project_id, root)
+    if not ledger_path.is_file():
+        return ModelTrustTable(
+            project_id=str(project_id), updated_at=now.isoformat(), window_days=window_days,
+            sample_floor=sample_floor, window_start=window_start.isoformat(), ledger_present=False,
+            rows=(), unattributed_calls=0, unsettled_tasks=0)
+    conn = _connect_ledger_readonly(ledger_path)
+    try:
+        call_rows = conn.execute(_CALL_QUERY).fetchall()
+    finally:
+        conn.close()
+
+    tasks_latest: dict[tuple[str, str], datetime] = {}
+    by_task: dict[tuple[str, str], list[tuple[Any, ...]]] = {}
+    for job_id, task_id, call_id, role, model, tok_in, tok_out, cost, ts in call_rows:
+        key = (str(job_id), str(task_id))
+        by_task.setdefault(key, []).append((str(call_id), str(role or ""), model, tok_in, tok_out, cost, ts))
+        moment = _parse_utc(ts)
+        if moment is not None and (key not in tasks_latest or moment > tasks_latest[key]):
+            tasks_latest[key] = moment
+
+    status_cache: dict[str, dict[str, dict[str, Any]]] = {}
+    attempts_cache: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    error_cache: dict[tuple[str, str], set[int]] = {}
+    buckets: dict[tuple[str, str], _RowAccumulator] = {}
+    unattributed_calls = 0
+    unsettled_tasks = 0
+
+    for (job_id, task_id), calls in sorted(by_task.items()):
+        latest = tasks_latest.get((job_id, task_id))
+        if latest is None or latest < window_start or (window_end is not None and latest > window_end):
+            continue
+        task_info = _job_task_status(job_id, root, status_cache).get(task_id)
+        settled = _settlement(task_info)
+        if settled is None:
+            unsettled_tasks += 1
+
+        by_role: dict[str, list[tuple[Any, ...]]] = {}
+        for call in calls:
+            by_role.setdefault(call[1], []).append(call)
+
+        for role, role_calls in by_role.items():
+            role_calls_sorted = sorted(role_calls, key=lambda c: _call_seq(c[0], job_id, task_id) or 0)
+            own_models = [_own_model(c, job_id, task_id, root, attempts_cache) for c in role_calls_sorted]
+            for call, own_model in zip(role_calls_sorted, own_models):
+                if own_model is None:
+                    unattributed_calls += 1
+                    continue
+                seq = _call_seq(call[0], job_id, task_id)
+                is_error = seq is not None and seq in _error_seqs(
+                    job_id, task_id, root, attempts_cache, error_cache)
+                buckets.setdefault((role, own_model), _RowAccumulator()).add_call(is_error=is_error)
+
+            serving_model = own_models[-1] if own_models else None
+            if settled is not None and serving_model is not None:
+                buckets.setdefault((role, serving_model), _RowAccumulator()).add_settled_task(
+                    passed=(settled == "pass"),
+                    repair_rounds_used=int((task_info or {}).get("repair_rounds_used", 0) or 0),
+                    role_calls=role_calls_sorted)
+
+    rows = tuple(
+        _finalize_row(role, model, acc, sample_floor)
+        for (role, model), acc in sorted(buckets.items())
+    )
+    return ModelTrustTable(
+        project_id=str(project_id), updated_at=now.isoformat(), window_days=window_days,
+        sample_floor=sample_floor, window_start=window_start.isoformat(), ledger_present=True,
+        rows=rows, unattributed_calls=unattributed_calls, unsettled_tasks=unsettled_tasks)
+
+
+def _metric_from_json(raw: Any) -> TrustMetric:
+    return TrustMetric(value=None if raw["value"] is None else float(raw["value"]), n=int(raw["n"]))
+
+
+def _row_from_json(raw: dict[str, Any]) -> ModelTrustRow:
+    return ModelTrustRow(
+        role=str(raw["role"]), model=str(raw["model"]),
+        pass_quota=_metric_from_json(raw["pass_quota"]),
+        repair_need=_metric_from_json(raw["repair_need"]),
+        format_error_rate=_metric_from_json(raw["format_error_rate"]),
+        cost_per_pass=_metric_from_json(raw["cost_per_pass"]),
+        cost_basis=str(raw["cost_basis"]), settled_tasks=int(raw["settled_tasks"]), thin=bool(raw["thin"]))
+
+
+def model_trust_table_from_json(raw: dict[str, Any]) -> ModelTrustTable:
+    """The table a snapshot holds; raises ``KeyError``, ``TypeError`` or ``ValueError`` on a bad one."""
+    if raw.get("schema") != MODEL_TRUST_SNAPSHOT_SCHEMA:
+        raise ValueError(f"model trust snapshot schema {raw.get('schema')!r} is not {MODEL_TRUST_SNAPSHOT_SCHEMA}")
+    rows = tuple(_row_from_json(item) for item in raw["rows"])
+    return ModelTrustTable(
+        project_id=str(raw["project_id"]), updated_at=str(raw["updated_at"]),
+        window_days=int(raw["window_days"]), sample_floor=int(raw["sample_floor"]),
+        window_start=str(raw["window_start"]), ledger_present=bool(raw["ledger_present"]),
+        rows=rows, unattributed_calls=int(raw["unattributed_calls"]),
+        unsettled_tasks=int(raw["unsettled_tasks"]))
+
+
+def model_trust_snapshot_path(project_id: str, root: Path | None = None) -> Path:
+    """``<data_root>/projects/<project_id>/model_trust_snapshot.json``, beside the project's ledger."""
+    from packages.orchestration.token_ledger import token_ledger_path_for
+
+    return token_ledger_path_for(project_id, root).with_name(MODEL_TRUST_SNAPSHOT_FILENAME)
+
+
+def load_model_trust_table(
+    project_id: str,
+    *,
+    now: datetime | None = None,
+    window_days: int = DEFAULT_TRUST_WINDOW_DAYS,
+    sample_floor: int = DEFAULT_TRUST_SAMPLE_FLOOR,
+    max_age_seconds: int = DEFAULT_TRUST_SNAPSHOT_MAX_AGE_SECONDS,
+    root: Path | None = None,
+) -> ModelTrustTable:
+    """The project's trust table: the snapshot while it is fresh, otherwise a new measurement.
+
+    A snapshot is used only when it parses, was built with this window and floor, and is no older
+    than ``max_age_seconds``; otherwise the ledger is measured again and, when a ledger exists, the
+    new table replaces the snapshot. A snapshot that cannot be written leaves the measurement in use.
+    """
+    from packages.common.secure_fs import durable_write_json
+
+    moment = now or datetime.now(timezone.utc)
+    path = model_trust_snapshot_path(project_id, root)
+    try:
+        cached = model_trust_table_from_json(json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, ValueError, KeyError, TypeError):
+        cached = None
+    if cached is not None and cached.window_days == window_days and cached.sample_floor == sample_floor:
+        built = _parse_utc(cached.updated_at)
+        if built is not None and timedelta(0) <= moment - built <= timedelta(seconds=max_age_seconds):
+            return cached
+    table = build_model_trust_table(
+        project_id, now=moment, window_days=window_days, sample_floor=sample_floor, root=root)
+    if table.ledger_present:
+        try:
+            durable_write_json(path, table.to_json())
+        except OSError:
+            logger.warning(
+                "model trust snapshot %s could not be written; the measurement is used unsaved",
+                path, exc_info=True)
+    return table
