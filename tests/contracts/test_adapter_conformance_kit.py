@@ -27,6 +27,17 @@ from packages.orchestration.failure_postmortem import FailureClass
 from packages.orchestration.stream_evidence import EVENT_RESULT
 from packages.orchestration.token_actuals import UsageActuals
 
+#: Literal pin of the kit's forbidden name substrings (R-1437's last two survivors): a word
+#: dropped from the kit's own list must turn this comparison red instead of silently dropping
+#: its own parametrized test along with it.
+_EXPECTED_FORBIDDEN_NAME_SUBSTRINGS = ("retry", "retries", "timeout", "sleep", "backoff")
+
+#: Literal pin of the kit's forbidden module roots, for the same reason.
+_EXPECTED_FORBIDDEN_MODULE_ROOTS = frozenset({
+    "subprocess", "socket", "urllib", "http", "requests", "httpx",
+    "anthropic", "ollama", "asyncio", "time",
+})
+
 
 class _ConformingCliToy:
     """A CLI-shaped adapter conforming on every dimension."""
@@ -564,10 +575,23 @@ def test_conformance_dimensions_is_exactly_the_seven_in_order():
         "capabilities", "invocation", "stream", "usage", "errors", "isolation", "transport")
 
 
+# -- the kit's forbidden-word and module-root constants, pinned to literal values --------
+
+
+def test_forbidden_name_substrings_is_pinned_to_its_literal_value():
+    assert _FORBIDDEN_NAME_SUBSTRINGS == _EXPECTED_FORBIDDEN_NAME_SUBSTRINGS
+
+
+def test_forbidden_module_roots_is_pinned_to_its_literal_value():
+    assert _FORBIDDEN_MODULE_ROOTS == _EXPECTED_FORBIDDEN_MODULE_ROOTS
+
+
 # -- adapter_transport_violations: one case per forbidden word and per module root -------
+# Parametrized over this file's own literal constants above, not the kit's, so that a word or
+# module root dropped from the kit cannot silently drop its own test along with it (R-1437).
 
 
-@pytest.mark.parametrize("word", _FORBIDDEN_NAME_SUBSTRINGS)
+@pytest.mark.parametrize("word", _EXPECTED_FORBIDDEN_NAME_SUBSTRINGS)
 def test_adapter_transport_violations_reports_the_word_as_an_attribute(word):
     source = (
         "class Toy:\n"
@@ -578,7 +602,7 @@ def test_adapter_transport_violations_reports_the_word_as_an_attribute(word):
     assert any(f"attribute .{word}_value" in v for v in violations), violations
 
 
-@pytest.mark.parametrize("word", _FORBIDDEN_NAME_SUBSTRINGS)
+@pytest.mark.parametrize("word", _EXPECTED_FORBIDDEN_NAME_SUBSTRINGS)
 def test_adapter_transport_violations_reports_the_word_as_an_arg(word):
     source = (
         "class Toy:\n"
@@ -589,7 +613,7 @@ def test_adapter_transport_violations_reports_the_word_as_an_arg(word):
     assert any(f"argument {word + '_value'!r}" in v for v in violations), violations
 
 
-@pytest.mark.parametrize("word", _FORBIDDEN_NAME_SUBSTRINGS)
+@pytest.mark.parametrize("word", _EXPECTED_FORBIDDEN_NAME_SUBSTRINGS)
 def test_adapter_transport_violations_reports_the_word_as_a_function_name(word):
     source = (
         "class Toy:\n"
@@ -600,7 +624,7 @@ def test_adapter_transport_violations_reports_the_word_as_a_function_name(word):
     assert any(f"function {word + '_method'!r}" in v for v in violations), violations
 
 
-@pytest.mark.parametrize("root", sorted(_FORBIDDEN_MODULE_ROOTS))
+@pytest.mark.parametrize("root", sorted(_EXPECTED_FORBIDDEN_MODULE_ROOTS))
 def test_adapter_transport_violations_reports_the_module_root_as_a_name(root):
     source = (
         "class Toy:\n"
@@ -611,7 +635,7 @@ def test_adapter_transport_violations_reports_the_module_root_as_a_name(root):
     assert any(f"use of {root!r}" in v for v in violations), violations
 
 
-@pytest.mark.parametrize("root", sorted(_FORBIDDEN_MODULE_ROOTS))
+@pytest.mark.parametrize("root", sorted(_EXPECTED_FORBIDDEN_MODULE_ROOTS))
 def test_adapter_transport_violations_reports_the_module_root_as_an_import(root):
     source = (
         "class Toy:\n"
@@ -623,7 +647,7 @@ def test_adapter_transport_violations_reports_the_module_root_as_an_import(root)
     assert any(f"import of {root!r}" in v for v in violations), violations
 
 
-@pytest.mark.parametrize("root", sorted(_FORBIDDEN_MODULE_ROOTS))
+@pytest.mark.parametrize("root", sorted(_EXPECTED_FORBIDDEN_MODULE_ROOTS))
 def test_adapter_transport_violations_reports_the_module_root_as_a_from_import(root):
     source = (
         "class Toy:\n"
