@@ -1016,7 +1016,7 @@ def capture_episode_input_snapshot(job: Any, *, episode_id: str, capture_phase: 
 
 
 _VALID_SOURCES = frozenset({"default", "persisted", "invocation", "cli", "env",
-                            "project", "user", "operator_attestation"})
+                            "project", "user", "operator_attestation", "roles"})
 
 
 def validate_job_input_definition(d: Any) -> list[str]:

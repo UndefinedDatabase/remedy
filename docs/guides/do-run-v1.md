@@ -401,6 +401,20 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
   (operator amendment amend0920-selfuse-real, DECISION D1). The planner the
   walk actually used is the one its prompt traces and the mission plan
   record name.
+
+A project may also name its builder and reviewer once, in a `[roles]` table of its own
+`.remedy/config.toml`, instead of passing a provider option on every order (R-1326, DECISION
+F314 D4). An explicit option on the command line and a continued job's own persisted record both
+come first; the table comes next; the product default comes last. A run that takes a role's
+provider from the table records its source as `roles`. An unknown provider name, or a builder the
+table names that cannot write files (such as `ollama`), is refused before any step.
+
+```toml
+[roles]
+builder = "claude-cli"
+reviewer = "fake"
+```
+
 - `--run-unattended` — run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push
 - `--no-ui` — deprecated and inert: the old cockpit was deleted, so it opens nothing; still
   accepted so existing scripts keep working

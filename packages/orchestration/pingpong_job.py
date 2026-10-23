@@ -2552,7 +2552,7 @@ def run_job(
         test_command=test_command, timeout_sec=timeout_sec,
         timeout_profile=timeout_profile, max_output_chars=max_output_chars,
         claude_cli_write_mode=claude_cli_write_mode, stream_evidence=stream_evidence,
-        max_tasks=max_tasks,
+        max_tasks=max_tasks, repo_path=job.repo_path,
     )
 
     # F2: from here on the ONLY values that exist are the RESOLVED ones. Rebind the canonical

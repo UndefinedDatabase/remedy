@@ -97,3 +97,55 @@ class TestValidationOfTheFourKeys:
         d = self._definition()
         bad = dict(d, execution=dict(d["execution"], claude_cli_customizations_source="guess"))
         assert rm.validate_job_input_definition(bad) != []
+
+
+#: R-1326, DECISION F314 D4: a project's `[roles]` table of `.remedy/config.toml`.
+def _write_roles(repo_root: Path, **roles: str) -> Path:
+    conf = repo_root / ".remedy"
+    conf.mkdir(parents=True, exist_ok=True)
+    body = "[roles]\n" + "\n".join(f'{k} = "{v}"' for k, v in roles.items()) + "\n"
+    path = conf / "config.toml"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+class TestTheProjectRolesTable:
+    def test_the_table_answers_both_roles_with_source_roles(self, tmp_path: Path) -> None:
+        _write_roles(tmp_path, builder="claude-cli", reviewer="fake")
+        rec = ecm.resolve_job_execution_config(None, repo_path=str(tmp_path))
+        assert (rec.builder, rec.builder_source) == ("claude-cli", "roles")
+        assert (rec.reviewer, rec.reviewer_source) == ("fake", "roles")
+
+    def test_an_explicit_name_beats_the_table(self, tmp_path: Path) -> None:
+        _write_roles(tmp_path, builder="claude-cli")
+        rec = ecm.resolve_job_execution_config(None, builder_name="pi", repo_path=str(tmp_path))
+        assert (rec.builder, rec.builder_source) == ("pi", "cli")
+
+    def test_a_persisted_record_beats_the_table(self, tmp_path: Path) -> None:
+        _write_roles(tmp_path, builder="claude-cli")
+        persisted = dataclasses.replace(
+            ecm.ExecutionConfig(), builder="pi", builder_source="cli")
+        rec = ecm.resolve_job_execution_config(persisted, repo_path=str(tmp_path))
+        assert (rec.builder, rec.builder_source) == ("pi", "persisted")
+
+    def test_an_injected_provider_object_beats_the_table(self, tmp_path: Path) -> None:
+        _write_roles(tmp_path, builder="claude-cli")
+
+        class _NamedProvider:
+            name = "pi"
+
+        rec = ecm.resolve_job_execution_config(
+            None, builder_provider=_NamedProvider(), repo_path=str(tmp_path))
+        assert (rec.builder, rec.builder_source) == ("pi", "default")
+
+    def test_with_no_table_the_answer_and_the_source_are_unchanged(self, tmp_path: Path) -> None:
+        without_repo_path = ecm.resolve_job_execution_config(None)
+        with_an_empty_repo = ecm.resolve_job_execution_config(None, repo_path=str(tmp_path))
+        assert (with_an_empty_repo.builder, with_an_empty_repo.builder_source) == (
+            without_repo_path.builder, without_repo_path.builder_source)
+        assert with_an_empty_repo.builder_source == "default"
+
+    def test_a_roles_sourced_builder_validates(self) -> None:
+        d = build_job_input_definition(_Job(dataclasses.replace(
+            ecm.ExecutionConfig(), builder="claude-cli", builder_source="roles")))
+        assert rm.validate_job_input_definition(d) == []
