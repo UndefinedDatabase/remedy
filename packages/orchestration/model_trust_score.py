@@ -372,16 +372,22 @@ def _own_model(call: tuple[Any, ...], job_id: str, task_id: str, root: Path | No
     return None
 
 
-def _parse_postmortem_roles(job_id: str, task_id: str, root: Path | None) -> set[str]:
-    """Roles whose task run carries a call-scope post-mortem of class ``parse``."""
+def _parse_postmortem_roles(job_id: str, task_id: str, root: Path | None, run_id: str = "") -> set[str]:
+    """Roles whose task run carries a call-scope post-mortem of class ``parse``.
+
+    Both layouts the collector knows are read (amend1023 D3): the streamed one under the job's
+    evidence, and the per-call one under ``pingpong_runs/<run>/calls`` for the task's RUN_ID, which
+    the job record names; a call that did not stream writes its post-mortem only there.
+    """
     if not (_SAFE_ID_RE.match(job_id) and _SAFE_ID_RE.match(task_id)):
         return set()
-    from packages.orchestration.data_paths import job_evidence_dir
+    from packages.orchestration.data_paths import job_evidence_dir, run_dir
     from packages.orchestration.failure_postmortem import FailureClass, collect_task_call_postmortems
 
     stream_dir = job_evidence_dir(job_id, root) / "task_runs" / task_id / "streams"
+    calls_dir = run_dir(run_id, root) if run_id and _SAFE_ID_RE.match(run_id) else None
     roles: set[str] = set()
-    for _label, path in collect_task_call_postmortems(task_stream_dir=stream_dir):
+    for _label, path in collect_task_call_postmortems(run_dir=calls_dir, task_stream_dir=stream_dir):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -423,12 +429,12 @@ def _format_error_seqs(attempts: list[dict[str, Any]], parse_roles: set[str]) ->
 
 def _error_seqs(job_id: str, task_id: str, root: Path | None,
                  attempts_cache: dict[tuple[str, str], list[dict[str, Any]]],
-                 error_cache: dict[tuple[str, str], set[int]]) -> set[int]:
+                 error_cache: dict[tuple[str, str], set[int]], run_id: str = "") -> set[int]:
     key = (job_id, task_id)
     if key in error_cache:
         return error_cache[key]
     attempts = _task_run_attempts(job_id, task_id, root, attempts_cache)
-    parse_roles = _parse_postmortem_roles(job_id, task_id, root)
+    parse_roles = _parse_postmortem_roles(job_id, task_id, root, run_id)
     errors = _format_error_seqs(attempts, parse_roles)
     error_cache[key] = errors
     return errors
@@ -436,7 +442,7 @@ def _error_seqs(job_id: str, task_id: str, root: Path | None,
 
 def _job_task_status(job_id: str, root: Path | None,
                       cache: dict[str, dict[str, dict[str, Any]]]) -> dict[str, dict[str, Any]]:
-    """``{task_id: {"status":, "repair_rounds_used":}}`` from the job's own record."""
+    """``{task_id: {"status":, "repair_rounds_used":, "run_id":}}`` from the job's own record."""
     if job_id in cache:
         return cache[job_id]
     info: dict[str, dict[str, Any]] = {}
@@ -453,6 +459,7 @@ def _job_task_status(job_id: str, root: Path | None,
                 info[str(task["task_id"])] = {
                     "status": task.get("status"),
                     "repair_rounds_used": task.get("repair_rounds_used", 0),
+                    "run_id": str(task.get("run_id") or ""),
                 }
     cache[job_id] = info
     return info
@@ -567,7 +574,7 @@ def build_model_trust_table(
                     continue
                 seq = _call_seq(call[0], job_id, task_id)
                 is_error = seq is not None and seq in _error_seqs(
-                    job_id, task_id, root, attempts_cache, error_cache)
+                    job_id, task_id, root, attempts_cache, error_cache, str((task_info or {}).get("run_id", "")))
                 buckets.setdefault((role, own_model), _RowAccumulator()).add_call(is_error=is_error)
 
             serving_model = own_models[-1] if own_models else None

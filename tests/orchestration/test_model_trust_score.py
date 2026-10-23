@@ -292,6 +292,29 @@ class TestFormatErrors:
         row = table.lookup("m", "builder")
         assert row.format_error_rate == TrustMetric(value=0.0, n=1)
 
+    def test_a_parse_postmortem_under_the_runs_calls_folder_counts(self, tmp_path):
+        """amend1023 D3: a call that did not stream writes its post-mortem only under
+        `pingpong_runs/<run>/calls`; before the repair the rate read only the streamed layout and
+        measured 0.0 here instead of 1.0."""
+        from packages.orchestration.data_paths import run_dir
+
+        path = job_record_path("jobruncalls", tmp_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"tasks": [{"task_id": "T001", "status": "failed",
+                                                "repair_rounds_used": 0, "run_id": "run0001"}]}),
+                        encoding="utf-8")
+        _attempts(tmp_path, "jobruncalls", "T001", [
+            {"seq": 1, "round": 1, "role": "builder", "model": "m", "is_parse_retry": False},
+        ])
+        _call(tmp_path, "jobruncalls", "T001", "builder", 1, None, 100, 10, cost=0.01)
+        directory = run_dir("run0001", tmp_path) / "calls" / "builder-01"
+        directory.mkdir(parents=True)
+        write_postmortem(directory, PostmortemV1(
+            failure_class=FailureClass.PARSE, signal_source="test", job_id="jobruncalls",
+            task_id="T001", role="builder", provider="fake"), root=directory)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        assert table.lookup("m", "builder").format_error_rate == TrustMetric(value=1.0, n=1)
+
 
 class TestCostBases:
     def _one_pass(self, root: Path, job: str, model: str, *, tokens_in: int | None,
@@ -619,6 +642,22 @@ class TestSnapshot:
         later = NOW + timedelta(seconds=120)
         assert load_model_trust_table(PROJECT, now=later, max_age_seconds=60, root=tmp_path).lookup(
             "m", "builder").settled_tasks == 2
+
+    def test_a_snapshot_exactly_max_age_seconds_old_is_reused_and_one_second_older_is_not(self, tmp_path):
+        """amend1023 D3: the age limit is inclusive."""
+        _task_run(tmp_path, "jobedge", "T001", status="passed", repair_rounds=0,
+                  builder_model="m", builder_calls=[(False, 0.01)], reviewer_model="r",
+                  reviewer_cost=0.01)
+        first = load_model_trust_table(PROJECT, now=NOW, max_age_seconds=60, root=tmp_path)
+        _task_run(tmp_path, "jobedge2", "T001", status="passed", repair_rounds=0,
+                  builder_model="m", builder_calls=[(False, 0.01)], reviewer_model="r",
+                  reviewer_cost=0.01)
+        at_limit = load_model_trust_table(
+            PROJECT, now=NOW + timedelta(seconds=60), max_age_seconds=60, root=tmp_path)
+        assert at_limit == first and at_limit.lookup("m", "builder").settled_tasks == 1
+        past = load_model_trust_table(
+            PROJECT, now=NOW + timedelta(seconds=61), max_age_seconds=60, root=tmp_path)
+        assert past.lookup("m", "builder").settled_tasks == 2
 
     def test_a_snapshot_built_with_another_window_or_floor_is_not_used(self, tmp_path):
         _task_run(tmp_path, "jobwf", "T001", status="passed", repair_rounds=0,

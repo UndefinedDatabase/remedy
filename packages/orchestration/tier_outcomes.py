@@ -10,8 +10,9 @@ the rows as `tier_outcomes.json` beside the task's other evidence (DECISION F296
 
 The cost ledger mirrors that file into its own table, `tier_outcomes`, in the project's
 `ledger.sqlite`, the same way the ledger mirrors a task's calls: the file is written first and the
-rows are read back from it, so the database restates the file and never decides anything. F133
-reads `query_tier_outcomes`, one summary per task class and tier.
+rows are read back from it, so the database restates the file and never decides anything.
+`query_tier_outcomes` answers one summary per task class and tier; F133's trust score does not read
+it (DECISION F133 D3 withdrew that plan, because the query writes to the ledger and has no window).
 
 Remedy deliberately does not invent a cost: a tier whose calls did not all report one has no cost
 and the basis `unknown`. It does not write a row for a run whose tiers are not known, and its

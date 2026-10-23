@@ -40,8 +40,10 @@ qualifies.
 - **`format_error_rate`** — format errors over EVERY call of that model and role in the window's
   tasks, keyed by each call's OWN model, settled or not. A call is a format error when a later call
   of the same task run, role and round has `is_parse_retry` true, or when it is the last call of
-  its role in a task run whose streams hold a call-scope post-mortem of class `parse` for that
-  role — each call counted once.
+  its role in a task run that holds a call-scope post-mortem of class `parse` for that role — each
+  call counted once. Both layouts a post-mortem is written in are read: the streamed one under the
+  job's evidence, and `pingpong_runs/<run>/calls` for the run the job record names for the task,
+  where a call that did not stream writes it (amend1023 D3).
 - **`cost_per_pass`** — that role's call cost over its settled served tasks, divided by passes,
   with a basis label that never claims a figure nothing reported, read from the ledger's own
   `cost_basis` column (DECISION F133 D3 (2)): a call is PRICED only when it has a cost figure and a
@@ -49,6 +51,11 @@ qualifies.
   all share — `provider_reported` or `price_table` — and `mixed` when they share none; otherwise
   `tokens` (the value then being tokens per pass) when every call reported its tokens, else
   `unknown` with no value.
+
+The reviewer's metrics measure the outcome of the builder's work it sat on: a reviewer's pass
+quota is the share of the tasks it reviewed that ended passed, so a reviewer behind a strong builder
+reads well whatever its own judgement, and a reviewer row is read as the record of the pairs it
+served, never as a judgement of the reviewer alone.
 
 A task is SETTLED when its job record gives it a passing status (`TASK_DONE_STATUSES`) or a
 failing one (`failed`, `blocked`); every other status — `pending`, `running`, `skipped`, `split`,
