@@ -145,6 +145,28 @@ STATS_COMMANDS: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    # ── stats — the model trust view (F133) ──────────────────────────────
+    CommandEntry(
+        command_id="stats.trust",
+        group_id="stats",
+        subcommand="trust",
+        description=(
+            "Every model and role seen inside the window: pass quota, repair rounds per task, "
+            "format-error rate per call, cost per pass with its basis, and the pass quota's change "
+            "against the prior window of the same length. Read-only on the ledger, job records and "
+            "provider evidence; measures again when the saved table is old."
+        ),
+        action_class="read_only",
+        supports_json=True,
+        related=("stats.calibration", "stats.cost"),
+        args=(
+            ArgDef("--role", "Only this role's rows", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
     # ── stats — the cost report (F115) ───────────────────────────────────
     # Deliberately NO --all-projects, and the description says so where a
     # reader looks for it: `remedy stats --help` prints the description, and a
