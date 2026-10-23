@@ -6,6 +6,7 @@ and watch the provider and the ping-pong loop follow it.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import stat
 import subprocess
@@ -22,6 +23,7 @@ from packages.orchestration.pingpong_provider import ClaudeCliProvider
 from packages.orchestration.worker_adapter_slot import (
     WorkerAdapterNotInstalled,
     adapter_cli_argv,
+    adapter_usage_actuals,
     install_worker_adapters,
     installed_worker_adapter,
 )
@@ -197,6 +199,49 @@ def test_the_streaming_provider_spawns_the_adapters_streamed_command_line(
     assert len(calls) == 2
     assert all(call[-1] == MARKER and "stream-json" in call for call in calls)
     assert ("--json-schema" in calls[1]) is structured
+
+
+_USAGE = {"input_tokens": 11, "output_tokens": 5, "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0}
+
+
+@pytest.mark.parametrize(("raw", "reason"), [
+    (json.dumps({"type": "result", "is_error": False, "result": "r", "usage": _USAGE}), "ok"),
+    (json.dumps({"type": "result", "is_error": True, "result": "r", "usage": _USAGE}), "is_error"),
+    (json.dumps({"type": "result", "is_error": False, "result": "r"}), "usage_missing"),
+    ("plain text, not json", "parse_failed"),
+    ("", "empty_input"),
+])
+def test_adapter_usage_answers_the_adapters_usage_or_the_reason_it_has_none(raw, reason):
+    actuals, got = adapter_usage_actuals("claude-cli", raw)
+    assert got == reason
+    assert (actuals is not None) is (reason == "ok")
+    if actuals is not None:
+        assert (actuals.input_tokens, actuals.output_tokens) == (11, 5)
+
+
+def test_the_provider_takes_its_usage_from_the_installed_adapter(monkeypatch, tmp_path):
+    mapped: list[str] = []
+
+    class _Halving(ClaudeCliReferenceAdapter):
+        def map_usage(self, raw):
+            mapped.append(raw)
+            usage = super().map_usage(raw)
+            return dataclasses.replace(
+                usage, actuals=dataclasses.replace(usage.actuals, input_tokens=1, output_tokens=2))
+
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _Halving)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    payload = json.dumps({"type": "result", "is_error": False, "result": "built", "usage": _USAGE})
+    script = bin_dir / "claude"
+    script.write_text(f"#!{sys.executable}\nprint({payload!r})\n")
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    out = ClaudeCliProvider().build("build it")
+    assert len(mapped) == 1
+    assert (out.usage_actuals["input_tokens"], out.usage_actuals["output_tokens"]) == (1, 2)
+    assert out.tokens_used == 3
 
 
 def test_a_claude_cli_job_runs_its_calls_through_the_installed_adapter(
