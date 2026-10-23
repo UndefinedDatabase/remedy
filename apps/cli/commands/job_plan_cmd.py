@@ -64,6 +64,46 @@ def _calibrated_band_notes(job: Any) -> dict[str, str]:
     return {t.task_id: calibrated_band_note(calibration, t.task_class) for t in job.tasks}
 
 
+def _trust_routing_notes(job: Any) -> list[str]:
+    """DECISION F133 D4 (2): one "trust suggests otherwise" line per role, builder then reviewer,
+    when the job's own configured model contradicts trust's clear leader for that role.
+
+    Reads the job's `execution_config.builder_model`/`reviewer_model` and the trust table of the
+    registered project owning `job.repo_path`, through the three trust settings. Never fails the
+    view, as `_calibrated_band_notes` does not: a job with no execution config, a repository no
+    registered project owns, a malformed trust setting or an unreadable ledger prints no note.
+    """
+    import sqlite3
+
+    from packages.orchestration.model_trust_score import (
+        TrustConfigError,
+        load_model_trust_table,
+        resolve_trust_settings,
+        trust_routing_note,
+    )
+    from packages.orchestration.project_registry import resolve_project
+
+    if job.execution_config is None or not job.repo_path:
+        return []
+    project = resolve_project(job.repo_path)
+    if project is None:
+        return []
+    try:
+        settings = resolve_trust_settings(project_root=job.repo_path)
+        table = load_model_trust_table(
+            str(project.id), window_days=settings["window_days"],
+            sample_floor=settings["sample_floor"], max_age_seconds=settings["max_age_seconds"])
+    except (TrustConfigError, OSError, ValueError, sqlite3.Error):
+        return []
+    notes = []
+    for role, configured_model in (("builder", job.execution_config.builder_model),
+                                   ("reviewer", job.execution_config.reviewer_model)):
+        note = trust_routing_note(table, role, configured_model)
+        if note:
+            notes.append(note)
+    return notes
+
+
 def _cmd_plan_show(job_id_raw: str, *, json_output: bool = False) -> None:
     """Print the job's stored plan as `plan_editing.plan_view` reads it, the read the
     cockpit's plan section serves too (DECISION F292 D1 (1)). Exits 3 when the job or its
@@ -85,6 +125,8 @@ def _cmd_plan_show(job_id_raw: str, *, json_output: bool = False) -> None:
               f"{version} on each edit.")
     else:
         print(f"The plan cannot be edited: {view['not_editable_because']}.")
+    for note in _trust_routing_notes(job):
+        print(note)
     notes = _calibrated_band_notes(job)
     for task in view["tasks"]:
         deps = ", ".join(task["depends_on"]) or "nothing"

@@ -1,26 +1,25 @@
-# Context — operator order fix1022-review-findings
+# Context — F133 Provider trust score
 
 ## Active Branch
-`feature/fix1022-review-findings`, from `main` after the Open PR Gate merged pull request 380
-(F074).
+`feature/f133-provider-trust-score`, from `main` at `11fda065b` (the merge of pull request 381).
 
 ## Scope
-The four findings of the orchestrator's review of F310 to F074, as the operator order
-fix1022-review-findings states them: R-1422 to R-1425. Nothing else.
+F133 as `docs/roadmap/features/T7_F133.md` states it, in the order of DECISION F133 D1: T001 the
+inventory, T002 the aggregation, T003 the stats view and the routing-context note. The open findings
+are all F314's; F133 takes none.
 
 ## Do not touch
-`pingpong_loop.py`, `pingpong_provider.py`, `role_provider_factory.py`, `do_sequence.py` and
-`pingpong_provider_fake.py` for typing (their mypy errors are F314's, R-1425).
+Routing decisions, tournament machinery, promotion discipline (the feature file's Do-not-touch).
+Trust informs routing and never overrides it.
 
 ## Active assumptions
-- Every behaviour change lands with a test committed red first.
-- mypy repairs change no behaviour.
+- The deleted provider-trust pair stays deleted (DECISION F133 D1).
+- A metric with no recorded source is shown as missing, never estimated.
 
 ## Constraints
 - Under 500 insertions per commit; commit subjects carry no leading-slash tokens.
-- No ratchet or ceiling raised by hand; no assertion weakened.
-- Each part runs its own pytest selection once; the finish runs ruff, `tests/docs`, the canary and
-  the fast lane, as the order states.
+- pytest runs only the round's selection, once, capped by `tests/conftest.py` (resource safety);
+  the full suite runs once, in the closure.
 
 ## Steps
-The item-status table of the four findings lives in `.agent/handoff.md`.
+The item-status table of each round lives in `.agent/handoff.md`.

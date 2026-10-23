@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-158 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+159 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -43,7 +43,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
-| 7 | Quality & Trust | 3 | 17 |
+| 7 | Quality & Trust | 4 | 17 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
@@ -887,7 +887,15 @@ such an action calls; an action that is asked goes ahead only with your approval
 the flag you already type, your `y` at a prompt or your answer to a decision, and every approval is
 written down; the setting `autonomy.allow_push` can forbid every push; no flag skips the check;
 `remedy status --json` lists each action and the answer in force; the page
-`docs/system/permission-matrix-v1.md` is generated from the table).
+`docs/system/permission-matrix-v1.md` is generated from the table),
+F133 model trust score (for each model and each role it has played in a project, Remedy now
+measures from its own records how often the model's tasks passed, how many repair rounds they
+needed, how often its answers could not be read and what a passed task cost, each with the number of
+tasks or calls it rests on and the time window it covers; `remedy stats trust` shows that table with
+the change against the previous window and, for a role where one model clearly leads, a suggestion
+that a person adopts through configuration, never Remedy by itself; `remedy job plan-show` says so
+when a job is set to use a model that the record clearly ranks below another for a role, and changes
+nothing; the page `docs/system/model-trust-score-v1.md` describes it).
 
 Accepted in Tier 12 so far:
 F200 daemon mode (`remedy serve start` runs one long-lived supervisor for a data root, and

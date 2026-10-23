@@ -27,6 +27,13 @@ ESCALATION_TIERS_CONFIG_KEY: str = "model_escalation.tiers"
 LOCAL_ENDPOINTS_CONFIG_KEY: str = "local_routing.endpoints"
 SIDE_ROLES_CONFIG_KEY: str = "local_routing.side_roles"
 
+# F133's trust view window, sample floor and snapshot staleness limit, mirroring F074's
+# calibration triple; defaults equal packages/orchestration/model_trust_score.py's own
+# DEFAULT_TRUST_* constants (DECISION F133 D2 (1)).
+TRUST_WINDOW_DAYS_CONFIG_KEY: str = "model_routing.trust_window_days"
+TRUST_SAMPLE_FLOOR_CONFIG_KEY: str = "model_routing.trust_sample_floor"
+TRUST_SNAPSHOT_MAX_AGE_SECONDS_CONFIG_KEY: str = "model_routing.trust_snapshot_max_age_seconds"
+
 MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
     # F110's per-project override map, and the first TABLE-VALUED key in this
     # registry. The DEFAULT IS None AND NOT AN EMPTY TABLE on purpose: "no
@@ -172,6 +179,38 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=dict,
         entry_type=str,
         default=None,
+    ),
+    # F133's trust view: a model's pass quota, repair need, format-error rate and cost per pass,
+    # measured per role from the cost ledger, job records and provider evidence.
+    ConfigKeySpec(
+        key=TRUST_WINDOW_DAYS_CONFIG_KEY,
+        env_var="REMEDY_MODEL_ROUTING_TRUST_WINDOW_DAYS",
+        description=(
+            "Days of the cost ledger the model trust view reads; a task whose latest call is older "
+            "than this ages out of the matrix (F133)."
+        ),
+        value_type=int,
+        default=90,
+    ),
+    ConfigKeySpec(
+        key=TRUST_SAMPLE_FLOOR_CONFIG_KEY,
+        env_var="REMEDY_MODEL_ROUTING_TRUST_SAMPLE_FLOOR",
+        description=(
+            "Settled tasks a model and role need inside the window before their row stops being "
+            "marked thin (F133); a thin row is never a leader."
+        ),
+        value_type=int,
+        default=20,
+    ),
+    ConfigKeySpec(
+        key=TRUST_SNAPSHOT_MAX_AGE_SECONDS_CONFIG_KEY,
+        env_var="REMEDY_MODEL_ROUTING_TRUST_SNAPSHOT_MAX_AGE_SECONDS",
+        description=(
+            "Seconds a saved model trust table is used before the ledger is measured again on the "
+            "next read (F133)."
+        ),
+        value_type=int,
+        default=3600,
     ),
     # WHY here: the provider-execution keys live in this module; `config.py` may not grow.
     ConfigKeySpec(

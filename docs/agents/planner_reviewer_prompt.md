@@ -815,6 +815,10 @@ end the response with:
   paragraph for the operator that called the round's selection the whole test collection is item
   18's reading of an ordered wording against the property it must establish, and the next block
   ordered that paragraph to say what ran. The list stays at 34 items.
+  Consolidated again at F133's closure on 2026-10-23: nothing joined and no two items were merged,
+  because F133's one line in `.agent/prose_slips.md` names no lesson the list lacks: a block whose
+  ordered wording trips a repository-wide guard that no commit of the block names is item 7's, the
+  source guard the block never names. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

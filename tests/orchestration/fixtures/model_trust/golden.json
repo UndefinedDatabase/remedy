@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "project_id": "11111111-2222-3333-4444-555555555555",
+  "window_days": 90,
+  "sample_floor": 20,
+  "window_start": "2026-07-22T12:00:00+00:00",
+  "ledger_present": true,
+  "rows": [
+    {
+      "role": "builder",
+      "model": "claude-strong-v1",
+      "pass_quota": {
+        "value": 1.0,
+        "n": 20
+      },
+      "repair_need": {
+        "value": 0.0,
+        "n": 20
+      },
+      "format_error_rate": {
+        "value": 0.0,
+        "n": 20
+      },
+      "cost_per_pass": {
+        "value": 0.020000000000000004,
+        "n": 20
+      },
+      "cost_basis": "provider_reported",
+      "settled_tasks": 20,
+      "thin": false
+    },
+    {
+      "role": "builder",
+      "model": "claude-thin-v1",
+      "pass_quota": {
+        "value": 1.0,
+        "n": 3
+      },
+      "repair_need": {
+        "value": 0.0,
+        "n": 3
+      },
+      "format_error_rate": {
+        "value": 0.0,
+        "n": 3
+      },
+      "cost_per_pass": {
+        "value": 0.01,
+        "n": 3
+      },
+      "cost_basis": "provider_reported",
+      "settled_tasks": 3,
+      "thin": true
+    },
+    {
+      "role": "builder",
+      "model": "claude-weak-v1",
+      "pass_quota": {
+        "value": 0.75,
+        "n": 20
+      },
+      "repair_need": {
+        "value": 1.5,
+        "n": 20
+      },
+      "format_error_rate": {
+        "value": 0.2,
+        "n": 25
+      },
+      "cost_per_pass": {
+        "value": 0.025000000000000012,
+        "n": 15
+      },
+      "cost_basis": "provider_reported",
+      "settled_tasks": 20,
+      "thin": false
+    },
+    {
+      "role": "reviewer",
+      "model": "claude-reviewer-v1",
+      "pass_quota": {
+        "value": 0.8837209302325582,
+        "n": 43
+      },
+      "repair_need": {
+        "value": 0.6976744186046512,
+        "n": 43
+      },
+      "format_error_rate": {
+        "value": 0.0,
+        "n": 43
+      },
+      "cost_per_pass": {
+        "value": 0.005657894736842108,
+        "n": 38
+      },
+      "cost_basis": "provider_reported",
+      "settled_tasks": 43,
+      "thin": false
+    }
+  ],
+  "unattributed_calls": 0,
+  "unsettled_tasks": 0
+}

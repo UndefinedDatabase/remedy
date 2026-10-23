@@ -1,117 +1,173 @@
-# Handback — operator order fix1022-review-findings
+# Handback — F133 round 7 (closing round)
 
 ## Session
 
-SESSION 1 of operator order fix1022-review-findings (not a loop round; one session, one branch).
+SESSION 1 of feature F133 · round 7 · rounds so far 7.
 
-Context self-assessment: every finding was proved red before its repair, each repair is its own
-commit, and context stayed ample throughout.
+Context self-assessment: every prepared file this round (`block.md`, `verify.py`, `manifest.tsv`,
+`gate3.py`, `sim-rotation.txt`, `sim-gate3.txt`, `status_line.txt`, and the ten `c1-*`/`c2-*`/`c3-*`
+snapshot files) was checked against `digests.txt`'s sha256 and `manifest.tsv`'s own per-file sha256
+before use, the whole block, `AGENTS.md`, `docs/agents/handback_template.md` and
+`docs/roadmap/STATUS_closure_protocol.md` algorithm steps 4 and 5 were read in full before acting,
+and every number below (numstats, byte sizes, gate readings, the rotation's own counts) was produced
+by running the thing, never recalled. The session ends here because F133 is closed and the next
+feature starts in a fresh session.
 
-Fortschritt: 100 % of the order's repairs landed; the pull request merges only on a green hosted
-run — Schätzung
-
-## State
-
-| Field | Value |
-|---|---|
-| Branch | `feature/fix1022-review-findings`, from `main` at `4ded1afbe` (the merge of pull request 380, F074, merged by this session's Open PR Gate) |
-| Head before this handoff | `79adde111` |
-| Findings | R-1422, R-1423, R-1424 resolved; R-1425 registered OPEN, owner F314 |
-| Open findings | 11: R-1246, R-1281, R-1326, R-1351, R-1353, R-1418, R-1421, R-1425 to R-1428 (all F314's) |
-| Merge | merged on the operator's answer to Q24 (DECISION fix1022 D2) |
-| Contract | public API and client interface 1.27 → 1.28 |
-| mypy 2.3.1, `packages apps` | before: 440 errors in 110 files (`main` at `4ded1afbe`); after: 410 errors in 100 files |
+Fortschritt: 100 % (F133 is accepted; its pull request waits for the next session's Open PR Gate) —
+Schätzung
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| R-1422 (R-NEW1) | deviated | resolved; the order's red test lacked `provider_attempts` on its namespace, added (DECISION fix1022 (5)) |
-| R-1423 (R-NEW2) | done | |
-| R-1424 (R-NEW3) | deviated | resolved; the check sits in two helpers, not inline, to keep `answer_budget_decision` at its structure-ledger row (DECISION fix1022 (6)) |
-| R-1425 (R-NEW4) | done | ten modules repaired, none skipped; registered OPEN for F314 as ordered |
+| C1 | done | five prepared paths copied and proved byte-identical, staged, numstat matched `manifest.tsv` exactly, committed |
+| C2 | done | `scripts/rotate_live_review.py` run once; exit 0 and every line but `written:` matched `sim-rotation.txt`; both ledger files proved byte-identical to their `c2-` snapshots; committed alone |
+| C3 | done | STATUS/README/queue copied and proved byte-identical; all five gates run and read green; this handback written and committed with the three files |
+| Gate 1 | done | `git status --porcelain` showed only the three C3 files; `verify.py` every line `True`, `C3` read `absent`, last line `ALL True` |
+| Gate 2 | done | `status_line.txt`'s content (trailing newline stripped) occurs exactly once in `docs/roadmap/STATUS.md`; it does not begin `- [~]` |
+| Gate 3 | done | `gate3.py` → `exit 0`, `658 passed in 60.44s`, same passed count as `sim-gate3.txt`'s `658 passed`; no `FAILED`/`ERROR`/`SKIPPED` line |
+| Gate 4 | done | `gate3.py`'s integrity line → `integrity exit 0`, `"fail_count": 0`, matching `sim-gate3.txt` |
+| Gate 5 | done | `open_finding_ids` read the eleven ordered ids, exactly `sim-gate3.txt`'s set |
+| Push | done | `git push origin feature/f133-provider-trust-score` succeeded on the first attempt, no HTTP 500 |
+| Pull request | done | `gh pr create` opened pull request from `feature/f133-provider-trust-score` into `main`, not a draft; left unmerged |
+
+## Range
+
+Review of `7ccbe2632`..`HEAD` (`HEAD` is this handback's own commit).
 
 ## Commits
 
-| Commit | Subject | Insertions |
-|---|---|---|
-| `ad793b0bb` | R-1422 red test (with plan and context rewritten for the order) | 45 |
-| `6a4098218` | R-1422 fix: `_with_calls(..., primary_served=)` | 12 |
-| `a93e7ccbb` | R-1422 record: failover doc, F307 Built State, ledger | 11 |
-| `94910ef68` | R-1423 red tests (running reads 5, expected 9; stopped holds 5) | 29 |
-| `950185129` | R-1423 fix: `budget_work_seconds(..., in_flight=)` | 10 |
-| `eaa68379b` | R-1423 contract 1.28: versions, matrix, both docs, regenerated pages, pins | 41 |
-| `6013facba` | R-1423 kit seed to version-3 actuals, client answers re-recorded | 9 |
-| `2dc1178f7` | R-1423 record: F311 Built State, ledger | 10 |
-| `6b6ab5e97` | R-1424 red tests (two) | 26 |
-| `3f62e03ad` | R-1424 fix: `_doubled_answers`, `_missing_answer_detail` | 22 |
-| `10174b946` | R-1424 record: budget doc, F310 Built State, ledger | 15 |
-| `48685c746`, `394c1b0d1`, `a3dc14324`, `1f4c417cb`, `3cf61876a`, `a6406ef61`, `e63ba38da`, `a5f811719`, `c5c57fa8b`, `613d3f9cf` | R-1425, one module each (cost_preview with its one-cent test) | 18, 4, 2, 8, 27, 3, 3, 1, 3, 2 |
-| `79adde111` | R-1425 registration, CHANGELOG, DECISION fix1022 | 52 |
-| `6efb41e7f` | context file: `Steps` heading and pytest constraint restored | 5 |
-| `c93df184a` | the handoff | — |
-| `84000eabb` | hosted run 39856076613 red: R-1426 registered with its 166 nodes | — |
-| `a8abb7c94` | R-1426 repair: the workflow's tool-sandbox step, its guard test, the CI doc | — |
-| (this commit) | R-1426 `Landed:` line, DECISION fix1022 (9), this handoff | — |
+### `d6ca86af0` F133 R7 C1: book round 6, the Built State, save the round 7 block and the PR body
 
-Every commit is under 500 insertions.
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f133-r7-pr_body.md` | +68/-0 (new) | byte copy of the prepared PR body, proved equal to it |
+| `.agent/authored/f133-r7.md` | +136/-0 (new) | byte copy of the round's own block, proved equal to it |
+| `.agent/live_review.md` | +2/-0 | round 6's verdict booked |
+| `.agent/plan.md` | +5/-4 | rewritten for round 7 (the closing round) |
+| `docs/roadmap/features/T7_F133.md` | +41/-0 | the feature file's Built State section added |
+
+### `ef8e9a6b5` F133 R7 C2: rotate the finding ledger into its archive
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/live_review.md` | +0/-44 | rotated out: 4 gate records and 9 finding pairs (18 records) moved to the archive |
+| `.agent/live_review_archive.md` | +44/-0 | the same 44 lines received |
+
+### this commit — F133 R7 C3: accept F133 in STATUS with its README sync and the self-use queue (+ handback)
+
+C3's own three files, measured before the handoff joined them (`git diff --numstat` against the
+pre-C3 tree):
+
+| Path | +/- | Reason |
+|---|---|---|
+| `README.md` | +11/-3 | `159 of 314`, Tier 7 row `4 \| 17`, F133's Tier 7 entry closes the list |
+| `docs/roadmap/STATUS.md` | +1/-1 | F133's `- [~]` line replaced by the prepared `- [x]` accepted line |
+| `scripts/self_use_queue.json` | +1/-1 | `SU-077`'s `consumed_by` set to `F133` |
+
+Plus, in the same commit (self-reference exception, R-0149 pattern — a handback cannot table the
+commit that writes it):
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | rewritten | this handback, per `docs/agents/handback_template.md` |
+
+## External actions
+
+- Open PR Gate was run before any write: `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
+  returned `[]`; the branch was already `feature/f133-provider-trust-score`, so no new branch was
+  created and no merge was needed.
+- `git push origin feature/f133-provider-trust-score` → run once, after this commit, succeeded on
+  the first attempt; no HTTP 500, no retry needed.
+- `gh pr create --repo UndefinedDatabase/remedy --base main --head feature/f133-provider-trust-score --title "F133 — Provider trust score" --body-file .agent/authored/f133-r7-pr_body.md`
+  → run once, succeeded; number and URL are in the worker's reply to the operator (not named here,
+  per the block: the pull request does not exist when this handoff is written).
+- `gh pr list --repo UndefinedDatabase/remedy --state open --json number,headRefName,baseRefName,isDraft`
+  → read after the create, confirmed exactly that one pull request, from
+  `feature/f133-provider-trust-score` into `main`, not a draft.
+- No worktree was added or removed by this worker. No merge. No provider call.
 
 ## Verification
 
-Interpreter: Python 3.10.12. Taken on `79adde111` (tree `cebf1a0a0`) unless noted.
+Interpreter: the repository's configured Python 3. All five gates were run once, after C3's three
+files were copied and before this commit, per the block.
 
-| Command | Result |
-|---|---|
-| `scripts/remedy_lint.sh ruff` | `All lint checks passed.` |
-| `python3 -m pytest tests/docs -q` | `346 passed` |
-| `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | `42 passed` |
-| Parts 1 to 4 selection (every suite the order names, plus the structure ratchet) | `1895 passed in 201.84s` |
-| `python3 scripts/record_client_answers.py --check` | `client answers: match` |
-| `scripts/remedy_test_fast.sh main` | exit 1: `2 failed, 6696 passed`; `test_context_md_no_stale_steps` and `test_context_mentions_resource_safety`, both red because this order's rewrite of `.agent/context.md` dropped its `Steps` heading and its pytest constraint; restored at `6efb41e7f`, the two modules then read `33 passed` |
-| `scripts/remedy_test_fast.sh main` on the final tree | recorded in the pull request body with its commit and tree, because this handoff is part of that tree |
-| mypy 2.3.1 `packages apps` | 440 errors in 110 files before (`4ded1afbe`), 410 in 100 after; the order's grep over the ten repaired modules prints nothing |
+Gate 1 — `git status --porcelain` → only `README.md`, `docs/roadmap/STATUS.md`,
+`scripts/self_use_queue.json` modified. `python3 .remedy-wt/f133-r7/prep/verify.py .` → every line
+`True`: both C1 and C2 single-parent, both carry an `F133 R7 Cn` subject, on the right branch, C1's
+five paths and C2's two paths exact and byte-equal to their `c1-`/`c2-` snapshots, `C3` read `absent`
+(not yet committed at gate time) with its three working-tree files byte-equal to their `c3-`
+snapshots; last line `ALL True`.
 
-Red proofs: R-1422 `AttributeError: 'BuilderOutput' object has no attribute 'failover_calls'`;
-R-1423 `assert 5 == 9`; R-1424 the generic sentence and `budget_limit_not_raised` where
-`missing_argument` was expected.
+Gate 2 — the content of `status_line.txt` with its trailing newline stripped occurs exactly once in
+`docs/roadmap/STATUS.md`; it does not begin `- [~]`.
 
-## Hosted CI
+Gate 3 — `python3 .remedy-wt/f133-r7/prep/gate3.py .` → `exit 0`, `658 passed in 60.44s (0:01:00)`
+(seconds differ from the simulation's `73.19s` as the block allows; the passed count, `658`, matches
+`sim-gate3.txt`'s second line exactly); no `FAILED`, `ERROR` or `SKIPPED` line printed.
 
-1. Run 39856076613 over `c93df184a`: red, `129 failed, 17561 passed` and `36 failed, 5572 passed`
-   and `1 failed, 22 passed` per stage, the same 166 nodes in 3.10 and 3.12, all
-   `sandbox_unavailable` (no Bubblewrap on the runner). None is in a test file this branch changed.
-   Registered as R-1426 (Low, F314); repaired in the workflow at `a8abb7c94`.
-2. Run 39861110995 over `694f9aec4`: red, but 166 failures fell to 2: `17708 passed` / `1 failed, 17707 passed`
-   and `1 failed, 5607 passed` per column. R-1427 (`test_do_order_budget`, both columns, `TypeError`)
-   and R-1428 (`test_tool_sandbox` disk search, 3.12 only, timeout), both green locally, registered
-   Low for F314. A second red run is never merged: pull request 381 stays OPEN and question Q24
-   waits for the operator.
+Gate 4 — the same run's integrity line: `integrity exit 0`, 6 checks all `pass`
+(`handler_import` `handlers=197`, `live_review_verdict` `last Gate verdict PASS`,
+`plan_consistency` `unchecked=0, context_complete=False`, `relevant_untracked`
+`untracked=0, relevant=0`, `repo_root_hygiene` `no reviewer scratch, evidence dir or archive at the
+root`, `high_blockers_open` `no open blocker/high findings`), `"fail_count": 0` — matching
+`sim-gate3.txt` exactly.
+
+Gate 5 — `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
+→ `['R-1246', 'R-1281', 'R-1326', 'R-1351', 'R-1353', 'R-1418', 'R-1421', 'R-1425', 'R-1426', 'R-1427', 'R-1428']`
+— exactly the eleven ordered ids, all owned by F314.
+
+Gate 6 (post-PR) — `git status --porcelain` empty; `git log --oneline -n 5`; the push's outcome; the
+pull request's number and URL; the `gh pr list` reading. All reported to the operator in this
+worker's reply, per the block ("in your reply only").
+
+## Authored-text proofs
+
+C1's five paths and C2's two paths are all reviewer-authored or reviewer-produced text applied this
+round. Each was copied from its prepared `c1-*`/`c2-*` file under `.remedy-wt/f133-r7/prep/` (C1) or
+produced by running `scripts/rotate_live_review.py` once (C2) by a dedicated `python3` script under
+`.remedy-wt/f133-r7-worker/` (`c1_copy.py`, `c2_rotate.py`), each proved byte-identical by direct
+bytes equality immediately after (`c1_prove.py`, `c2_prove.py`); all seven pairs read `True`. C3's
+three files were likewise copied (`c3_copy.py`) and proved byte-identical (`c3_prove.py`) before any
+gate ran. `block.md` itself (saved as `.agent/authored/f133-r7.md`) was separately confirmed equal to
+the prepared `block.md` by the digest checked against the prompt's sha256 before any file was used,
+and again by `verify.py`'s own numstat/byte checks for that path.
 
 ## Deviations & assumptions
 
-1. ORIG_BRANCH was `feature/f074-estimate-calibration`; the Open PR Gate merged its pull request
-   380 with `--delete-branch`, which removed it, so the session ends on `main`.
-2. Finding ids R-NEW1 to R-NEW4 are R-1422 to R-1425.
-3. R-1422's test: `SimpleNamespace(builder_model="sonnet")` raised `AttributeError` on
-   `provider_attempts` once the walk attached its call; the namespace gained
-   `provider_attempts=[]` and one more assertion. It was red without the fix in both forms.
-4. R-1424: inserted inline, the order's nine lines grew `answer_budget_decision` from its
-   structure-ledger row of 155 to 164 lines and turned `tests/test_structure_ratchet.py` red. The
-   same rule now lives in `_doubled_answers` and `_missing_answer_detail`; the refusal code and
-   sentence are the order's, and the function stays at 155.
-5. R-1423's stopped-job twin shares one helper with the running test instead of a copied record.
-6. mypy: the interpreter carries mypy 2.1.0; the counts were taken with 2.3.1, the pin, in a
-   disposable venv under `.remedy-wt/` over the installed packages. `job_certificate_verify` had
-   one error and one note (the order said 1, the plain grep reads 2 lines).
-7. `_autonomy_value` raises `KeyError` for a key the schema does not hold, where the code raised
-   `AttributeError` before; no configuration reaches that path.
-8. The first fast-lane run was red on two `.agent/context.md` guards my rewrite tripped;
-   repaired at `6efb41e7f`, no test changed.
-9. R-1426 is one finding for 166 nodes of one cause (DECISION fix1022 (9)).
-10. The R-1423 re-recording changed only the stub server's port and one second of silence.
+None. `git branch --show-current` was run as a standalone command, never joined to another,
+immediately before the C1 and C2 commits and immediately before this C3 commit, and read
+`feature/f133-provider-trust-score` every time. Three commits this round — C1, C2, and C3 carrying
+this handback — exactly as the block orders. No file outside the paths the block names per commit
+was touched. No production or test file was edited. `.agent/context.md` and `.agent/decisions.md`
+were read and need no change: the scope, assumptions and constraints they record still hold; this
+round made no new technical decision beyond executing the block. No merge, no rebase, no amend, no
+stash, no provider call, no second test command run alongside gate 3.
+
+## For the operator, in plain sentences
+
+Remedy now keeps, for each model and each role it has played in a project, a running record of how
+often its work passed, how much repair it needed, how often its answers could not be read, and what
+a passed task cost; every one of those figures also states how many tasks it rests on and what time
+period it covers. A new view shows this record and offers a suggestion to use a better model for a
+role, but only when one model clearly and consistently leads, and a person can only put that
+suggestion into effect by changing configuration — Remedy never switches the model by itself. A
+job's plan now notes it when that job is set to use a model the record ranks clearly below another
+for the same role, and nothing about the job changes because of that note. This feature's own paid
+self-use run against Remedy's own code stopped cleanly at its normal human approval gate, with no
+defect found. The whole test collection passed on the exact code that ships, using a little more
+computer processing time than the previous feature's closure, and still staying within the allowed
+limit. The review package is named `remedy-review-20261023-145010-READY_FOR_REVIEW.zip` and sits in
+this machine's review-package archive folder, outside this repository's own checkout. A pull request
+for this feature is now open and will be merged automatically at the start of the next working
+session unless the operator merges it sooner.
 
 ## Next
 
-1. F314 repairs R-1427 and R-1428 and reads the next hosted run.
-2. F314 owns R-1425's remaining growth (`pingpong_loop`, `pingpong_provider`,
-   `role_provider_factory`, `do_sequence`) and the question of a mypy ratchet.
+1. Phase 1 rule 1: check whether `.agent/STOP` exists (absent at the time of this handback).
+2. The Open PR Gate, which merges F133's pull request in the NEXT session and never in this one.
+3. The booking of round 7's verdict in the next feature's first commit.
+4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md` (`F151 — Worker adapter contract v2`).
+
+Operator questions open: 0. Open findings: 11 (`R-1246`, `R-1281`, `R-1326`, `R-1351`, `R-1353`,
+`R-1418`, `R-1421`, `R-1425`, `R-1426`, `R-1427` and `R-1428`, owned by F314).
