@@ -6,11 +6,12 @@ building, stream and usage mapping, isolation) with a reusable conformance kit, 
 wrapped as the reference adapter with golden equality, and orchestration importing only the contract.
 
 ## Current Step
-Round 9, the closure's evidence round: the staging reclaim, the evidence job and the review package.
+Round 10, the closing round: the Built State, the rotation, SU-078's consumed_by, the STATUS line
+with the README sync, and the pull request, left unmerged.
 
 ## Next Steps
-1. Round 10, the closing round: the Built State, the rotation, SU-078's consumed_by, the STATUS line
-   with the README sync, and the pull request, left unmerged.
+1. The next session merges F151's pull request at the Open PR Gate and claims the next feature by
+   Rule A5.
 
 ## Risks
-- A package that does not read READY_FOR_REVIEW blocks the closure until it does.
+- None open for F151; the eleven open findings are F314's.
