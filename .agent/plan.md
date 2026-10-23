@@ -6,9 +6,8 @@ building, stream and usage mapping, isolation) with a reusable conformance kit, 
 wrapped as the reference adapter with golden equality, and orchestration importing only the contract.
 
 ## Current Step
-Round 2: T002, DECISION F151 D2 — `packages/contracts/adapter_contract.py`, the conformance kit
-`packages/contracts/adapter_conformance_kit.py`, and the kit proved against a conforming toy and
-one broken toy per dimension.
+Round 3: the T002 repair, DECISION F151 D3 — the transport dimension over the whole class chain
+with the failure class exempt (R-1435, R-1436), and one test per unguarded kit check (R-1437).
 
 ## Next Steps
 1. T003: the `claude-cli` reference adapter with golden equality, the import guard with a violation
