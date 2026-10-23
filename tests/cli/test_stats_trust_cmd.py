@@ -188,11 +188,11 @@ def test_a_malformed_setting_is_refused_as_a_usage_error(project, capsys):
 
 
 def _row(*, pass_quota_value, pass_quota_n=10, cost_value=0.01, cost_basis="provider_reported",
-         cost_n=10):
+         cost_n=10, role="builder", model="m"):
     from packages.orchestration.model_trust_score import ModelTrustRow, TrustMetric
 
     return ModelTrustRow(
-        role="builder", model="m", pass_quota=TrustMetric(value=pass_quota_value, n=pass_quota_n),
+        role=role, model=model, pass_quota=TrustMetric(value=pass_quota_value, n=pass_quota_n),
         repair_need=TrustMetric(value=0.0, n=pass_quota_n),
         format_error_rate=TrustMetric(value=0.0, n=pass_quota_n),
         cost_per_pass=TrustMetric(value=cost_value, n=cost_n), cost_basis=cost_basis,
@@ -279,6 +279,22 @@ def test_the_no_margin_wording_is_the_whole_line():
         runner_up=None, runner_up_pass_quota=None, reason=TRUST_RECOMMENDATION_NO_MARGIN)
     assert _format_recommendation(rec, window_days=90, sample_floor=20) == (
         "No recommendation for builder: no model leads the next by 10 points in the last 90 days.")
+
+
+def test_role_filter_keeps_only_that_roles_recommendation_in_the_text_view():
+    """R-1433 survivor (3): `--role` must keep the TEXT view's recommendation line to one role,
+    not every role the matrix has an eligible leader for."""
+    from apps.cli.commands.stats_trust_cmd import render_trust_text
+
+    builder_a = _row(pass_quota_value=0.9, role="builder", model="builder-leader")
+    builder_b = _row(pass_quota_value=0.5, role="builder", model="builder-runner")
+    reviewer_a = _row(pass_quota_value=0.9, role="reviewer", model="reviewer-leader")
+    reviewer_b = _row(pass_quota_value=0.5, role="reviewer", model="reviewer-runner")
+    table = _table(builder_a, builder_b, reviewer_a, reviewer_b)
+    text = render_trust_text(table, _table(), max_age_seconds=3600,
+                             now=datetime(2026, 1, 2, tzinfo=timezone.utc), role="builder")
+    assert "Recommendation for builder" in text
+    assert "for reviewer" not in text
 
 
 def test_the_json_carries_the_recommendation_per_role(project, capsys):

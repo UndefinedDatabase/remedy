@@ -587,6 +587,18 @@ def build_model_trust_table(
         rows=rows, unattributed_calls=unattributed_calls, unsettled_tasks=unsettled_tasks)
 
 
+#: R-1432: the lead and the margin are compared in whole hundredths of a POINT (a point being one
+#: pass-quota percentage point, 0.01) rather than in raw floating point, so a lead that is
+#: mathematically exactly `TRUST_LEADER_MARGIN` — such as 17 of 20 tasks against 15 of 20, whose
+#: `float` difference is `0.09999999999999998` — is never refused by rounding noise many orders
+#: below one task in a thousand.
+_HUNDREDTHS_OF_A_POINT_PER_UNIT = 10_000
+
+
+def _hundredths_of_a_point(value: float) -> int:
+    return round(value * _HUNDREDTHS_OF_A_POINT_PER_UNIT)
+
+
 def trust_leader(table: ModelTrustTable, role: str) -> TrustRecommendation:
     """DECISION F133 D3 (1): ``role``'s clear leader among its eligible rows, or why there is none.
 
@@ -604,7 +616,8 @@ def trust_leader(table: ModelTrustTable, role: str) -> TrustRecommendation:
             role=role, leader=None, leader_pass_quota=None, leader_settled_tasks=None,
             runner_up=None, runner_up_pass_quota=None, reason=TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE)
     top, second = eligible[0], eligible[1]
-    if top.pass_quota.value - second.pass_quota.value < TRUST_LEADER_MARGIN:
+    lead = top.pass_quota.value - second.pass_quota.value
+    if _hundredths_of_a_point(lead) < _hundredths_of_a_point(TRUST_LEADER_MARGIN):
         return TrustRecommendation(
             role=role, leader=None, leader_pass_quota=None, leader_settled_tasks=None,
             runner_up=None, runner_up_pass_quota=None, reason=TRUST_RECOMMENDATION_NO_MARGIN)

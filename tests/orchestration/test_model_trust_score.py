@@ -364,6 +364,37 @@ class TestCostBases:
         assert row.cost_basis == TRUST_COST_BASIS_TOKENS
         assert row.cost_per_pass == TrustMetric(value=110.0, n=1)
 
+    def test_a_partly_priced_sum_falls_to_tokens_not_the_priced_basis(self, tmp_path):
+        """R-1433 survivor (1): one of a pass's two calls is priced and the other is not; the sum
+        must fall to `tokens` (every call's tokens are known), never stay labelled with the
+        priced calls' own basis."""
+        _job(tmp_path, "jobpartial", {"T001": {"status": "passed", "repair_rounds_used": 0}})
+        _attempts(tmp_path, "jobpartial", "T001", [
+            {"seq": 1, "round": 1, "role": "builder", "model": "m", "is_parse_retry": False},
+            {"seq": 2, "round": 1, "role": "builder", "model": "m", "is_parse_retry": False},
+        ])
+        _call(tmp_path, "jobpartial", "T001", "builder", 1, None, 1000, 100, cost=0.02)
+        _call(tmp_path, "jobpartial", "T001", "builder", 2, None, 1000, 100, cost=None)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        row = table.lookup("m", "builder")
+        assert row.cost_basis == TRUST_COST_BASIS_TOKENS
+        assert row.cost_per_pass == TrustMetric(value=2200.0, n=1)
+
+    def test_a_partly_priced_sum_with_a_missing_token_count_falls_to_unknown(self, tmp_path):
+        """R-1433 survivor (1), the second half: when the sum is also not every-call-tokens-known,
+        it must fall all the way to `unknown` with no value, never stay priced."""
+        _job(tmp_path, "jobpartialnotok", {"T001": {"status": "passed", "repair_rounds_used": 0}})
+        _attempts(tmp_path, "jobpartialnotok", "T001", [
+            {"seq": 1, "round": 1, "role": "builder", "model": "m", "is_parse_retry": False},
+            {"seq": 2, "round": 1, "role": "builder", "model": "m", "is_parse_retry": False},
+        ])
+        _call(tmp_path, "jobpartialnotok", "T001", "builder", 1, None, 100, 10, cost=0.02)
+        _call(tmp_path, "jobpartialnotok", "T001", "builder", 2, None, None, None, cost=None)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        row = table.lookup("m", "builder")
+        assert row.cost_basis == COST_BASIS_UNKNOWN
+        assert row.cost_per_pass == TrustMetric(value=None, n=1)
+
 
 class TestThin:
     def test_thin_at_floor_minus_one_and_not_at_the_floor(self, tmp_path):
@@ -397,11 +428,27 @@ class TestTrustLeader:
             unattributed_calls=0, unsettled_tasks=0)
 
     def test_the_leader_at_exactly_the_margin(self):
-        table = self._table((self._row("a", pass_quota=0.80), self._row("b", pass_quota=0.70)))
+        """R-1432: a lead of exactly ten points, from pass quotas made of task counts (17 of 20
+        against 15 of 20), is a clear leader even though their raw floating-point difference
+        (`17 / 20 - 15 / 20 == 0.09999999999999998`) reads fractionally below the margin."""
+        table = self._table((self._row("a", pass_quota=17 / 20, n=20), self._row("b", pass_quota=15 / 20, n=20)))
         rec = trust_leader(table, "builder")
         assert rec.reason == TRUST_RECOMMENDATION_LEADER
         assert rec.leader == "a" and rec.runner_up == "b"
-        assert rec.leader_pass_quota == 0.80 and rec.runner_up_pass_quota == 0.70
+        assert rec.leader_pass_quota == 17 / 20 and rec.runner_up_pass_quota == 15 / 20
+
+    def test_a_second_pair_at_exactly_the_margin(self):
+        """R-1432: a second task-count pair at exactly ten points, 7 of 10 against 6 of 10."""
+        table = self._table((self._row("a", pass_quota=7 / 10, n=10), self._row("b", pass_quota=6 / 10, n=10)))
+        rec = trust_leader(table, "builder")
+        assert rec.reason == TRUST_RECOMMENDATION_LEADER
+        assert rec.leader == "a" and rec.runner_up == "b"
+
+    def test_just_above_the_margin_is_a_leader(self):
+        table = self._table((self._row("a", pass_quota=0.81), self._row("b", pass_quota=0.70)))
+        rec = trust_leader(table, "builder")
+        assert rec.reason == TRUST_RECOMMENDATION_LEADER
+        assert rec.leader == "a" and rec.runner_up == "b"
 
     def test_just_below_the_margin_is_no_leader(self):
         table = self._table((self._row("a", pass_quota=0.799), self._row("b", pass_quota=0.70)))
