@@ -6,12 +6,11 @@ building, stream and usage mapping, isolation) with a reusable conformance kit, 
 wrapped as the reference adapter with golden equality, and orchestration importing only the contract.
 
 ## Current Step
-Round 4: R-1437's last two pins, and T003's first half under DECISION F151 D4 — the claude-cli
-reference adapter `packages/providers/adapters/claude_cli_reference.py` with its goldens and kit run.
+Round 5: R-1438's tests, and T003's second half under DECISION F151 D5 — the `adapter_ref` linkage,
+the adapter registry reached by `remedy worker show`, the import guard, and `LLMWorker` deleted.
 
 ## Next Steps
-1. T003's second half: the import guard with a violation fixture, the registry linkage that reaches
-   the adapter, the deletion of `LLMWorker`, the docstrings and the docs page.
+1. The docs page for the contract, the architecture page's worker section, and the README index.
 2. The closure sequence.
 
 ## Risks
