@@ -1,17 +1,20 @@
-# Plan — operator order fix1022-review-findings
+# Plan — F133 Provider trust score
 
 ## Goal
-Repair the orchestrator's review findings of F310 to F074 on one branch and merge it when green:
-R-1422 (failover booking during a hold), R-1423 (`used.minutes` of a running job), R-1424
-(`extend` without an answer on a deadline stop), R-1425 (mypy debt of the new modules, left open
-for F314).
+Make "which model earns which work" a rolling, queryable fact: per model and role, the pass quota,
+the repair need, the format-error rate and the cost per pass, each with its window and sample size,
+in one trust home; `remedy stats trust` shows it, and routing reads it only as a recommendation.
 
 ## Current Step
-Done: the operator answered Q24 "mergen" (DECISION fix1022 D2); pull request 381 merges.
+Round 1: claim F133, re-head the review record, DECISION F133 D1, and T001's inventory
+`.agent/f133_inventory.md`, reviewed before any code.
 
 ## Next Steps
-1. F314 owns R-1425 to R-1428.
+1. T002: the aggregation, its windows and floors, goldens on a constructed history; DECISION F133 D2
+   names the module and its sources from the inventory.
+2. T003: `remedy stats trust`, the recommendation line, the routing-context note, docs, end-to-end.
+3. The closure sequence.
 
 ## Risks
-- ORIG_BRANCH (`feature/f074-estimate-calibration`) was deleted by the Open PR Gate merge of
-  pull request 380; the order ends on `main` (DECISION fix1022 (8)).
+- The four metrics may not all have a recorded source today; the inventory says which, and T002
+  shows a missing one as missing rather than inventing it.

@@ -31365,3 +31365,13 @@ THE DECISION: the operator answered "mergen" on 2026-10-23: pull request 381 mer
 and R-1427 and R-1428 stay OPEN for F314. Q24 is deleted from `.agent/operator_questions.md`.
 
 HOW TO REVERSE: revert the merge commit of pull request 381.
+
+## DECISION F133 D1 — the trust home is a new module because the provider-trust pair is deleted, the slice list, and the inventory before code (2026-10-23, T001)
+
+THE PROBLEM: F133's file says that `provider_trust.py` and `provider_trust_verification.py` ALREADY exist and orders them EXTENDED, not shadowed, after a findings pass. Read at `11fda065b`, neither exists: F275 round 22 deleted both at `0242c0a3b` (2026-09-10), together with their tests, their two pages under `docs/system/` and the whole `provider` command group. What they computed was a trust gate over externally produced patch candidates, keyed by candidate and not by model and role, so no metric of this feature's set ever lived in them. The only survivors are a comment and an always-empty `provider_trust_report_id` field in `packages/orchestration/self_dogfood_execution.py`.
+
+THE DECISION: (1) The one trust home is a NEW module, built by T002. The file's "extended, not shadowed" is read as its intent: there is one aggregation of trust per model and role and no second one, which the Acceptance's grep checks. The module's name, its sources and what it reuses from `packages/orchestration/estimate_calibration.py` (the rolling window, the sample floor, the read-only ledger connection and the snapshot) are fixed by DECISION F133 D2 from the inventory, in the round that lands T002. (2) T001 is a committed inventory, `.agent/f133_inventory.md`, written by round 1's worker and reviewed before T002 is authored: for each of the four metrics, the record that holds its inputs today, the key that record carries (model, role, job, task), and what is missing; every existing aggregation over model or role, with its consumers; and the routing evidence that a "trust suggests otherwise" note can join. (3) The slice order: T001 alone in round 1; T002 in the next round; T003 after it; then the closure sequence.
+
+ALTERNATIVES CONSIDERED: (a) restoring the deleted pair from git and growing it, REJECTED because it holds no per-model-and-role metric and its deletion was an operator-ordered cluster deletion (F260, F275); (b) skipping T001 because the module it names is gone, REJECTED because the sources and the per-model aggregations that do exist still need an inventory before the aggregation is designed, which is exactly what T001 is for.
+
+HOW TO REVERSE: delete this entry, the "Slice list" section of `docs/roadmap/features/T7_F133.md` and `.agent/f133_inventory.md`.

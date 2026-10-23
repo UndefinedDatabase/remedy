@@ -1,25 +1,26 @@
-# Live Review — F074 Estimate calibration
+# Live Review — F133 Provider trust score
 
-> Round-by-round review record, re-headed at the F074 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F113, whose STATUS
-> line went `[x]` on its own branch at `16179975b`; this session's Open PR Gate merged pull
-> request 379 into `main` as `148a1c386`, whose tree equals `16179975b`'s. F113's round 6 was
-> reviewed after its own handback, so operator amendment amend0827-process-diet rule 1 books its
-> verdict here, in the first commit of the next round that is happening anyway; its gate entry is
-> appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
-> section below are rewritten; everything else from the Findings heading to the end of the file as
-> it stood at `148a1c386` is carried forward BYTE-IDENTICAL, and finding ids continue the
-> monotonic R-XXXX series across the re-head. The open set at `148a1c386`, computed with
-> `open_finding_ids` from `scripts/rotate_live_review.py`, holds 7 ids — R-1246, R-1281, R-1326,
-> R-1351, R-1353, R-1418 and R-1421 — every one owned by F314, so F074 takes none of them.
+> Round-by-round review record, re-headed at the F133 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F074, whose STATUS
+> line went `[x]` on its own branch; pull request 380 merged it into `main` as `4ded1afbe`. Operator
+> order fix1022-review-findings then ran on its own branch, registered R-1422 to R-1428 here and
+> merged as pull request 381, `11fda065b`, on the operator's answer to Q24. No verdict is pending
+> booking: F074's rounds 1 to 4 are booked below, its closing round is its branch's terminator
+> (§4 item 13), and fix1022 was an operator order whose record is its own findings. Only the
+> heading, this paragraph and the Steps section below are rewritten; everything else from the
+> Findings heading to the end of the file as it stood at `11fda065b` is carried forward
+> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The open
+> set at `11fda065b`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`, holds 11
+> ids — R-1246, R-1281, R-1326, R-1351, R-1353, R-1418, R-1421 and R-1425 to R-1428 — every one
+> owned by F314, so F133 takes none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F074 D1's, which also writes the feature file's slice list. The first
-round claims F074, re-heads this record, books F113's round 6, and lands T001 and T002 together:
-the distributions with their floor, their damping and their snapshot, and the shared estimator's
-source swap with one seam test per consumer. Then T003, the trust view `remedy stats calibration`
-and the plan's band annotation; then the closure.
+THE ORDER BELOW IS DECISION F133 D1's, which also writes the feature file's slice list. The first
+round claims F133, re-heads this record and lands T001, the findings pass, as a committed inventory
+that is reviewed before any code is authored. Then T002, the metric aggregation with its windows,
+floors and goldens; then T003, `remedy stats trust`, the recommendation line and the routing-context
+note; then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
