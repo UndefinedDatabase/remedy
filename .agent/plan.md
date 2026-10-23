@@ -7,13 +7,12 @@ transport, timeouts, retries, failover, pacing and evidence; the goldens stay by
 import guard stays green.
 
 ## Current Step
-Round 4, the closure's integration-gate round: the checklist's consolidation pass, the self-use
-item run to its approval gate, and the feature's one full suite with its CPU cost.
+Round 5, the closure's evidence round: the staging reclaim, the evidence job and the review
+package. The one full suite ran green in round 4; R-1442 is registered for F314.
 
 ## Next Steps
-1. A repair round for every bad node id, when the suite is red; otherwise the evidence bundle and
-   the review package.
-2. The closing round: the Built State, the rotation, the STATUS line, the README, the pull request.
+1. The closing round: the Built State, the rotation, SU-079's consumed_by, the STATUS line with the
+   README sync, and the pull request, left unmerged.
 
 ## Risks
 - A process that runs a job without the command line or the test configuration finds an empty
