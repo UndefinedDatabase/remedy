@@ -18,7 +18,7 @@ Per order, in manifest order:
 * the order's budget: ``max_iterations`` becomes the loop's ``LoopLimits``,
   ``max_tokens`` and ``max_wall_seconds`` go through the existing
   ``REMEDY_BUDGET_*`` config keys rather than a second budget mechanism.
-* execution through ``create_mission`` -> ``plan_mission`` -> ``run_mission``,
+* execution through ``accept_order`` -> ``plan_mission`` -> ``run_mission``,
   the same three verbs ``remedy mission`` drives. **The runner adds no second
   execution mechanism**, and every seam it passes defaults to production.
 
@@ -212,6 +212,16 @@ def _default_make_project(name: str, slug: str,
     return str(project.id)
 
 
+def _default_accept_order(project_id: str, workspace: Path, goal: str) -> Any:
+    """R-1281, DECISION F314 D3: open the order in the project's one repository mission."""
+    from packages.orchestration.mission_record import MissionOrder
+    from packages.orchestration.repo_mission import accept_order, project_by_id
+
+    mission, _batch = accept_order(project_by_id(project_id), workspace,
+                                   MissionOrder(text=goal))
+    return mission
+
+
 def _default_plan_call_fn() -> Callable[[str, int], str] | None:
     from packages.orchestration.intake import make_structured_call_fn
     from packages.orchestration.mission_plan_schema import MissionPlanDraft
@@ -278,7 +288,7 @@ class RunnerDeps:
     """
 
     make_project: Callable[..., str] = _default_make_project
-    create_mission: Callable[..., Any] = None  # type: ignore[assignment]
+    accept_order: Callable[..., Any] = _default_accept_order
     plan_mission: Callable[..., Any] = None  # type: ignore[assignment]
     run_mission: Callable[..., Any] = None  # type: ignore[assignment]
     load_mission: Callable[..., Any] = None  # type: ignore[assignment]
@@ -299,10 +309,6 @@ class RunnerDeps:
     template_dir_fn: Callable[[Path], Path | None] = lambda run_dir: None
 
     def __post_init__(self) -> None:
-        if self.create_mission is None:
-            from packages.orchestration.mission_state import create_mission
-
-            self.create_mission = create_mission
         if self.plan_mission is None:
             from packages.orchestration.mission_compiler import plan_mission
 
@@ -516,7 +522,7 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
             workspace = deps.materialise(run_dir)
             project_id = deps.make_project(f"gauntlet {order.id}", order.id,
                                            workspace)
-            mission = deps.create_mission(project_id, order.goal)
+            mission = deps.accept_order(project_id, workspace, order.goal)
             # R-0197: the order declares its shape, so the compiler is told
             # it. One milestone of headroom, because a compiler that finds a
             # genuine prerequisite should be able to say so — what it may not

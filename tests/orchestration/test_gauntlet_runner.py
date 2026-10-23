@@ -110,7 +110,7 @@ class Recorder:
     def deps(self) -> RunnerDeps:
         return RunnerDeps(
             make_project=self._make_project,
-            create_mission=self._create_mission,
+            accept_order=self._accept_order,
             plan_mission=self._plan_mission,
             run_mission=self._run_mission,
             load_mission=lambda project_id, mission_id: FakeMission(id=mission_id),
@@ -145,7 +145,7 @@ class Recorder:
         self.seen_repo_path = repo_path
         return "p-1"
 
-    def _create_mission(self, project_id: str, goal: str) -> FakeMission:
+    def _accept_order(self, project_id: str, workspace: Path, goal: str) -> FakeMission:
         return FakeMission()
 
     def _plan_mission(self, project_id: str, mission_id: str, call_fn,
@@ -564,15 +564,41 @@ def test_each_run_gets_its_own_root_not_the_previous_ones(
 
 def test_the_defaults_are_the_production_verbs() -> None:
     """The doubles above are a test convenience; nobody ships them."""
+    from packages.orchestration.gauntlet_runner import _default_accept_order
     from packages.orchestration.mission_compiler import plan_mission
-    from packages.orchestration.mission_state import create_mission, load_mission
+    from packages.orchestration.mission_state import load_mission
     from packages.orchestration.orchestrator_loop import run_mission
 
     deps = RunnerDeps()
-    assert deps.create_mission is create_mission
+    assert deps.accept_order is _default_accept_order
     assert deps.plan_mission is plan_mission
     assert deps.run_mission is run_mission
     assert deps.load_mission is load_mission
+
+
+def test_the_default_order_seam_opens_the_workspace_repository_mission(
+        tmp_path: Path, monkeypatch) -> None:
+    """R-1281, DECISION F314 D3: the default seam opens the order in the
+    project's one repository mission, never a mission made just for it."""
+    from packages.orchestration.gauntlet_runner import (
+        _default_accept_order,
+        _default_make_project,
+        materialise_sample_project,
+    )
+    from packages.orchestration.mission_state import list_missions
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    workspace = materialise_sample_project(tmp_path / "run-01")
+    project_id = _default_make_project("gauntlet g1", "g1", workspace)
+
+    mission = _default_accept_order(project_id, workspace, "Add a greeting")
+
+    missions = list_missions(project_id)
+    assert len(missions) == 1
+    assert missions[0].id == mission.id
+    assert mission.repo == project_id
+    assert mission.goal == "Maintain g1"
+    assert mission.orders[-1].text == "Add a greeting"
 
 
 # ---------------------------------------------------------------------------

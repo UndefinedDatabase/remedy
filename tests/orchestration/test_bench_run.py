@@ -6,7 +6,7 @@ The whole product path from the FROZEN order set to the history file is
 exercised, and every seam that would leave this machine is substituted at the
 call site through :class:`RunnerDeps`.
 
-NINE seams are doubled, counted: ``make_project``, ``create_mission``,
+NINE seams are doubled, counted: ``make_project``, ``accept_order``,
 ``plan_mission``, ``run_mission``, ``load_mission``, ``execute_fn``,
 ``materialise``, ``plan_call_fn`` and ``move_call_fn``. The F082 inventory's Q6
 named three of them; the other six are the ones a run discovers it also needs —
@@ -111,7 +111,7 @@ class NoNetworkRun:
     def deps(self) -> RunnerDeps:
         return RunnerDeps(
             make_project=self._make_project,
-            create_mission=self._create_mission,
+            accept_order=self._accept_order,
             plan_mission=self._plan_mission,
             run_mission=self._run_mission,
             load_mission=self._load_mission,
@@ -148,7 +148,7 @@ class NoNetworkRun:
         return FakeMission(id=mission_id,
                            job_links=(FakeJobLink(job_id=self._job_id()),))
 
-    def _create_mission(self, project_id: str, goal: str) -> FakeMission:
+    def _accept_order(self, project_id: str, workspace: Path, goal: str) -> FakeMission:
         return FakeMission()
 
     def _plan_mission(self, project_id: str, mission_id: str, call_fn, **kwargs) -> None:
