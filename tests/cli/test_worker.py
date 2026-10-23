@@ -158,3 +158,28 @@ class TestAWorkerRefusalIsShapedLikeTheCaller:
         body = json.loads(capsys.readouterr().out)
         assert body["error"] == "missing_argument"
         assert "--model" in body["message"] and "--all" in body["message"]
+
+
+class TestWorkerShowAdapterLinkage:
+    """F151 T003: `remedy worker show` as the product path to an adapter (DECISION F151 D5 (3))."""
+
+    def test_claude_code_text_output_carries_adapter_and_capabilities(self, capsys):
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=False)
+        out = capsys.readouterr().out
+        assert "Adapter: claude-cli" in out
+        assert "Capabilities: json_schema, session_resume, streaming, tool_use" in out
+
+    def test_ollama_text_output_carries_neither_line(self, capsys):
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("ollama", json_output=False)
+        out = capsys.readouterr().out
+        assert "Adapter:" not in out
+        assert "Capabilities:" not in out
+
+    def test_claude_code_json_answer_carries_adapter_ref(self, capsys):
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=True)
+        body = json.loads(capsys.readouterr().out)
+        entry = body["providers"][0]
+        assert entry["adapter_ref"] == "claude-cli"

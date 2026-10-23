@@ -146,3 +146,22 @@ class TestWorkerAdaptersNoSubprocess:
             assert "sk-" not in spec.notes
             assert "key=" not in spec.notes
             assert "password" not in spec.notes.lower()
+
+
+class TestAdapterRefLinkage:
+    """F151 T003: the v1-to-v2 linkage, DECISION F151 D5 (1)."""
+
+    def test_only_claude_code_carries_a_reference(self) -> None:
+        refs = {s.provider_id: s.adapter_ref for s in list_worker_specs()}
+        assert refs["claude_code"] == "claude-cli"
+        for provider_id, ref in refs.items():
+            if provider_id != "claude_code":
+                assert ref == "", f"{provider_id} carries an unexpected adapter_ref: {ref!r}"
+
+    def test_export_carries_adapter_ref_for_every_record(self) -> None:
+        for entry in export_worker_specs_json()["providers"]:
+            assert "adapter_ref" in entry
+
+    def test_summary_prints_adapter_claude_cli_once(self) -> None:
+        summary = summarize_worker_specs()
+        assert summary.count("Adapter: claude-cli") == 1
