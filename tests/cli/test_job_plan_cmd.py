@@ -417,3 +417,112 @@ class TestPlanShowCalibratedBands:
         assert code == 0, body
         assert [t["est_tokens_band"] for t in body["tasks"]] == ["S", "S", "S", "S"]
         assert "calibrated" not in json.dumps(body)
+
+
+class TestPlanShowTrustRoutingNote:
+    """F133 T003 (DECISION F133 D4 (2)): `job plan-show`'s "trust suggests otherwise" note."""
+
+    def _seed_task(self, project, job: str, *, status: str, role: str, model: str, cost: float) -> None:
+        from datetime import datetime, timedelta, timezone
+
+        from packages.orchestration.data_paths import job_evidence_dir, resolve_data_root
+        from packages.orchestration.token_ledger import CallRecord, record_call
+
+        root = resolve_data_root()
+        path = job_record_path(job, root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"tasks": [
+            {"task_id": "T001", "status": status, "repair_rounds_used": 0}]}), encoding="utf-8")
+        ev_dir = job_evidence_dir(job, root) / "task_runs" / "T001"
+        ev_dir.mkdir(parents=True, exist_ok=True)
+        (ev_dir / "provider_evidence.json").write_text(json.dumps({"provider_attempts": [
+            {"seq": 1, "round": 1, "role": role, "model": model, "is_parse_retry": False}]}),
+            encoding="utf-8")
+        recent = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+        assert record_call(CallRecord(
+            call_id=f"{job}:T001:1", job_id=job, task_id="T001", role=role, model=None, ts_utc=recent,
+            tokens_in=100, tokens_out=10, cost_usd=cost, cost_basis="provider_reported"),
+            project_id=str(project.id))
+
+    def _make_job(self, repo: Path, *, builder_model: str, reviewer_model: str = "") -> str:
+        from packages.orchestration.execution_config import ExecutionConfig
+
+        plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": _TASKS})
+        body = plan.model_dump()
+        body["_approval"] = "pending"
+        body["_normalization"] = []
+        mapped = map_task_plan_to_tasks(plan)
+        record_llm_task_deliverables(mapped)
+        job = JobPlan(job_title="F133 CLI routing-note probe", task_plan=body, tasks=mapped,
+                      state=RunState.PLANNED, repo_path=str(repo),
+                      execution_config=ExecutionConfig(builder_model=builder_model,
+                                                       reviewer_model=reviewer_model))
+        save_job_plan(job)
+        return str(job.job_id)
+
+    @pytest.fixture
+    def trust_project(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        """A STRONG builder (25 passes) and a WEAK one (15 pass, 5 fail), both above the floor."""
+        import subprocess
+
+        from packages.orchestration.project_registry import register_project_repo
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        project = register_project_repo("Trust plan show", repo)
+        for k in range(1, 26):
+            self._seed_task(project, f"jobstrong{k:02d}", status="passed", role="builder",
+                            model="claude-strong-v1", cost=0.02)
+        for k in range(1, 16):
+            self._seed_task(project, f"jobweakpass{k:02d}", status="passed", role="builder",
+                            model="claude-weak-v1", cost=0.015)
+        for k in range(1, 6):
+            self._seed_task(project, f"jobweakfail{k:02d}", status="failed", role="builder",
+                            model="claude-weak-v1", cost=0.015)
+        self.repo = repo
+        return repo
+
+    def test_the_note_is_printed_on_a_contradiction_fixture(self, trust_project, capsys):
+        job_id = self._make_job(trust_project, builder_model="claude-weak-v1")
+        code, out = _run(["job", "plan-show", job_id], capsys)
+        assert code == 0, out
+        assert ("Trust suggests otherwise for builder: claude-weak-v1 is configured, with a pass "
+                "quota of 75% over 20 settled tasks, while claude-strong-v1 leads with 100% over "
+                "25 in the last 90 days. This note is informational: the route is unchanged, and "
+                "a change is made through config and an ADR.") in out
+
+    def test_none_printed_when_the_configured_model_already_leads(self, trust_project, capsys):
+        job_id = self._make_job(trust_project, builder_model="claude-strong-v1")
+        code, out = _run(["job", "plan-show", job_id], capsys)
+        assert code == 0, out
+        assert "Trust suggests otherwise" not in out
+
+    def test_none_printed_and_no_failure_on_a_malformed_trust_setting(self, trust_project, capsys):
+        (trust_project / "remedy.toml").write_text(
+            "[remedy.model_routing]\ntrust_sample_floor = -4\n", encoding="utf-8")
+        job_id = self._make_job(trust_project, builder_model="claude-weak-v1")
+        code, out = _run(["job", "plan-show", job_id], capsys)
+        assert code == 0, out
+        assert "Trust suggests otherwise" not in out
+
+    def test_the_json_view_is_unchanged(self, trust_project, capsys):
+        job_id = self._make_job(trust_project, builder_model="claude-weak-v1")
+        code, body = _json(["job", "plan-show", job_id], capsys)
+        assert code == 0, body
+        assert "trust" not in json.dumps(body).lower()
+
+    def test_the_job_record_and_its_configured_models_are_unchanged_by_plan_show(self, trust_project, capsys):
+        """The evidence diff (DECISION F133 D4 (3)): the note reads the job's record and never
+        writes it."""
+        job_id = self._make_job(trust_project, builder_model="claude-weak-v1")
+        record = job_record_path(job_id)
+        before_bytes = record.read_bytes()
+        before_config = load_job_plan(job_id).execution_config
+        code, out = _run(["job", "plan-show", job_id], capsys)
+        assert code == 0, out
+        assert record.read_bytes() == before_bytes
+        after_config = load_job_plan(job_id).execution_config
+        assert (after_config.builder_model, after_config.reviewer_model) == (
+            before_config.builder_model, before_config.reviewer_model)

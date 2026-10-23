@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -36,9 +37,11 @@ from packages.orchestration.model_trust_score import (
     model_trust_table_from_json,
     resolve_trust_settings,
     trust_leader,
+    trust_routing_note,
 )
 from packages.orchestration.token_ledger import CallRecord, record_call, token_ledger_path_for
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
 PROJECT = "11111111-2222-3333-4444-555555555555"
 NOW = datetime(2026, 10, 20, 12, 0, tzinfo=timezone.utc)
 RECENT = "2026-10-15T09:00:00+00:00"
@@ -473,6 +476,94 @@ class TestTrustLeader:
         rec = trust_leader(table, "builder")
         assert rec.reason == TRUST_RECOMMENDATION_NO_MARGIN
         assert rec.leader is None
+
+
+class TestTrustRoutingNote:
+    """DECISION F133 D4 (1): "trust suggests otherwise" — informational, never a route change."""
+
+    def _row(self, model: str, *, pass_quota: float | None, thin: bool = False, n: int = 25) -> ModelTrustRow:
+        return ModelTrustRow(
+            role="builder", model=model, pass_quota=TrustMetric(value=pass_quota, n=n),
+            repair_need=TrustMetric(value=0.0, n=n), format_error_rate=TrustMetric(value=0.0, n=n),
+            cost_per_pass=TrustMetric(value=0.01, n=n), cost_basis=COST_BASIS_PROVIDER_REPORTED,
+            settled_tasks=n, thin=thin)
+
+    def _table(self, rows: tuple[ModelTrustRow, ...]) -> ModelTrustTable:
+        return ModelTrustTable(
+            project_id=PROJECT, updated_at=NOW.isoformat(), window_days=90, sample_floor=20,
+            window_start=(NOW - timedelta(days=90)).isoformat(), ledger_present=True, rows=rows,
+            unattributed_calls=0, unsettled_tasks=0)
+
+    def test_no_leader_is_no_note(self):
+        table = self._table((self._row("a", pass_quota=0.80),))
+        assert trust_routing_note(table, "builder", "a") == ""
+
+    def test_the_configured_model_being_the_leader_is_no_note(self):
+        table = self._table((self._row("a", pass_quota=0.90), self._row("b", pass_quota=0.70)))
+        assert trust_routing_note(table, "builder", "a") == ""
+
+    def test_the_configured_model_thin_is_no_note(self):
+        table = self._table((self._row("a", pass_quota=0.90), self._row("b", pass_quota=0.70),
+                             self._row("c", pass_quota=0.5, thin=True)))
+        assert trust_routing_note(table, "builder", "c") == ""
+
+    def test_the_configured_model_absent_is_no_note(self):
+        table = self._table((self._row("a", pass_quota=0.90), self._row("b", pass_quota=0.70)))
+        assert trust_routing_note(table, "builder", "never-seen-model") == ""
+
+    def test_an_empty_configured_model_is_no_note(self):
+        table = self._table((self._row("a", pass_quota=0.90), self._row("b", pass_quota=0.70)))
+        assert trust_routing_note(table, "builder", "") == ""
+
+    def test_the_notes_whole_line(self):
+        """The note's words are fixed (DECISION F133 D4 (1)): asserted whole, not a fragment."""
+        table = self._table((self._row("claude-strong-v1", pass_quota=0.90, n=25),
+                             self._row("claude-weak-v1", pass_quota=0.70, n=20)))
+        note = trust_routing_note(table, "builder", "claude-weak-v1")
+        assert note == (
+            "Trust suggests otherwise for builder: claude-weak-v1 is configured, with a pass "
+            "quota of 70% over 20 settled tasks, while claude-strong-v1 leads with 90% over 25 "
+            "in the last 90 days. This note is informational: the route is unchanged, and a "
+            "change is made through config and an ADR.")
+
+
+class TestOneHomeGuard:
+    """DECISION F133 D4 (4): the four metrics and the module's own name have exactly one home."""
+
+    _METRIC_NAMES = ("pass_quota", "repair_need", "format_error_rate", "cost_per_pass")
+    _ALLOWED_FILES = frozenset({
+        "packages/orchestration/model_trust_score.py",
+        "apps/cli/commands/stats_trust_cmd.py",
+        "apps/cli/commands/job_plan_cmd.py",
+    })
+    _THIS_MODULE = "packages/orchestration/model_trust_score.py"
+
+    def _tracked_python_files(self) -> list[str]:
+        out = subprocess.run(
+            ["git", "ls-files", "--", "packages/*.py", "apps/*.py"],
+            capture_output=True, text=True, cwd=REPO_ROOT, check=True,
+        ).stdout
+        return [line for line in out.splitlines() if line]
+
+    def test_the_four_metric_names_occur_only_in_their_three_homes(self):
+        offenders = []
+        for rel in self._tracked_python_files():
+            if rel in self._ALLOWED_FILES:
+                continue
+            text = (REPO_ROOT / rel).read_text(encoding="utf-8", errors="replace")
+            offenders.extend(f"{rel}: {name}" for name in self._METRIC_NAMES if name in text)
+        assert offenders == []
+
+    def test_no_other_module_names_itself_after_trust_score_or_provider_trust(self):
+        offenders = [rel for rel in self._tracked_python_files()
+                     if rel != self._THIS_MODULE and ("trust_score" in rel or "provider_trust" in rel)]
+        assert offenders == []
+
+    def test_the_sweep_reads_the_files_it_names(self):
+        """Non-vacuity: the sweep actually finds this module and its two allowed callers."""
+        files = set(self._tracked_python_files())
+        assert self._ALLOWED_FILES <= files
+        assert self._THIS_MODULE in files
 
 
 class TestBuildModelTrustTable:
