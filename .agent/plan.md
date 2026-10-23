@@ -6,13 +6,12 @@ the repair need, the format-error rate and the cost per pass, each with its wind
 in one trust home; `remedy stats trust` shows it, and routing reads it only as a recommendation.
 
 ## Current Step
-Round 2: T002 and the trust view (DECISION F133 D2): `packages/orchestration/model_trust_score.py`,
-its three settings, its goldens on a constructed history, and `remedy stats trust` with the prior
-window's change.
+Round 3: register R-1429 to R-1431 and repair them; DECISION F133 D3; the clear leader and the
+recommendation line of `remedy stats trust`.
 
 ## Next Steps
-1. Round 3, the rest of T003: the recommendation line per role, the informational routing note, the
-   per-tier summary, the one-home guard, the docs completed, the end-to-end.
+1. Round 4: the informational note "trust suggests otherwise" in `remedy job plan-show`, the
+   one-home guard, the page completed, the end-to-end.
 2. The closure sequence.
 
 ## Risks
