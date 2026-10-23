@@ -2,20 +2,17 @@
 
 ## Goal
 The ping-pong loop's claude-cli builder and reviewer calls run through `ClaudeCliReferenceAdapter`:
-the adapter builds the invocation and maps stream, usage and errors; the loop keeps transport,
-timeouts, retries, failover, pacing and evidence; the goldens stay byte-equal and the import guard
-stays green.
+the adapter builds the invocation and maps what the loop's evidence does not own; the loop keeps
+transport, timeouts, retries, failover, pacing and evidence; the goldens stay byte-equal and the
+import guard stays green.
 
 ## Current Step
-Round 2, T002: the worker adapter slot filled by the command line, every claude-cli command line
-built by the installed adapter, and the test that replaces the adapter and sees the loop follow it
-(DECISION F315 D2).
+Round 3, T003: the usage of a call that is not streamed from the adapter, the stream and error
+classes kept with the loop's evidence, the re-export deleted, the docs (DECISION F315 D3).
 
 ## Next Steps
-1. T003: usage and error mapping through the adapter, the stream decision, the resume and
-   parse-retry paths, the readers of the `build_claude_cli_args` re-export re-pointed and the
-   re-export deleted, the docs.
-2. The closure sequence.
+1. The closure sequence: the integration gate round with the one full suite, the checklist
+   consolidation and the self-use item; then the evidence round; then the closing round.
 
 ## Risks
 - A process that runs a job without the command line or the test configuration finds an empty
