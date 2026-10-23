@@ -96,6 +96,9 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T001)"),
     ("packages/orchestration/self_use_runner.py",
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T002); a D11 entry point"),
+    ("packages/providers/adapters/claude_cli_reference.py",
+     "F151's reference adapter; the registry linkage of T003's next round reaches it and removes "
+     "this line (DECISION F151 D4)"),
     ("scripts/closure_suite_cost.py",
      "run by hand in every closure's integration-gate round, docs/agents/integration_gate.md step 1 (F293 T003)"),
     ("scripts/record_client_answers.py",
