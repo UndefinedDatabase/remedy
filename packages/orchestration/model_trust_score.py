@@ -28,7 +28,9 @@ priced call of the sum shares, `provider_reported` or `price_table`, and `mixed`
 — a basis label that never claims a figure nothing reported). A task is SETTLED when its job record
 gives it a passing or a failing terminal status; every other status, and a task whose record is gone,
 is UNSETTLED and kept out of the outcome metrics. A row below the sample floor is marked THIN and is
-never a leader.
+never a leader. Among a role's rows that are not thin and have a pass quota, `trust_leader` names the
+clear leader, when one leads the second-highest by at least `TRUST_LEADER_MARGIN` (DECISION F133 D3
+(1)) — trust is a RECOMMENDATION read by a human; it never changes a route by itself.
 
 Remedy deliberately does not guess a model for an unjoinable call, count an unsettled task toward an
 outcome, invent a cost basis nothing reported, or read `tier_outcomes.query_tier_outcomes` here: that
@@ -67,6 +69,17 @@ TRUST_COST_BASIS_MIXED = "mixed"
 #: The snapshot file, beside the project's ledger, and the schema generation of its JSON.
 MODEL_TRUST_SNAPSHOT_FILENAME = "model_trust_snapshot.json"
 MODEL_TRUST_SNAPSHOT_SCHEMA = 1
+
+#: DECISION F133 D3 (1): the minimum lead, in pass-quota points, the top eligible row of a role
+#: needs over the second-highest one to be that role's clear leader.
+TRUST_LEADER_MARGIN = 0.10
+
+#: `trust_leader`'s `reason` (DECISION F133 D3 (1)): a clear leader was found, too few of the
+#: role's rows are eligible (not thin, with a pass quota) to compare, or the top two rows exist but
+#: the lead between them is below `TRUST_LEADER_MARGIN`.
+TRUST_RECOMMENDATION_LEADER = "leader"
+TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE = "too_few_eligible"
+TRUST_RECOMMENDATION_NO_MARGIN = "no_margin"
 
 #: The defaults of `model_routing.trust_window_days`, `model_routing.trust_sample_floor` and
 #: `model_routing.trust_snapshot_max_age_seconds` (DECISION F133 D2 (1)).
@@ -160,6 +173,34 @@ class ModelTrustTable:
             "rows": [row.to_json() for row in self.rows],
             "unattributed_calls": self.unattributed_calls,
             "unsettled_tasks": self.unsettled_tasks,
+        }
+
+
+@dataclass(frozen=True)
+class TrustRecommendation:
+    """DECISION F133 D3 (1): one role's clear-leader recommendation, or why there is none.
+
+    ``leader``, ``runner_up`` and the two pass quotas are ``None`` unless ``reason`` is
+    :data:`TRUST_RECOMMENDATION_LEADER` — when there is no recommendation, no model is named.
+    """
+
+    role: str
+    leader: str | None
+    leader_pass_quota: float | None
+    leader_settled_tasks: int | None
+    runner_up: str | None
+    runner_up_pass_quota: float | None
+    reason: str
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "role": self.role,
+            "leader": self.leader,
+            "leader_pass_quota": self.leader_pass_quota,
+            "leader_settled_tasks": self.leader_settled_tasks,
+            "runner_up": self.runner_up,
+            "runner_up_pass_quota": self.runner_up_pass_quota,
+            "reason": self.reason,
         }
 
 
@@ -544,6 +585,33 @@ def build_model_trust_table(
         project_id=str(project_id), updated_at=now.isoformat(), window_days=window_days,
         sample_floor=sample_floor, window_start=window_start.isoformat(), ledger_present=True,
         rows=rows, unattributed_calls=unattributed_calls, unsettled_tasks=unsettled_tasks)
+
+
+def trust_leader(table: ModelTrustTable, role: str) -> TrustRecommendation:
+    """DECISION F133 D3 (1): ``role``'s clear leader among its eligible rows, or why there is none.
+
+    Eligible: not thin and has a pass quota. With at least two eligible rows, the highest pass
+    quota is the clear leader only when it leads the second-highest by at least
+    :data:`TRUST_LEADER_MARGIN`; a tie, a lead below the margin, or fewer than two eligible rows
+    means no leader.
+    """
+    eligible = sorted(
+        (row for row in table.rows if row.role == role and not row.thin
+         and row.pass_quota.value is not None),
+        key=lambda row: row.pass_quota.value, reverse=True)
+    if len(eligible) < 2:
+        return TrustRecommendation(
+            role=role, leader=None, leader_pass_quota=None, leader_settled_tasks=None,
+            runner_up=None, runner_up_pass_quota=None, reason=TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE)
+    top, second = eligible[0], eligible[1]
+    if top.pass_quota.value - second.pass_quota.value < TRUST_LEADER_MARGIN:
+        return TrustRecommendation(
+            role=role, leader=None, leader_pass_quota=None, leader_settled_tasks=None,
+            runner_up=None, runner_up_pass_quota=None, reason=TRUST_RECOMMENDATION_NO_MARGIN)
+    return TrustRecommendation(
+        role=role, leader=top.model, leader_pass_quota=top.pass_quota.value,
+        leader_settled_tasks=top.settled_tasks, runner_up=second.model,
+        runner_up_pass_quota=second.pass_quota.value, reason=TRUST_RECOMMENDATION_LEADER)
 
 
 def _metric_from_json(raw: Any) -> TrustMetric:

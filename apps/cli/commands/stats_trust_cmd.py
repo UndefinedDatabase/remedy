@@ -52,6 +52,47 @@ def _format_cost(row: Any) -> str:
     return f"{DASH} ({detail})"
 
 
+def _shown_roles(table: Any, *, role: str | None) -> list[str]:
+    """Every distinct role of ``table.rows``, in the table's own order; ``role`` keeps one, when
+    it is actually among them — a role nothing is shown for earns no recommendation line."""
+    roles = list(dict.fromkeys(row.role for row in table.rows))
+    if role is None:
+        return roles
+    return [role] if role in roles else []
+
+
+def _format_recommendation(rec: Any, *, window_days: int, sample_floor: int) -> str:
+    """DECISION F133 D3 (1)'s three wordings, exactly, for one role's recommendation."""
+    from packages.orchestration.model_trust_score import (
+        TRUST_LEADER_MARGIN,
+        TRUST_RECOMMENDATION_LEADER,
+        TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE,
+    )
+
+    if rec.reason == TRUST_RECOMMENDATION_LEADER:
+        leader_pct = round(rec.leader_pass_quota * 100)
+        runner_up_pct = round(rec.runner_up_pass_quota * 100)
+        return (
+            f"Recommendation for {rec.role}: consider routing it to {rec.leader}, whose pass "
+            f"quota is {leader_pct}% over {rec.leader_settled_tasks} settled tasks against "
+            f"{runner_up_pct}% for {rec.runner_up}, in the last {window_days} days. Adopt it "
+            "through config and an ADR, as the promotion rule of "
+            "docs/agents/model_routing_policy.md requires; trust never changes a route by itself."
+        )
+    if rec.reason == TRUST_RECOMMENDATION_TOO_FEW_ELIGIBLE:
+        return (f"No recommendation for {rec.role}: fewer than two models have {sample_floor} "
+                f"settled tasks in the last {window_days} days.")
+    margin_points = round(TRUST_LEADER_MARGIN * 100)
+    return (f"No recommendation for {rec.role}: no model leads the next by {margin_points} "
+            f"points in the last {window_days} days.")
+
+
+def _recommendations_payload(table: Any, *, role: str | None) -> list[dict[str, Any]]:
+    from packages.orchestration.model_trust_score import trust_leader
+
+    return [trust_leader(table, shown_role).to_json() for shown_role in _shown_roles(table, role=role)]
+
+
 def trust_rows(table: Any, prior: Any, *, role: str | None = None) -> list[list[str]]:
     """One row per model and role, sorted as the table already is; ``role`` keeps one role's rows."""
     rows = []
@@ -91,6 +132,12 @@ def render_trust_text(table: Any, prior: Any, *, max_age_seconds: int, now: date
         lines.append("No model or role falls inside the window.")
     lines.append(f"Unattributed calls: {table.unattributed_calls}. Unsettled tasks: "
                  f"{table.unsettled_tasks}.")
+    from packages.orchestration.model_trust_score import trust_leader
+
+    for shown_role in _shown_roles(table, role=role):
+        rec = trust_leader(table, shown_role)
+        lines.append(_format_recommendation(
+            rec, window_days=table.window_days, sample_floor=table.sample_floor))
     return "\n".join(lines)
 
 
@@ -158,7 +205,8 @@ def _cmd_stats_trust(*, project: str | None = None, role: str | None = None,
     if json_output:
         emit_ok(version=TRUST_OUTPUT_VERSION, max_age_seconds=settings["max_age_seconds"], role=role,
                 table=_table_payload(table, role=role), prior=_table_payload(prior, role=role),
-                changes=_changes_payload(table, prior, role=role))
+                changes=_changes_payload(table, prior, role=role),
+                recommendations=_recommendations_payload(table, role=role))
     else:
         print(render_trust_text(table, prior, max_age_seconds=settings["max_age_seconds"], now=now, role=role))
 
