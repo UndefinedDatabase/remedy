@@ -18,7 +18,7 @@ from packages.contracts.adapter_conformance_kit import (
     ErrorSample,
     run_adapter_conformance,
 )
-from packages.contracts.adapter_contract import InvocationOptions
+from packages.contracts.adapter_contract import AdapterCapabilities, InvocationOptions
 from packages.orchestration.claude_cli_command import build_claude_cli_args
 from packages.orchestration.failure_postmortem import FailureClass, _classify_error_text
 from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
@@ -145,6 +145,24 @@ def test_build_invocation_raises_for_a_role_outside_builder_or_reviewer():
         adapter.build_invocation("planner", _ONE_PART_PROMPT, options)
 
 
+def test_build_invocation_with_customizations_matches_build_claude_cli_args_without_safe_mode():
+    # R-1438 (9): the adapter's configuration must reach build_claude_cli_args unchanged, so a
+    # configuration that turns customizations on yields an argv the shared builder also yields
+    # for that same configuration, and --safe-mode is absent from it.
+    config = {"claude_cli.customizations": True}
+    adapter = _adapter(claude_path="claude", write_mode="allowed-tools", streaming=True, config=config)
+    options = InvocationOptions(model="claude-workhorse")
+    invocation = adapter.build_invocation("builder", _ONE_PART_PROMPT, options)
+
+    expected_argv = tuple(build_claude_cli_args(
+        "claude", _ONE_PART_PROMPT[0],
+        write_mode="allowed-tools", model="claude-workhorse", stream_evidence=True,
+        json_schema="", resume_session="", config=config,
+    ))
+    assert invocation.argv == expected_argv
+    assert "--safe-mode" not in invocation.argv
+
+
 # -- stream goldens: map_stream equals capture_stream_evidence's own normalized events --------
 
 #: Keys `capture_stream_evidence` adds that `normalize_stream_object` itself never produces: the
@@ -236,6 +254,32 @@ def test_map_usage_is_none_for_a_non_json_string():
     assert _adapter().map_usage("not a json string at all") is None
 
 
+def test_map_usage_is_none_for_an_is_error_result_with_a_usage_object_added():
+    # R-1438 (10): the parser's own None must not be overridden just because a usage object is
+    # present — an is_error envelope stays None even when it carries usage, because
+    # parse_cli_result_detailed itself reads is_error first.
+    retry_fixture = _FIXTURES_DIR / "retry_and_error.jsonl"
+    result_line = retry_fixture.read_text(encoding="utf-8").splitlines()[-1]
+    payload = json.loads(result_line)
+    assert payload["is_error"] is True
+    payload["usage"] = {"input_tokens": 1, "output_tokens": 1}
+    augmented_line = json.dumps(payload)
+    actuals, _reason = parse_cli_result_detailed(augmented_line)
+    assert actuals is None
+    assert _adapter().map_usage(augmented_line) is None
+
+
+# -- capabilities golden: the whole record equals DECISION F151 D4 (6), for both streaming flags --
+
+
+@pytest.mark.parametrize("streaming", (True, False))
+def test_capabilities_equals_decision_f151_d4_6_whole(streaming):
+    adapter = _adapter(streaming=streaming)
+    assert adapter.capabilities("any-model") == AdapterCapabilities(
+        vision=False, json_schema=True, session_resume=True,
+        streaming=streaming, tool_use=True, max_context_tokens=0)
+
+
 # -- error goldens: classify_error matches what D4 (5) derives from _classify_error_text ------
 
 
@@ -290,3 +334,28 @@ def test_a_text_no_predicate_reads_maps_to_unknown_with_no_exit_code():
     text = "this sentence matches no predicate at all"
     assert _expected_claude_cli_class(text, None) == FailureClass.UNKNOWN
     assert classify_claude_cli_error(text, None) == FailureClass.UNKNOWN
+
+
+# -- R-1438 (1)-(3): the three numbered classify_claude_cli_error mutations, each a direct test --
+
+
+def test_a_malformed_output_text_that_also_names_a_timeout_maps_to_parse():
+    # R-1438 (1): the malformed_output: check must run BEFORE the shared predicates, not after,
+    # or a message that also matches is_timeout_error would be misread as a provider timeout.
+    text = "malformed_output: claude CLI timed out after 1s"
+    assert classify_claude_cli_error(text, None) == FailureClass.PARSE
+
+
+def test_an_io_failure_text_maps_to_unknown_not_the_io_class():
+    # R-1438 (2): a text the I/O predicate reads must still fold to unknown, an adapter may not
+    # return the I/O class itself. "no space left on device" is read only by is_io_failure_error
+    # (unlike "broken pipe", which the connection predicate also reads and classifies earlier).
+    text = "write failed: no space left on device"
+    assert _classify_error_text(text) == FailureClass.IO_FAILURE
+    assert classify_claude_cli_error(text, None) == FailureClass.UNKNOWN
+
+
+def test_an_unread_text_with_exit_code_zero_maps_to_unknown():
+    # R-1438 (3): exit code 0 must never count as a non-zero exit.
+    text = "this sentence matches no predicate at all"
+    assert classify_claude_cli_error(text, 0) == FailureClass.UNKNOWN
