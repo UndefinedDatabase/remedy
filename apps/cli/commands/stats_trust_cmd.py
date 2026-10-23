@@ -32,15 +32,24 @@ def _format_change(row: Any, prior: Any) -> str:
 
 
 def _format_cost(row: Any) -> str:
-    from packages.orchestration.model_trust_score import COST_BASIS_PROVIDER_REPORTED, TRUST_COST_BASIS_TOKENS
+    """The cost cell, naming its basis and — R-1431 — the passes the figure rests on."""
+    from packages.orchestration.model_trust_score import (
+        COST_BASIS_PROVIDER_REPORTED,
+        TRUST_COST_BASIS_MIXED,
+        TRUST_COST_BASIS_PRICE_TABLE,
+        TRUST_COST_BASIS_TOKENS,
+    )
 
+    n = row.cost_per_pass.n
+    basis = row.cost_basis
+    detail = basis if n == 0 else f"{basis}, {n} {'pass' if n == 1 else 'passes'}"
     if row.cost_per_pass.value is None:
-        return f"{DASH} ({row.cost_basis})"
-    if row.cost_basis == COST_BASIS_PROVIDER_REPORTED:
-        return f"${row.cost_per_pass.value:.4f} ({row.cost_basis})"
-    if row.cost_basis == TRUST_COST_BASIS_TOKENS:
-        return f"{row.cost_per_pass.value:.0f} tokens ({row.cost_basis})"
-    return f"{DASH} ({row.cost_basis})"
+        return f"{DASH} ({detail})"
+    if basis in (COST_BASIS_PROVIDER_REPORTED, TRUST_COST_BASIS_PRICE_TABLE, TRUST_COST_BASIS_MIXED):
+        return f"${row.cost_per_pass.value:.4f} ({detail})"
+    if basis == TRUST_COST_BASIS_TOKENS:
+        return f"{row.cost_per_pass.value:.0f} tokens ({detail})"
+    return f"{DASH} ({detail})"
 
 
 def trust_rows(table: Any, prior: Any, *, role: str | None = None) -> list[list[str]]:

@@ -21,14 +21,19 @@ The four metrics, each a :class:`TrustMetric` of its value and the sample count 
 `pass_quota` (passes over settled served tasks), `repair_need` (mean repair rounds over the same
 tasks), `format_error_rate` (format errors over EVERY call of that model and role in the window's
 tasks, keyed by each call's own model, settled or not) and `cost_per_pass` (that role's call cost over
-its settled served tasks, divided by passes, with a basis label that never claims a figure nothing
-reported). A task is SETTLED when its job record gives it a passing or a failing terminal status;
-every other status, and a task whose record is gone, is UNSETTLED and kept out of the outcome
-metrics. A row below the sample floor is marked THIN and is never a leader.
+its settled served tasks, divided by passes, read from the ledger's own `cost_basis` column: a call is
+priced only when it has a figure and a basis other than `unknown`; the label is the one basis every
+priced call of the sum shares, `provider_reported` or `price_table`, and `mixed` when they share none;
+`tokens` when every call reported its tokens but none of them is priced, else `unknown` with no value
+— a basis label that never claims a figure nothing reported). A task is SETTLED when its job record
+gives it a passing or a failing terminal status; every other status, and a task whose record is gone,
+is UNSETTLED and kept out of the outcome metrics. A row below the sample floor is marked THIN and is
+never a leader.
 
 Remedy deliberately does not guess a model for an unjoinable call, count an unsettled task toward an
-outcome, invent a cost basis nothing reported, or read `tier_outcomes.query_tier_outcomes` here — that
-join is round 3's, beside this module's own matrix (DECISION F133 D2 (6)).
+outcome, invent a cost basis nothing reported, or read `tier_outcomes.query_tier_outcomes` here: that
+function writes to the ledger on every call and keeps no window, so the per-tier record stays
+`tier_outcomes.py`'s own and this module computes nothing per tier (DECISION F133 D3 (3)).
 
 The measurement is read-only on the ledger, the job store and the evidence tree: it opens the ledger
 the way `token_ledger` opens every query, with `mode=rw` and `PRAGMA query_only=1`. The table is
@@ -41,18 +46,23 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-#: Model-of-a-call cost bases this module itself reports: the ledger's own two labels, plus a third
-#: this module adds when every call reported its tokens but not its cost.
+#: Model-of-a-call cost bases this module itself reports: the ledger's own two labels, kept equal to
+#: `token_ledger`'s own by `test_cost_basis_constants_match_the_ledgers_own_vocabulary` (AGENTS.md,
+#: "One spelling per concept"), plus two this module adds: `tokens` when every call reported its
+#: tokens but none is priced, and `mixed` when a cost-per-pass sum's priced calls do not all share
+#: one basis.
 COST_BASIS_PROVIDER_REPORTED = "provider_reported"
 COST_BASIS_UNKNOWN = "unknown"
+TRUST_COST_BASIS_PRICE_TABLE = "price_table"
 TRUST_COST_BASIS_TOKENS = "tokens"
+TRUST_COST_BASIS_MIXED = "mixed"
 
 #: The snapshot file, beside the project's ledger, and the schema generation of its JSON.
 MODEL_TRUST_SNAPSHOT_FILENAME = "model_trust_snapshot.json"
@@ -68,7 +78,7 @@ DEFAULT_TRUST_SNAPSHOT_MAX_AGE_SECONDS = 3600
 _SAFE_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 _CALL_QUERY = """
-SELECT job_id, task_id, call_id, role, model, tokens_in, tokens_out, cost_usd, ts_utc
+SELECT job_id, task_id, call_id, role, model, tokens_in, tokens_out, cost_usd, ts_utc, cost_basis
 FROM calls
 WHERE job_id IS NOT NULL AND job_id != '' AND task_id IS NOT NULL AND task_id != ''
 """
@@ -164,7 +174,11 @@ class _RowAccumulator:
     repair_sum: int = 0
     cost_sum: float = 0.0
     tokens_sum: int = 0
-    cost_known: bool = True
+    # DECISION F133 D3 (2): a call is PRICED only when it has a cost figure and a basis other than
+    # `unknown`; `all_priced` is False once any call of any settled task added here was not, and
+    # `priced_bases` holds every distinct basis a priced call carried.
+    all_priced: bool = True
+    priced_bases: set[str] = field(default_factory=set)
     tokens_known: bool = True
 
     def add_call(self, *, is_error: bool) -> None:
@@ -180,11 +194,12 @@ class _RowAccumulator:
         self.repair_sum += repair_rounds_used
         task_cost = 0.0
         task_tokens = 0
-        for _call_id, _role, _model, tok_in, tok_out, cost, _ts in role_calls:
-            if cost is None:
-                self.cost_known = False
-            else:
+        for _call_id, _role, _model, tok_in, tok_out, cost, _ts, basis in role_calls:
+            if cost is not None and basis != COST_BASIS_UNKNOWN:
+                self.priced_bases.add(basis)
                 task_cost += float(cost)
+            else:
+                self.all_priced = False
             if tok_in is None or tok_out is None:
                 self.tokens_known = False
             else:
@@ -201,6 +216,11 @@ def resolve_trust_settings(*, project_root: str | None = None) -> dict[str, int]
     its own three.
     """
     from packages.orchestration.config import ConfigSource, load_config
+    from packages.orchestration.config_keys_model_routing import (
+        TRUST_SAMPLE_FLOOR_CONFIG_KEY,
+        TRUST_SNAPSHOT_MAX_AGE_SECONDS_CONFIG_KEY,
+        TRUST_WINDOW_DAYS_CONFIG_KEY,
+    )
 
     cfg = load_config(project_path=Path(project_root) / "remedy.toml") if project_root else load_config()
     fallbacks = {
@@ -209,9 +229,9 @@ def resolve_trust_settings(*, project_root: str | None = None) -> dict[str, int]
         "max_age_seconds": DEFAULT_TRUST_SNAPSHOT_MAX_AGE_SECONDS,
     }
     keys = {
-        "window_days": "model_routing.trust_window_days",
-        "sample_floor": "model_routing.trust_sample_floor",
-        "max_age_seconds": "model_routing.trust_snapshot_max_age_seconds",
+        "window_days": TRUST_WINDOW_DAYS_CONFIG_KEY,
+        "sample_floor": TRUST_SAMPLE_FLOOR_CONFIG_KEY,
+        "max_age_seconds": TRUST_SNAPSHOT_MAX_AGE_SECONDS_CONFIG_KEY,
     }
     settings: dict[str, int] = {}
     for name, key in keys.items():
@@ -420,8 +440,10 @@ def _finalize_row(role: str, model: str, acc: _RowAccumulator, sample_floor: int
         value=(acc.calls_error / acc.calls_total) if acc.calls_total else None, n=acc.calls_total)
     if acc.passes == 0:
         cost_basis, cost_value = COST_BASIS_UNKNOWN, None
-    elif acc.cost_known:
-        cost_basis, cost_value = COST_BASIS_PROVIDER_REPORTED, acc.cost_sum / acc.passes
+    elif acc.all_priced and acc.priced_bases:
+        cost_basis = (next(iter(acc.priced_bases)) if len(acc.priced_bases) == 1
+                      else TRUST_COST_BASIS_MIXED)
+        cost_value = acc.cost_sum / acc.passes
     elif acc.tokens_known:
         cost_basis, cost_value = TRUST_COST_BASIS_TOKENS, acc.tokens_sum / acc.passes
     else:
@@ -467,9 +489,10 @@ def build_model_trust_table(
 
     tasks_latest: dict[tuple[str, str], datetime] = {}
     by_task: dict[tuple[str, str], list[tuple[Any, ...]]] = {}
-    for job_id, task_id, call_id, role, model, tok_in, tok_out, cost, ts in call_rows:
+    for job_id, task_id, call_id, role, model, tok_in, tok_out, cost, ts, cost_basis in call_rows:
         key = (str(job_id), str(task_id))
-        by_task.setdefault(key, []).append((str(call_id), str(role or ""), model, tok_in, tok_out, cost, ts))
+        by_task.setdefault(key, []).append(
+            (str(call_id), str(role or ""), model, tok_in, tok_out, cost, ts, str(cost_basis)))
         moment = _parse_utc(ts)
         if moment is not None and (key not in tasks_latest or moment > tasks_latest[key]):
             tasks_latest[key] = moment
