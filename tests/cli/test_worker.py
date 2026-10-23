@@ -183,3 +183,27 @@ class TestWorkerShowAdapterLinkage:
         body = json.loads(capsys.readouterr().out)
         entry = body["providers"][0]
         assert entry["adapter_ref"] == "claude-cli"
+
+    def test_claude_code_text_output_shows_none_for_an_adapter_with_no_capability(self, monkeypatch, capsys):
+        # R-1440 — the `none` line is held by no test; an adapter declaring no flag at all
+        # must still print `  Capabilities: none` rather than an empty or missing line.
+        from packages.contracts.adapter_contract import AdapterCapabilities
+        from packages.providers.adapters import adapter_registry
+
+        class _NoCapabilityAdapter:
+            adapter_id = "claude-cli"
+
+            def capabilities(self, model: str) -> AdapterCapabilities:
+                return AdapterCapabilities(
+                    vision=False, json_schema=False, session_resume=False,
+                    streaming=False, tool_use=False, max_context_tokens=0,
+                )
+
+        monkeypatch.setattr(
+            adapter_registry, "resolve_worker_adapter",
+            lambda adapter_ref: _NoCapabilityAdapter(),
+        )
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=False)
+        out = capsys.readouterr().out
+        assert "  Capabilities: none" in out
