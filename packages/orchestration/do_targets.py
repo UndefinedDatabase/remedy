@@ -18,6 +18,7 @@ from packages.orchestration.do_context import (
     DO_SHAPE_SOURCE_BOUNDED,
     DO_SHAPE_SOURCE_FORCE_JOB,
     DO_SHAPE_SOURCE_FORCE_MISSION,
+    DO_SHAPE_SOURCE_ORDER,
     DO_SHAPE_SOURCE_PLANNER,
     DO_SHAPE_SOURCE_PROJECTS,
     DO_STEP_DONE,
@@ -167,10 +168,11 @@ def do_shape_of_plan(plan: Any) -> str:
 
 
 def resolve_do_shape(plan: Any, *, force_job: bool = False, force_mission: bool = False,
-                     projects: int = 1, bounded: bool = False) -> tuple[str, str]:
+                     projects: int = 1, bounded: bool = False, single_job: bool = False) -> tuple[str, str]:
     """``(shape, shape_source)``: a force flag wins over the plan; both at once is refused.
 
-    A bounded order (amend1014-do-golden-path-now D1) is one job, whatever the plan outlines.
+    A bounded order (amend1014-do-golden-path-now D1) is one job, whatever the plan outlines, and
+    so is an order that asks for one job itself, *single_job* (DECISION amend1023 D7).
 
     An order over several *projects* plans one job per repository, and refuses a force
     flag (DECISION F205 D4).
@@ -188,6 +190,8 @@ def resolve_do_shape(plan: Any, *, force_job: bool = False, force_mission: bool 
         return DO_SHAPE_MILESTONES, DO_SHAPE_SOURCE_FORCE_MISSION
     if bounded:
         return DO_SHAPE_ONE_JOB, DO_SHAPE_SOURCE_BOUNDED
+    if single_job:
+        return DO_SHAPE_ONE_JOB, DO_SHAPE_SOURCE_ORDER
     return do_shape_of_plan(plan), DO_SHAPE_SOURCE_PLANNER
 
 

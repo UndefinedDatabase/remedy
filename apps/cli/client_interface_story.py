@@ -15,7 +15,7 @@ from typing import Any
 #: `build_client_story`'s keys, and `matches` of the `ambiguous_job_id` refusal.
 CLIENT_STORY_ANSWER_KEYS: tuple[str, ...] = (
     "changes", "dirty_start", "end", "ended_at", "job_id", "matches", "next", "note_open", "numbers",
-    "order",
+    "order", "scope_findings",
     "started_at", "state", "state_detail", "steps", "updated_at", "verification",
 )
 
@@ -41,6 +41,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
     "dirty_start": _WORD_TREE,
     "numbers": {"duration_s": {}, "tokens_in": {}, "tokens_out": {}, "calls": {}, "model_turns": {}, "rounds": {}},
     "verification": {"status": {}, "required": {}},
+    "scope_findings": {"key": {}, "path": {}, "text": {}},
 }
 
 #: The keys of the interface's `story` key, `client_story_words.story_words()`; under `phrases`
@@ -48,6 +49,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
 STORY_WORDS_KEY_TREE: dict[str, Any] = {
     "states": {}, "step_ids": {}, "step_statuses": {}, "next_actions": {}, "end_actions": {},
     "phrases": {"*": {}}, "reasons": {"*": {}}, "questions": {}, "verification_statuses": {},
+    "scope_findings": {},
 }
 
 #: Each list of the `story` key and the label its page line carries.
@@ -56,6 +58,7 @@ STORY_WORD_LABELS: tuple[tuple[str, str], ...] = (
     ("step_statuses", "Story step statuses"), ("next_actions", "Story next actions"),
     ("end_actions", "Story end actions"),
     ("questions", "Story questions"), ("verification_statuses", "Story verification statuses"),
+    ("scope_findings", "Story scope findings"),
 )
 
 

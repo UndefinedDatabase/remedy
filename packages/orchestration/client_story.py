@@ -440,6 +440,20 @@ def _note_open(plan: Any) -> bool:
               in STEERABLE_TASK_STATUSES for task in plan.tasks)
 
 
+def _scope_findings(plan: Any) -> list[dict[str, Any]]:
+    """What Remedy took out of the job's scope (DECISION amend1023 D8, D9): each `{key, path, text}`,
+    `key` a word of `STORY_SCOPE_FINDINGS`, `path` relative to the repository, `text` the removed
+    criterion's own wording, written by the planner, or null for a removed file."""
+    from packages.orchestration.client_story_words import STORY_SCOPE_FINDINGS
+    from packages.orchestration.task_deliverables import TASK_SCOPE_FINDINGS_KEY
+
+    found = [entry for task in plan.tasks for entry in (task.inputs or {}).get(TASK_SCOPE_FINDINGS_KEY) or []]
+    found += list((plan.metadata or {}).get(TASK_SCOPE_FINDINGS_KEY) or [])
+    return [{"key": entry["key"], "path": _repo_path(entry.get("path")),
+             "text": str(entry["text"]) if entry.get("text") else None}
+            for entry in found if isinstance(entry, dict) and entry.get("key") in STORY_SCOPE_FINDINGS]
+
+
 # WHY: the one builder of the story, so the route, its twin command and every test read one shape.
 def build_client_story(plan: Any, *, events: list[dict[str, Any]],
                        now: datetime | None = None) -> dict[str, Any]:
@@ -487,6 +501,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
             "rounds": sum(rounds.values()) if rounds else None,
         },
         "note_open": _note_open(plan),
+        "scope_findings": _scope_findings(plan),
     }
 
 

@@ -325,19 +325,22 @@ def _deliverable_task_plan(plan: Any, order: str = "", repo: str = "") -> tuple[
     from packages.orchestration.job_plan import map_task_plan_to_tasks
     from packages.orchestration.task_deliverables import (
         DeliverablePlanError,
+        attach_scope_findings,
         coalesce_deliverable_tasks,
+        drop_unordered_criteria,
         fold_inspection_tasks,
         record_llm_task_deliverables,
         validate_deliverable_plan,
     )
 
+    plan, findings = drop_unordered_criteria(plan, order, repo)   # amend1023 D8: criteria in scope too
     folded = fold_inspection_tasks(plan)
     candidates = (coalesce_deliverable_tasks(folded or plan), folded, plan)
     error: DeliverablePlanError | None = None
     for attempt in candidates:
         if attempt is None:
             continue
-        tasks = map_task_plan_to_tasks(attempt)
+        tasks = attach_scope_findings(map_task_plan_to_tasks(attempt), findings)
         record_llm_task_deliverables(tasks)
         try:
             validate_deliverable_plan(tasks)
@@ -705,7 +708,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
 
     planner_name, _ = resolve_planner_target(ctx.planner_provider, ctx.planner_model)
     lane = settle_do_lane(ctx)
-    if not ctx.no_llm and not lane.bounded:
+    if not ctx.no_llm and not lane.bounded and not lane.single_job:   # amend1023 D7: no milestone split
         from packages.orchestration.intake import make_structured_call_fn
         from packages.orchestration.mission_plan_schema import MissionPlanDraft
 
@@ -826,7 +829,8 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     try:
         shape, source = resolve_do_shape(ctx.mission_plan, force_job=ctx.force_job,
                                          force_mission=ctx.force_mission,
-                                         projects=len(ctx.projects), bounded=lane.bounded)
+                                         projects=len(ctx.projects), bounded=lane.bounded,
+                                         single_job=bool(lane.single_job))
     except ValueError as exc:
         return DO_STEP_FAILED, str(exc)
     ctx.shape, ctx.shape_source = shape, source
