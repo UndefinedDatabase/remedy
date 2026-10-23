@@ -318,17 +318,60 @@ def adapter_transport_violations(source: str) -> list[str]:
     return details
 
 
+def _readable_source(target: object) -> str | None:
+    """TARGET's dedented source, or None when Python cannot read it (a class built at run time)."""
+    try:
+        return textwrap.dedent(inspect.getsource(target))  # type: ignore[arg-type]
+    except (OSError, TypeError):
+        return None
+
+
+# WHY (amend1023 D4): a transport hidden in a helper beside the class is still the class's transport.
+def _module_functions_called(klass: type, source: str) -> list[object]:
+    """The functions of KLASS's own module that SOURCE calls by bare name, and the module functions
+    those call in turn, each once, in name order; an imported function belongs to another module."""
+    module = inspect.getmodule(klass)
+    found: dict[str, object] = {}
+    pending = [source]
+    while pending:
+        tree = ast.parse(pending.pop())
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+                continue
+            value = getattr(module, node.func.id, None)
+            if (node.func.id in found or not inspect.isfunction(value) or module is None
+                    or value.__module__ != module.__name__):
+                continue
+            found[node.func.id] = value
+            called = _readable_source(value)
+            if called is not None:
+                pending.append(called)
+    return [found[name] for name in sorted(found)]
+
+
 def _check_transport(adapter: WorkerAdapter, samples: AdapterSamples) -> list[ConformanceFailure]:
+    """Every class of the adapter's chain, and every function of its module it calls, read for
+    transport; a source Python cannot read is a failure, never a pass (amend1023 D4)."""
     failures: list[ConformanceFailure] = []
     for klass in type(adapter).__mro__:
         if klass is object or klass is WorkerAdapter:
             continue
-        try:
-            source = textwrap.dedent(inspect.getsource(klass))
-        except (OSError, TypeError):
+        source = _readable_source(klass)
+        if source is None:
+            failures.append(ConformanceFailure(
+                "transport", f"{klass.__qualname__}: its source cannot be read, so its transport cannot be checked"))
             continue
         for detail in adapter_transport_violations(source):
             failures.append(ConformanceFailure("transport", f"{klass.__qualname__}: {detail}"))
+        for function in _module_functions_called(klass, source):
+            name = getattr(function, "__name__", "?")
+            called = _readable_source(function)
+            if called is None:
+                failures.append(ConformanceFailure(
+                    "transport", f"{klass.__qualname__} calls {name}, whose source cannot be read"))
+                continue
+            for detail in adapter_transport_violations(called):
+                failures.append(ConformanceFailure("transport", f"{klass.__qualname__} calls {name}: {detail}"))
     return failures
 
 

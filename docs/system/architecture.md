@@ -3074,7 +3074,7 @@ Each record also carries `adapter_ref`, the name of the v2 adapter that executes
 that worker, or an empty string while it has none; today only `claude_code` names one,
 `claude-cli`. The record describes a worker; the adapter executes it. The contract, its
 conformance kit, the reference adapter, the registry and the import guard are described in
-[worker-adapter-contract-v1.md](worker-adapter-contract-v1.md).
+[worker-adapter-contract-v2.md](worker-adapter-contract-v2.md).
 
 ### Built-in provider specs
 

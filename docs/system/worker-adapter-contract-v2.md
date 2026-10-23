@@ -1,4 +1,4 @@
-# Worker adapter contract v1: what any builder or reviewer backend provides
+# Worker adapter contract v2: what any builder or reviewer backend provides
 
 > Status (F151, 2026-10-23): the contract `packages/contracts/adapter_contract.py`, its
 > conformance kit `packages/contracts/adapter_conformance_kit.py`, the claude-cli reference adapter
@@ -50,8 +50,11 @@ carries its own canonical prompt parts, which every invocation must carry.
 
 The transport dimension reads the source of every class in the adapter's class chain and refuses
 any name, attribute, argument or function that spells a retry, a timeout, a sleep or a backoff,
-and any use of a process or network module; a member of `FailureClass` is the one exemption.
-`adapter_transport_violations(source)` is that check for one class's source. The kit's own tests
+and any use of a process or network module; a member of `FailureClass` is the one exemption. It
+reads the module-level functions of the class's own module that a class calls by name too, so a
+transport hidden in a helper beside the class fails like one written inside it, and a class whose
+source cannot be read fails the dimension instead of being skipped (amend1023 D4).
+`adapter_transport_violations(source)` is that check for one source. The kit's own tests
 fail a broken toy adapter on each check, one break at a time.
 
 ## The reference adapter
@@ -64,12 +67,16 @@ tests compare it against those same functions on the recorded streams under
 `tests/orchestration/fixtures/stream/`, and it passes the kit streaming and not streaming.
 
 ## The worker list and the registry
-The v1 worker list, `packages/orchestration/worker_adapters.py`, DESCRIBES a worker: its roles,
-mode and status. Its `adapter_ref` names the v2 adapter that EXECUTES the contract for it, and a
-record without a reference is a worker still awaiting its adapter; today only `claude_code` names
-one, `claude-cli`. `packages/providers/adapters/adapter_registry.py` resolves a reference to its
-adapter, and `remedy worker show claude_code` prints the adapter and its declared capabilities;
-`remedy worker list --json` and `remedy worker show --json` carry `adapter_ref` for every record.
+The worker list, `packages/orchestration/worker_adapters.py`, is the worker adapter contract v2's
+list of workers: it DESCRIBES a worker, its roles, mode and status. Its `adapter_ref` names the
+adapter that EXECUTES the contract for it, and a record without a reference is a worker still
+awaiting its adapter; today only `claude_code` names one, `claude-cli`, and its status reads
+`available`. `ollama` and `pi_dev` run today through Remedy's own call paths and say in their notes
+that they have no adapter yet. `packages/providers/adapters/adapter_registry.py` resolves a
+reference to its adapter, and `remedy worker show claude_code` prints the adapter and its declared
+capabilities; `remedy worker list --json` and `remedy worker show --json` carry `adapter_ref` for
+every record, and `remedy worker show --json` also carries `capabilities`, the same flags the text
+prints with `max_context_tokens`, or `null` for a worker without an adapter (amend1023 D4).
 
 ## The import guard
 Orchestration and the contracts layer import the contract and never a concrete adapter.

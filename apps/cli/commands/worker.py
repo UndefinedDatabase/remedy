@@ -52,6 +52,8 @@ def _cmd_workers(
 def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     # WHY: the wiring layer may import a concrete adapter (DECISION F151 D5 (3)); the
     # registry is the one product path that reaches a WorkerAdapter at all.
+    import dataclasses
+
     from packages.orchestration.worker_adapters import (
         export_worker_specs_json,
         list_worker_specs,
@@ -63,8 +65,14 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     if match is None:
         fail("unknown_provider", f"unknown provider: {provider_id}",
              json_output=json_output)
+    adapter = resolve_worker_adapter(match.adapter_ref) if match.adapter_ref else None
+    capabilities = adapter.capabilities("") if adapter is not None else None
     if json_output:
-        emit_ok(**export_worker_specs_json((match,)))
+        # amend1023 D4: the JSON carries the capabilities the text prints, `null` without an adapter.
+        answer = export_worker_specs_json((match,))
+        answer["providers"][0]["capabilities"] = (
+            dataclasses.asdict(capabilities) if capabilities is not None else None)
+        emit_ok(**answer)
         return
     print(f"Worker: {match.display_name} ({match.provider_id})")
     print(f"  Roles: {', '.join(match.supported_roles)}")
@@ -72,9 +80,7 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     print(f"  Status: {match.status}")
     if match.notes:
         print(f"  Notes: {match.notes}")
-    adapter = resolve_worker_adapter(match.adapter_ref) if match.adapter_ref else None
-    if adapter is not None:
-        capabilities = adapter.capabilities("")
+    if capabilities is not None:
         flags = [
             name for name in ("vision", "json_schema", "session_resume", "streaming", "tool_use")
             if getattr(capabilities, name)

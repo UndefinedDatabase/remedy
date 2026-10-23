@@ -184,6 +184,17 @@ class TestWorkerShowAdapterLinkage:
         entry = body["providers"][0]
         assert entry["adapter_ref"] == "claude-cli"
 
+    def test_the_json_answer_carries_the_capabilities_the_text_prints(self, capsys):
+        """amend1023 D4: the same flags as the text's `Capabilities:` line, and null without an adapter."""
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=True)
+        entry = json.loads(capsys.readouterr().out)["providers"][0]
+        assert entry["capabilities"] == {
+            "vision": False, "json_schema": True, "session_resume": True, "streaming": True,
+            "tool_use": True, "max_context_tokens": 0}
+        _cmd_worker_show("ollama", json_output=True)
+        assert json.loads(capsys.readouterr().out)["providers"][0]["capabilities"] is None
+
     def test_claude_code_text_output_shows_none_for_an_adapter_with_no_capability(self, monkeypatch, capsys):
         # R-1440 — the `none` line is held by no test; an adapter declaring no flag at all
         # must still print `  Capabilities: none` rather than an empty or missing line.

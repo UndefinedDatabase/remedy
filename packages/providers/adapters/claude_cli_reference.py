@@ -7,7 +7,8 @@ ping-pong loop and its seams keep owning transport, timeouts, every retry, failo
 pacing and per-call evidence (DECISION F151 D2 (2)); this module only builds an invocation and
 maps a provider's raw output back onto the typed contract shapes. The loop still calls
 ``ClaudeCliProvider`` directly and is not rewired through this adapter in F151 (D4 (8)); the
-registry linkage that reaches it, and removes its ``ALLOWED_UNWIRED`` line, is T003's next round.
+adapter registry (``adapter_registry.py``, DECISION F151 D5) reaches it for ``remedy worker show``,
+and the feature registered after F151, "The loop runs through the adapter", rewires the loop.
 """
 from __future__ import annotations
 
@@ -36,8 +37,8 @@ _TEXT_CLASSIFIED_CLASSES = frozenset({
 })
 
 
-# WHY: the module-level classifier classify_error delegates to (D4 (5)) — kept outside the
-# class so the kit's transport-dimension class-source scan never reads it at all.
+# WHY: the module-level classifier classify_error delegates to (D4 (5)); the kit's transport
+# dimension reads it too, because the class calls it by name (amend1023 D4).
 def classify_claude_cli_error(error_text: str, exit_code: int | None) -> FailureClass:
     """Classify a claude-cli failure exactly as DECISION F151 D4 (5) states.
 
@@ -72,8 +73,8 @@ class ClaudeCliReferenceAdapter:
         self._streaming = streaming
         self._config = config
 
-    # WHY: the adapter's stable name is the provider's own, so the registry linkage T003's next
-    # round adds reaches this class through the same string `provider_names.py` already uses.
+    # WHY: the adapter's stable name is the provider's own, so the registry linkage reaches this
+    # class through the same string `provider_names.py` already uses (DECISION F151 D5).
     @property
     def adapter_id(self) -> str:
         return "claude-cli"
