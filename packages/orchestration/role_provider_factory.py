@@ -70,7 +70,7 @@ def create_role_provider(
         if stream_evidence and stream_evidence_dir:
             rel_prefix = f"streams/{role}"
             stream_dir = str(Path(stream_evidence_dir) / "streams" / role)
-        common = {
+        common: dict[str, Any] = {
             "cwd": staging_dir,
             "model": model,
             "stream_evidence": stream_evidence,
