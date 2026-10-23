@@ -6,13 +6,11 @@ the repair need, the format-error rate and the cost per pass, each with its wind
 in one trust home; `remedy stats trust` shows it, and routing reads it only as a recommendation.
 
 ## Current Step
-Round 5, the closure's integration gate: register and repair R-1434, the checklist's consolidation
-pass, the closure's self-use item run to its approval gate, and the feature's one full suite.
+Round 6, the closure's evidence round: the staging reclaim, the evidence job and the review package.
 
 ## Next Steps
-1. Round 6: the evidence bundle and the review package.
-2. Round 7: the Built State, the rotation, the STATUS line, the README and the pull request.
+1. Round 7: the Built State, the rotation, SU-077's consumed_by, the STATUS line with the README
+   sync, and the pull request, left unmerged.
 
 ## Risks
-- The self-use item makes real provider calls; a red full suite is repaired under the shrinking
-  rule before the closure goes on.
+- A package that does not read READY_FOR_REVIEW blocks the closure until it does.
