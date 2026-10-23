@@ -4,7 +4,7 @@ Orchestration imports the worker adapter contract and never a concrete adapter (
 of `tests/contracts/test_adapter_import_guard.py`). The wiring layer therefore fills this slot
 once per process: `main` in `apps/cli/grouped.py` installs the adapter registry's classes before
 any command runs, and `ClaudeCliProvider` asks the slot for the adapter that builds each call's
-command line. Remedy deliberately keeps no second command-line builder beside the adapter, so an
+command line and maps the usage of a call that is not streamed (DECISION F315 D3). Remedy deliberately keeps no second command-line builder beside the adapter, so an
 empty slot is an error and never a fallback (AGENTS.md, "Replacing is deleting").
 """
 from __future__ import annotations

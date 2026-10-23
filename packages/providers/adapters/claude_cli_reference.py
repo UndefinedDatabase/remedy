@@ -8,7 +8,8 @@ pacing and per-call evidence (DECISION F151 D2 (2)); this module only builds an 
 maps a provider's raw output back onto the typed contract shapes. The adapter registry
 (``adapter_registry.py``, DECISION F151 D5) reaches it for ``remedy worker show``, and the command
 line installs that registry into the worker adapter slot, from which ``ClaudeCliProvider`` takes
-the command line of every call (DECISION F315 D2); the provider still maps the output itself.
+the command line of every call and the usage of every call that is not streamed (DECISIONs F315
+D2 and D3).
 """
 from __future__ import annotations
 

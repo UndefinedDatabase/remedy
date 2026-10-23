@@ -5,9 +5,10 @@
 > `packages/providers/adapters/claude_cli_reference.py`, the adapter registry, the `adapter_ref`
 > link of the worker list and the import guard are built. DECISIONs F151 D1 to D5 in
 > `.agent/decisions.md`; the feature is `docs/roadmap/features/T8_F151.md`.
-> Status (F315 T002, 2026-10-23): every claude-cli call a job makes takes its command line from
-> the installed adapter, through the worker adapter slot below; the provider still maps the
-> output, the usage and the errors itself (DECISION F315 D2).
+> Status (F315, 2026-10-23): every claude-cli call a job makes takes its command line from the
+> installed adapter, through the worker adapter slot below, and a call that is not streamed takes
+> its usage from the adapter too; the stream and the error classes stay with the evidence capture
+> and the failure post-mortem (DECISIONs F315 D2 and D3).
 
 Remedy's neutrality promise needs one interface that every vendor's backend fills in the same way,
 so that adding a backend never touches orchestration. This page names that interface, the kit
@@ -100,3 +101,13 @@ call, its free-text and structured reviewer calls and its streamed calls from th
 write mode is the adapter's rule, read-only. An empty slot raises `WorkerAdapterNotInstalled`,
 which the provider reports as a provider error: Remedy deliberately keeps no second command-line
 builder as a fallback. The provider's own version probe is not a call the adapter builds.
+
+`adapter_usage_actuals(adapter_ref, raw, **settings)` answers the usage the installed adapter's
+`map_usage` maps from a call's output, and when the adapter answers none, the reason the shared
+envelope reader gives (`is_error`, `usage_missing`, `parse_failed`, `empty_input`), which the
+provider records and acts on as before. A call that is not streamed reads its usage there. Remedy
+deliberately leaves two faces of the contract outside the loop's path: a streamed call's events
+are normalised by the evidence capture while the process runs, and a failed call's class is set by
+the failure post-mortem from every signal it has, of every provider alike; both are per-call
+evidence the loop owns, and the adapter's `map_stream` and `classify_error` answer the same
+functions for the kit and for `remedy worker show`.
