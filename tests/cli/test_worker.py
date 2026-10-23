@@ -158,3 +158,52 @@ class TestAWorkerRefusalIsShapedLikeTheCaller:
         body = json.loads(capsys.readouterr().out)
         assert body["error"] == "missing_argument"
         assert "--model" in body["message"] and "--all" in body["message"]
+
+
+class TestWorkerShowAdapterLinkage:
+    """F151 T003: `remedy worker show` as the product path to an adapter (DECISION F151 D5 (3))."""
+
+    def test_claude_code_text_output_carries_adapter_and_capabilities(self, capsys):
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=False)
+        out = capsys.readouterr().out
+        assert "Adapter: claude-cli" in out
+        assert "Capabilities: json_schema, session_resume, streaming, tool_use" in out
+
+    def test_ollama_text_output_carries_neither_line(self, capsys):
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("ollama", json_output=False)
+        out = capsys.readouterr().out
+        assert "Adapter:" not in out
+        assert "Capabilities:" not in out
+
+    def test_claude_code_json_answer_carries_adapter_ref(self, capsys):
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=True)
+        body = json.loads(capsys.readouterr().out)
+        entry = body["providers"][0]
+        assert entry["adapter_ref"] == "claude-cli"
+
+    def test_claude_code_text_output_shows_none_for_an_adapter_with_no_capability(self, monkeypatch, capsys):
+        # R-1440 — the `none` line is held by no test; an adapter declaring no flag at all
+        # must still print `  Capabilities: none` rather than an empty or missing line.
+        from packages.contracts.adapter_contract import AdapterCapabilities
+        from packages.providers.adapters import adapter_registry
+
+        class _NoCapabilityAdapter:
+            adapter_id = "claude-cli"
+
+            def capabilities(self, model: str) -> AdapterCapabilities:
+                return AdapterCapabilities(
+                    vision=False, json_schema=False, session_resume=False,
+                    streaming=False, tool_use=False, max_context_tokens=0,
+                )
+
+        monkeypatch.setattr(
+            adapter_registry, "resolve_worker_adapter",
+            lambda adapter_ref: _NoCapabilityAdapter(),
+        )
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=False)
+        out = capsys.readouterr().out
+        assert "  Capabilities: none" in out

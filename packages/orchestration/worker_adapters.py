@@ -13,6 +13,12 @@ Public API::
     list_worker_specs() -> tuple[WorkerProviderSpec, ...]
     export_worker_specs_json(specs) -> dict[str, Any]
     summarize_worker_specs(specs) -> str
+
+A v1 ``WorkerProviderSpec`` DESCRIBES a worker — its roles and status — and says
+nothing about running one. Its ``adapter_ref`` names the v2 adapter
+(`packages/contracts/adapter_contract.py`'s ``WorkerAdapter``) that EXECUTES the
+contract for it; a record without a reference is a worker still awaiting its
+adapter (DECISION F151 D5 (1)).
 """
 
 from __future__ import annotations
@@ -38,6 +44,8 @@ class WorkerProviderSpec:
     execution_mode: str
     status: str
     notes: str
+    #: The v2 adapter's stable name (DECISION F151 D5 (1)); "" when this worker has none yet.
+    adapter_ref: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +68,7 @@ _SPECS: tuple[WorkerProviderSpec, ...] = (
         execution_mode="external_harness",
         status="future",
         notes="Anthropic Claude Code CLI as external build worker. Not yet integrated.",
+        adapter_ref="claude-cli",
     ),
     WorkerProviderSpec(
         provider_id="pi_dev",
@@ -115,6 +124,7 @@ def export_worker_specs_json(specs: tuple[WorkerProviderSpec, ...] | None = None
                 "execution_mode":  s.execution_mode,
                 "status":          s.status,
                 "notes":           s.notes,
+                "adapter_ref":     s.adapter_ref,
             }
             for s in specs
         ],
@@ -138,5 +148,7 @@ def summarize_worker_specs(specs: tuple[WorkerProviderSpec, ...] | None = None) 
         lines.append(f"      Status: {s.status}")
         if s.notes:
             lines.append(f"      Notes: {s.notes}")
+        if s.adapter_ref:
+            lines.append(f"      Adapter: {s.adapter_ref}")
 
     return "\n".join(lines)

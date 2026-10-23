@@ -72,6 +72,9 @@ RESERVED_NAMESPACES = (
 ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
     ("apps/cli/main.py",
      "the documented `python -m apps.cli.main` bridge the runtime process-boundary tests launch"),
+    ("packages/contracts/adapter_conformance_kit.py",
+     "F151's conformance kit; every adapter's tests import it and no product path does, by design "
+     "(DECISION F151 D2)"),
     ("packages/contracts/interfaces.py",
      "Protocol contracts satisfied structurally, never imported; the kernel boundary architecture.md names"),
     ("packages/orchestration/autonomy_loop.py",
