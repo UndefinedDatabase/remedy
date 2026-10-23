@@ -31471,3 +31471,23 @@ THE DECISION: treat gate 3 as RED on the exit code alone and stop the round ther
 ALTERNATIVES CONSIDERED: (a) re-run gate 3 once more now that the suspected interference may have passed, REJECTED because the block fixes the test selection at one run and a second run — however well-motivated — is the retry pattern that rule exists to forbid; (b) treat the gate as a false red and proceed to C3's commit and the handoff anyway, REJECTED because the block's exit-code requirement carries no exception clause and weakening it on a plausible-but-unconfirmed theory is exactly the kind of reinterpretation AGENTS.md's Priority section forbids; (c) kill the other `remedy` processes to clear the interference, REJECTED because ending another session's work is outside this round's scope and not something this block authorizes.
 
 HOW TO REVERSE: the next session verifies no other `remedy` process holds the configured data root, runs `python3 .remedy-wt/f151-r10/prep/gate3.py .` exactly once, and on a clean `exit 0` with 793 passed and no FAILED/ERROR/SKIPPED line, continues with gates 4 and 5, C3's commit, the handoff, the push and the pull request exactly as block.md's C3 step and THEN clause already specify — nothing about the plan to finish the round changes, only the fact that it waited one round for a clean gate 3.
+
+## DECISION amend1023 D1 — the order's branch is `feature/amend1023-universe-trust`, and the order runs as one amendment with no feature claim (2026-10-23)
+
+THE PROBLEM: operator amendment amend1023-universe-trust names the branch `amend/1023-universe-trust`. AGENTS.md, which wins on a conflict, binds every agent to a `feature/*` branch, and the Open PR Gate refuses any pull request that does not come from one. The order is five parts of one operator request, not a roadmap feature, and it registers one new feature (Part 4) without claiming it.
+
+THE DECISION: (1) The branch is `feature/amend1023-universe-trust`, the name the earlier amendments used (`feature/amend1015-cockpit-truth`, `feature/amend1020-orb-insight`). (2) The order is worked as an amendment: no STATUS line is claimed or closed by it; its commits are ordered by part, each under 500 insertions. (3) F151's rounds 10 and 11 were reviewed PASS after their own handback and are booked into `.agent/live_review.md` by this order's first commit, the first commit that happens anyway (operator amendment amend0827-process-diet rule 1). (4) As the order asks, no test runs until the end: one full suite run, the repair loop, and then only the affected test files.
+
+ALTERNATIVES CONSIDERED: (a) the branch name as written, REJECTED because AGENTS.md wins and the gate would refuse its pull request; (b) claiming a STATUS line for the order, REJECTED because the order is no roadmap feature.
+
+HOW TO REVERSE: delete this entry; the branch name is history.
+
+## DECISION amend1023 D2 — the live data is read only through Remedy's own commands, and the probe's fixture is the order text the mission record holds (2026-10-23)
+
+THE PROBLEM: the order asks to copy the probe's order text from the data root as a test fixture, and to read the stuck order's state, planner, builder and blocking criterion. The repository's `.claude/settings.json` denies every read of `.data/**`, and a direct listing of the data root was refused in this session.
+
+THE DECISION: (1) The data root is never read directly. The probe's state is read through `remedy client order 048ff6987b7336bd --json`, `remedy client story`, `remedy client insight`, `remedy job show 8fe2cfc833a64288 --json` and `remedy client execution --json`; the order key `luna-twmhd8` names supervisor order `048ff6987b7336bd`, whose order file is the key's file. (2) The fixture is the order's text exactly as `remedy mission list --project universe-chat --json` prints it from mission `ed0ef1e8517941cdb574f8c55c75f343`, batch `a2453b77…`: 210 characters, no header and no diagnostic part, so no personal data reaches the repository. The fixture's own header (project, caps) is the test's.
+
+ALTERNATIVES CONSIDERED: (a) reading the key's file under `.data/serve/order-keys/`, REJECTED because the settings deny it and a deny is a boundary, not an obstacle; (b) asking the operator to paste the text, REJECTED because the mission record already holds it.
+
+HOW TO REVERSE: delete this entry and the fixture file.

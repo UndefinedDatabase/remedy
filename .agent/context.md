@@ -1,25 +1,27 @@
-# Context — F151 Worker adapter contract v2
+# Context — operator amendment amend1023-universe-trust
 
 ## Active Branch
-`feature/f151-worker-adapter-contract`, from `main` at `4232c579e` (the merge of pull request 382).
+`feature/amend1023-universe-trust`, from `main` at `adc9e3e96` (the merge of pull request 383,
+F151, at this session's Open PR Gate).
 
 ## Scope
-F151 as `docs/roadmap/features/T8_F151.md` states it, in the order of DECISION F151 D1: T001 the
-inventory, T002 the contract and its conformance kit, T003 the reference adapter, the import guard
-and the registry linkage. The open findings are all F314's; F151 takes none.
+The operator's order of 2026-10-23 in five parts (see `.agent/plan.md`); every decision is a
+DECISION amend1023 D<n> in `.agent/decisions.md`. Code, docs, commits and feature files in English.
 
 ## Do not touch
-Loop transport, retries and evidence, routing policy semantics, registry storage (the feature
-file's Do-not-touch). Adapters build invocations and map outputs; they never retry or time out.
+- `.data/` by direct reads: the repository's settings deny it. The live data is reached only
+  through Remedy's own commands (`remedy client ...`, `remedy mission list`, `remedy job show`).
+- `docs/roadmap/ROADMAP.md`.
 
 ## Active assumptions
-- The deleted `worker_registry` and main builder adapter stay deleted (DECISION F151 D1).
-- The reference adapter changes no behaviour: its goldens equal today's outputs.
+- The probe order `luna-twmhd8` is supervisor order `048ff6987b7336bd`, mission `ed0ef1e8…`.
+- The clients `orb-universe` and `orb-remedy` exist in the registry.
 
 ## Constraints
 - Under 500 insertions per commit; commit subjects carry no leading-slash tokens.
-- pytest runs only the round's selection, once, capped by `tests/conftest.py` (resource safety);
-  the full suite runs once, in the closure.
+- No test run until the end: one full suite run, then the repair loop, then only the affected
+  test files again; never the full suite a second time for a docs repair.
+- The structure ratchet's listed files and functions do not grow.
 
 ## Steps
-The item-status table of each round lives in `.agent/handoff.md`.
+The item-status table lives in the handback.
