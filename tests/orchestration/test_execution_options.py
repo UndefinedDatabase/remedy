@@ -92,3 +92,69 @@ def test_the_observability_list_names_registered_get_routes(offline_ollama):
         assert entry in get_routes
     assert "GET /api/v1/now" in EO.EXECUTION_OBSERVABILITY_ROUTES
     assert "GET /api/v1/jobs/{job}/insight" in EO.EXECUTION_OBSERVABILITY_ROUTES
+
+
+# -- amend1023 D6: a client the operator granted `host_tools` ---------------------------------
+
+
+def _client(host_tools: bool):
+    from packages.orchestration.api_clients import ApiClient
+
+    return ApiClient(name="orb-test", token="t" * 40, projects=("demo",), max_total_tokens=None,
+                     max_provider_calls=None, may_apply=False, host_tools=host_tools)
+
+
+def test_a_client_granted_host_tools_is_offered_the_claude_code_cli_and_the_planner(
+        offline_ollama, tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    offer = EO.execution_capabilities(_client(True))
+    assert offer["host_tools"] is True
+    for role in ("builder", "reviewer", "repair", "planner"):
+        [cli] = [p for p in offer["roles"][role]["providers"] if p["id"] == "claude-cli"]
+        assert cli["offered_over_http"] is True and cli["not_offered_reason"] == ""
+    assert offer["roles"]["planner"]["selectable_over_http"] is True
+    assert offer["roles"]["repair"]["selectable_over_http"] is False
+    assert [p["id"] for p in offer["roles"]["planner"]["providers"] if p["offered_over_http"]] == [
+        "ollama", "claude-cli"]
+    assert [p["id"] for p in offer["roles"]["repair"]["providers"] if p["offered_over_http"]] == ["claude-cli"]
+
+
+def test_every_other_caller_reads_the_offer_unchanged_and_the_reason_names_the_property(
+        offline_ollama, tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    server, plain = EO.execution_capabilities(), EO.execution_capabilities(_client(False))
+    assert server == plain and plain["host_tools"] is False
+    assert plain["roles"]["planner"]["selectable_over_http"] is False
+    for role in ("builder", "reviewer", "repair", "planner"):
+        [cli] = [p for p in plain["roles"][role]["providers"] if p["id"] == "claude-cli"]
+        assert cli["offered_over_http"] is False and "host_tools" in cli["not_offered_reason"]
+
+
+def test_the_refusal_follows_the_client(monkeypatch):
+    import shutil
+
+    monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")
+    for body in ({"builder_provider": "claude-cli"}, {"reviewer_provider": "claude-cli"},
+                 {"planner_provider": "ollama"}, {"planner_provider": "claude-cli"}):
+        assert EO.remote_provider_refusal(body, _client(True)) == ""
+        assert "host_tools" in EO.remote_provider_refusal(body, _client(False))
+        assert EO.remote_provider_refusal(body) == EO.remote_provider_refusal(body, _client(False))
+    assert "not a provider of this role" in EO.remote_provider_refusal({"planner_provider": "pi"}, _client(True))
+
+
+def test_a_claude_code_cli_that_is_not_installed_is_refused_as_not_available(monkeypatch):
+    import shutil
+
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    assert "not available on this server" in EO.remote_provider_refusal(
+        {"builder_provider": "claude-cli"}, _client(True))
+
+
+def test_the_route_answers_the_calling_clients_offer(offline_ollama, tmp_path, monkeypatch):
+    from packages.orchestration.public_api import answer_public_api_get
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    status, body, _headers = answer_public_api_get("/api/v1/execution", "", _client(True))
+    assert status == 200 and body["host_tools"] is True
+    status, body, _headers = answer_public_api_get("/api/v1/execution", "", _client(False))
+    assert status == 200 and body["host_tools"] is False

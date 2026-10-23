@@ -897,9 +897,10 @@ def test_the_ledger_holds_one_line_per_request_in_order(tcp_server):
     records = [json.loads(line) for line in raw_lines]
     for record in records:
         assert list(record.keys()) == ["ts", "token_fp", "client", "method", "path", "status",
-                                       "error"]
+                                       "error", "host_tools"]
         assert record["method"] == "GET"
         assert record["client"] == ""
+        assert record["host_tools"] is False
 
     assert records[0]["status"] == 200
     assert records[0]["error"] == ""
@@ -928,6 +929,29 @@ def test_the_ledger_holds_one_line_per_request_in_order(tcp_server):
 
     assert (ledger_path.parent.stat().st_mode & 0o777) == 0o700
     assert (ledger_path.stat().st_mode & 0o777) == 0o600
+
+
+def test_a_write_naming_the_claude_code_cli_is_ledgered_host_tools_true(unix_server):
+    """amend1023 D6: every write whose body names `claude-cli` under a provider key is marked, even a
+    refused one; a write naming another provider is not."""
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    for body in ({"builder_provider": "claude-cli"}, {"planner_provider": "claude-cli"},
+                 {"reviewer_provider": "pi"}):
+        status, _answer, _headers = _unix_request(
+            unix_server, "POST", "/api/v1/orders", headers=_bearer(SERVER_TOKEN),
+            body=json.dumps(body).encode("utf-8"))
+        assert status in (400, 405)
+    records = [json.loads(line) for line in
+               (data_root / "api" / "calls.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [record["host_tools"] for record in records] == [True, True, False]
+
+
+def test_the_host_tools_reading_of_a_body():
+    assert public_api.public_api_call_host_tools(b'{"reviewer_provider": "claude-cli"}') is True
+    assert public_api.public_api_call_host_tools(b'{"builder_provider": "pi"}') is False
+    assert public_api.public_api_call_host_tools(b"") is False
+    assert public_api.public_api_call_host_tools(b"[\"claude-cli\"]") is False
+    assert public_api.public_api_call_host_tools(b"\xff") is False
 
 
 # -- K: a failed ledger write never changes the answer ---------------------------
@@ -1554,7 +1578,7 @@ def test_the_order_create_route_is_pinned_with_its_body_and_its_statuses():
         ("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
         ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
         ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
-        ("capture_review", "flag"))
+        ("capture_review", "flag"), ("planner_provider", "string"))
     assert route.refusals == ()
     assert route.refusal_default is None
     assert route.starts_order is True
@@ -1618,6 +1642,56 @@ def test_a_provider_http_does_not_offer_is_refused_before_anything_starts(regist
     calls, start = _recording_order_starter(_fixture_order_record())
     status, answer, _headers = _post_order({"order": _order_text(registered_project_slug), **body}, start)
     assert (status, answer["error"]) == (400, "api_provider_not_offered")
+    assert calls == []
+
+
+def _host_tools_client(granted: bool):
+    from packages.orchestration.api_clients import ApiClient
+
+    return ApiClient(name="orb-test", token="t" * 40, projects=(), max_total_tokens=None,
+                     max_provider_calls=None, may_apply=False, host_tools=granted)
+
+
+@pytest.mark.parametrize("body, options", [
+    ({"builder_provider": "claude-cli", "reviewer_provider": "claude-cli"},
+     ["--builder-provider=claude-cli", "--reviewer-provider=claude-cli"]),
+    ({"planner_provider": "claude-cli"}, ["--planner-provider=claude-cli"]),
+    ({"planner_provider": "ollama"}, ["--planner-provider=ollama"]),
+])
+def test_a_client_granted_host_tools_may_name_the_claude_code_cli_and_the_planner(
+        registered_project_slug, monkeypatch, body, options):
+    """amend1023 D6: the body passes to `remedy do` unchanged for a client holding `host_tools`."""
+    import shutil
+
+    from packages.orchestration import api_clients
+
+    monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(api_clients, "client_lists_project", lambda client, keys: True)
+    text = _order_text(registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    _run_calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(
+        ORDER_CREATE_PATH, json.dumps({"order": text, **body}).encode("utf-8"), run, start,
+        client=_host_tools_client(True))
+    assert status == 202, answer
+    assert calls == [(text, options)]
+
+
+@pytest.mark.parametrize("body", [{"builder_provider": "claude-cli"}, {"planner_provider": "ollama"},
+                                  {"planner_provider": "claude-cli"}])
+def test_every_other_client_is_refused_the_claude_code_cli_and_the_planner(
+        registered_project_slug, monkeypatch, body):
+    """amend1023 D6: without `host_tools`, the same 400 as before, naming the property."""
+    from packages.orchestration import api_clients
+
+    monkeypatch.setattr(api_clients, "client_lists_project", lambda client, keys: True)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    _run_calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(
+        ORDER_CREATE_PATH, json.dumps({"order": _order_text(registered_project_slug), **body}).encode("utf-8"),
+        run, start, client=_host_tools_client(False))
+    assert (status, answer["error"]) == (400, "api_provider_not_offered")
+    assert "host_tools" in answer["message"]
     assert calls == []
 
 

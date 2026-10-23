@@ -37,6 +37,16 @@ may order work on, the largest number of model tokens and of provider calls an o
                   "projects": ["demo"], "max_total_tokens": 200000,
                   "max_provider_calls": 40, "may_apply": false}]}
 
+An entry may also carry `"host_tools": true` (since 1.29, operator amendment
+amend1023-universe-trust); an entry without the key reads `false`. The operator grants it with
+`remedy client grant-host-tools <client>` and takes it back with `remedy client revoke-host-tools
+<client>`, both on the command line of this machine and never over HTTP, and `remedy client show
+[<client>]` lists every client with its policy, `host_tools` and its token's fingerprint, never the
+token. A client with `host_tools` may name `claude-cli`, the Claude Code CLI, which runs with this
+machine's own file and shell tools outside Remedy's tool sandbox, and may choose the planner (see
+"Execution offer"). The boundary stays where it was: the property is granted only where the Claude
+Code CLI already runs with the same rights, by the person who could run it there by hand.
+
 A project is written by its slug or its id, and no two entries share a name or a token. The file
 must be readable by its owner only; a file that group or others can read or write counts as
 holding no client. It is read again at every call, so an edit, a new client or a removed one takes
@@ -109,10 +119,14 @@ is run.
 ## The ledger
 
 Every request under `/api/v1`, a refused one included, appends one line to `api/calls.jsonl`
-under the data root, with seven fields: `ts`, `token_fp`, `client`, `method`, `path`, `status` and `error`.
-The caller's token is kept only as its fingerprint, never itself, and the query string is never
-written at all. `client` is the name of the client whose token the call presented, and is empty for
-the server's token and for a refused one. A line that cannot be written changes nothing in the answer sent.
+under the data root, with eight fields: `ts`, `token_fp`, `client`, `method`, `path`, `status`,
+`error` and, since 1.29, `host_tools`. The caller's token is kept only as its fingerprint, never
+itself, and the query string is never written at all. `client` is the name of the client whose
+token the call presented, and is empty for the server's token and for a refused one. `host_tools`
+is `true` for a write whose body names `claude-cli` under `builder_provider`, `reviewer_provider` or
+`planner_provider`, started or refused, so the operator reads every request for the Claude Code CLI
+with its status beside it, and `false` for every other line. A line that cannot be written changes
+nothing in the answer sent.
 
 ## The version rule
 
@@ -292,7 +306,20 @@ whose Claude Code CLI runs with the host's tools outside the tool sandbox; `olla
 which writes no file; one that is offered but not available here) are refused by `POST
 /api/v1/orders` and `POST /api/v1/jobs/{job}/run` with 400 `api_provider_not_offered` before
 anything starts, never replaced by another. No route takes a test command: verification always
-runs the project's own. A run's effective configuration is the job's `execution_config` in the
+runs the project's own.
+
+**A client granted `host_tools` (since 1.29).** The offer is the calling token's. The answer's
+`host_tools` says whether the caller holds the property (see "The token"); the server's own token
+and every other client read `false` and are offered exactly what they were before. For a client
+that holds it, `claude-cli` reads `offered_over_http` `true` under `builder` and `reviewer`, and
+under `repair`, which is never named over HTTP: repair runs on the builder's provider unless the
+server configures its own, so a `claude-cli` builder repairs with `claude-cli`. Its `planner`
+reads `selectable_over_http` `true`, with `ollama` and `claude-cli` offered, and `POST
+/api/v1/orders` takes the body key `planner_provider`, passed to `remedy do` as
+`--planner-provider`. `POST /api/v1/jobs/{job}/run` and `/retry` take `claude-cli` for both of
+their keys. Every other caller that names `claude-cli` or a `planner_provider` is refused with the
+same 400 `api_provider_not_offered` as before, and its `not_offered_reason` names the property. A
+`claude-cli` that is offered but not installed here is refused as not available. A run's effective configuration is the job's `execution_config` in the
 `job run` answer and in the review report (`docs/system/review-reports-v1.md`).
 
 **Budget profiles (since 1.22).** Every provider under `roles` names its `class`: `local` for
