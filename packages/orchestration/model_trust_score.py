@@ -627,6 +627,34 @@ def trust_leader(table: ModelTrustTable, role: str) -> TrustRecommendation:
         runner_up_pass_quota=second.pass_quota.value, reason=TRUST_RECOMMENDATION_LEADER)
 
 
+def trust_routing_note(table: ModelTrustTable, role: str, configured_model: str) -> str:
+    """DECISION F133 D4 (1): "trust suggests otherwise" — informational only; it reads ``table``
+    and never changes a route.
+
+    Returns the one-sentence note only when ``role`` has a clear leader (:func:`trust_leader`),
+    ``configured_model`` is not empty, is not that leader, and has its own row for ``role`` that
+    is not thin; otherwise returns ``""`` (no leader, the configured model already leads, the
+    configured model is thin or unseen, or the configured model is empty).
+    """
+    if not configured_model:
+        return ""
+    rec = trust_leader(table, role)
+    if rec.reason != TRUST_RECOMMENDATION_LEADER or configured_model == rec.leader:
+        return ""
+    configured_row = table.lookup(configured_model, role)
+    if configured_row is None or configured_row.thin or configured_row.pass_quota.value is None:
+        return ""
+    configured_pct = round(configured_row.pass_quota.value * 100)
+    leader_pct = round(rec.leader_pass_quota * 100)
+    return (
+        f"Trust suggests otherwise for {role}: {configured_model} is configured, with a pass "
+        f"quota of {configured_pct}% over {configured_row.settled_tasks} settled tasks, while "
+        f"{rec.leader} leads with {leader_pct}% over {rec.leader_settled_tasks} in the last "
+        f"{table.window_days} days. This note is informational: the route is unchanged, and a "
+        "change is made through config and an ADR."
+    )
+
+
 def _metric_from_json(raw: Any) -> TrustMetric:
     return TrustMetric(value=None if raw["value"] is None else float(raw["value"]), n=int(raw["n"]))
 
