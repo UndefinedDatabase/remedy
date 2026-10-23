@@ -372,3 +372,29 @@ def test_a_budget_stop_answered_before_a_later_operator_stop_is_never_offered_ag
 
     assert [d for d in list_decisions(job, events) if d.type == "token_budget"] == []
     assert open_budget_decision_id(job) == ""
+
+
+class TestExtendWithoutAnAnswerOnADeadlineStop:
+    """R-1424: a deadline is never doubled, so an answerless `extend` names the deadline answer."""
+
+    def _assert_names_the_deadline_answer(self, job: JobPlan) -> None:
+        result = answer_budget_decision(job, _open_decision_id(job), "extend", [], now=NOW)
+        assert result["outcome"] == "refused"
+        assert result["code"] == "missing_argument"
+        assert "deadline" in result["detail"]
+        assert "did not raise" not in result["detail"]
+
+    def test_a_deadline_stop_alone_names_the_deadline_answer(self) -> None:
+        self._assert_names_the_deadline_answer(_budget_stopped_job())
+
+    def test_a_deadline_stop_with_exhausted_tokens_names_the_deadline_answer(self) -> None:
+        job = _budget_stopped_job(budgets={**_DEFAULT_BUDGETS, "max_total_tokens": 1000})
+        started = NOW - timedelta(minutes=30)
+        job.first_running_at = started.isoformat()
+        job.budget_actuals = {
+            "schema_version": "3.0.0", "started_at": started.isoformat(),
+            "provider_call_count": 3, "actual_call_count": 3, "unmeasured_call_count": 0,
+            "total_tokens": 1000, "actual_sources": ["pingpong_live"],
+            "waited_s": 0.0, "active_until": NOW.isoformat(),
+            "measured_cost_usd": None, "priced_call_count": 0, "unpriced_call_count": 0}
+        self._assert_names_the_deadline_answer(job)

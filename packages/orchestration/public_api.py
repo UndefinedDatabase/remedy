@@ -93,8 +93,10 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: and F303 (DECISION F303 D3) to `1.25` for `POST /api/v1/jobs/{job}/note`, and F307
 #: (DECISION F307 D11) to `1.26` for an order's `repo_path`, with no change over HTTP, and F307
 #: (DECISION F307 D17, D18) to `1.27` for exit code 2 on a `remedy.toml` that cannot be read and,
-#: over HTTP, the refusals of the methods, the query values and the path values no route takes.
-PUBLIC_API_VERSION = "1.27"
+#: over HTTP, the refusals of the methods, the query values and the path values no route takes,
+#: and operator order fix1022-review-findings (R-1423) to `1.28` for `budget.used.minutes` of a
+#: running job, measured to now instead of to its last safe point.
+PUBLIC_API_VERSION = "1.28"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.

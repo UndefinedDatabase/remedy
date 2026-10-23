@@ -31315,3 +31315,53 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: an operator can now ask Remedy 
 ALTERNATIVES CONSIDERED: (a) annotating `plan.md` through `render_plan_md`, REJECTED because the function is listed and the file is written once, so its midpoint would go stale; (b) adding the midpoint to `remedy job plan-show --json`, REJECTED because the plan read is also what the cockpit's plan section serves and its keys are a contract; (c) an `--all-projects` view, REJECTED because a calibration belongs to one project's ledger.
 
 HOW TO REVERSE: delete `apps/cli/commands/stats_calibration_cmd.py`, `tests/cli/test_stats_calibration_cmd.py` and their lines in `apps/cli/commands/__init__.py`, `apps/cli/command_catalog_stats.py` and `tests/orchestration/import_reachability_allowlist.txt`; restore `_cmd_plan_show` in `apps/cli/commands/job_plan_cmd.py`, `calibrated_band_note` in `packages/orchestration/estimate_calibration.py`, `resolve_predictive_budget_config` in `packages/orchestration/budget_resolution.py` and `tests/cli/test_job_plan_cmd.py` from git history; delete the two sections of `docs/system/estimate-calibration-v1.md` this round adds and this paragraph.
+
+## DECISION fix1022 — the judgment calls of operator order fix1022-review-findings (2026-10-22)
+
+THE PROBLEM: the order repairs four findings of the orchestrator's review of F310 to F074 in one
+session and left several readings open; these are the calls taken, each reversible.
+
+THE DECISION: (1) Finding ids: the order's `R-NEW1` to `R-NEW4` are R-1422 to R-1425, the next
+four after R-1421. (2) R-1423 is repaired with an `in_flight` keyword on `budget_work_seconds`
+rather than a second function: one measure of worked time stays shared by the budget stop and the
+insight (DECISION F311 D1), and the budget stop's call is unchanged. (3) R-1423 raises the public
+API and the client interface to 1.28 although no key is added: an existing key's value changes for
+a running job, and the release matrix records exactly that kind of change under `value_changes`.
+(4) The client-answers kit seeds its running jobs with version-3 actuals (`waited_s`,
+`active_until`), the shape every job has written since F310, instead of version 2; the re-recording
+changed only the stub server's port and one second of silence, because `minutes` is compared by
+type alone. (5) R-1422's red test as the order wrote it handed `_record_attempt` a namespace without
+`provider_attempts`, which the function extends; the test gained `provider_attempts=[]` and one
+more assertion that the rows land there, so no assertion was weakened, and it was red without the
+fix in both forms. (6) R-1424's check is not inserted inline in `answer_budget_decision` as the
+order wrote it: that function has a structure-ledger row of 155 lines and nine more lines turned
+the ratchet red. Two helpers, `_doubled_answers` and `_missing_answer_detail`, carry the same rule
+and the function stays at 155 lines; the refusal's code and sentence are the order's. (7) mypy:
+the session's interpreter carries mypy 2.1.0, so the counts were measured with mypy 2.3.1, the
+`constraints.txt` pin, in a disposable environment over the installed packages. Where narrowing
+needed a check for an impossible `None`, the repairs use the repository's `assert ... is not None`
+idiom, or `_autonomy_value`, which raises `KeyError` for a key missing from the schema; that path
+raised `AttributeError` before, so only the exception class of a broken schema changes. No mypy
+repair was skipped. (8) The order's ORIG_BRANCH, `feature/f074-estimate-calibration`, was deleted
+by the Open PR Gate's own merge of pull request 380 (`--delete-branch`), so the session ends on
+`main`.
+
+(9) The first dispatched hosted run, 39856076613, was red on 166 nodes per column, all of them
+`sandbox_unavailable`: the runner has no Bubblewrap, which amend1016sb made mandatory after the last
+green hosted run. The nodes are registered as ONE Low finding, R-1426, owned by F314, with the node
+list in `.agent/fix1022_ci_red_nodes.txt`, because 166 ids would name one cause 166 times. The
+repair is the workflow's sandbox step on this branch; the order allows one more run, and a second
+red run is not merged.
+
+HOW TO REVERSE: revert the branch's commits; each finding's repair is its own commit.
+
+## DECISION fix1022 D2 — the operator's answer to Q24: merge pull request 381 as it stands (2026-10-23)
+
+THE PROBLEM: the order's second and last hosted run, 39861110995, was red on two nodes, R-1427 and
+R-1428, neither in code the branch changed; the order forbids merging a second red run without the
+operator, so Q24 asked.
+
+THE DECISION: the operator answered "mergen" on 2026-10-23: pull request 381 merges as it stands,
+and R-1427 and R-1428 stay OPEN for F314. Q24 is deleted from `.agent/operator_questions.md`.
+
+HOW TO REVERSE: revert the merge commit of pull request 381.

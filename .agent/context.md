@@ -1,27 +1,26 @@
-# Context — F074 Estimate calibration
+# Context — operator order fix1022-review-findings
 
 ## Active Branch
-`feature/f074-estimate-calibration`, from `main` at `148a1c386` (the merge commit of pull request
-379, which carried F113).
+`feature/fix1022-review-findings`, from `main` after the Open PR Gate merged pull request 380
+(F074).
 
 ## Scope
-F074 (Tier 3), as `docs/roadmap/features/T3_F074.md` and DECISION F074 D1 state it: per task class
-and role distributions from the cost ledger, the sample floor, the damping, the snapshot, the shared
-estimator's source swap in its three consumers, and the trust view.
+The four findings of the orchestrator's review of F310 to F074, as the operator order
+fix1022-review-findings states them: R-1422 to R-1425. Nothing else.
 
 ## Do not touch
-The S, M, L and XL band vocabulary; consumer behaviour below the floor; the pricing tables and the
-price basis.
+`pingpong_loop.py`, `pingpong_provider.py`, `role_provider_factory.py`, `do_sequence.py` and
+`pingpong_provider_fake.py` for typing (their mypy errors are F314's, R-1425).
 
 ## Active assumptions
-- Every behaviour lands with a test that is red without it, proved by the reviewer's mutation.
-- The measurement never writes the ledger; the only file it writes is the snapshot beside it.
+- Every behaviour change lands with a test committed red first.
+- mypy repairs change no behaviour.
 
 ## Constraints
-- One full pytest suite per feature, in the closure's integration-gate round; every round runs
-  its own selection once (operator amendments amend0917-throughput and amend0930-test-load).
-- The structure ratchet: no listed function or file grows; edits there stay line-neutral.
-- No file under `.agent/` gains this machine's absolute paths; the commit hook refuses them.
+- Under 500 insertions per commit; commit subjects carry no leading-slash tokens.
+- No ratchet or ceiling raised by hand; no assertion weakened.
+- Each part runs its own pytest selection once; the finish runs ruff, `tests/docs`, the canary and
+  the fast lane, as the order states.
 
 ## Steps
-The item-status table for each round lives in that round's handback, `.agent/handoff.md`.
+The item-status table of the four findings lives in `.agent/handoff.md`.

@@ -239,7 +239,7 @@ def job_insight_entry(plan: Any, *, now: datetime, model_server: dict[str, Any],
         if actuals is not None:
             used_tokens = actuals["total_tokens"]
             used_calls = actuals["provider_call_count"]
-            used_minutes = int(budget_work_seconds(actuals, now) // 60)
+            used_minutes = int(budget_work_seconds(actuals, now, in_flight=(state == "running")) // 60)
             used_waited = actuals["waited_s"]
 
     try:

@@ -78,8 +78,8 @@ def estimate_cost_band(
     if calibrated is not None and repeat_count >= 0:
         inputs["task_class"] = task_class
         price_basis = config.price_basis_usd_per_1k_tokens
-        usd_low = tokens_to_cost_usd(calibrated.p20 * repeat_count, price_basis)
-        usd_high = tokens_to_cost_usd(calibrated.p80 * repeat_count, price_basis)
+        usd_low = tokens_to_cost_usd(round(calibrated.p20 * repeat_count), price_basis)
+        usd_high = tokens_to_cost_usd(round(calibrated.p80 * repeat_count), price_basis)
         if usd_low is None or usd_high is None:
             return CostBandEstimate(None, None, ESTIMATE_UNAVAILABLE, inputs)
         basis = (

@@ -91,7 +91,9 @@ def _cmd_stats_calibration(*, project: str | None = None, json_output: bool = Fa
     except BudgetConfigError as exc:
         fail("invalid_budget", f"{exc} Nothing was measured.", json_output=json_output, exit_code=2)
     now = datetime.now(timezone.utc)
-    table = load_calibration_table(scope.project_id, now=now, **settings)
+    table = load_calibration_table(
+        scope.project_id, now=now, window_days=settings["window_days"], sample_floor=settings["sample_floor"],
+        max_age_seconds=settings["max_age_seconds"])
     if json_output:
         calibrated = sorted({e.task_class for e in table.entries if table.calibrated_tokens(e.task_class)})
         emit_ok(version=CALIBRATION_OUTPUT_VERSION, max_age_seconds=settings["max_age_seconds"],

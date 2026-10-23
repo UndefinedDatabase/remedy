@@ -293,6 +293,10 @@ order was accepted for; an order accepted before 1.26 carries none.
 Since interface 1.27 a command whose `remedy.toml` cannot be read answers `config_invalid` with exit
 code 2 and writes no crash report; before, it answered `unhandled_command_error` with exit code 1.
 
+Since interface 1.28 the `minutes` of a job entry's `budget.used` in `remedy client now` and
+`remedy client insight` are measured to now for a running job, to its last active moment otherwise;
+before, a running job's minutes stopped at its last safe-point persist (R-1423).
+
 ## What Remedy never does on a machine order
 
 - It never applies without `--approve`, and never commits or pushes without their own flags.
@@ -316,7 +320,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.27`.
+Interface version: `1.28`.
 
 ### Envelope
 

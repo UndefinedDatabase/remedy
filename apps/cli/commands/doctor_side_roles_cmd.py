@@ -36,7 +36,8 @@ def _cmd_doctor_side_roles(ns: Any) -> None:
         message = f"spot check failed for {', '.join(failed)}; the role runs on its own model until a re-check passes"
         if not json_output:
             _print(lines, checks)
-        fail("spot_check_failed", message, json_output=json_output, **payload)
+        fail("spot_check_failed", message, json_output=json_output,
+             side_roles=payload["side_roles"], checks=payload["checks"])
     if json_output:
         emit_ok(**payload)
         return

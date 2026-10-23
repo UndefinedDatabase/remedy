@@ -130,13 +130,14 @@ def serve_mcp(reader: TextIO, writer: TextIO, tools: Sequence[McpTool], allowed:
                 for tool in sorted(tools, key=lambda t: t.name) if tool.name in allowed_names
             ]}))
         elif method == "tools/call":
-            tool_name = params.get("name") if isinstance(params, dict) else None
+            call_params = params if isinstance(params, dict) else {}
+            tool_name = call_params.get("name")
             if not isinstance(tool_name, str) or tool_name not in allowed_names:
                 _write(writer, _error_response(
                     message_id, MCP_INVALID_PARAMS,
                     f"the tool {tool_name!r} is not offered by this server"))
                 continue
-            arguments = params.get("arguments")
+            arguments = call_params.get("arguments")
             if arguments is not None and not isinstance(arguments, dict):
                 _write(writer, _error_response(
                     message_id, MCP_INVALID_PARAMS, "the arguments must be an object"))

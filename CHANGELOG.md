@@ -11,6 +11,18 @@ fails the gate rather than shipping an unexplained release.
 
 ## [Unreleased]
 
+### Fixed
+- 2026-10-22, fix1022-review-findings, the orchestrator's review of F310 to F074; the public API and
+  the client interface move to 1.28:
+  - R-1422: a backup that serves with one call while the primary is held down is booked under its
+    own provider and model, never the primary's.
+  - R-1423: `budget.used.minutes` of a running job in `remedy client now` and `remedy client insight`
+    is measured to now, not to its last safe point (contract 1.28).
+  - R-1424: an `extend` without an answer on a deadline stop is refused `missing_argument` with the
+    sentence that names the deadline answer.
+  - R-1425: the mypy errors of the ten modules F310 to F074 added are repaired without a change of
+    behaviour (440 to 410); the rest of the growth stays open for F314.
+
 ## [0.1.0] - 2026-08-20
 
 ### Added

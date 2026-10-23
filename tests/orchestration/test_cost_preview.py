@@ -151,3 +151,28 @@ class TestResolveConfirmAboveUsd:
         (tmp_path / "remedy.toml").write_text(
             "[remedy.cost_preview]\nconfirm_above_usd = 3.0\n")
         assert resolve_confirm_above_usd(project_root=str(tmp_path)) == 3.0
+
+
+class TestCalibratedBandInWholeTokens:
+    """R-1425: the calibrated band prices whole tokens, and so moves by less than one cent."""
+
+    def test_a_calibrated_band_stays_within_one_cent_of_its_measured_range(self):
+        from packages.orchestration.estimate_calibration import (
+            TASK_TOTAL_ROLE,
+            CalibrationDistribution,
+            CalibrationTable,
+            ClassCalibration,
+        )
+
+        tokens = CalibrationDistribution(n=20, p20=5900.4, p50=11000.0, p80=32000.6)
+        table = CalibrationTable(
+            project_id="p", updated_at="2026-10-22T00:00:00+00:00", window_days=30, sample_floor=10,
+            window_start="2026-09-22T00:00:00+00:00", ledger_present=True,
+            entries=(ClassCalibration("standard_build", TASK_TOTAL_ROLE, tokens, None),),
+            unclassified_tasks=0, unmeasured_tasks=0)
+        config = PredictiveBudgetConfig(price_basis_usd_per_1k_tokens=0.01, calibration=table)
+        e = estimate_cost_band(TokenBand.LOW, TokenBand.HIGH, repeat_count=3, config=config,
+                               task_class="standard_build")
+        assert e.basis.startswith("calibrated(20)")
+        assert abs(e.band_usd_low - 5900.4 * 3 / 1000 * 0.01) < 0.01
+        assert abs(e.band_usd_high - 32000.6 * 3 / 1000 * 0.01) < 0.01

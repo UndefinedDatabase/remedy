@@ -394,7 +394,8 @@ worker wrote and change nothing.
 Each job is one entry with the same keys in both answers: `job`; `order`, the order that lists it,
 or `null`; `project`; `state`, the job's own word; `phase`; `task`, the running task's `id` and
 `title`; `round`, its `n` and `max`; `worker`, its `role`, `provider` and `model`; `budget`, with
-`used` (`tokens`, `calls`, `minutes` of work and `waited_s`) and `limits` (`tokens`, `calls` and
+`used` (`tokens`, `calls`, `minutes` of work, measured to now for a running job, to its last
+active moment otherwise (since 1.28), and `waited_s`) and `limits` (`tokens`, `calls` and
 `minutes`); `last_output_s`, the whole seconds since the worker last wrote anything; `stalled`;
 `stall_reason`; and `waiting_on`, the open decision's `decision` and `type`. `phase` reads `plan`,
 `build`, `review`, `repair` (a builder's round after the first) or `apply_wait` (a result waiting
@@ -524,7 +525,7 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.27`.
+API version: `1.28`.
 
 | Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|

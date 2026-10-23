@@ -1,19 +1,17 @@
-# Plan — F074 Estimate calibration
+# Plan — operator order fix1022-review-findings
 
 ## Goal
-Estimates stop being folklore: per task class and role, damped distributions of what tasks really
-cost, measured from the cost ledger, replace the configured class defaults in all three consumers of
-the shared estimator once a class has enough samples, labelled `calibrated(n)`, while thin classes
-stay on their defaults (docs/roadmap/features/T3_F074.md; DECISIONs F074 D1 and D2).
+Repair the orchestrator's review findings of F310 to F074 on one branch and merge it when green:
+R-1422 (failover booking during a hold), R-1423 (`used.minutes` of a running job), R-1424
+(`extend` without an answer on a deadline stop), R-1425 (mypy debt of the new modules, left open
+for F314).
 
 ## Current Step
-Round 5 (session 1): the closing round — book round 4, the Built State, the ledger rotation, F074
-accepted in STATUS with the README sync and SU-076's consumed_by, and the pull request, left
-unmerged.
+Done: the operator answered Q24 "mergen" (DECISION fix1022 D2); pull request 381 merges.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F074's pull request, then the
-   next feature's first commit books round 5's verdict, then Rule A5.
+1. F314 owns R-1425 to R-1428.
 
 ## Risks
-- None of F074's own; the open findings, R-1246 to R-1421, are owned by F314.
+- ORIG_BRANCH (`feature/f074-estimate-calibration`) was deleted by the Open PR Gate merge of
+  pull request 380; the order ends on `main` (DECISION fix1022 (8)).

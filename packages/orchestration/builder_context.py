@@ -58,7 +58,7 @@ def build_builder_context(
         if compiled_context_token_budget is not None:
             compile_kwargs["token_budget"] = compiled_context_token_budget
         compiled = compile_task_context(
-            compiled_root, compiled_context_paths, compiled_context_candidates,
+            compiled_root, compiled_context_paths or [], compiled_context_candidates or [],
             **compile_kwargs,
         )
         context = render_compiled_context_text(compiled_root, compiled)
@@ -68,7 +68,7 @@ def build_builder_context(
             write_omitted_context_json(compiled, record_dir / OMITTED_CONTEXT_FILENAME)
             write_context_size_comparison_json(
                 compare_context_size(
-                    compiled_root, compiled_context_candidates, compiled,
+                    compiled_root, compiled_context_candidates or [], compiled,
                 ),
                 record_dir / CONTEXT_SIZE_FILENAME,
             )
