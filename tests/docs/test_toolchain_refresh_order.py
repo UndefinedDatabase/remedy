@@ -1,9 +1,11 @@
 """`docs/orders/toolchain-refresh.md` is a job file with the sections T2_F279 T004 orders.
 
-The self-use generator queues the file VERBATIM as a job (DECISION F279 D7), so its shape is
-the job-file shape: a `# Job:` title and `## Task N` sections, each closed by an
-`Acceptance:` list. The headings are pinned here, and so are the three promises T004 makes
-about the order: release notes before migration, one whole-suite run, and no merge.
+The self-use generator does NOT queue this file (R-1418, DECISION F314 D2): the order reads
+the network, which every builder's tool sandbox goes without, so a person runs it instead.
+Its shape stays the job-file shape all the same: a `# Job:` title and `## Task N` sections,
+each closed by an `Acceptance:` list. The headings are pinned here, and so are the three
+promises T004 makes about the order: release notes before migration, one whole-suite run, and
+no merge.
 """
 from __future__ import annotations
 
@@ -41,7 +43,7 @@ def test_every_task_closes_with_an_acceptance_list():
 def test_the_order_keeps_the_promises_t004_makes():
     text = _text()
     assert "remedy doctor toolchain" in text
-    assert "fourteen days" in text
+    assert "the self-use track does not queue it" in text
     assert "release notes" in text and "python3 -m pytest -n auto -q" in text
     assert "Do not merge the pull request" in text and "Nothing was merged by this job." in text
 

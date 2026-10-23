@@ -119,12 +119,16 @@ generator skips every finding a commit after the ledger's last change names in i
 subject (R-1403, DECISION F307 D24).
 
 When the finding ledger, the documentation-staleness catalog and `remedy doctor
-core` all have nothing to offer, two more sources almost always do (F291,
-DECISION F291 D1). The first is an excused blind exception handler: a line
-carrying the BLE001 excuse mark that `tests/test_ble001_ratchet.py` counts, the
-first in file order that no queue entry already names. Its job narrows that
-handler to the errors it really expects, deletes the mark, and lowers the
-ratchet's `MAX_EXCUSED` by one in the same change. The second is a module under
+core` all have nothing to offer, two more sources try last (F291, DECISION
+F291 D1). The first is an excused blind exception handler: a line carrying
+the BLE001 excuse mark that `tests/test_ble001_ratchet.py` counts, the first
+in file order that no queue entry already names. It is offered only when its
+excuse after the mark names its catch-all a debt, with the word `debt`
+matched case-insensitively (DECISION F314 D2, R-1442); every other excuse
+states a deliberate boundary, and none carries the word today, so this
+source usually has nothing to offer. Its job narrows that handler to the
+errors it really expects, deletes the mark, and lowers the ratchet's
+`MAX_EXCUSED` by one in the same change. The second is a module under
 `packages/` or `apps/cli/` that no test file imports; its job writes that
 module's first tests, naming the functions and classes to cover. Both come last
 because they would otherwise crowd out the sources above them, and a queue entry

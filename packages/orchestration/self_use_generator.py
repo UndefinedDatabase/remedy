@@ -13,18 +13,11 @@ PENDING item when the queue is empty. Consumption stays the closure round's
 own edit (DECISION F257 D2, unchanged), so a generated item still needs a
 human's — or the closure round's own — decision before it is ever run.
 
-A standing maintenance ORDER is tried first, then the three sources
-``docs/roadmap/features/T5_F258.md`` T001 named, in that order — completed by
-``docs/roadmap/features/T5_F289.md`` T001 and T002 (DECISIONS F289 D1 and D2), which built the
-last two as real checks rather than placeholders — and finally the two sources
-``docs/roadmap/features/T5_F291.md`` T001 and T002 added (DECISION F291 D1):
+The three sources ``docs/roadmap/features/T5_F258.md`` T001 named are tried first, in that
+order — completed by ``docs/roadmap/features/T5_F289.md`` T001 and T002 (DECISIONS F289 D1 and
+D2), which built the last two as real checks rather than placeholders — and finally the two
+sources ``docs/roadmap/features/T5_F291.md`` T001 and T002 added (DECISION F291 D1):
 
-  0. THE TOOLCHAIN REFRESH ORDER (T2_F279 T004, DECISION F279 D7).
-     ``docs/orders/toolchain-refresh.md`` is itself a job file, queued VERBATIM,
-     and no more than once every fourteen days: the date it was last queued is
-     read back out of the provenance this tier stamps on its item. It comes
-     first because the ledger tier always has an eligible finding to offer, so
-     an order placed after it would never be reached.
   1. THE FINDING LEDGER. The oldest OPEN (no ``Done:`` line) Low or Medium
      finding in ``.agent/live_review.md`` that no existing queue entry already
      targets (R-0838) and that no commit after the ledger's last change names in
@@ -46,11 +39,12 @@ last two as real checks rather than placeholders — and finally the two sources
      (DECISION F289 D1, T5_F289.md T002).
   4. THE EXCUSED BLIND HANDLERS (T5_F291.md T001, DECISION F291 D1). The first BLE001
      excuse mark ``tests/test_ble001_ratchet.py`` counts, in file-path then line order,
-     under ``EXCUSED_HANDLER_ROOTS``, that no existing queue entry already targets by its
-     key (``path:ordinal:text`` — the ordinal, not the line, so a mark that only moves
-     keeps its key) and whose line ``RETIRED_WORD`` does not match, rendered as a job
-     whose one task quotes the handler's line VERBATIM and asks that it be narrowed and
-     its mark deleted, lowering ``MAX_EXCUSED`` in the same change.
+     under ``EXCUSED_HANDLER_ROOTS``, whose excuse names its catch-all a debt
+     (``EXCUSE_DEBT_WORD``, DECISION F314 D2, R-1442) and that no existing queue entry
+     already targets by its key (``path:ordinal:text`` — the ordinal, not the line, so a
+     mark that only moves keeps its key) and whose line ``RETIRED_WORD`` does not match,
+     rendered as a job whose one task quotes the handler's line VERBATIM and asks that it
+     be narrowed and its mark deleted, lowering ``MAX_EXCUSED`` in the same change.
   5. THE FIRST UNTESTED MODULE (T5_F291.md T002, DECISION F291 D1). The first module
      under ``UNTESTED_MODULE_ROOTS``, in that order, that is not a package's
      ``__init__.py``, defines at least one top-level function or class, and whose dotted
@@ -72,6 +66,12 @@ Public API::
     generate_and_append_if_empty(queue_path=None, ledger_path=None, *, source_root=None) -> SelfUseQueueEntry | None
 
 Deliberate absences:
+  * REMEDY DELIBERATELY DOES NOT QUEUE THE TOOLCHAIN REFRESH ORDER (R-1418, DECISION
+    F314 D2). ``docs/orders/toolchain-refresh.md`` reads the network — the package
+    index, a manifest address and release notes — but every builder tool runs inside
+    :mod:`packages.orchestration.tool_sandbox`, which unshares the network entirely, so a
+    queued run could only end blocked. A person runs the order instead, from a session
+    that can reach the network.
   * REMEDY DELIBERATELY DOES NOT SUMMARIZE A FINDING. The rendered job's Task 1
     body is the ledger paragraph's own bytes, unedited — the same "never
     invent" discipline the rest of this project holds findings to.
@@ -104,7 +104,6 @@ import ast
 import json
 import re
 import subprocess
-from datetime import date, timedelta
 from pathlib import Path
 
 from packages.orchestration import doc_staleness
@@ -177,6 +176,13 @@ EXCUSED_HANDLER_MARK = re.compile(r"#\s*noqa:\s*BLE001\b(?P<rest>.*)")
 #: its rendered "# <these words>" line are both built from this constant alone.
 EXCUSE_MARK_WORDS = "noqa: BLE001"
 
+#: R-1442, DECISION F314 D2: the word that makes a catch-all excuse a DEBT rather than a
+#: deliberate boundary. Every excuse in the repository at `47cdb1b06` states why its
+#: catch-all is correct on purpose, so Tier 4 offers nothing until a handler's own excuse
+#: calls its catch-all a debt — matched case-insensitively at word boundaries, so "DEBT"
+#: counts exactly as "debt" does.
+EXCUSE_DEBT_WORD = re.compile(r"\bdebt\b", re.IGNORECASE)
+
 #: WHERE THE RATCHET TEST LIVES — a Tier 4 job's acceptance names it, and it is never
 #: spelled a second way.
 RATCHET_TEST_PATH = "tests/test_ble001_ratchet.py"
@@ -186,15 +192,6 @@ UNTESTED_MODULE_ROOTS = ("packages", "apps/cli")
 
 #: WHERE TIER 5 LOOKS FOR AN IMPORT — every test file below this, under the source root.
 TESTS_ROOT = "tests"
-
-#: THE ORDER TIER. The order file, how often it may be queued, and the provenance
-#: that records the day it was, which is how the next call knows whether it is due.
-ORDER_RELATIVE_PATH = "docs/orders/toolchain-refresh.md"
-ORDER_CADENCE_DAYS = 14
-_ORDER_PROVENANCE = "generated (self-use-generator order tier, {path}, {day})"
-_ORDER_PROVENANCE_RE = re.compile(
-    r"^generated \(self-use-generator order tier, (?P<path>[^,]+), (?P<day>\d{4}-\d{2}-\d{2})\)$"
-)
 
 #: Severities this generator's Tier 1 will pick from — never High or Critical,
 #: which are judgement calls a generator does not make for itself.
@@ -268,11 +265,6 @@ def default_ledger_path() -> Path:
     return root / ".agent" / "live_review.md"
 
 
-def default_order_path() -> Path:
-    """Where the toolchain refresh order lives, resolved the same way the queue is."""
-    return Path(__file__).resolve().parents[2] / ORDER_RELATIVE_PATH
-
-
 def default_docs_root() -> Path:
     """The repository root the staleness catalog reads documents under, resolved the same way the queue is."""
     return Path(__file__).resolve().parents[2]
@@ -281,44 +273,6 @@ def default_docs_root() -> Path:
 def default_source_root() -> Path:
     """The repository root Tier 4 and Tier 5 read source and test files under."""
     return Path(__file__).resolve().parents[2]
-
-
-def _last_order_day(queue_path: Path | None) -> date | None:
-    """The most recent day an item from the order was queued, consumed or not."""
-    days = [
-        date.fromisoformat(match.group("day"))
-        for match in (_ORDER_PROVENANCE_RE.match(entry.provenance)
-                      for entry in load_self_use_queue(queue_path))
-        if match is not None and match.group("path") == ORDER_RELATIVE_PATH
-    ]
-    return max(days) if days else None
-
-
-def _order_tier(queue_path: Path | None, order_path: Path, today: date) -> SelfUseQueueEntry | None:
-    """Tier 0: the toolchain refresh order, verbatim, when fourteen days have passed."""
-    if not order_path.is_file():
-        return None
-    last = _last_order_day(queue_path)
-    if last is not None and today - last < timedelta(days=ORDER_CADENCE_DAYS):
-        return None
-    try:
-        text = order_path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise SelfUseGenerationError(f"{order_path}: unreadable ({exc})") from exc
-    title = next((line[len("# Job:"):].strip() for line in text.splitlines()
-                  if line.startswith("# Job:")), "")
-    if not title or not re.search(r"^## Task 1\b", text, re.M):
-        raise SelfUseGenerationError(
-            f"{order_path}: not a job file — it needs a `# Job:` title and a `## Task 1` heading")
-    intro = text.split("\n## ", 1)[0].split("\n", 1)[1].strip()
-    return SelfUseQueueEntry(
-        id=_next_queue_id(queue_path),
-        title=title,
-        why=intro,
-        job_markdown=text,
-        consumed_by="",
-        provenance=_ORDER_PROVENANCE.format(path=ORDER_RELATIVE_PATH, day=today.isoformat()),
-    )
 
 
 def _targeted_findings(queue_path: Path | None) -> frozenset[str]:
@@ -715,14 +669,21 @@ def _excused_handler_job_markdown(title: str, path: str, number: int, text: str)
 
 
 def _excused_handler_tier(queue_path: Path | None, root: Path) -> SelfUseQueueEntry | None:
-    """Tier 4: the first BLE001 excuse mark under `EXCUSED_HANDLER_ROOTS` no queue entry targets.
+    """Tier 4: the first BLE001 excuse mark whose excuse names a debt, no queue entry targets.
 
+    R-1442, DECISION F314 D2: a mark is offered only when `EXCUSE_DEBT_WORD` matches the
+    excuse AFTER the mark — the `rest` group `EXCUSED_HANDLER_MARK` captures on that line,
+    never the whole line — so a "debt" spelled in the handler's code before the mark does
+    not count. Every other excuse states a deliberate boundary and is walked past.
     Screens with `RETIRED_WORD` exactly as Tier 1 does (R-1015): a mark whose line
     quotes the retired word is walked past, never offered.
     """
     targeted = _targeted_excused_keys(queue_path)
     for path, number, text, key in _excused_handler_marks(root):
         if key in targeted or RETIRED_WORD.search(text):
+            continue
+        rest = EXCUSED_HANDLER_MARK.search(text).group("rest")
+        if not EXCUSE_DEBT_WORD.search(rest):
             continue
         title = f"Narrow the excused handler at {path}:{number}"
         return SelfUseQueueEntry(
@@ -877,8 +838,6 @@ def generate_self_use_item(
     queue_path: Path | None = None,
     ledger_path: Path | None = None,
     *,
-    order_path: Path | None = None,
-    today: date | None = None,
     source_root: Path | None = None,
 ) -> SelfUseQueueEntry | None:
     """The next item to append, from the first tier that has one, or ``None``.
@@ -889,10 +848,6 @@ def generate_self_use_item(
     behind the "only when the queue is empty" rule.
     """
     ledger = ledger_path or default_ledger_path()
-
-    order_result = _order_tier(queue_path, order_path or default_order_path(), today or date.today())
-    if order_result is not None:
-        return order_result
 
     ledger_result = _ledger_tier(queue_path, ledger)
     if ledger_result is not None:
@@ -944,8 +899,6 @@ def generate_and_append_if_empty(
     queue_path: Path | None = None,
     ledger_path: Path | None = None,
     *,
-    order_path: Path | None = None,
-    today: date | None = None,
     source_root: Path | None = None,
 ) -> SelfUseQueueEntry | None:
     """The seam a closure round calls: generate and append, but ONLY when empty.
@@ -957,9 +910,7 @@ def generate_and_append_if_empty(
     """
     if pending_self_use_items(queue_path):
         return None
-    entry = generate_self_use_item(
-        queue_path, ledger_path, order_path=order_path, today=today, source_root=source_root,
-    )
+    entry = generate_self_use_item(queue_path, ledger_path, source_root=source_root)
     if entry is None:
         return None
     append_generated_item(entry, queue_path)

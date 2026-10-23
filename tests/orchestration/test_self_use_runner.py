@@ -317,8 +317,7 @@ class TestGenerateThenRunEndToEnd:
         )
         # The standing order (DECISION F279 D7) is pointed at a missing file: this test is the
         # ledger tier's generate-to-run cycle, and the order tier would answer first.
-        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path,
-                                                 order_path=tmp_path / "no-order.md")
+        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path)
         assert generated is not None
         assert generated.provenance.startswith("generated (self-use-generator tier 1")
 
@@ -756,7 +755,6 @@ class TestThreeConsecutiveItemsOnAnEmptyLedger:
         # at a missing file (Tier 0 offers nothing), on every generator call.
         ledger_path = tmp_path / "live_review.md"
         ledger_path.write_text("", encoding="utf-8")
-        order_path = tmp_path / "no-order.md"
         queue_path = _write_queue(tmp_path, [])
 
         # THE RUN: run_job wrapped by a pass-through recorder, never stubbed
@@ -774,7 +772,7 @@ class TestThreeConsecutiveItemsOnAnEmptyLedger:
         run_entry = run_result = None
         for i in range(3):
             entry = generate_and_append_if_empty(
-                queue_path=queue_path, ledger_path=ledger_path, order_path=order_path,
+                queue_path=queue_path, ledger_path=ledger_path,
             )
             assert entry is not None, f"closure {i}: the generator offered nothing"
             entries.append(entry)
@@ -836,8 +834,7 @@ class TestASelfUseRunRepairsCodeNeverBookkeeping:
             "described here.\n",
             encoding="utf-8",
         )
-        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path,
-                                                 order_path=tmp_path / "no-order.md")
+        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path)
         assert generated is not None
         return queue_path
 
@@ -917,24 +914,26 @@ class TestAnExcusedHandlerItemRunsToTheApprovalGate:
         source_root = tmp_path / "src"
         module = source_root / "packages" / "alpha.py"
         module.parent.mkdir(parents=True)
+        # R-1442, DECISION F314 D2: each excuse names its catch-all a debt, or Tier 4
+        # would never offer it and this fixture would no longer prove "the first, a
+        # Tier 4 item" (the class docstring's own premise).
         module.write_text(
             "def run():\n"
             "    try:\n"
             "        return 1\n"
-            "    except Exception:  # noqa: BLE001 — the first reason\n"
+            "    except Exception:  # noqa: BLE001 — debt: the first reason\n"
             "        return 0\n"
             "\n"
             "\n"
             "def walk():\n"
             "    try:\n"
             "        return 2\n"
-            "    except Exception:  # noqa: BLE001 — the second reason\n"
+            "    except Exception:  # noqa: BLE001 — debt: the second reason\n"
             "        return 0\n",
             encoding="utf-8",
         )
         ledger_path = tmp_path / "live_review.md"
         ledger_path.write_text("", encoding="utf-8")
-        order_path = tmp_path / "no-order.md"
         queue_path = _write_queue(tmp_path, [])
 
         # THE RUN: run_job wrapped by a pass-through recorder, never stubbed out.
@@ -951,7 +950,7 @@ class TestAnExcusedHandlerItemRunsToTheApprovalGate:
         run_entry = run_result = None
         for i in range(3):
             entry = generate_and_append_if_empty(
-                queue_path=queue_path, ledger_path=ledger_path, order_path=order_path,
+                queue_path=queue_path, ledger_path=ledger_path,
                 source_root=source_root,
             )
             assert entry is not None, f"request {i}: the generator offered nothing"
