@@ -56,6 +56,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote
 
+# Operator amendment amend1023-universe-trust (DECISION amend1023 D11): an order's story.
+from packages.orchestration.order_story import order_story_answer
+
 # DECISION F199 D3: the route table, its dataclass and its registry, lives in a module of its
 # own; this module imports the names it uses from it.
 from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES, PublicApiRoute
@@ -95,8 +98,11 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: (DECISION F307 D17, D18) to `1.27` for exit code 2 on a `remedy.toml` that cannot be read and,
 #: over HTTP, the refusals of the methods, the query values and the path values no route takes,
 #: and operator order fix1022-review-findings (R-1423) to `1.28` for `budget.used.minutes` of a
-#: running job, measured to now instead of to its last safe point.
-PUBLIC_API_VERSION = "1.28"
+#: running job, measured to now instead of to its last safe point, and operator amendment
+#: amend1023-universe-trust (DECISIONs amend1023 D6, D8, D11) to `1.29` for the client property
+#: `host_tools`, `GET /api/v1/orders/{order}/story`, the order jobs' `mission_id` and
+#: `blocking_criterion`, and the story's `scope_findings`.
+PUBLIC_API_VERSION = "1.29"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -478,6 +484,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "client.diff": _client_diff_answer,
     "client.now": _client_now_answer,
     "client.insight": _client_insight_answer,
+    "client.order-story": order_story_answer,
 }
 
 
@@ -551,7 +558,7 @@ def answer_public_api_get(
             refusal = _client_read_refusal(client, segments.get("job", ""))
             if refusal is not None:
                 return 403, build_error("api_client_policy_refused", refusal), {}
-        if client is not None and route.twin == "client.order":
+        if client is not None and route.twin in ("client.order", "client.order-story"):
             from packages.orchestration.client_scope import client_order_read_refusal
 
             refusal = client_order_read_refusal(client, segments.get("order", ""))

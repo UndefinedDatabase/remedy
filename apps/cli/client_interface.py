@@ -64,6 +64,7 @@ from apps.cli.commands.job_steer_cmd import JOB_STEER_ANSWER_KEYS, JOB_STEER_ANS
 from apps.cli.commands.job_stop_cmd import JOB_STOP_ANSWER_KEYS, JOB_STOP_ANSWER_TREE, JOB_STOP_REFUSAL_TOKENS
 from packages.orchestration.order_cancel import ORDER_PHASES
 from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_TREE
+from packages.orchestration.order_story import ORDER_STORY_ANSWER_KEYS, ORDER_STORY_KEY_TREE
 
 #: The document's own version. Its major number changes only when a name is removed or changes
 #: its meaning; adding a name raises the minor number. F253 S3a (DECISION F253 D4 (3)) raises it
@@ -90,8 +91,9 @@ from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_T
 #: F303 (DECISION F303 D3) to `1.25` (`job.steer`),
 #: F307 (DECISION F307 D11) to `1.26` (an order's `repo_path`), and
 #: F307 (DECISION F307 D17) to `1.27` (exit code 2 and `config_invalid` for a `remedy.toml` that cannot be read), and
-#: fix1022-review-findings (R-1423) to `1.28` (`budget.used.minutes` of a running job measured to now).
-CLIENT_INTERFACE_VERSION = "1.28"
+#: fix1022-review-findings (R-1423) to `1.28` (`budget.used.minutes` of a running job measured to now), and
+#: amend1023-universe-trust to `1.29` (`client.order-story`, `host_tools`, `scope_findings`, the order header `shape`).
+CLIENT_INTERFACE_VERSION = "1.29"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -112,7 +114,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "mission.abandon",
     "client.interface", "client.execution", "client.changes", "client.order", "client.run", "client.story",
     "client.now", "client.insight",
-    "client.diff", "client.cancel-order",
+    "client.diff", "client.cancel-order", "client.order-story",
     "doctor.health",
     "doctor.logs",
 )
@@ -176,7 +178,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "mission.abandon": ("mission_error", "mission_not_found", "no_project"),
     "client.interface": (), "client.execution": (),
     "client.changes": ("invalid_cursor",),
-    "client.order": ("order_not_found",),
+    "client.order": ("order_not_found",), "client.order-story": ("order_not_found",),
     "client.run": ("run_not_found",),
     "client.story": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
     "client.now": (),
@@ -275,6 +277,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "client.story": CLIENT_STORY_ANSWER_KEYS, "client.execution": CLIENT_EXECUTION_ANSWER_KEYS,
     "client.now": CLIENT_NOW_ANSWER_KEYS, "client.insight": CLIENT_INSIGHT_ANSWER_KEYS,
     "client.diff": ("files", "job", "matches", "state", "truncated"),
+    "client.order-story": ORDER_STORY_ANSWER_KEYS,
     "doctor.health": ("checks", "verdict"),
     "doctor.logs": ("entries", "files", "job_id", "matches", "run_id", "unreadable"),
 }
@@ -697,6 +700,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     },
     # F253 D13: `answer` is what `remedy do` printed once the order ended (no tree); `jobs`: order_jobs_view.
     "client.order": {"jobs": ORDER_JOBS_KEY_TREE, "cancel": CANCEL_ANSWER_TREES["client.cancel-order"]["cancel"]},
+    "client.order-story": ORDER_STORY_KEY_TREE,     # amend1023 D11
     # F253 D20: `answer` is the envelope `remedy job run` printed once the run ended; no tree under it.
     "client.run": {},
     "client.story": CLIENT_STORY_KEY_TREE, "client.execution": CLIENT_EXECUTION_KEY_TREE,

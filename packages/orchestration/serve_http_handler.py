@@ -1620,11 +1620,11 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                     "api_query_invalid", f"'{path}' accepts no query string")
             else:
                 raw_body = self.rfile.read(length) if length else b""
-                start_order = self.order_launcher.start if self.order_launcher is not None else None
-                start_run = (
-                    (lambda job, options: self.run_launcher.start(
-                        job, json_output=True, options=options))
-                    if self.run_launcher is not None else None)
+                start_order = None if self.order_launcher is None else (    # amend1023 D11: who ordered it
+                    lambda text, options, **keys: self.order_launcher.start(
+                        text, options, client=client.name if client else "", **keys))
+                start_run = ((lambda job, options: self.run_launcher.start(job, json_output=True, options=options))
+                             if self.run_launcher is not None else None)
                 status, body, headers = answer_public_api_post(
                     path, raw_body, self.command_runner.run, start_order, client=client,
                     start_run=start_run)

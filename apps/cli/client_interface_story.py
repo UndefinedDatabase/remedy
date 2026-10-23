@@ -49,7 +49,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
 STORY_WORDS_KEY_TREE: dict[str, Any] = {
     "states": {}, "step_ids": {}, "step_statuses": {}, "next_actions": {}, "end_actions": {},
     "phrases": {"*": {}}, "reasons": {"*": {}}, "questions": {}, "verification_statuses": {},
-    "scope_findings": {},
+    "scope_findings": {}, "order_job_states": {},
 }
 
 #: Each list of the `story` key and the label its page line carries.
@@ -58,7 +58,7 @@ STORY_WORD_LABELS: tuple[tuple[str, str], ...] = (
     ("step_statuses", "Story step statuses"), ("next_actions", "Story next actions"),
     ("end_actions", "Story end actions"),
     ("questions", "Story questions"), ("verification_statuses", "Story verification statuses"),
-    ("scope_findings", "Story scope findings"),
+    ("scope_findings", "Story scope findings"), ("order_job_states", "Order story job states"),
 )
 
 

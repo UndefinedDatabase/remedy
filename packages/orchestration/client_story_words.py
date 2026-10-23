@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import json
 
+from packages.orchestration.order_story import ORDER_STORY_JOB_STATES
+
 #: What the job is doing now, one word. `queued` (exec-1017c, R-1340): planned and not running; its
 #: `state_detail.after_job` names the job of its order it runs after, when it waits for that one.
 STORY_STATES: tuple[str, ...] = (
@@ -110,6 +112,7 @@ def story_words() -> dict[str, object]:
         "questions": list(STORY_QUESTIONS),
         "verification_statuses": list(STORY_VERIFICATION_STATUSES),
         "scope_findings": list(STORY_SCOPE_FINDINGS),
+        "order_job_states": list(ORDER_STORY_JOB_STATES),
     }
 
 

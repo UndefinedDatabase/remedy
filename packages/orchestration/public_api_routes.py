@@ -285,10 +285,29 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "Polls the order a `POST` to `/api/v1/orders` started, as `remedy client order "
             "<order> --json` does: `state` reads `running`, `ended` or `lost`, `phase` what the "
             "order is doing (see `order_phases` in `GET /api/v1/interface`), `cancel` its cancel "
-            "request or null, `jobs` its jobs, and `answer` "
+            "request or null, `jobs` its jobs (since 1.29 each with its `mission_id` and, while blocked "
+            "or failed, its `blocking_criterion`), and `answer` "
             "holds what `remedy do` printed once the order is not `running`. A client token "
             "reads only an order whose order file names its projects (403 "
             "`api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
+        path="/api/v1/orders/{order}/story",
+        twin="client.order-story",
+        refusals=(("order_not_found", 404),),
+        description=(
+            "The story of an order a `POST` to `/api/v1/orders` started, as `remedy client order-story "
+            "<order> --json` prints it (since 1.29): `order_id`, `client` (the name of the client whose "
+            "token sent it, or null), `state` and `phase` as the order's poll reads them, and `missions`, "
+            "each with its `mission_id` and `milestones`, each milestone with its `id`, its `goal` and its "
+            "`jobs`; each job carries its `number` in the order, `title`, `state` (one of the closed words "
+            "`order_job_states` under `story` in `GET /api/v1/interface`), `state_detail` (`after_job` and "
+            "`after_job_id` while it waits, the `criterion` it did not meet while blocked or failed), "
+            "`tasks` with `done` and `total`, the `round` and the last `tool` of a running job's worker, "
+            "and its `story` route. It changes nothing. A client token reads only an order of one of its "
+            "projects (403 `api_client_policy_refused`)."
         ),
     ),
     PublicApiRoute(

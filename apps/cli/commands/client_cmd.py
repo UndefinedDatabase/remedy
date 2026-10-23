@@ -246,6 +246,25 @@ def _cmd_client_diff(job: str, *, json_output: bool = False) -> None:
         print(row["patch"], end="")
 
 
+def _cmd_client_order_story(order_id: str, *, json_output: bool = False) -> None:
+    """`remedy client order-story <order>`: the order's story, the answer `GET /api/v1/orders/{order}/story`
+    sends (DECISION amend1023 D11)."""
+    from packages.orchestration.order_story import order_story_answer
+
+    answer = order_story_answer(order=order_id)
+    if not answer["ok"]:
+        fail(answer["error"], answer["message"], json_output=json_output, exit_code=3)
+    story = {key: value for key, value in answer.items() if key not in ("ok", "schema_version")}
+    if json_output:
+        emit_ok(**story)
+        return
+    print(f"Order {story['order_id']}: {story['phase']}")
+    for mission in story["missions"]:
+        for milestone in mission["milestones"]:
+            for job in milestone["jobs"]:
+                print(f"  {job['number']}. {job['state']} {job['tasks']['done']}/{job['tasks']['total']} {job['title']}")
+
+
 def _client_entry(client: Any) -> dict[str, Any]:
     """One client as `remedy client show` answers it: its policy and its token's fingerprint, never the token."""
     from packages.orchestration.serve_http_handler import token_fingerprint
@@ -312,6 +331,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False)),
     "client.diff": lambda args: _cmd_client_diff(
         args.job, json_output=getattr(args, "json", False)),
+    "client.order-story": lambda args: _cmd_client_order_story(
+        args.order, json_output=getattr(args, "json", False)),
     "client.show": lambda args: _cmd_client_show(
         getattr(args, "client", None), json_output=getattr(args, "json", False)),
     "client.grant-host-tools": lambda args: _cmd_client_host_tools(

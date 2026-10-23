@@ -72,6 +72,23 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         # A value that names no order is absent, which exit 3's `not_ready` meaning covers.
         exit_codes=(0, 1, 2, 3),
     ),
+    # Operator amendment amend1023-universe-trust (DECISION amend1023 D11): an order's story.
+    CommandEntry(
+        command_id="client.order-story",
+        group_id="client",
+        subcommand="order-story",
+        description="Read the story of an order (an order file or text) the supervisor started, in closed words a client translates: who gave it, its missions and milestones, each Job's state, the criterion a blocked Job did not meet, its tasks done and total, and the round and tool of the Job that runs (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("order", "The order id the supervisor answered when it started your order "
+                  "file or text"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.order", "client.story"),
+        # A value that names no order is absent, which exit 3's `not_ready` meaning covers.
+        exit_codes=(0, 1, 2, 3),
+    ),
     # exec-1017c: cancel an order the supervisor started, whatever it is doing (`order_cancel.py`).
     CommandEntry(
         command_id="client.cancel-order",
