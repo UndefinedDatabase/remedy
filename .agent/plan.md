@@ -7,13 +7,12 @@ transport, timeouts, retries, failover, pacing and evidence; the goldens stay by
 import guard stays green.
 
 ## Current Step
-Round 5, the closure's evidence round: the staging reclaim, the evidence job and the review
-package. The one full suite ran green in round 4; R-1442 is registered for F314.
+Round 6, the closing round: the Built State, the rotation, SU-079's consumed_by, the STATUS line
+with the README sync, and the pull request, left unmerged.
 
 ## Next Steps
-1. The closing round: the Built State, the rotation, SU-079's consumed_by, the STATUS line with the
-   README sync, and the pull request, left unmerged.
+1. The next session merges F315's pull request at the Open PR Gate and claims the next feature by
+   Rule A5.
 
 ## Risks
-- A process that runs a job without the command line or the test configuration finds an empty
-  slot; the self-use script installs the registry itself for that reason (DECISION F315 D2).
+- R-1442, raised by the closure's self-use run, is open and owned by F314.
