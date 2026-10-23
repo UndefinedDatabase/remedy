@@ -3066,6 +3066,15 @@ no secrets, no shell, no actual provider connections — pure data only.
 | execution_mode   | str          |
 | status           | str          |
 | notes            | str          |
+| adapter_ref      | str          |
+
+### Adapter contract v2
+
+Each record also carries `adapter_ref`, the name of the v2 adapter that executes the contract for
+that worker, or an empty string while it has none; today only `claude_code` names one,
+`claude-cli`. The record describes a worker; the adapter executes it. The contract, its
+conformance kit, the reference adapter, the registry and the import guard are described in
+[worker-adapter-contract-v1.md](worker-adapter-contract-v1.md).
 
 ### Built-in provider specs
 
