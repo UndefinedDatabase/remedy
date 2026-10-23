@@ -179,6 +179,13 @@ commit with no alias left behind, and changes the tests in their import lines on
   carry them. Steps: (1) done by F310, the start instant's checks are
   `decode_persisted_started_at` in `packages/orchestration/budget_clock.py`; (2) the counts and the
   sources become a function of their own.
+- `run_order` (`packages/orchestration/gauntlet_runner.py`). Boundary: the order's isolated
+  environment, the workspace and project it makes, the mission it opens for the order and the
+  planner call, the loop with its injected seams, and the evidence body it writes on every exit.
+  Steps: (1) the setup — the workspace, the project, the mission and the planner call — becomes a
+  function of its own that answers the project, the mission and the planner's model; (2) the
+  evidence body on the crash path becomes a function of its own. Until a step is taken, a
+  feature's edits of this function are line-neutral (DECISION F314 D3).
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
