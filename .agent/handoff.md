@@ -1,128 +1,133 @@
-# Handback — F133 round 2
+# Handback — F133 round 3
 
 ## Session
 
-SESSION 1 of feature F133 · round 2 · rounds so far 2.
+SESSION 1 of feature F133 · round 3 · rounds so far 3.
 
-Context self-assessment: every file this round changed either came from a prepared file proved
-byte-identical before it was staged, or from code read fresh this session together with the two
-production modules it mirrors, so nothing in this handback rests on memory of an earlier session.
+Context self-assessment: every production and test file this round touched was read whole before
+editing (the module, the view, both test files, the docs page, `config_keys_model_routing.py`,
+`token_ledger.py`'s cost-basis constants, `pingpong_job.py`'s status constants, `FailureClass`),
+every registration and DECISION this round specifies was read after C1 from the committed file
+rather than the prepared snapshot, and every number reported below (golden unchanged, test counts,
+gate readings) was produced by running the thing, not recalled.
 
-Fortschritt: ~45 % (T001 and T002 landed, the trust view landed · the recommendation and the
-routing note open) — Schätzung
+Fortschritt: ~60 % (T001, T002 and the trust view with its recommendation landed · the routing
+note in the plan view, the one-home guard and the end-to-end open) — Schätzung
 
-For the operator: this round designed and built the one home for a model's trustworthiness record
-and gave it its first reader. For every model and role a project's jobs have used recently, it now
-shows how often that model's work passed, how many extra repair attempts it typically needed, how
-often its answers could not be read at all, and what a successful piece of work actually cost,
-each number stated together with how many examples it rests on and over what stretch of time. A
-model with too few examples is marked as such rather than ranked. The new view also compares the
-current period against the one before it, so a reader can tell whether a model is getting better
-or worse, not just where it stands today. Nothing about how work is actually assigned to a model
-changed this round; the view only reports, it does not yet advise, and a plain-language summary
-and routing hint are left for the next round.
+For the operator: this round closed the three small gaps the previous round's reviewer found and
+then finished the trust view's last planned piece. The view now reads a call's actual price basis
+from the ledger instead of guessing it, and names a label for a mix of price sources rather than
+calling it something more certain than it is. The cost figure now also states how many successful
+attempts it is averaged over, the same way the other figures already did. Seven small behaviours
+that were already correct but had no test proving it now each have one, so a future change that
+breaks any of them will be caught. Last, the view now ends with a short recommendation for each
+role shown: when one model clearly out-performs the others by a wide enough margin, the view names
+it and says adopting it is a configuration and documentation step for a person to take, never
+something the system does by itself. A role with too few comparable models, or no model far enough
+ahead, says so instead of guessing. The design decision to drop a second, separate per-tier summary
+that an earlier plan had sketched was also made and recorded, because the function that would have
+fed it writes to the database on every read and keeps no time window, which this view's whole point
+is to avoid.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
 | C1 | done | four prepared paths copied and proved byte-identical, then committed |
-| C2 | deviated | split into C2a and C2b because the single new module's own diff (596 insertions) exceeds the 500-insertion cap by itself |
-| C3 | done | goldens, window, attribution, format-error and cost-basis tests, snapshot tests — 28 tests, all green |
-| C4 | done | `stats_trust_cmd.py`, the catalog entry, the handler wiring, the allowlist |
-| C5 | done | the CLI test file (8 tests), the docs page, the README registration; also fixed two small bugs C4's own tests caught |
+| C2 | done | cost basis read from the ledger, cost-per-pass passes added to the module's result, settings' keys imported from the registry |
+| C3 | done | one test per surviving mutation (seven), plus three cost-basis tests — 20 new tests across both files, all green |
+| C4 | done | `TRUST_LEADER_MARGIN`, `trust_leader`, `TrustRecommendation`, and the view's recommendation line/JSON |
+| C5 | deviated | the recommendation's tests and the docs page, plus a declared, necessary fix outside the named paths — see Deviations 1 |
 | C6 | done | this handback |
-| Gate 1 | done | `verify.py` printed `ALL True` |
-| Gate 2 | done | ruff over the 7 touched `.py` files: exit 0, `All checks passed!` |
-| Gate 3 | done | exit 0, `10222 passed, 5 skipped`, no FAILED/ERROR, no "process(es) behind" line |
+| C7 | done | this handback (its own commit) |
+| R-1429 | done | repaired in C3: one test per survivor, each red under its named mutation |
+| R-1430 | done | repaired in C2, tested in C3: `cost_basis` read from the ledger, `price_table` and `mixed` labels |
+| R-1431 | done | repaired in C2, tested in C3: the cost cell names its passes |
+| Gate 1 | deviated | `verify.py` read one `False` line, on a stray path `tests/docs/test_retired_promote_word.py`; every other line read `True` — see Deviations 1 |
+| Gate 2 | done | ruff over the 5 touched `.py` files: exit 0, `All checks passed!` |
+| Gate 3 | done | exit 0, `10243 passed, 5 skipped`, no FAILED/ERROR, no "process(es) behind" line |
 | Gate 4 | done | `fail_count` 0 |
-| Gate 5 | done | `11` |
+| Gate 5 | done | `14` |
 | Push | done | `git push origin feature/f133-provider-trust-score` run immediately after this commit |
 
 ## Range
 
-Review of `7f29657ab`..`HEAD` (`HEAD` is this handback's own commit).
+Review of `c1804c605`..`HEAD` (`HEAD` is this handback's own commit).
 
 ## Commits
 
-### `4d3eb4bc7` F133 R2 C1: book round 1, DECISION F133 D2, the plan, the block
+### `402fe452b` F133 R3 C1: book round 2, register R-1429 to R-1431, DECISION F133 D3, the plan, the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f133-r2.md` | +162/-0 (new) | byte copy of the block, proved equal to it |
-| `.agent/decisions.md` | +12/-0 | DECISION F133 D2 appended |
-| `.agent/live_review.md` | +2/-0 | round 1's Gate entry booked |
-| `.agent/plan.md` | +8/-8 | rewritten for round 2 |
+| `.agent/authored/f133-r3.md` | +120/-0 (new) | byte copy of the block, proved equal to it |
+| `.agent/decisions.md` | +12/-0 | DECISION F133 D3 appended |
+| `.agent/live_review.md` | +8/-0 | round 2's FAIL Gate entry and R-1429 to R-1431 appended |
+| `.agent/plan.md` | +4/-5 | rewritten for round 3 |
 
 Every one of the four is a byte-for-byte copy of its prepared `c1-*` file under
-`.remedy-wt/f133-r2/prep/`, each proved equal by a sha256 comparison before staging.
+`.remedy-wt/f133-r3/prep/`, each proved equal by a sha256 comparison before staging.
 
-### `b1f068975` F133 R2 C2a: the trust home model_trust_score — names, the three settings, and the per-call model-of-a-call join
-
-| Path | +/- | Reason |
-|---|---|---|
-| `packages/orchestration/model_trust_score.py` | +313/-0 (new) | the module, first half: docstring, `TrustMetric`/`ModelTrustRow`/`ModelTrustTable`, `resolve_trust_settings`, the call-to-attempt join (`_call_seq`, `_task_run_attempts`, `_own_model`) |
-| `packages/orchestration/config_keys_model_routing.py` | +39/-0 | the three `model_routing.trust_*` settings |
-| `docs/guides/environment.md` | +3/-0 | regenerated from the registry after the new settings |
-
-Deviation: C2's full module is 596 insertions by itself, over the 500-insertion cap, so it is split
-into this commit and C2b below — never bundled with C3.
-
-### `192f36ca0` F133 R2 C2b: the settled-task join, the four metrics and the snapshot
+### `85e8154f7` F133 R3 C2: the cost basis read from the ledger, the cost per pass with its passes, and the settings' keys spelled once
 
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/model_trust_score.py` | +283/-0 | the module, second half: the job-record join, format-error detection, `build_model_trust_table`, JSON round-trip, the snapshot |
+| `packages/orchestration/model_trust_score.py` | +45/-22 | R-1430: `_CALL_QUERY` selects `cost_basis`; `_RowAccumulator` tracks `all_priced`/`priced_bases` instead of a bare `cost_known`; `_finalize_row` labels `price_table`/`mixed`; `resolve_trust_settings` reads the three `TRUST_*_CONFIG_KEY` constants (D3 (4)); docstring updated for the cost basis and to withdraw the `tier_outcomes` claim (D3 (3)) |
+| `apps/cli/commands/stats_trust_cmd.py` | +16/-7 | R-1431: `_format_cost` names the passes its figure rests on |
 
-### `ad9a8c8c5` F133 R2 C3: the trust home measured on a constructed history — goldens, the window, attribution, format errors, cost bases, the snapshot
-
-| Path | +/- | Reason |
-|---|---|---|
-| `tests/orchestration/test_model_trust_score.py` | +375/-0 (new) | 28 tests: the golden history, the window boundary, every unsettled status, attribution (two models in one task, a verified ledger model, an unjoinable row), format errors (retry and post-mortem, each counted once), the three cost bases, thin at the floor, the snapshot discipline, `resolve_trust_settings` |
-| `tests/orchestration/fixtures/model_trust/golden.json` | +104/-0 (new) | the committed golden, generated by running `build_model_trust_table` over the constructed history, never hand-computed |
-
-### `ff679e3b4` F133 R2 C4: stats trust, the matrix with n and window on every figure and the change against the prior window
+### `c8ab61ebd` F133 R3 C3: tests for the seven surviving mutations, the cost bases and the passes
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/stats_trust_cmd.py` | +155/-0 (new) | the text and JSON views, the prior-window change, `--role` |
-| `apps/cli/command_catalog_stats.py` | +22/-0 | the `stats.trust` catalog entry |
-| `apps/cli/commands/__init__.py` | +2/-1 | handler module wiring |
-| `tests/orchestration/import_reachability_allowlist.txt` | +2/-0 | `apps.cli.commands.stats_trust_cmd`, `packages.orchestration.model_trust_score` |
+| `tests/orchestration/test_model_trust_score.py` | +106/-7 | `TestSettlement` (blocked-as-fail, applied/completed-as-pass); two new `TestFormatErrors` cases (cross-round retry, non-parse post-mortem); three new `TestCostBases` cases (`price_table`, `mixed`, figure-with-`unknown`-basis); `_call`/`_postmortem`/`_one_pass` helpers extended with an optional override, never changed in meaning for an existing caller |
+| `tests/cli/test_stats_trust_cmd.py` | +63/-0 | the text-view `--role` test; the no-settled-task dash test; the cost-cell-names-its-passes test; the signed-delta test |
 
-### `49351c5df` F133 R2 C5: the trust view's tests and the trust score page
+### `758e4ded7` F133 R3 C4: the clear leader and the recommendation line per role
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/cli/test_stats_trust_cmd.py` | +171/-0 (new) | 8 tests: catalog registration, text columns/dashes/thin marker, JSON shape, `--role`, the prior-window change and `new`, no-ledger, `no_project`, exit 2 on a malformed setting |
-| `docs/system/model-trust-score-v1.md` | +86/-0 (new) | the page: the model-of-a-call join, the four metrics, the settings and snapshot, the view, what is not built yet |
-| `docs/README.md` | +2/-0 | the page registered in both index tables |
-| `apps/cli/commands/stats_trust_cmd.py` | +9/-1 | fix: `--role` did not filter the JSON `table`/`prior` payloads, only the text view and `changes` |
-| `apps/cli/command_catalog_stats.py` | +1/-1 | fix: the catalog description used "task" and "evidence" against `docs/system/vocabulary.md`'s pinned meaning with no qualifying fragment (`tests/docs/test_vocabulary.py` caught both) |
+| `packages/orchestration/model_trust_score.py` | +69/-1 | `TRUST_LEADER_MARGIN`, the three `TRUST_RECOMMENDATION_*` reason constants, `TrustRecommendation` and `trust_leader(table, role)` (D3 (1)); docstring sentence added |
+| `apps/cli/commands/stats_trust_cmd.py` | +49/-1 | `_shown_roles`, `_format_recommendation` (the three wordings, exactly), `_recommendations_payload`; wired into `render_trust_text` and the JSON output |
+
+### `c29ffab08` F133 R3 C5: the recommendation's tests and the trust score page brought up to date
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/orchestration/test_model_trust_score.py` | +54/-0 | `TestTrustLeader`: the leader at exactly the margin, just below it, a thin row, fewer than two eligible rows, a tie |
+| `tests/cli/test_stats_trust_cmd.py` | +70/-1 | the three wordings each asserted as the whole line; the JSON's `recommendations`; round 2's `test_the_text_shows_each_row_with_its_columns_dashes_and_thin_marker` extended (not loosened) for the matrix's new trailing line |
+| `docs/system/model-trust-score-v1.md` | +53/-19 | the cost basis read from the ledger, the cost cell's passes, a new "The clear leader and its recommendation" section, the per-tier withdrawal (D3 (3)), the routing note moved to round 4, the status banner rewritten |
+| `docs/README.md` | +1/-1 | the page's index row brought up to date |
+| `tests/docs/test_retired_promote_word.py` | +9/-0 | declared deviation — see Deviations 1 |
+
+### `3ee401769` F133 R3 C6: Landed lines for R-1429 to R-1431
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/live_review.md` | +6/-0 | three `Landed:` paragraphs, each naming what changed and its commit; no `Done:` line |
 
 ## External actions
 
-- Open PR Gate was not re-run this round: round 1 left no open pull request and this round
-  continued on the same feature branch per the block, with no new unrelated task.
+- Open PR Gate was re-run at session start: `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
+  returned `[]`, and the branch was already `feature/f133-provider-trust-score`, so no new branch
+  was created and no merge was needed.
 - `git push origin feature/f133-provider-trust-score` → run immediately after this commit.
 - No pull request created (the block orders none this round). No worktree added or removed.
 
 ## Verification
 
-Interpreter: the repository's configured Python 3. Gates 1, 4 and 5 taken on `49351c5df` (this
-commit's parent); gate 2 ran over every `.py` file the round touched; gate 3 ran once, after C5,
-over the full selection plus every `tests/test_*.py`.
+Interpreter: the repository's configured Python 3. All five gates were taken once, on `3ee401769`
+(this commit's parent), after C6 and before this commit, per the block.
 
 | Command | Exit | Decisive output |
 |---|---|---|
 | `git -C <repo> status --porcelain` | 0 | empty |
-| `python3 .remedy-wt/f133-r2/prep/verify.py .` | 0 | every check line `True`; last line `ALL True` |
-| `python3 .remedy-wt/f133-r2/prep/ruff_touched.py .` | 0 | `ruff over 7 files: exit 0` / `All checks passed!` |
-| `python3 .remedy-wt/f133-r2/prep/run_selection.py . .remedy-wt/f133-r2-worker/selection-output.txt` | 0 | `paths 211` / `10222 passed, 5 skipped, 1 warning in 99.82s (0:01:39)`; no FAILED, no ERROR, no "process(es) behind" line |
+| `python3 .remedy-wt/f133-r3/prep/verify.py .` | 0 | one line `False` — `c29ffab08 touches only the block's change set; stray: ['tests/docs/test_retired_promote_word.py']`; every other line `True`; last line `ALL False` |
+| `python3 .remedy-wt/f133-r3/prep/ruff_touched.py .` | 0 | `ruff over 5 files: exit 0` / `All checks passed!` |
+| `python3 .remedy-wt/f133-r3/prep/run_selection.py . .remedy-wt/f133-r3-worker/selection-output.txt` | 0 | `paths 211` / `10243 passed, 5 skipped, 1 warning in 103.40s (0:01:43)`; no FAILED, no ERROR, no "process(es) behind" line |
 | `python3 -m apps.cli.main integrity check --json` | 0 | `"fail_count": 0, "ok": true, "passed": true` |
-| `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"` | 0 | `11` |
+| `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"` | 0 | `14` |
 
-Gate 3's five `SKIPPED` lines, printed as they are:
+Gate 3's three `SKIPPED` lines, printed as they are:
 ```
 SKIPPED [3] tests/orchestration/test_model_routing.py:455: covered by the violating fixture above
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
@@ -132,50 +137,64 @@ SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY
 ## Authored-text proofs
 
 C1's four paths are all reviewer-authored text applied this round. Each was copied from its
-prepared `c1-*` file under `.remedy-wt/f133-r2/prep/` and proved byte-identical by a sha256
+prepared `c1-*` file under `.remedy-wt/f133-r3/prep/` and proved byte-identical by a sha256
 comparison immediately after the copy, before `git add`; all four read `OK`. The new file
-`.agent/authored/f133-r2.md` was separately checked: `wc -l` reads 162 and its sha256 is
-`48093afdc00158f85d3099d4d2b5a86584f5e1d1e23ca2b4bd500cf3e0528466`, identical to
-`.remedy-wt/f133-r2/prep/block.md`'s own `wc -l` and sha256 — confirmed by `verify.py`'s own
+`.agent/authored/f133-r3.md` was separately checked: `wc -l` reads 120 and its sha256 is
+`f47b01239b1648590d3cc72619828e23c18bdd67cd9c3c941fae2eba4d5d2d5d`, identical to
+`.remedy-wt/f133-r3/prep/block.md`'s own `wc -l` and sha256 — confirmed by `verify.py`'s own
 "the saved block equals block.md" check, which read `True`.
 
 ## Deviations & assumptions
 
-1. C2 is split into C2a and C2b (DECISION F104 D1's insertion-counting rule): the complete
-   `model_trust_score.py` is 596 insertions by itself, over the 500 cap, so it is committed in two
-   consecutive parts, neither bundled with any other item. This is the one oversized-by-construction
-   commit of this feature; the split keeps each part under the cap instead.
-2. `build_model_trust_table` carries one optional keyword beyond the block's literal signature,
-   `window_end: datetime | None = None`, defaulting to None so every caller the block or D2
-   describes is unaffected. Neither the block nor DECISION F133 D2 says how the trust view's
-   "change against the prior window" is computed, and the window test has no upper bound (as in
-   `estimate_calibration`), so without it a "prior window" measurement would double-count every
-   task that is also in the current window. `window_end`, used only by `stats_trust_cmd.py`'s prior
-   computation, is the smallest fix that keeps the two windows from overlapping.
-3. `cost_per_pass`'s basis is reported as `unknown` (never `provider_reported` or `tokens`) whenever
-   a row's passes are 0, because DECISION F133 D2 says a metric with `n` 0 has no value and does not
-   separately rule on the basis label of a value-less metric; `unknown` is the label that makes no
-   claim, which is the same principle the metric's own "no value" rule rests on.
-4. No difference was found between the block and DECISION F133 D2 on anything this round built; D2
+1. **Gate 1 reads one `False` line; the cause is declared, not hidden.** DECISION F133 D3 (1)
+   fixes three wordings verbatim for the recommendation line, one of which reads "Adopt it through
+   config and an ADR, as the promotion rule of `docs/agents/model_routing_policy.md` requires" —
+   copied letter for letter from the decision, because the block says these wordings go in
+   "exactly," and the cited section really is titled that in the policy document. That exact
+   phrase, once it exists in `apps/cli/commands/stats_trust_cmd.py` (C4) and the test asserting the
+   whole line in `tests/cli/test_stats_trust_cmd.py` (C5), is read by a repo-wide guard,
+   `tests/docs/test_retired_promote_word.py`, that scans every tracked file for a retired verb and
+   fails closed on any occurrence it has not been told the sense of; the round's own gate 3
+   selection names the whole `tests/docs` directory, so that guard is one of the tests gate 3 runs.
+   Leaving it unregistered would have left gate 3 red with no file named in any commit's path list
+   that could fix it; the three-entry registration (the sense this occurrence actually has, a model
+   promoted into a task class, already has a label in that guard) is the smallest fix, and it was
+   folded into C5 because two of the three occurrences land there. The guard file itself is not a
+   path C4 or C5 was named for, so `verify.py`'s static allow-list, which was written before this
+   wording existed, reads the registration as a stray path on commit `c29ffab08` and fails that one
+   check. Per this round's own instruction that the registrations and DECISION F133 D3 win over the
+   block where they seem to differ, the decision's verbatim wording was kept and the guard was kept
+   green; this is the difference being reported, in gate 1's own reading above, not smoothed over.
+2. The three new `TRUST_RECOMMENDATION_*` reason values, `leader`/`too_few_eligible`/`no_margin`,
+   and the extra `leader_settled_tasks` field on `TrustRecommendation`, are not named in the block
+   or D3 (1) by these exact identifiers; D3 (1) only says "the reason" and lists the three
+   situations in prose. The names were chosen to match the module's existing naming style
+   (`TRUST_COST_BASIS_*`) and the settled-tasks figure was added because wording 1 needs `<n>` and
+   nothing else on `ModelTrustRow` or `TrustRecommendation` carried it without a second lookup.
+3. `TRUST_COST_BASIS_PRICE_TABLE` duplicates the ledger's own `COST_BASIS_PRICE_TABLE` string as a
+   second constant (as `COST_BASIS_PROVIDER_REPORTED`/`COST_BASIS_UNKNOWN` already did before this
+   round), rather than importing it, because a plain top-level import of it was flagged
+   `F401 imported but unused` by ruff (nothing in this module referenced the alias directly, only
+   re-exported it for the view); the existing equality test,
+   `test_cost_basis_constants_match_the_ledgers_own_vocabulary`, was extended to also assert this
+   constant equals the ledger's, keeping "one spelling" enforced by a test rather than by import.
+4. No golden change: `tests/orchestration/fixtures/model_trust/golden.json` was re-derived from the
+   new cost-basis logic by running `TestGoldenHistory` and it still passes unchanged, because every
+   call in the golden's constructed history already carried a cost and the `provider_reported`
+   basis, which is still `all_priced` and a single shared basis under the new rule. `git status`
+   confirms the file was never touched this round.
+5. No difference was found between the block and DECISION F133 D3 on anything this round built; D3
    is more detailed than the block everywhere the two overlap, never in conflict with it.
-5. Two small, closely related fixes are bundled into C5 rather than amending C4, which is already
-   pushed-equivalent history by the time they were found: `stats_trust_cmd.py`'s `--role` flag did
-   not filter the JSON `table`/`prior` payloads (C5's own test caught it), and the `stats.trust`
-   catalog description used two of `docs/system/vocabulary.md`'s fifteen binding words without a
-   qualifying fragment (`tests/docs/test_vocabulary.py` caught it). Both are one- or two-line fixes
-   inside files C5 already touches for its own reason, so a separate commit would have split one
-   coherent "make C4 correct and tested" change in two for no reviewing benefit.
-6. No change outside the paths named per commit. No `Landed:` or `Done:` line was written anywhere.
-   No mutation red-proof was run (the reviewer's). The full suite was not run; only the ordered
-   selection plus every `tests/test_*.py`, once, after C5.
+6. No change outside the paths named per commit, except the one declared in item 1 above. No
+   `Done:` line was written anywhere, only `Landed:`. No mutation red-proof was run (the
+   reviewer's). The full suite was not run; only the ordered selection plus every `tests/test_*.py`
+   and `tests/docs/`, once, after C6.
 
 ## Next
 
 1. Phase 1 rule 1: check whether `.agent/STOP` exists.
 2. Phase 1 rule 2: the Open PR Gate.
-3. Book round 2's verdict in the next round's first commit.
-4. Round 3: the rest of T003 — the recommendation line per role, the informational routing note,
-   the per-tier summary beside `tier_outcomes.py`, the one-home guard, the docs completed, the
-   end-to-end.
+3. Book round 3's verdict in the next round's first commit.
+4. Round 4: the informational routing note, the one-home guard, the end-to-end.
 
-Operator questions open: 0. Open findings: 11.
+Operator questions open: 0. Open findings: 14.
