@@ -1,27 +1,25 @@
-# Live Review — F151 Worker adapter contract v2
+# Live Review — F315 The loop runs through the adapter
 
-> Round-by-round review record, re-headed at the F151 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F133, whose STATUS
-> line went `[x]` on its own branch at `90159ce0e`; this session's Open PR Gate merged pull
-> request 382 into `main` as `4232c579e`, whose tree equals `90159ce0e`'s. F133's round 7 was
-> reviewed after its own handback, so operator amendment amend0827-process-diet rule 1 books its
-> verdict here, in the first commit of the next round that is happening anyway; its gate entry is
-> appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
-> section below are rewritten; everything else from the Findings heading to the end of the file as
-> it stood at `4232c579e` is carried forward BYTE-IDENTICAL, and finding ids continue the
-> monotonic R-XXXX series across the re-head. The open set at `4232c579e`, computed with
-> `open_finding_ids` from `scripts/rotate_live_review.py`, holds 11 ids — R-1246, R-1281, R-1326,
-> R-1351, R-1353, R-1418, R-1421 and R-1425 to R-1428 — every one owned by F314, so F151 takes none
-> of them.
+> Round-by-round review record, re-headed at the F315 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F151, whose STATUS
+> line went `[x]` on its own branch; pull request 383 merged it into `main` as `adc9e3e96`. Operator
+> amendment amend1023-universe-trust then ran on its own branch, booked F151's rounds 10 and 11 here
+> in its first commit, registered F315, and merged as pull request 384, `4747f2c67`. No verdict is
+> pending booking: the amendment was an operator order whose record is its own commits and
+> DECISIONs, and it registered no finding. Only the heading, this paragraph and the Steps section
+> below are rewritten; everything else from the Findings heading to the end of the file as it stood
+> at `4747f2c67` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `4747f2c67`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, holds 11 ids — R-1246, R-1281, R-1326, R-1351, R-1353, R-1418,
+> R-1421 and R-1425 to R-1428 — every one owned by F314, so F315 takes none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F151 D1's, which also writes the feature file's slice list. The first
-round claims F151, re-heads this record and lands T001, the findings pass, as a committed inventory
-that is reviewed before any code is authored. Then T002, the contract module, the conformance kit
-and its recorded samples, proved against a deliberately broken toy adapter; then T003, today's
-builder path wrapped as the reference adapter with golden equality, the import guard and the
-registry linkage; then the closure.
+THE ORDER BELOW IS DECISION F315 D1's, which also writes the feature file's slice list. The first
+round claims F315, re-heads this record and lands T001, the findings pass, as a committed inventory
+that is reviewed before any code is authored. Then T002, the builder and reviewer calls through the
+adapter with the goldens unchanged, the seam named by DECISION F315 D2; then T003, the resume and
+parse-retry paths and the retirement of what the adapter replaces; then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this

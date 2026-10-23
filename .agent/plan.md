@@ -1,17 +1,22 @@
-# Plan — operator amendment amend1023-universe-trust
+# Plan — F315 The loop runs through the adapter
 
 ## Goal
-Five parts from the operator's order of 2026-10-23: (1) the client property `host_tools`; (2) small
-orders stay small; (3) the order's story; (4) the F133 and F151 follow-ups; (5) cancel the probe.
+The ping-pong loop's claude-cli builder and reviewer calls run through `ClaudeCliReferenceAdapter`:
+the adapter builds the invocation and maps stream, usage and errors; the loop keeps transport,
+timeouts, retries, failover, pacing and evidence; the goldens stay byte-equal and the import guard
+stays green.
 
 ## Current Step
-Done: all five parts built (C0–C9), the one full suite run read, repaired, and the affected test
-files re-run green; pull request, merge on local evidence, handback.
+Round 1: claim F315, re-head the review record, DECISION F315 D1, and T001's inventory
+`.agent/f315_inventory.md`, reviewed before any code.
 
 ## Next Steps
-1. The operator restarts the supervisor on the merged code with its port, then grants
-   `remedy client grant-host-tools orb-universe` and `orb-remedy` (DECISION amend1023 D10).
-2. The next feature under Rule A5 is F315, "The loop runs through the adapter", registered thin.
+1. T002: the builder and reviewer calls through the adapter behind the seam DECISION F315 D2 names,
+   with a test that replaces the adapter and sees the loop follow it.
+2. T003: the resume and parse-retry paths through the adapter, the provider's retired copies, docs.
+3. The closure sequence.
 
 ## Risks
-- Granting `host_tools` before the supervisor restarts locks every client out (D10).
+- Every module that builds the provider sits under `packages/orchestration/`, which may not import a
+  concrete adapter; the seam must be filled from the wiring layer without a dynamic-import detour.
+- `pingpong_provider.py` and the loop are held by the structure ledger: no listed function grows.

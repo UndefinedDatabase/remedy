@@ -1,28 +1,25 @@
-# Context — operator amendment amend1023-universe-trust
+# Context — F315 The loop runs through the adapter
 
 ## Active Branch
-`feature/amend1023-universe-trust`, from `main` at `adc9e3e96` (the merge of pull request 383,
-F151, at this session's Open PR Gate).
+`feature/f315-loop-through-adapter`, from `main` at `4747f2c67` (the merge of pull request 384).
 
 ## Scope
-The operator's order of 2026-10-23 in five parts (see `.agent/plan.md`); every decision is a
-DECISION amend1023 D<n> in `.agent/decisions.md`. Code, docs, commits and feature files in English.
+F315 as `docs/roadmap/features/T8_F315.md` states it, in the order of DECISION F315 D1: T001 the
+inventory, T002 the builder and reviewer calls through the adapter, T003 the resume and parse-retry
+paths and the docs. The open findings are all F314's; F315 takes none.
 
 ## Do not touch
-- `.data/` by direct reads: the repository's settings deny it. The live data is reached only
-  through Remedy's own commands (`remedy client ...`, `remedy mission list`, `remedy job show`).
-- `docs/roadmap/ROADMAP.md`.
+Loop transport, retries and evidence; the routing policy; the fake and Pi providers (the feature
+file's Do-not-touch). The adapter builds invocations and maps outputs; it never retries or times out.
 
 ## Active assumptions
-- The probe order `luna-twmhd8` is supervisor order `048ff6987b7336bd`, mission `ed0ef1e8…`.
-- The clients `orb-universe` and `orb-remedy` exist in the registry.
+- Orchestration imports only the contract; a concrete adapter reaches it from the wiring layer.
+- Every existing claude-cli golden and integration test stays unmodified.
 
 ## Constraints
 - Under 500 insertions per commit; commit subjects carry no leading-slash tokens.
-- No test run until the end: one full suite run, then the repair loop, then only the affected
-  test files again; never the full suite a second time for a docs repair.
-- The structure ratchet's listed files and functions do not grow.
-- Resource safety: pytest runs capped by `tests/conftest.py`; one full suite run, `-n auto`.
+- pytest runs only the round's selection, once, capped by `tests/conftest.py` (resource safety);
+  the full suite runs once, in the closure.
 
 ## Steps
-The item-status table lives in the handback.
+The item-status table of each round lives in `.agent/handoff.md`.
