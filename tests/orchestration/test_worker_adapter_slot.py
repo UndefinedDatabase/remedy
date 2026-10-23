@@ -1,0 +1,217 @@
+"""F315 T002, DECISION F315 D2 — the worker adapter slot and the loop that follows it.
+
+The command line installs the adapter registry into the slot, and every claude-cli call the loop
+makes takes its command line from the installed adapter. These tests replace the installed adapter
+and watch the provider and the ping-pong loop follow it.
+"""
+from __future__ import annotations
+
+import json
+import stat
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from packages.contracts.adapter_contract import HttpInvocation, InvocationOptions
+from packages.orchestration import worker_adapter_slot as slot
+from packages.orchestration.claude_cli_command import build_claude_cli_args
+from packages.orchestration.pingpong_loop import run_pingpong
+from packages.orchestration.pingpong_provider import ClaudeCliProvider
+from packages.orchestration.worker_adapter_slot import (
+    WorkerAdapterNotInstalled,
+    adapter_cli_argv,
+    install_worker_adapters,
+    installed_worker_adapter,
+)
+from packages.providers.adapters.adapter_registry import WORKER_ADAPTERS_BY_REF
+from packages.providers.adapters.claude_cli_reference import ClaudeCliReferenceAdapter
+
+MARKER = "--remedy-f315-marker"
+_PASS = {"verdict": "pass", "findings": [], "confidence": "high", "summary": "ok"}
+
+
+class _MarkingAdapter(ClaudeCliReferenceAdapter):
+    """The reference adapter, with every role it built for recorded and a marker on its argv."""
+
+    roles: list[str] = []
+
+    def build_invocation(self, role, prompt_parts, options):
+        _MarkingAdapter.roles.append(role)
+        built = super().build_invocation(role, prompt_parts, options)
+        return type(built)(argv=(*built.argv, MARKER))
+
+
+class _HttpAdapter(ClaudeCliReferenceAdapter):
+    def build_invocation(self, role, prompt_parts, options):
+        return HttpInvocation(method="POST", url="http://127.0.0.1:9", body={})
+
+
+def _fake_claude(tmp_path: Path, result_text: str) -> tuple[Path, Path]:
+    """A `claude` on PATH that logs its argv, one JSON list per line, and answers `result_text`."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "argv.jsonl"
+    payload = json.dumps({"type": "result", "is_error": False, "result": result_text})
+    script = bin_dir / "claude"
+    script.write_text(
+        f"#!{sys.executable}\nimport json, sys\n"
+        f"open({str(log)!r}, 'a').write(json.dumps(sys.argv[1:]) + '\\n')\n"
+        f"print({payload!r})\n")
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    return bin_dir, log
+
+
+def _logged(log: Path) -> list[list[str]]:
+    """Every logged call but the provider's own `--version` probe, which no adapter builds."""
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    return [call for call in calls if call != ["--version"]]
+
+
+@pytest.fixture
+def marking_adapter(monkeypatch):
+    _MarkingAdapter.roles = []
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _MarkingAdapter)
+    return _MarkingAdapter
+
+
+def test_the_test_process_finds_the_registry_installed():
+    assert slot._INSTALLED_WORKER_ADAPTERS == WORKER_ADAPTERS_BY_REF
+
+
+def test_the_command_line_installs_the_registry_before_a_command_runs(monkeypatch, capsys):
+    from apps.cli.grouped import main
+
+    monkeypatch.setattr(slot, "_INSTALLED_WORKER_ADAPTERS", {})
+    try:
+        main(["worker", "list", "--json"])
+    except SystemExit as exc:
+        assert exc.code in (0, None)
+    assert slot._INSTALLED_WORKER_ADAPTERS == WORKER_ADAPTERS_BY_REF
+    assert '"claude_code"' in capsys.readouterr().out
+
+
+def test_install_replaces_what_was_installed(monkeypatch):
+    monkeypatch.setattr(slot, "_INSTALLED_WORKER_ADAPTERS", {"old": ClaudeCliReferenceAdapter})
+    install_worker_adapters({"claude-cli": _MarkingAdapter})
+    assert slot._INSTALLED_WORKER_ADAPTERS == {"claude-cli": _MarkingAdapter}
+
+
+def test_an_empty_slot_raises_and_the_provider_reports_it(monkeypatch, tmp_path):
+    monkeypatch.setattr(slot, "_INSTALLED_WORKER_ADAPTERS", {})
+    with pytest.raises(WorkerAdapterNotInstalled, match="'claude-cli'"):
+        installed_worker_adapter("claude-cli")
+    bin_dir, log = _fake_claude(tmp_path, "built")
+    monkeypatch.setenv("PATH", str(bin_dir))
+    out = ClaudeCliProvider().build("do it")
+    assert out.error.startswith("provider_error: WorkerAdapterNotInstalled")
+    assert not log.exists()
+
+
+def test_installed_adapter_receives_its_settings(monkeypatch):
+    seen = {}
+
+    def factory(**settings):
+        seen.update(settings)
+        return ClaudeCliReferenceAdapter(**settings)
+
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", factory)
+    installed_worker_adapter("claude-cli", claude_path="/x/claude", write_mode="allowed-tools",
+                             streaming=True)
+    assert seen == {"claude_path": "/x/claude", "write_mode": "allowed-tools", "streaming": True}
+
+
+@pytest.mark.parametrize(("role", "write_mode", "expected_mode"), [
+    ("builder", "allowed-tools", "allowed-tools"),
+    ("builder", "none", "none"),
+    ("reviewer", "none", "none"),
+])
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize(("json_schema", "resume"), [
+    ("", ""), ('{"properties":{"a":{"type":"string"}},"type":"object"}', "sess-1"),
+])
+def test_adapter_argv_equals_the_command_line_builder(
+        role, write_mode, expected_mode, streaming, json_schema, resume):
+    argv = adapter_cli_argv(
+        "claude-cli", role, "the prompt", model="claude-x", json_schema=json_schema, resume=resume,
+        claude_path="/bin/claude", write_mode=write_mode, streaming=streaming)
+    assert argv == build_claude_cli_args(
+        "/bin/claude", "the prompt", write_mode=expected_mode, model="claude-x",
+        stream_evidence=streaming, json_schema=json_schema, resume_session=resume)
+    assert isinstance(argv, list)
+
+
+def test_a_command_line_is_required_of_the_adapter(monkeypatch):
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _HttpAdapter)
+    with pytest.raises(TypeError, match="HttpInvocation"):
+        adapter_cli_argv("claude-cli", "builder", "p", model="")
+
+
+def test_options_reach_the_adapter_unchanged(monkeypatch):
+    seen: list[InvocationOptions] = []
+
+    class _Recording(ClaudeCliReferenceAdapter):
+        def build_invocation(self, role, prompt_parts, options):
+            seen.append(options)
+            return super().build_invocation(role, prompt_parts, options)
+
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _Recording)
+    adapter_cli_argv("claude-cli", "reviewer", "p", model="m", json_schema='{"a":1}', resume="s-2")
+    adapter_cli_argv("claude-cli", "builder", "p", model="")
+    assert seen == [
+        InvocationOptions(model="m", output_schema={"a": 1}, resume_ref="s-2"),
+        InvocationOptions(model="", output_schema=None, resume_ref=None),
+    ]
+
+
+@pytest.mark.parametrize("structured", [False, True])
+def test_the_provider_spawns_the_adapters_command_line(
+        marking_adapter, monkeypatch, tmp_path, structured):
+    if not structured:
+        monkeypatch.setenv("REMEDY_REVIEWER_FREETEXT", "1")
+    bin_dir, log = _fake_claude(tmp_path, json.dumps(_PASS))
+    monkeypatch.setenv("PATH", str(bin_dir))
+    provider = ClaudeCliProvider()
+    provider.build("build it")
+    provider.review("review it")
+    assert marking_adapter.roles == ["builder", "reviewer"]
+    calls = _logged(log)
+    assert len(calls) == 2
+    assert all(call[-1] == MARKER for call in calls)
+    assert ("--json-schema" in calls[1]) is structured
+
+
+@pytest.mark.parametrize("structured", [False, True])
+def test_the_streaming_provider_spawns_the_adapters_streamed_command_line(
+        marking_adapter, monkeypatch, tmp_path, structured):
+    if not structured:
+        monkeypatch.setenv("REMEDY_REVIEWER_FREETEXT", "1")
+    bin_dir, log = _fake_claude(tmp_path, json.dumps(_PASS))
+    monkeypatch.setenv("PATH", str(bin_dir))
+    provider = ClaudeCliProvider(stream_evidence=True, stream_evidence_dir=str(tmp_path / "streams"))
+    provider.build("build it")
+    provider.review("review it")
+    assert marking_adapter.roles == ["builder", "reviewer"]
+    calls = _logged(log)
+    assert len(calls) == 2
+    assert all(call[-1] == MARKER and "stream-json" in call for call in calls)
+    assert ("--json-schema" in calls[1]) is structured
+
+
+def test_a_claude_cli_job_runs_its_calls_through_the_installed_adapter(
+        marking_adapter, monkeypatch, tmp_path):
+    monkeypatch.setenv("REMEDY_REVIEWER_FREETEXT", "1")
+    bin_dir, log = _fake_claude(tmp_path, json.dumps(_PASS))
+    monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# demo\n")
+    for argv in (["init", "-q"], ["add", "-A"],
+                 ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"]):
+        subprocess.run(["git", "-C", str(repo), *argv], check=True)
+    run_pingpong("Fix README", str(repo), builder_name="claude-cli", reviewer_name="claude-cli",
+                 max_rounds=1)
+    assert "builder" in marking_adapter.roles and "reviewer" in marking_adapter.roles
+    calls = _logged(log)
+    assert calls and all(call[-1] == MARKER for call in calls)
