@@ -21,3 +21,15 @@ seconds on Python 3.12 only (R-1428). Both pass on your machine. Your order says
 is never merged, so pull request 381 stays open and unmerged. Please decide: merge it as it is,
 with the two tests left to the next findings paydown (F314), or have a session repair the two
 first and start one more hosted run.
+
+**Why it matters.** Pull request 381 carries the four repairs and the sandbox step that makes the
+hosted run usable again; until it merges, `main` has neither, and the next session's open pull
+request check stops on it.
+
+**My recommendation.** Merge it as it is. Neither red test is in code this branch changed, both pass
+on your machine, the branch takes the hosted run from 166 failures to two, and both are registered
+for the next findings paydown, F314.
+
+**What happens if you say nothing.** The pull request stays open with a red hosted run, so the next
+session reads that red run as its work first, repairs the two tests on this branch and starts one
+more hosted run before it begins anything new.
