@@ -30,6 +30,7 @@ _GUARDED_PACKAGES = (
     "packages/providers",
     "packages/runtimes",
     "packages/verification",
+    "packages/contracts",
 )
 
 #: Relative paths permitted to use an interactive construct. Empty by
