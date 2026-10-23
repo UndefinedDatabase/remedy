@@ -1,20 +1,19 @@
-# Context — F315 The loop runs through the adapter
+# Context — F314 Findings paydown v10
 
 ## Active Branch
-`feature/f315-loop-through-adapter`, from `main` at `4747f2c67` (the merge of pull request 384).
+`feature/f314-findings-paydown-v10`, from `main` at `47cdb1b06` (the merge of pull request 385).
 
 ## Scope
-F315 as `docs/roadmap/features/T8_F315.md` states it, in the order of DECISION F315 D1: T001 the
-inventory, T002 the builder and reviewer calls through the adapter, T003 the resume and parse-retry
-paths and the docs. The open findings are all F314's; F315 takes none.
+F314 as `docs/roadmap/features/T2_F314.md` states it: the twelve open findings it owns, one slice
+per module or concern in the order of DECISION F314 D1. The finding text is the spec. R-1246,
+R-1351 and R-1353 are carried by name at the closure.
 
 ## Do not touch
-Loop transport, retries and evidence; the routing policy; the fake and Pi providers (the feature
-file's Do-not-touch). The adapter builds invocations and maps outputs; it never retries or times out.
+The resolutions F307 landed; the record is append-only (the feature file's Do-not-touch).
 
 ## Active assumptions
-- Orchestration imports only the contract; a concrete adapter reaches it from the wiring layer.
-- Every existing claude-cli golden and integration test stays unmodified.
+- No builder can reach the network: the tool sandbox unshares it (DECISION F314 D2).
+- A slice that edits a structure-ledger row draws its boundary first, in a commit of its own.
 
 ## Constraints
 - Under 500 insertions per commit; commit subjects carry no leading-slash tokens.

@@ -1,25 +1,26 @@
-# Live Review — F315 The loop runs through the adapter
+# Live Review — F314 Findings paydown v10
 
-> Round-by-round review record, re-headed at the F315 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F151, whose STATUS
-> line went `[x]` on its own branch; pull request 383 merged it into `main` as `adc9e3e96`. Operator
-> amendment amend1023-universe-trust then ran on its own branch, booked F151's rounds 10 and 11 here
-> in its first commit, registered F315, and merged as pull request 384, `4747f2c67`. No verdict is
-> pending booking: the amendment was an operator order whose record is its own commits and
-> DECISIONs, and it registered no finding. Only the heading, this paragraph and the Steps section
+> Round-by-round review record, re-headed at the F314 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F315, whose STATUS
+> line went `[x]` on its own branch at `3eebb6283`; this session's Open PR Gate merged pull request
+> 385 into `main` as `47cdb1b06`, whose tree equals `3eebb6283`'s. F315's round 6 was reviewed
+> after its own handback, so operator amendment amend0827-process-diet rule 1 books its verdict
+> here, in the first commit of the next round that is happening anyway; its gate entry is appended
+> at the end of this record by this claim. Only the heading, this paragraph and the Steps section
 > below are rewritten; everything else from the Findings heading to the end of the file as it stood
-> at `4747f2c67` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `4747f2c67`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, holds 11 ids — R-1246, R-1281, R-1326, R-1351, R-1353, R-1418,
-> R-1421 and R-1425 to R-1428 — every one owned by F314, so F315 takes none of them.
+> at `47cdb1b06` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `47cdb1b06`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, holds 12 ids — R-1246, R-1281, R-1326, R-1351, R-1353, R-1418,
+> R-1421, R-1425 to R-1428 and R-1442 — every one owned by F314.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F315 D1's, which also writes the feature file's slice list. The first
-round claims F315, re-heads this record and lands T001, the findings pass, as a committed inventory
-that is reviewed before any code is authored. Then T002, the builder and reviewer calls through the
-adapter with the goldens unchanged, the seam named by DECISION F315 D2; then T003, the resume and
-parse-retry paths and the retirement of what the adapter replaces; then the closure.
+THE ORDER BELOW IS DECISION F314 D1's, which also writes the feature file's slice list. The first
+round claims F314, re-heads this record, books F315's round 6 and lands T002, the self-use
+generator's two findings, under DECISION F314 D2. Then one slice per round in the order D1 names:
+T003 the gauntlet's missions, T004 the `[roles]` table, T005 the type-check growth, T006 the hosted
+runner's three findings, T007 the closure suite's cost, T008 the closing structural step; then the
+closure, which carries R-1246, R-1351 and R-1353 by name to the next findings paydown.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -196,3 +197,5 @@ Gate: F315 R4 — the F315 round 4 entry, the closure's integration gate, over `
 - R-1442 — Low: THE SELF-USE GENERATOR'S EXCUSED-HANDLER TIER OFFERS A HANDLER WHOSE OWN EXCUSE SAYS THE CATCH-ALL IS THE POINT, SO THE PAID RUN CANNOT CHANGE IT. Raised by the reviewer from round 4's self-use run, whose `describe_self_use_run_defects` answered: "job 511bda34db8c4be4 (blocked): task_T001_gate_failed: final_status=staged_blocked; no_file_changed; reviewer_verdict=blocked" and "T001 (blocked): completion_gate_failed: final_status=staged_blocked; no_file_changed; reviewer_verdict=blocked". SEARCHED BEFORE MINTING (checklist item 30): the ledger and its archive for `whole point is the catch-all`, `excused handler`, `tier 4` and `crash boundary`; R-1120 names the blind-handler ratchet, not the generator's choice, and R-1403 names a finding already repaired, not a handler. READ at `086e1b933`: `_excused_handler_tier` in `packages/orchestration/self_use_generator.py` offers the first BLE001 excuse mark under `EXCUSED_HANDLER_ROOTS` that no queue entry targets, screening only `RETIRED_WORD`, so it offered `apps/cli/grouped.py`'s handler whose line reads `except Exception as exc:  # noqa: BLE001 — the whole point is the catch-all`; the run's reviewer found that the command line's top-level handler must stay a catch-all, and the gate's answer was right. The key is now targeted by SU-079, so this mark is not offered again, but the tier offers the next deliberate catch-all the same way. THE FIX belongs to the rolling paydown: the tier skips a mark whose own excuse states that the catch-all is deliberate, or the excuse vocabulary separates a deliberate boundary from a debt. Owner: F314 — Findings paydown v10. OPEN.
 
 Gate: F315 R5 — the F315 round 5 entry, the closure's evidence round, over `086e1b933`..`66661cef1` (3 commits, each single-parent; insertions by `git show --shortstat`: `7ae89d510` 132, `f00589e35` 312, `66661cef1` 207). VERDICT PASS. The reviewer's `verify.py` read every line `True` and the last line `ALL True`: C1's three files and C2's evidence script equal the prepared snapshots, and the handoff holds no machine path. C1 and C2 were dry-run by the reviewer in a disposable worktree at `086e1b933`: the state guards read `443 passed`, `ruff check .` clean and the open set twelve ids with R-1442. The evidence script is F151's with its base, round, directory, job id, title, feature id, run id and three test files changed, and it measures its pytest call's duration; the reviewer's collect-only precheck at `086e1b933` read 12687 node ids with 251 deselected and no id the packaging scan refuses. The staging reclaim previewed nothing, so no apply ran. The evidence job `f315r5e1001` ran on `f00589e35` with both ancestry counts 21, 12687 node ids collected and 251 deselected, the planted red control caught, `12681 passed, 6 skipped` with exit 0 in 1137.094 seconds, `validate_verification_tests` without problems and `is_valid_current_run True`. The review package `remedy-review-20261023-225932-READY_FOR_REVIEW.zip` reads `READY_FOR_REVIEW`; the reviewer read its SHA-256 `801509f8c8e53b5beb75a15c42cb3fb057af2091779ee7490e60243ed2c6b0bd`, `is_zipfile` True, `testzip()` None and its manifest's subject from `4747f2c67` to `f00589e35` over 21 commits itself. The worker declared one harmless deviation, two commands begun with `cd` into the folder the shell already stood in. The integrity check read `fail_count` 0 and the open set 12 ids, all owned by F314.
+
+Gate: F315 R6 — the F315 round 6 entry, the closure round, over `66661cef1`..`3eebb6283` (3 commits, each single-parent; insertions by `git show --shortstat`: `1004b79a8` 255, `e0e949e9a` 22, `3eebb6283` 161). VERDICT PASS. The reviewer of F315's first session read the round after its handback: its `verify.py` read every line `True` and the last line `ALL True`, every file of the three commits equal to the prepared snapshots, the rotation moving 11 gate records into the archive with the open set unchanged at 12 ids, the round's selection at `827 passed` with exit 0 and the integrity check at `fail_count` 0. No committed file carried that verdict, so it is booked here, in F314's first commit. The reviewer of F314's first session merged pull request 385 at the Open PR Gate as `47cdb1b06`, whose tree equals `3eebb6283`'s; no hosted run was dispatched for it (operator amendment amend1011-manual-hosted-ci). The open set at `3eebb6283` is `['R-1246', 'R-1281', 'R-1326', 'R-1351', 'R-1353', 'R-1418', 'R-1421', 'R-1425', 'R-1426', 'R-1427', 'R-1428', 'R-1442']`.
