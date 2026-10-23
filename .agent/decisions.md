@@ -31691,3 +31691,23 @@ THE DECISION: (1) R-1427: `commit_repository` writes `user.email`, `user.name` a
 ALTERNATIVES CONSIDERED: (a) a global git identity in the workflow, REJECTED because it would hide the same failure on any other machine without one; (b) raising the search's time limit, REJECTED by the finding's own text and AGENTS.md; (c) excluding directories by base name with `grep --exclude-dir`, REJECTED because a base name such as `lib` also matches directories a leak could sit in.
 
 HOW TO REVERSE: restore `commit_repository` and the search from `ba1c97279`, and delete this entry.
+
+## DECISION F314 D8 — the closure suite's cost per test has not grown since F307, so R-1421 is resolved by measurement, not by a module-by-module run (2026-10-24, T007)
+
+THE PROBLEM: R-1421: F296's closure suite used 1369.23 CPU seconds, 12.0 percent more than F307's 1222.15, above the closure protocol's 10 percent limit; the finding asks to measure the CPU time per test module, one module at a time, against F307's closure tree, and to cut what grew, or to record by DECISION why the added cost is the feature's price.
+
+THE DECISION: (1) The committed closure transcripts under `.agent/authored/` measure every closure since: F307 1222.15 CPU seconds over 23194 collected tests, F296 1369.23 over 23259, F113 1347.63 over 23364, F074 1334.99 over 23411, F133 1401.83 over 23505, F151 1300.34 over 23681, F315 1255.17 over 23773. The CPU time per collected test reads 52.7, 58.9, 57.7, 57.0, 59.6, 54.9 and 52.8 milliseconds in that order, rising and falling between closures with no repair of the suite's cost in between, and F315 costs 2.7 percent more than F307 for 2.5 percent more tests. F296's rise is therefore the run-to-run variation of this machine, which the finding listed as not measured, and not a module that grew. (2) The module-by-module measurement is not made: it would cost two runs of every test module beside the one full suite per feature, which operator amendment amend0930-test-load forbids where its reading has nothing left to attribute.
+
+ALTERNATIVES CONSIDERED: (a) the module-by-module measurement anyway, REJECTED as above; (b) carrying R-1421 to the next paydown, REJECTED because the evidence that answers it is already committed.
+
+HOW TO REVERSE: delete this entry and reopen R-1421 by appending a `Recurrence:` paragraph.
+
+## DECISION F314 D9 — the paydown's closing structural step: `run_job`'s veto terminal moves to `task_veto.py` (2026-10-24, T008)
+
+THE PROBLEM: the structure rule's rule 1 closes each findings paydown with one structural step from the top of `docs/system/structure-ledger-v1.md`. Its top row is `run_job` in `packages/orchestration/pingpong_job.py`, 1381 lines, whose step (3) — the terminal steps after the task loop become functions of their own — F307 began with `_write_final_job_review`, naming "the veto's terminal reading and the end state" as what follows. Read at `de55496dd`: the veto terminal is one block of `run_job` after the injection fold (DECISION F027 D2 (5) and D4 (5)), which reads the vetoed tasks, settles a terminal whose every veto is answered, marks the tasks behind a veto skipped, records `veto_terminal` and ends the job blocked when a veto is unanswered or its answers cannot be read; `task_veto.py` already holds the veto readers it calls and imports the job module's task states.
+
+THE DECISION: (1) The block becomes `settle_veto_terminal(job, *, control_root_path) -> bool` in `packages/orchestration/task_veto.py`, which changes `job` exactly as the block did and answers True when it left the job blocked; `run_job` keeps the one call and, on True, persists the budget actuals and the job and returns it, as the block did. No behaviour changes. (2) The rows of `run_job` and of `pingpong_job.py`, and the ratchet's pins, fall by the lines measured in the same commit; the ledger's step (3) names the new function. (3) The end state after it stays in `run_job` for the next paydown.
+
+ALTERNATIVES CONSIDERED: (a) the end state first, REJECTED because it reads `run_job`'s nested budget helpers, which step (5) moves; (b) a new module, REJECTED because `task_veto.py` already owns every reader the block calls.
+
+HOW TO REVERSE: move the block back into `run_job` from `de55496dd`, restore the rows, the pins and the ledger's text, and delete this entry.

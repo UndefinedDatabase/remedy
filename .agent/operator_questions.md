@@ -29,3 +29,23 @@ versions are better raised in a session that can actually read the release notes
 
 **What happens if you say nothing.** The recommendation is already executed and stands until you
 say otherwise.
+
+### Q25 — One hosted test run, please (2026-10-24, F314, round 6)
+
+**What needs deciding.** Two of the open problems of this clean-up concern the copy of Remedy's
+tests that runs on GitHub's machines rather than on yours. I repaired what I could reproduce here:
+one test failed there only because GitHub's machine has no name and e-mail address for git, and
+another took too long because it searched a large Python installation that only GitHub's machines
+carry. To prove both repairs, and to close the problem that the whole GitHub test run was red, the
+test run on GitHub has to be started once on this branch. Your permission settings do not let this
+session start it, so it has not run.
+
+**Why it matters.** Until one such run is green, the two problems stay open and move to the next
+clean-up. Nothing else waits on it.
+
+**My recommendation.** Start the GitHub test run once for this branch, from the Actions page of the
+repository or with the GitHub command line, or allow sessions to start it. The next clean-up then
+reads the result and closes both problems when it is green.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you
+say otherwise: the two problems are carried to the next clean-up, which asks again.
