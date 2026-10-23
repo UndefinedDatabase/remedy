@@ -55,6 +55,21 @@ under `mission_id`; `--new-mission` accepts the order file again although an ear
 still has unfinished jobs, and adds it as one more order to the repository's one mission. An
 order argument that holds whitespace is planned as text, never read as a file.
 
+Small orders stay small (since interface 1.29, operator amendment amend1023-universe-trust). A
+header may name `shape: single-job`, the one shape value it takes (any other is
+`order_file_invalid_header`): the order is then exactly one job with no milestones, and the planner
+plans that job's tasks only and cannot split it. An order whose text names exactly one file is one
+job the same way. Where routing alone would have read "the scope of the order is not clearly one
+file", the lane's reason in the plan step names this rule instead, and the answer's
+`shape_source` reads `the order`; `--force-mission` still wins. Before the run, a planned task's
+criterion that demands a file neither the order nor the repository names (nor the task's own
+declared file) is removed and named in the job's story under `scope_findings` as
+`criterion_dropped` with the criterion's own words; it never blocks. An order whose words forbid
+new files ("no new documentation files", "keine neuen Dokumentationsdateien") gives every planned
+task that criterion, which the builder's prompt and the reviewer's check both read, and a new file
+outside the files the order names is removed from the job's result and named in the story as
+`file_removed`; it never blocks the job either.
+
 A header may name `project` once for each project of an order that spans several repositories,
 each project at most once (DECISION F205 D4). Such an order adds one batch and its job to each
 repository's own mission, and the batches are linked by one correlation id; `remedy do` plans

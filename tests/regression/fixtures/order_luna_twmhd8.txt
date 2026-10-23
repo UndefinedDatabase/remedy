@@ -1,0 +1,6 @@
+Verbesserungsaufgabe twmhd8 (universe)
+
+Titel: Infobutton
+Ort: Chat
+
+Das (i) in Gedächtnis bekommt denselben Namen und dasselbe Verhalten wie jedes andere (i) der App (aria-haspopup, , Erklärung öffnen: ...')".

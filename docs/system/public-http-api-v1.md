@@ -402,7 +402,12 @@ is the phrase `dirty_start` with `captured`, how many of the files the job may c
 uncommitted and seeded its workspace as its start, and `preserved`, how many other uncommitted
 paths it left where they were; it is `null` for a job that started from a clean tree. The
 digest's job entry names the same paths under `dirty_start`, `captured` and `preserved`, each a
-list of paths relative to the repository, or `null`.
+list of paths relative to the repository, or `null`. `scope_findings` (since 1.29) lists what
+Remedy took out of the job's scope, each `{key, path, text}`: `criterion_dropped`, a planned
+task's criterion that demanded a file neither the order nor the repository names, removed before
+the run, with the criterion's own words under `text` (the planner's words, not Remedy's); and
+`file_removed`, a new file the order forbade ("no new documentation files"), removed from the
+result, with `text` `null`. Neither blocks the job; the list is empty when nothing was removed.
 
 A `phrase` and a `reason` are `{key, args}`. Their keys are closed lists, and their arguments are
 numbers, paths relative to the repository and, for `provider`, a provider's id word; the story
