@@ -569,10 +569,10 @@ def _order_item(markdown: str, item_id: str = "SU-099") -> dict:
     return {
         "id": item_id,
         "title": "A standing order",
-        "why": "Because an order tier hands the runner more than one task.",
+        "why": "Because a multi-task order hands the runner more than one task.",
         "job_markdown": markdown,
         "consumed_by": "",
-        "provenance": "generated (fixture, order tier)",
+        "provenance": "generated (fixture, multi-task order)",
     }
 
 

@@ -106,6 +106,9 @@ class Recorder:
     seen_repo_path: Path | None = None
     seen_workspace: Path | None = None
     wrote_into: Path | None = None
+    # R-1445: the three arguments `run_order` hands the order seam, kept so a test
+    # can see them rather than only the mission `_accept_order` fabricates.
+    seen_accept_order: tuple | None = None
 
     def deps(self) -> RunnerDeps:
         return RunnerDeps(
@@ -146,6 +149,7 @@ class Recorder:
         return "p-1"
 
     def _accept_order(self, project_id: str, workspace: Path, goal: str) -> FakeMission:
+        self.seen_accept_order = (project_id, workspace, goal)
         return FakeMission()
 
     def _plan_mission(self, project_id: str, mission_id: str, call_fn,
@@ -716,6 +720,17 @@ def test_the_project_record_points_at_the_runs_own_workspace(
               real_data_root=real_root, deps=rec.deps())
     assert rec.seen_repo_path == rec.seen_workspace
     assert rec.seen_repo_root == rec.seen_workspace
+
+
+def test_run_order_hands_the_order_seam_the_project_the_workspace_and_the_goal(
+        tmp_path: Path, real_root: Path) -> None:
+    """R-1445: the default seam's three arguments, proved rather than assumed."""
+    rec = Recorder()
+    order = an_order()
+    run_order(order, campaign_root=tmp_path / "campaign",
+              real_data_root=real_root, deps=rec.deps())
+    assert rec.seen_repo_path is not None
+    assert rec.seen_accept_order == ("p-1", rec.seen_repo_path, order.goal)
 
 
 def test_the_template_digest_is_recorded_in_the_run_evidence(
