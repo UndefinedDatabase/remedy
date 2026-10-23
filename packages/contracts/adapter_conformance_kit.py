@@ -275,8 +275,13 @@ def _lowered_contains_forbidden(text: str) -> bool:
     return any(bad in lowered for bad in _FORBIDDEN_NAME_SUBSTRINGS)
 
 
-def _transport_source_failures(source: str) -> list[str]:
-    """Every forbidden name or module use in one class's own source, as detail strings."""
+def adapter_transport_violations(source: str) -> list[str]:
+    """Every forbidden name or module use in one class's own source, as detail strings.
+
+    An ``Attribute`` whose value is the bare name ``FailureClass`` — e.g.
+    ``FailureClass.PROVIDER_TIMEOUT``, the member ``classify_error`` must be able to return for a
+    timeout — is exempt from the forbidden-word check; nothing else is (DECISION F151 D3 (2)).
+    """
     tree = ast.parse(source)
     details: list[str] = []
     for node in ast.walk(tree):
@@ -286,6 +291,8 @@ def _transport_source_failures(source: str) -> list[str]:
             if node.id in _FORBIDDEN_MODULE_ROOTS:
                 details.append(f"use of {node.id!r} at line {node.lineno}")
         elif isinstance(node, ast.Attribute):
+            if isinstance(node.value, ast.Name) and node.value.id == "FailureClass":
+                continue
             if _lowered_contains_forbidden(node.attr):
                 details.append(f"attribute .{node.attr} at line {node.lineno}")
         elif isinstance(node, ast.arg):
@@ -312,9 +319,17 @@ def _transport_source_failures(source: str) -> list[str]:
 
 
 def _check_transport(adapter: WorkerAdapter, samples: AdapterSamples) -> list[ConformanceFailure]:
-    source = textwrap.dedent(inspect.getsource(type(adapter)))
-    return [ConformanceFailure("transport", detail)
-            for detail in _transport_source_failures(source)]
+    failures: list[ConformanceFailure] = []
+    for klass in type(adapter).__mro__:
+        if klass is object or klass is WorkerAdapter:
+            continue
+        try:
+            source = textwrap.dedent(inspect.getsource(klass))
+        except (OSError, TypeError):
+            continue
+        for detail in adapter_transport_violations(source):
+            failures.append(ConformanceFailure("transport", f"{klass.__qualname__}: {detail}"))
+    return failures
 
 
 _DIMENSION_CHECKS = {
