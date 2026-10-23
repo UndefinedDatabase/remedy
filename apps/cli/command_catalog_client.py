@@ -177,6 +177,51 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         # A job that has not ended, or whose commits git no longer has, exits 3 (`not_ready`).
         exit_codes=(0, 1, 2, 3),
     ),
+    # Operator amendment amend1023-universe-trust (DECISION amend1023 D6): the client registry,
+    # read and changed on this machine's command line only; never published over HTTP.
+    CommandEntry(
+        command_id="client.show",
+        group_id="client",
+        subcommand="show",
+        description="Show the clients of the operator's registry, or the one named: each one's projects, its token and call ceilings, whether it may apply a result and whether it holds host_tools, and its token's fingerprint, never the token (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("client", "The name of one client (default: every client)", required=False),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.grant-host-tools", "client.revoke-host-tools"),
+        # A name no entry holds is absent, which exit 3's `not_ready` meaning covers.
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="client.grant-host-tools",
+        group_id="client",
+        subcommand="grant-host-tools",
+        description="Grant a client of the registry host_tools: over HTTP it may then name claude-cli, the Claude Code CLI that runs with this machine's own file and shell tools, as builder and reviewer, and choose the planner. Only this command grants it.",
+        action_class="local_state_change",
+        args=(
+            ArgDef("client", "The name of the client, as remedy client show lists it"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.show", "client.revoke-host-tools", "client.execution"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="client.revoke-host-tools",
+        group_id="client",
+        subcommand="revoke-host-tools",
+        description="Revoke host_tools from a client of the registry: over HTTP it is offered again only what every client is offered.",
+        action_class="local_state_change",
+        args=(
+            ArgDef("client", "The name of the client, as remedy client show lists it"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.show", "client.grant-host-tools"),
+        exit_codes=(0, 1, 2, 3),
+    ),
     # F303 (DECISION F303 D5): the MCP server; not read_only, because every call starts a child
     # `remedy` and `evidence_bundle` writes a certificate file, and it has no `--json` envelope.
     CommandEntry(

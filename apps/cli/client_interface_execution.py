@@ -11,7 +11,8 @@ from typing import Any
 
 #: The top-level keys `remedy client execution --json` answers beside the envelope's own.
 CLIENT_EXECUTION_ANSWER_KEYS: tuple[str, ...] = (
-    "budgets", "lanes", "observability", "order_flags", "phases", "review_report", "roles", "verification",
+    "budgets", "host_tools", "lanes", "observability", "order_flags", "phases", "review_report", "roles",
+    "verification",
 )
 
 #: The keys under them; under `roles` each key is a role name.

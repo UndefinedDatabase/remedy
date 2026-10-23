@@ -116,6 +116,10 @@ PUBLIC_API_EXCLUDED_COMMANDS: tuple[str, ...] = (
     "ui.stop",
     "queue.rm",
     "queue.reclaim",
+    # Operator amendment amend1023-universe-trust (DECISION amend1023 D6): the property that offers
+    # the host's own tools is granted on this machine's command line only.
+    "client.grant-host-tools",
+    "client.revoke-host-tools",
 )
 
 
@@ -205,12 +209,13 @@ def _client_interface_answer() -> dict[str, Any]:
     return build_ok(**build_client_interface())
 
 
-def _client_execution_answer() -> dict[str, Any]:
-    """The answer `GET /api/v1/execution` sends: `remedy client execution --json` (exec-1017 D6)."""
+def _client_execution_answer(*, client: Any = None) -> dict[str, Any]:
+    """The answer `GET /api/v1/execution` sends: `remedy client execution --json` (exec-1017 D6), read
+    for the calling token, so a client granted `host_tools` reads its own offer (amend1023 D6)."""
     from apps.cli.json_envelope import build_ok
     from packages.orchestration.execution_options import execution_capabilities
 
-    return build_ok(**execution_capabilities())
+    return build_ok(**execution_capabilities(client))
 
 
 def _status_digest_answer(*, all_ended_jobs: bool = False,
@@ -488,6 +493,9 @@ _CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof",
 #: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2); `client.now`
 #: joined them under F311 (DECISION F311 D6).
 _CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes", "client.now"})
+#: The read routes whose answer depends on who calls: the execution offer, which a client granted
+#: `host_tools` reads with `claude-cli` and the planner offered (DECISION amend1023 D6).
+_CALLER_AWARE_TWINS = frozenset({"client.execution"})
 
 
 def answer_public_api_get(
@@ -554,6 +562,8 @@ def answer_public_api_get(
             from packages.orchestration.client_scope import client_project_ids
 
             scope["project_ids"] = client_project_ids(client)
+        if route.twin in _CALLER_AWARE_TWINS:
+            scope["client"] = client
         body = _TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments, **scope)
         if body.get("ok"):
             status = 200
@@ -573,6 +583,7 @@ _RUN_PROVIDER_KEYS: tuple[str, ...] = ("builder_provider", "reviewer_provider")
 
 def _start_run_answer(
     path: str, job: str, body: dict[str, Any], start_run: Callable[[str, Sequence[str]], Any],
+    client: Any = None,
 ) -> tuple[int, dict[str, Any], dict[str, str]]:
     """The answer of a `starts_run` route for JOB (DECISION F253 D18 (2), (3)).
 
@@ -616,7 +627,7 @@ def _start_run_answer(
             "job_not_found", f"job {job_id} has no record that can be read; nothing was run"), {}
     from packages.orchestration.execution_options import API_PROVIDER_NOT_OFFERED, remote_provider_refusal
 
-    if why := remote_provider_refusal(body):
+    if why := remote_provider_refusal(body, client):
         return 400, build_error(API_PROVIDER_NOT_OFFERED, why), {}
     route = next(r for r in PUBLIC_API_ROUTES if r.starts_run and _match_route_path(r.path, path) is not None)
     options = [*route.run_options, *(f"--{key.replace('_', '-')}={body[key]}" for key in _RUN_PROVIDER_KEYS
@@ -800,7 +811,7 @@ def answer_public_api_post(
                 f"the client {client.name!r} may not approve a result into a repository; "
                 "nothing was run"), {}
         if route.starts_run:
-            return _start_run_answer(path, segments["job"], checked, start_run)
+            return _start_run_answer(path, segments["job"], checked, start_run, client)
         try:
             argv = _TWIN_ARGV[route.twin](segments, checked)
         except PublicApiWriteRefusal as refusal:
@@ -829,12 +840,30 @@ def answer_public_api_post(
 PUBLIC_API_LEDGER_NAME = "calls.jsonl"
 
 
+def public_api_call_host_tools(raw_body: bytes) -> bool:
+    """True when a write's body names `claude-cli` under a provider key (DECISION amend1023 D6).
+
+    The ledger marks such a call `host_tools`, whether it was started or refused, so the operator
+    reads every request for the Claude Code CLI with its status beside it. A body that is not a
+    JSON object names nothing.
+    """
+    from packages.orchestration.execution_options import PROVIDER_BODY_KEYS
+
+    try:
+        parsed = json.loads(raw_body.decode("utf-8")) if raw_body.strip() else {}
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        return False
+    return isinstance(parsed, dict) and any(parsed.get(key) == "claude-cli" for key in PROVIDER_BODY_KEYS)
+
+
 def append_public_api_call(*, token_fp: str, client: str, method: str, path: str, status: int,
-                            error: str, root: Path | None = None) -> None:
+                            error: str, root: Path | None = None, host_tools: bool = False) -> None:
     """Append one line to the data root's `api/calls.jsonl` call ledger (DECISION F253 D2 (1)).
 
     CLIENT is the name of the client whose token the call presented, or the empty string
-    (DECISION F253 D16 (7)); it is written as the key after `token_fp`.
+    (DECISION F253 D16 (7)); it is written as the key after `token_fp`. HOST_TOOLS, the eighth
+    field, is `true` for a call whose body names `claude-cli` (`public_api_call_host_tools`,
+    DECISION amend1023 D6) and `false` for every other.
 
     One `os.write` of one already-built line so concurrent requests never interleave; the
     directory is created at 0o700 and the file opened at 0o600, append-only. Raises `OSError` on
@@ -857,6 +886,7 @@ def append_public_api_call(*, token_fp: str, client: str, method: str, path: str
         "path": path,
         "status": status,
         "error": error,
+        "host_tools": host_tools,
     }
     line = (json.dumps(record) + "\n").encode("utf-8")
     fd = os.open(str(directory / PUBLIC_API_LEDGER_NAME),

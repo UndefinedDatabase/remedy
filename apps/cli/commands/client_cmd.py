@@ -28,12 +28,17 @@ sends. The job is resolved as `remedy doctor logs` resolves it.
 (`packages.orchestration.job_insight.now_insight` and `.job_insight`, DECISION F311 D1): what runs
 now, and one job's worker seen from outside, in the closed words `remedy client interface`'s
 `insight` key names.
+
+`remedy client show [<client>]`, `remedy client grant-host-tools <client>` and `remedy client
+revoke-host-tools <client>` read and change the operator's client registry (`api/clients.json`,
+operator amendment amend1023-universe-trust, DECISION amend1023 D6). They are operator commands on
+this machine and are never reachable over HTTP; `show` prints no token, only its fingerprint.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.job_insight import insight_lines
@@ -241,6 +246,55 @@ def _cmd_client_diff(job: str, *, json_output: bool = False) -> None:
         print(row["patch"], end="")
 
 
+def _client_entry(client: Any) -> dict[str, Any]:
+    """One client as `remedy client show` answers it: its policy and its token's fingerprint, never the token."""
+    from packages.orchestration.serve_http_handler import token_fingerprint
+
+    return {"name": client.name, "projects": list(client.projects),
+            "max_total_tokens": client.max_total_tokens, "max_provider_calls": client.max_provider_calls,
+            "may_apply": client.may_apply, "host_tools": client.host_tools,
+            "token_fp": token_fingerprint(client.token)}
+
+
+def _cmd_client_show(name: str | None, *, json_output: bool = False) -> None:
+    """`remedy client show [<client>]`: every client of the registry, or the one NAME names."""
+    from packages.orchestration.api_clients import api_clients_path, load_api_clients
+
+    clients = [client for client in load_api_clients() if name is None or client.name == name]
+    if name is not None and not clients:
+        fail("client_not_found", f"no client named {name!r} in {api_clients_path()}",
+             json_output=json_output, exit_code=3)
+    entries = [_client_entry(client) for client in clients]
+    if json_output:
+        emit_ok(clients=entries)
+        return
+    if not entries:
+        print(f"No client in {api_clients_path()}.")
+    for entry in entries:
+        print(f"{entry['name']}: projects {', '.join(entry['projects']) or '(none)'}; "
+              f"may_apply {str(entry['may_apply']).lower()}; host_tools {str(entry['host_tools']).lower()}; "
+              f"token {entry['token_fp']}")
+
+
+def _cmd_client_host_tools(name: str, *, granted: bool, json_output: bool = False) -> None:
+    """`remedy client grant-host-tools` and `revoke-host-tools` (DECISION amend1023 D6)."""
+    from packages.orchestration.api_clients import ApiClientRegistryError, set_client_host_tools
+
+    try:
+        client = set_client_host_tools(name, granted)
+    except ApiClientRegistryError as exc:
+        fail(exc.error, str(exc), json_output=json_output,
+             exit_code=3 if exc.error == "client_not_found" else 1)
+    except OSError as exc:
+        fail("client_registry_unwritable", f"the client registry could not be written: {exc}; nothing was changed",
+             json_output=json_output)
+    entry = _client_entry(client)
+    if json_output:
+        emit_ok(client=entry)
+        return
+    print(f"{entry['name']}: host_tools {str(entry['host_tools']).lower()}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "client.interface": lambda args: _cmd_client_interface(json_output=getattr(args, "json", False)),
     "client.execution": lambda args: _cmd_client_execution(json_output=getattr(args, "json", False)),
@@ -258,4 +312,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False)),
     "client.diff": lambda args: _cmd_client_diff(
         args.job, json_output=getattr(args, "json", False)),
+    "client.show": lambda args: _cmd_client_show(
+        getattr(args, "client", None), json_output=getattr(args, "json", False)),
+    "client.grant-host-tools": lambda args: _cmd_client_host_tools(
+        args.client, granted=True, json_output=getattr(args, "json", False)),
+    "client.revoke-host-tools": lambda args: _cmd_client_host_tools(
+        args.client, granted=False, json_output=getattr(args, "json", False)),
 }

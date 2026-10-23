@@ -9,6 +9,12 @@ cannot be read, that is not JSON, or that holds any part outside this shape, hol
 all, so a mistake in it never grants more than the operator wrote. A client token answers a
 decision, declines a result and applies a job only for a job of its projects, and may not raise a
 budget limit above its ceilings (DECISION F253 D17).
+
+Operator amendment amend1023-universe-trust (DECISION amend1023 D6): an entry may carry one more
+key, `host_tools`, `true` or `false`; an entry without it reads `false`. A client with it may name
+`claude-cli`, whose Claude Code CLI runs with the host's own file and shell tools, and the planner
+over HTTP (`execution_options`). Only the operator's command line on this machine sets it
+(`remedy client grant-host-tools`, `set_client_host_tools`); no route writes this file.
 """
 
 from __future__ import annotations
@@ -28,6 +34,8 @@ API_CLIENT_TOKEN_MIN_LENGTH = 32
 
 _ENTRY_KEYS = frozenset(
     {"name", "token", "projects", "max_total_tokens", "max_provider_calls", "may_apply"})
+#: The keys an entry may carry beside `_ENTRY_KEYS` (DECISION amend1023 D6).
+_OPTIONAL_ENTRY_KEYS = frozenset({"host_tools"})
 
 
 @dataclass(frozen=True)
@@ -41,6 +49,8 @@ class ApiClient:
     max_total_tokens: int | None
     max_provider_calls: int | None
     may_apply: bool
+    #: May name `claude-cli` and the planner over HTTP (DECISION amend1023 D6); the CLI grants it.
+    host_tools: bool = False
 
 
 def api_clients_path(root: Path | None = None) -> Path:
@@ -57,7 +67,7 @@ def _ceiling_valid(value: Any) -> bool:
 
 def _entry_client(entry: Any) -> ApiClient | None:
     """The client one entry of the file holds, or None when the entry is outside the shape."""
-    if not isinstance(entry, dict) or set(entry) != _ENTRY_KEYS:
+    if not isinstance(entry, dict) or not _ENTRY_KEYS <= set(entry) <= _ENTRY_KEYS | _OPTIONAL_ENTRY_KEYS:
         return None
     name, token, projects = entry["name"], entry["token"], entry["projects"]
     if not isinstance(name, str) or not name:
@@ -73,10 +83,13 @@ def _entry_client(entry: Any) -> ApiClient | None:
         return None
     if not isinstance(entry["may_apply"], bool):
         return None
+    if not isinstance(entry.get("host_tools", False), bool):
+        return None
     return ApiClient(
         name=name, token=token, projects=tuple(projects),
         max_total_tokens=entry["max_total_tokens"],
-        max_provider_calls=entry["max_provider_calls"], may_apply=entry["may_apply"])
+        max_provider_calls=entry["max_provider_calls"], may_apply=entry["may_apply"],
+        host_tools=entry.get("host_tools", False))
 
 
 def load_api_clients(root: Path | None = None) -> tuple[ApiClient, ...]:
@@ -108,6 +121,52 @@ def load_api_clients(root: Path | None = None) -> tuple[ApiClient, ...]:
     if len({c.token for c in clients}) != len(clients):
         return ()
     return tuple(clients)
+
+
+class ApiClientRegistryError(Exception):
+    """The operator's file holds no client it could change; `.error` is the refusal's token."""
+
+    def __init__(self, error: str, message: str) -> None:
+        self.error = error
+        super().__init__(message)
+
+
+# WHY (amend1023 D6): the one writer of `host_tools`, so the property is granted on this machine's
+# command line only; it rewrites the operator's own file and keeps every other byte of meaning.
+def set_client_host_tools(name: str, granted: bool, root: Path | None = None) -> ApiClient:
+    """Grant (GRANTED true) or revoke `host_tools` on the client NAME, and answer it as written.
+
+    The file is read as `load_api_clients` reads it: a file that holds no client, whatever the
+    reason, refuses with `client_registry_invalid` and is left as it was, because a write must
+    never turn a file the server reads as empty into one it reads as full. A name no entry holds
+    refuses with `client_not_found`. Granting writes `"host_tools": true` into the entry; revoking
+    removes the key, so the entry returns to the shape it had before. The file is written whole,
+    readable by its owner only.
+    """
+    from packages.common.secure_fs import durable_write
+
+    path = api_clients_path(root)
+    clients = load_api_clients(root)
+    if not clients:
+        raise ApiClientRegistryError(
+            "client_registry_invalid",
+            f"{path} holds no client Remedy reads (missing, readable by others, or outside its "
+            "shape); nothing was changed")
+    if name not in {client.name for client in clients}:
+        raise ApiClientRegistryError(
+            "client_not_found",
+            f"no client named {name!r} in {path}; the clients are: "
+            f"{', '.join(client.name for client in clients)}; nothing was changed")
+    document = json.loads(path.read_bytes().decode("utf-8"))
+    for entry in document["clients"]:
+        if entry["name"] != name:
+            continue
+        if granted:
+            entry["host_tools"] = True
+        else:
+            entry.pop("host_tools", None)
+    durable_write(path, (json.dumps(document, indent=2) + "\n").encode("utf-8"), mode=0o600)
+    return next(client for client in load_api_clients(root) if client.name == name)
 
 
 def match_api_client(supplied: str, clients: Sequence[ApiClient]) -> ApiClient | None:
