@@ -101,9 +101,15 @@ def git(repo: Path, *args: str) -> str:
 
 
 def commit_repository(root: Path, files: dict[str, str]) -> Path:
-    """A git repository at *root* holding *files* in one commit."""
+    """A git repository at *root* holding *files* in one commit.
+
+    R-1427, DECISION F314 D7: the identity is written into the repository's own configuration,
+    not only passed to these calls, so a commit Remedy makes in it works on a machine that has no
+    global git identity, as on a hosted runner."""
     root.mkdir(parents=True)
     git(root, "init", "-q")
+    for key, value in (("user.email", "t@example.com"), ("user.name", "t"), ("commit.gpgsign", "false")):
+        git(root, "config", key, value)
     for name, text in files.items():
         (root / name).parent.mkdir(parents=True, exist_ok=True)
         (root / name).write_text(text)
