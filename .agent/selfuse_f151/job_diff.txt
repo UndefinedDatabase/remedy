@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-40d734944254417e  (exit 0)
+diff --git a/apps/cli/commands/worker_facade_cmd.py b/apps/cli/commands/worker_facade_cmd.py
+index c22649d44..a16e70345 100644
+--- a/apps/cli/commands/worker_facade_cmd.py
++++ b/apps/cli/commands/worker_facade_cmd.py
+@@ -448,7 +448,7 @@ def doctor_core_report() -> DoctorCoreReport:
+         _check("disk_floor", floor_met,
+                f"{free_bytes} bytes free, floor "
+                f"{'not configured' if floor_bytes is None else floor_bytes}")
+-    except Exception as exc:  # noqa: BLE001 — a disk-floor read failure is that check's own result
++    except (ImportError, OSError, ValueError) as exc:
+         disk["error"] = report_safe_text(exc, limit=120)
+         _check("disk_floor", False, report_safe_text(exc, limit=120))
+ 
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index 1fa195707..e1cce97e9 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 282
++MAX_EXCUSED = 281
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
