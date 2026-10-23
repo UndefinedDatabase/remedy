@@ -21,10 +21,10 @@ from packages.orchestration.agent_run_trace import (
     resolve_trace_source,
     trace_events_from_run_events,
 )
+from packages.orchestration.claude_cli_command import build_claude_cli_args
 from packages.orchestration.exec_guard import ExecGuardPolicy
 from packages.orchestration.pingpong_provider import (
     ClaudeCliProvider,
-    build_claude_cli_args,
 )
 from packages.orchestration.stream_evidence import (
     RAW_STREAM_FILENAME,

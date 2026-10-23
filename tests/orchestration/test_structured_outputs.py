@@ -298,7 +298,7 @@ class TestNativeSchemaMode:
         assert "schema-compliant" in seen["prompt"]
 
     def test_claude_cli_native_schema_argv(self):
-        from packages.orchestration.pingpong_provider import build_claude_cli_args
+        from packages.orchestration.claude_cli_command import build_claude_cli_args
         from packages.orchestration.schemas import to_json_schema_str
         sch = to_json_schema_str(ReviewVerdict)
         argv = build_claude_cli_args("claude", "prompt", json_schema=sch)

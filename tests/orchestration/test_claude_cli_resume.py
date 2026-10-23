@@ -21,14 +21,13 @@ import pytest
 
 from packages.orchestration import pingpong_provider
 from packages.orchestration.call_identity import prepare_call_input
-from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL
+from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL, build_claude_cli_args
 from packages.orchestration.pingpong_loop import PingPongResult, run_pingpong
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_JSON_SCHEMA,
     ClaudeCliProvider,
     _ReviewVerdictSchema,
     _to_json_schema_str,
-    build_claude_cli_args,
 )
 from packages.orchestration.pingpong_provider_call import _call_with_retry
 from packages.orchestration.provider_timeouts import is_nonzero_exit_error, is_timeout_error

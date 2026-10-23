@@ -24,9 +24,8 @@ from packages.orchestration.call_identity import (
     prepare_call_input,
 )
 
-# DECISION F302 D1: the claude CLI's command line lives in a module of its own. Since DECISION F315 D2 the
-# installed adapter builds every call's; `build_claude_cli_args` stays importable here for its old readers.
-from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL, build_claude_cli_args  # noqa: F401
+# DECISION F315 D2: the installed adapter builds every call's command line (`claude_cli_command.py`).
+from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL
 from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.planner_cancel import planner_cancel_check
