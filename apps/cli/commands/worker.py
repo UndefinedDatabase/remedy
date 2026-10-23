@@ -50,10 +50,13 @@ def _cmd_workers(
 
 
 def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
+    # WHY: the wiring layer may import a concrete adapter (DECISION F151 D5 (3)); the
+    # registry is the one product path that reaches a WorkerAdapter at all.
     from packages.orchestration.worker_adapters import (
         export_worker_specs_json,
         list_worker_specs,
     )
+    from packages.providers.adapters.adapter_registry import resolve_worker_adapter
 
     specs = list_worker_specs()
     match = next((s for s in specs if s.provider_id == provider_id), None)
@@ -62,13 +65,22 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
              json_output=json_output)
     if json_output:
         emit_ok(**export_worker_specs_json((match,)))
-    else:
-        print(f"Worker: {match.display_name} ({match.provider_id})")
-        print(f"  Roles: {', '.join(match.supported_roles)}")
-        print(f"  Mode:  {match.execution_mode}")
-        print(f"  Status: {match.status}")
-        if match.notes:
-            print(f"  Notes: {match.notes}")
+        return
+    print(f"Worker: {match.display_name} ({match.provider_id})")
+    print(f"  Roles: {', '.join(match.supported_roles)}")
+    print(f"  Mode:  {match.execution_mode}")
+    print(f"  Status: {match.status}")
+    if match.notes:
+        print(f"  Notes: {match.notes}")
+    adapter = resolve_worker_adapter(match.adapter_ref) if match.adapter_ref else None
+    if adapter is not None:
+        capabilities = adapter.capabilities("")
+        flags = [
+            name for name in ("vision", "json_schema", "session_resume", "streaming", "tool_use")
+            if getattr(capabilities, name)
+        ]
+        print(f"  Adapter: {match.adapter_ref}")
+        print(f"  Capabilities: {', '.join(flags) if flags else 'none'}")
 
 
 def _cmd_worker_resources(*, json_output: bool = False) -> None:

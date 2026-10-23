@@ -6,6 +6,11 @@ and per-call evidence; none of that is rebuilt here. A ``WorkerAdapter`` only
 builds an invocation and maps a provider's raw output back onto typed shapes:
 it takes no timeout, never sleeps or loops on a failure, and never opens a
 process or a socket itself.
+
+A v1 ``WorkerProviderSpec`` (`packages/orchestration/worker_adapters.py`) DESCRIBES a
+worker — its roles and status — and says nothing about running one. Its ``adapter_ref``
+names the v2 ``WorkerAdapter`` that EXECUTES the contract for it; a record without a
+reference is a worker still awaiting its adapter (DECISION F151 D5 (1)).
 """
 from __future__ import annotations
 

@@ -98,6 +98,7 @@ packages.common.path_redaction
 packages.common.public_text_redaction
 packages.common.secure_fs
 packages.common.strict_json
+packages.contracts.adapter_contract
 packages.core.models
 packages.memory.context_summary
 packages.memory.local_gateway
@@ -448,6 +449,8 @@ packages.orchestration.workspace
 packages.orchestration.workspace_identity
 packages.orchestration.worktree_resume
 packages.orchestration.worktrees
+packages.providers.adapters.adapter_registry
+packages.providers.adapters.claude_cli_reference
 packages.providers.claude_planner.provider
 packages.providers.ollama_builder.provider
 packages.providers.ollama_planner.provider
