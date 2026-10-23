@@ -52,6 +52,8 @@ def _cmd_workers(
 def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     # WHY: the wiring layer may import a concrete adapter (DECISION F151 D5 (3)); the
     # registry is the one product path that reaches a WorkerAdapter at all.
+    import dataclasses
+
     from packages.orchestration.worker_adapters import (
         export_worker_specs_json,
         list_worker_specs,
@@ -63,8 +65,14 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     if match is None:
         fail("unknown_provider", f"unknown provider: {provider_id}",
              json_output=json_output)
+    adapter = resolve_worker_adapter(match.adapter_ref) if match.adapter_ref else None
+    capabilities = adapter.capabilities("") if adapter is not None else None
     if json_output:
-        emit_ok(**export_worker_specs_json((match,)))
+        # amend1023 D4: the JSON carries the capabilities the text prints, `null` without an adapter.
+        answer = export_worker_specs_json((match,))
+        answer["providers"][0]["capabilities"] = (
+            dataclasses.asdict(capabilities) if capabilities is not None else None)
+        emit_ok(**answer)
         return
     print(f"Worker: {match.display_name} ({match.provider_id})")
     print(f"  Roles: {', '.join(match.supported_roles)}")
@@ -72,9 +80,7 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     print(f"  Status: {match.status}")
     if match.notes:
         print(f"  Notes: {match.notes}")
-    adapter = resolve_worker_adapter(match.adapter_ref) if match.adapter_ref else None
-    if adapter is not None:
-        capabilities = adapter.capabilities("")
+    if capabilities is not None:
         flags = [
             name for name in ("vision", "json_schema", "session_resume", "streaming", "tool_use")
             if getattr(capabilities, name)
@@ -250,13 +256,16 @@ def _cmd_worker_doctor(*, json_output: bool = False) -> None:
     specs = list_worker_specs()
     _check("worker_specs", True, f"{len(specs)} provider specs loaded")
 
+    # amend1023 D4: the executable each worker that runs today needs on PATH.
+    executables = {"ollama": "ollama", "claude_code": "claude", "pi_dev": "pi"}
     for spec in specs:
         if spec.status != "available":
             continue
-        if spec.provider_id == "ollama":
-            found = shutil.which("ollama") is not None
-            _check("provider_ollama", found,
-                   "ollama on PATH" if found else "ollama not found on PATH")
+        if spec.provider_id in executables:
+            name = executables[spec.provider_id]
+            found = shutil.which(name) is not None
+            _check(f"provider_{spec.provider_id}", found,
+                   f"{name} on PATH" if found else f"{name} not found on PATH")
         else:
             # An `available` spec this doctor has no probe for: say so rather
             # than silently reporting it as though it had passed one.

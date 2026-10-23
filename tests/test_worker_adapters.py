@@ -71,8 +71,19 @@ class TestListWorkerSpecs:
 
     def test_future_specs_are_future(self) -> None:
         specs = {s.provider_id: s for s in list_worker_specs()}
-        for pid in ("claude_code", "pi_dev", "copilot", "openai_api"):
+        for pid in ("copilot", "openai_api"):
             assert specs[pid].status == "future"
+
+    def test_the_workers_that_run_today_are_available_and_say_whether_they_have_an_adapter(self) -> None:
+        """amend1023 D4: claude_code names its adapter; ollama and Pi say they have none yet."""
+        specs = {s.provider_id: s for s in list_worker_specs()}
+        for pid in ("claude_code", "pi_dev", "ollama"):
+            assert specs[pid].status == "available"
+        assert specs["claude_code"].adapter_ref == "claude-cli"
+        assert "reference adapter claude-cli" in specs["claude_code"].notes
+        for pid in ("ollama", "pi_dev"):
+            assert specs[pid].adapter_ref == ""
+            assert "No worker adapter yet." in specs[pid].notes
 
     def test_all_have_roles(self) -> None:
         for spec in list_worker_specs():

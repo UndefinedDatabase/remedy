@@ -124,6 +124,8 @@ class DoLaneDecision:
     parts: tuple[tuple[str, ...], ...] = ()
     #: exec-1018b (R-1358): targets whose role the order's words did not make sure; never held to change.
     mentioned: tuple[str, ...] = ()
+    #: DECISION amend1023 D7: why the order is one job without milestones (`order_single_job_reason`), or "".
+    single_job: str = ""
 
     @property
     def bounded(self) -> bool:
@@ -180,6 +182,27 @@ def _order_targets(order: str, tracked_files: list[str], roles: dict[str, str] |
     return named
 
 
+def order_single_job_reason(order: str, source_path: str = "") -> str:
+    """Why *order* asks to be one job without milestones, or "" (DECISION amend1023 D7).
+
+    Its header says `shape: single-job` (read from the order file at *source_path*; an order given as
+    text has no header), or its text names exactly one file. The probe of 2026-10-23 (order key
+    `luna-twmhd8`), a one-line repair, became three milestones and five jobs: the planner's split is
+    no longer asked for an order that says what it is.
+    """
+    from packages.orchestration.order_file import ORDER_SHAPE_SINGLE_JOB, OrderFileError, read_order_file
+    from packages.orchestration.task_deliverables import explicit_order_paths
+
+    if source_path:
+        try:
+            if read_order_file(source_path).shape == ORDER_SHAPE_SINGLE_JOB:
+                return f"the order's header says shape: {ORDER_SHAPE_SINGLE_JOB}"
+        except OrderFileError:
+            pass
+    named = explicit_order_paths(order)
+    return f"the order names exactly one file, {named[0]}" if len(named) == 1 else ""
+
+
 def select_do_lane(
     order: str,
     *,
@@ -187,6 +210,7 @@ def select_do_lane(
     projects: int = 1,
     force_job: bool = False,
     force_mission: bool = False,
+    single_job: str = "",
 ) -> DoLaneDecision:
     """The lane for *order* over a repository holding *tracked_files*; the full lane when unclear.
 
@@ -198,7 +222,9 @@ def select_do_lane(
     never a guess. A test the order asks for beside the file is part of the one job. `--force-job`
     selects the bounded lane for a single-repository order and says what routing alone chose, except
     over a hold: which file is meant stays a question that no flag answers.
-    Where the order came from plays no part.
+    Where the order came from plays no part. *single_job* (`order_single_job_reason`) keeps an order
+    that is not bounded on the full lane as ONE job without milestones: the lane's reason names it,
+    and the planner plans that job's tasks only (DECISION amend1023 D7).
     """
     if projects > 1:
         return DoLaneDecision(DO_LANE_FULL, "the order names several projects")
@@ -208,6 +234,10 @@ def select_do_lane(
     if force_job and not auto.bounded and not auto.hold:   # an override never settles a question
         return replace(auto, lane=DO_LANE_BOUNDED,
                        reason=f"--force-job was given (routing alone chose the {auto.lane} lane: {auto.reason})")
+    if single_job and not auto.bounded and not auto.hold:
+        return replace(auto, single_job=single_job,
+                       reason=f"{single_job}, so it is one job without milestones and the planner plans its "
+                              f"tasks only (routing alone: {auto.reason})")
     return auto
 
 
@@ -327,7 +357,8 @@ def settle_do_lane(ctx: DoContext) -> DoLaneDecision:
         files = tracked_repo_files(ctx.repo_root)
         ctx.lane = select_do_lane(
             ctx.order, tracked_files=files, projects=len(ctx.projects) or 1,
-            force_job=ctx.force_job, force_mission=ctx.force_mission)
+            force_job=ctx.force_job, force_mission=ctx.force_mission,
+            single_job=order_single_job_reason(ctx.order, ctx.order_source_path))
         ctx.tiny_repo = is_tiny_repo(files)
         # exec-1018 (R-1349): an order whose own words ask for a plan only walks as `--plan-only`.
         ctx.plan_only = ctx.plan_only or ctx.lane.intent == ORDER_INTENT_PLAN_ONLY

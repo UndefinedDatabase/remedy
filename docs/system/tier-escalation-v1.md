@@ -94,8 +94,9 @@ When the job's project has a cost ledger, the export also mirrors the file into 
 `tier_outcomes` table in `ledger.sqlite`, the same way it mirrors each task's calls: the file is
 written first and read back, a re-export replaces its own rows, and a mirror that fails never fails
 the export. `query_tier_outcomes` in `packages/orchestration/tier_outcomes.py` answers one summary
-per task class and tier — the task runs, how they ended, their rounds, retries and reported cost —
-which is what a later trust score reads.
+per task class and tier — the task runs, how they ended, their rounds, retries and reported cost.
+The model trust score does not read it: DECISION F133 D3 withdrew that plan, because the query
+writes to the ledger and sums every run with no window (`docs/system/model-trust-score-v1.md`).
 
 The routing policy itself is not changed by this: its seed table, its hard rules and its benchmark
 rule for moving a task class to a cheaper tier still decide which tier a task class starts on;

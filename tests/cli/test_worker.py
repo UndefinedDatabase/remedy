@@ -28,7 +28,7 @@ class TestWorkerDoctorCatalog:
 class TestWorkerDoctor:
     def test_ollama_on_path_reads_ready(self, monkeypatch, capsys):
         import shutil as _shutil
-        monkeypatch.setattr(_shutil, "which", lambda name: "/usr/bin/ollama" if name == "ollama" else None)
+        monkeypatch.setattr(_shutil, "which", lambda name: f"/usr/bin/{name}" if name in ("ollama", "claude", "pi") else None)
         import packages.orchestration.pi_provider as pi_provider
         monkeypatch.setattr(pi_provider, "default_chain_checks", lambda: [("pi_executable", True, "pi")])
         from apps.cli.commands.worker import _cmd_worker_doctor
@@ -55,8 +55,7 @@ class TestWorkerDoctor:
         assert "provider_ollama" in out["blockers"]
 
     def test_future_status_specs_are_never_probed(self, monkeypatch, capsys):
-        """`claude_code`, `pi_dev`, `copilot`, `openai_api` are `status="future"`;
-        only an `available` spec is checked at all."""
+        """`copilot` and `openai_api` are `status="future"`; only an `available` spec is checked at all."""
         import shutil as _shutil
         monkeypatch.setattr(_shutil, "which", lambda name: "/usr/bin/ollama" if name == "ollama" else None)
         from apps.cli.commands.worker import _cmd_worker_doctor
@@ -71,14 +70,26 @@ class TestWorkerDoctor:
 
     def test_text_output(self, monkeypatch, capsys):
         import shutil as _shutil
-        monkeypatch.setattr(_shutil, "which", lambda name: "/usr/bin/ollama" if name == "ollama" else None)
+        monkeypatch.setattr(_shutil, "which", lambda name: f"/usr/bin/{name}" if name in ("ollama", "claude", "pi") else None)
         from apps.cli.commands.worker import _cmd_worker_doctor
         _cmd_worker_doctor(json_output=False)
         out = capsys.readouterr().out
         assert "Worker Doctor" in out
         assert "READY" in out
 
-    @pytest.mark.parametrize("catalog_provider_id", ["claude_code", "pi_dev", "copilot", "openai_api"])
+    @pytest.mark.parametrize("provider_id, executable", [("claude_code", "claude"), ("pi_dev", "pi")])
+    def test_each_worker_that_runs_today_is_probed_for_its_executable(self, monkeypatch, capsys, provider_id,
+                                                                       executable):
+        """amend1023 D4: `claude_code` and `pi_dev` read `available`, so each is probed, never failed unprobed."""
+        import shutil as _shutil
+        monkeypatch.setattr(_shutil, "which", lambda name: None if name == executable else f"/usr/bin/{name}")
+        from apps.cli.commands.worker import _cmd_worker_doctor
+        _cmd_worker_doctor(json_output=True)
+        out = json.loads(capsys.readouterr().out)
+        check = next(c for c in out["checks"] if c["check"] == f"provider_{provider_id}")
+        assert check == {"check": f"provider_{provider_id}", "ok": False, "detail": f"{executable} not found on PATH"}
+
+    @pytest.mark.parametrize("catalog_provider_id", ["copilot", "openai_api"])
     def test_an_available_spec_with_no_probe_fails_rather_than_passing_silently(
         self, monkeypatch, capsys, catalog_provider_id,
     ):
@@ -183,6 +194,17 @@ class TestWorkerShowAdapterLinkage:
         body = json.loads(capsys.readouterr().out)
         entry = body["providers"][0]
         assert entry["adapter_ref"] == "claude-cli"
+
+    def test_the_json_answer_carries_the_capabilities_the_text_prints(self, capsys):
+        """amend1023 D4: the same flags as the text's `Capabilities:` line, and null without an adapter."""
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=True)
+        entry = json.loads(capsys.readouterr().out)["providers"][0]
+        assert entry["capabilities"] == {
+            "vision": False, "json_schema": True, "session_resume": True, "streaming": True,
+            "tool_use": True, "max_context_tokens": 0}
+        _cmd_worker_show("ollama", json_output=True)
+        assert json.loads(capsys.readouterr().out)["providers"][0]["capabilities"] is None
 
     def test_claude_code_text_output_shows_none_for_an_adapter_with_no_capability(self, monkeypatch, capsys):
         # R-1440 — the `none` line is held by no test; an adapter declaring no flag at all

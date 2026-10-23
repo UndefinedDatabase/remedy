@@ -81,7 +81,11 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "`offered_over_http`, `isolation`, `not_offered_reason` and the installed `models`; then "
             "`lanes`, `order_flags`, `budgets`, `verification`, `review_report`, `phases` and "
             "`observability`. It names no secret and no host path. A provider not offered is "
-            "refused by the routes that start work with 400 `api_provider_not_offered`."
+            "refused by the routes that start work with 400 `api_provider_not_offered`. Since 1.29 "
+            "the offer is the calling token's: `host_tools` says whether the client holds the "
+            "property the operator grants on this machine's command line, and for such a client "
+            "`claude-cli` is offered for `builder`, `reviewer` and `repair` and the `planner` is "
+            "selectable."
         ),
     ),
     PublicApiRoute(
@@ -281,10 +285,29 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "Polls the order a `POST` to `/api/v1/orders` started, as `remedy client order "
             "<order> --json` does: `state` reads `running`, `ended` or `lost`, `phase` what the "
             "order is doing (see `order_phases` in `GET /api/v1/interface`), `cancel` its cancel "
-            "request or null, `jobs` its jobs, and `answer` "
+            "request or null, `jobs` its jobs (since 1.29 each with its `mission_id` and, while blocked "
+            "or failed, its `blocking_criterion`), and `answer` "
             "holds what `remedy do` printed once the order is not `running`. A client token "
             "reads only an order whose order file names its projects (403 "
             "`api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
+        path="/api/v1/orders/{order}/story",
+        twin="client.order-story",
+        refusals=(("order_not_found", 404),),
+        description=(
+            "The story of an order a `POST` to `/api/v1/orders` started, as `remedy client order-story "
+            "<order> --json` prints it (since 1.29): `order_id`, `client` (the name of the client whose "
+            "token sent it, or null), `state` and `phase` as the order's poll reads them, and `missions`, "
+            "each with its `mission_id` and `milestones`, each milestone with its `id`, its `goal` and its "
+            "`jobs`; each job carries its `number` in the order, `title`, `state` (one of the closed words "
+            "`order_job_states` under `story` in `GET /api/v1/interface`), `state_detail` (`after_job` and "
+            "`after_job_id` while it waits, the `criterion` it did not meet while blocked or failed), "
+            "`tasks` with `done` and `total`, the `round` and the last `tool` of a running job's worker, "
+            "and its `story` route. It changes nothing. A client token reads only an order of one of its "
+            "projects (403 `api_client_policy_refused`)."
         ),
     ),
     PublicApiRoute(
@@ -294,7 +317,7 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         body=(("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
               ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
               ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
-              ("capture_review", "flag")),
+              ("capture_review", "flag"), ("planner_provider", "string")),
         starts_order=True,
         description=(
             "Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do "
@@ -306,7 +329,10 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "data root's `review_reports`, its id in the answer's `review_report`); `builder_provider`, "
             "`reviewer_provider` and `deadline` each pass their option with their value, and a provider "
             "HTTP does not offer (`claude-cli`, or one that is no provider of its role; see `GET "
-            "/api/v1/execution`) is refused before anything starts with 400 `api_provider_not_offered`. "
+            "/api/v1/execution`) is refused before anything starts with 400 `api_provider_not_offered`; "
+            "since 1.29 a client granted `host_tools` may name `claude-cli` and `planner_provider` "
+            "(`ollama` or `claude-cli`), passed as `--planner-provider`, which every other caller "
+            "is refused the same way. "
             "An order whose header names no project, or "
             "one that names a project `select_project` cannot resolve to exactly one, is "
             "refused before anything starts with 409 `api_order_project_unknown`, and one whose "
@@ -456,7 +482,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "`null` until the run ends, and `state` and `answer` as the route above reads them. "
             "`builder_provider` and `reviewer_provider` each pass "
             "`--builder-provider=<value>` and `--reviewer-provider=<value>`, a provider HTTP does not "
-            "offer refused with 400 `api_provider_not_offered`; of the other options of "
+            "offer refused with 400 `api_provider_not_offered` (`claude-cli` is offered since 1.29 to "
+            "a client granted `host_tools`); of the other options of "
             "`remedy job run` only `--retry` is offered over HTTP, by the route below. A job id "
             "prefix is accepted. A client waits "
             "for the run's end by polling the route above until `state` is not `running`. "

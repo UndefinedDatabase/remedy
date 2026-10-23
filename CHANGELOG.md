@@ -11,6 +11,27 @@ fails the gate rather than shipping an unexplained release.
 
 ## [Unreleased]
 
+### Added
+- 2026-10-23, amend1023-universe-trust; the public API and the client interface move to 1.29:
+  - The client property `host_tools`, granted and revoked only on this machine's command line
+    (`remedy client grant-host-tools`, `revoke-host-tools`, `show`): a client holding it may name
+    `claude-cli` as builder and reviewer and choose the planner over HTTP; the call ledger marks
+    every call naming `claude-cli` with `host_tools=true`.
+  - `GET /api/v1/orders/{order}/story` (`remedy client order-story`): an order's missions,
+    milestones and jobs in closed words, with who gave it; the order poll's jobs carry
+    `mission_id` and `blocking_criterion`.
+  - Small orders stay small: `shape: single-job` in an order's header, or an order naming exactly
+    one file, is one job without milestones; a planned criterion demanding a file nobody named is
+    removed and named in the story's `scope_findings`; an order saying "no new documentation
+    files" gets that criterion, and a new file outside the named ones leaves the result.
+
+### Changed
+- 2026-10-23, amend1023-universe-trust: F133's format-error rate also reads the post-mortems under
+  the task's run directory; the worker list names its adapters honestly and `remedy worker show
+  --json` carries the capabilities; the conformance kit fails a class whose source it cannot read
+  and reads the module functions a class calls; the contract page is
+  `docs/system/worker-adapter-contract-v2.md`.
+
 ### Fixed
 - 2026-10-22, fix1022-review-findings, the orchestrator's review of F310 to F074; the public API and
   the client interface move to 1.28:

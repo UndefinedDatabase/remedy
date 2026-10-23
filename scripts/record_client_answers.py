@@ -1,7 +1,8 @@
 """F313 T003 — record the answers the universe's kit tests the Orb against (DECISION F313 D2).
 
 `python3 scripts/record_client_answers.py` seeds a scratch data root of its own with two running
-Pi jobs, serves a stub of the local model server on a free local port for the time of the
+Pi jobs and, for the last case, an order that holds them with a third job waiting (DECISION
+amend1023 D11), serves a stub of the local model server on a free local port for the time of the
 recording, runs the real client commands, `remedy client now --json` and its siblings, as child
 processes with no model, and writes each one's standard output byte for byte to
 `docs/system/client-answers-v1/<case>.json`.
@@ -44,13 +45,19 @@ SILENT_JOB_ID = "f313000000000002"
 KIT_PROJECT_ID = "p-kit"
 #: The one model the stub of the local model server reports, installed and loaded.
 STUB_MODEL = "qwen3:8b"
-#: Each case: its name, the `remedy` arguments, and whether the two jobs are seeded before it.
-RECORDED_CASES: tuple[tuple[str, tuple[str, ...], bool], ...] = (
-    ("client-now-idle", ("client", "now", "--json"), False),
-    ("client-now-running", ("client", "now", "--json"), True),
-    ("client-insight-working", ("client", "insight", WORKING_JOB_ID, "--json", "--lines", "40"), True),
-    ("client-insight-silent", ("client", "insight", SILENT_JOB_ID, "--json", "--lines", "40"), True),
-    ("client-story-working", ("client", "story", WORKING_JOB_ID, "--json"), True),
+#: The order that holds both jobs and a third that waits for the first (DECISION amend1023 D11).
+KIT_ORDER_ID = "f3130000000000a1"
+WAITING_JOB_ID = "f313000000000003"
+KIT_MISSION_ID = "f3130000000000000000000000000a01"
+#: Each case: its name, the `remedy` arguments, and what is seeded before it: 0 nothing, 1 the two
+#: running jobs, 2 also the order with its mission, its two milestones and the waiting job.
+RECORDED_CASES: tuple[tuple[str, tuple[str, ...], int], ...] = (
+    ("client-now-idle", ("client", "now", "--json"), 0),
+    ("client-now-running", ("client", "now", "--json"), 1),
+    ("client-insight-working", ("client", "insight", WORKING_JOB_ID, "--json", "--lines", "40"), 1),
+    ("client-insight-silent", ("client", "insight", SILENT_JOB_ID, "--json", "--lines", "40"), 1),
+    ("client-story-working", ("client", "story", WORKING_JOB_ID, "--json"), 1),
+    ("client-order-story-running", ("client", "order-story", KIT_ORDER_ID, "--json"), 2),
 )
 #: The keys whose values come from the clock or from the stub's port; `--check` compares their type.
 ANSWER_KEYS_READ_BY_TYPE = frozenset({
@@ -136,6 +143,56 @@ def _seed_running_jobs(now: datetime) -> None:
         })
 
 
+def _seed_order(now: datetime) -> None:
+    """The order of `KIT_ORDER_ID`: its record, its mission with two milestones, the two running jobs
+    linked under it (one per milestone) and a third, planned, that waits for the first."""
+    from dataclasses import replace
+
+    from packages.common.secure_fs import durable_write_json
+    from packages.core.models import RunState
+    from packages.orchestration.mission_contract import JOB_MILESTONE_KEY
+    from packages.orchestration.mission_record import MissionOrderBatch
+    from packages.orchestration.mission_state import (
+        create_mission,
+        link_job_to_mission,
+        mission_record_path,
+        save_mission,
+    )
+    from packages.orchestration.order_jobs import ORDER_JOB_WAITS_KEY
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import OrderRecord
+
+    order_dir = serve_paths().orders_dir / KIT_ORDER_ID
+    order_dir.mkdir(parents=True)
+    (order_dir / "order.md").write_text("Make the showcase page responsive and add a contact form\n")
+    durable_write_json(order_dir / "order.json", OrderRecord(
+        order_id=KIT_ORDER_ID, pid=0, started_at=_moment(now, 1000), order_file=str((order_dir / "order.md").resolve()),
+        out_log=str(order_dir / "out.log"), err_log=str(order_dir / "err.log"), exit_code=0,
+        ended_at=_moment(now, 950), client="orb-universe").to_json())
+    waiting = JobPlan(job_id=WAITING_JOB_ID, job_title="Check the contact form", project_id=KIT_PROJECT_ID,
+                      state=RunState.PLANNED, tasks=[TaskEntry(task_id="T001", title="contact.html")])
+    waiting.created_at = (now - timedelta(seconds=800)).isoformat()
+    waiting.metadata[ORDER_JOB_WAITS_KEY] = WORKING_JOB_ID
+    save_job_plan(waiting)
+    # A fixed id, so every recording reads the same mission: the one created gets it before it is saved again.
+    created = create_mission(KIT_PROJECT_ID, "Maintain the kit site")
+    mission_record_path(KIT_PROJECT_ID, created.id).unlink()
+    mission = replace(created, id=KIT_MISSION_ID)
+    batch = MissionOrderBatch(order_id="b" * 32, text="Make the showcase page responsive and add a contact form",
+                              source_path=str((order_dir / "order.md").resolve()), created_at=_moment(now, 990))
+    plan = {"schema_v": "mission_plan_v1", "compiled": True, "origin": "provider", "risks": [], "assumptions": [],
+            "milestones": [{"id": "M001", "goal": "The page reads well on a phone", "depends_on": []},
+                           {"id": "M002", "goal": "A visitor can write to the team", "depends_on": ["M001"]}]}
+    save_mission(replace(mission, orders=(batch,), mission_plan=plan))
+    for role, (job_id, milestone) in zip(("initial", "follow_up", "follow_up"), (
+            (WORKING_JOB_ID, "M001"), (SILENT_JOB_ID, "M002"), (WAITING_JOB_ID, "M002"))):
+        link_job_to_mission(KIT_PROJECT_ID, mission.id, job_id, role, order_id=batch.order_id)
+        job = load_job_plan(job_id)
+        job.metadata[JOB_MILESTONE_KEY] = milestone
+        save_job_plan(job)
+
+
 def record_client_answers() -> dict[str, str]:
     """Every case of `RECORDED_CASES` as the real command printed it, by case name."""
     answers: dict[str, str] = {}
@@ -154,19 +211,19 @@ def record_client_answers() -> dict[str, str]:
                    "PYTHONUSERBASE": site.getuserbase(), "PYTHONPATH": str(REPO_ROOT),
                    "REMEDY_DATA_DIR": str(data_root),
                    "REMEDY_OLLAMA_HOST": f"http://127.0.0.1:{server.server_address[1]}"}
-            seeded = False
-            for name, args, needs_jobs in RECORDED_CASES:
-                if needs_jobs and not seeded:
+            seeded = 0
+            for name, args, needs in RECORDED_CASES:
+                while seeded < needs:
                     previous = os.environ.get("REMEDY_DATA_DIR")
                     os.environ["REMEDY_DATA_DIR"] = str(data_root)
                     try:
-                        _seed_running_jobs(datetime.now(timezone.utc))
+                        (_seed_running_jobs if seeded == 0 else _seed_order)(datetime.now(timezone.utc))
                     finally:
                         if previous is None:
                             os.environ.pop("REMEDY_DATA_DIR", None)
                         else:
                             os.environ["REMEDY_DATA_DIR"] = previous
-                    seeded = True
+                    seeded += 1
                 result = subprocess.run([sys.executable, "-m", "apps.cli.main", *args], cwd=str(scratch),
                                         env=env, capture_output=True, text=True, timeout=_CHILD_TIMEOUT_S)
                 if result.returncode != 0:

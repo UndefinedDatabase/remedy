@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import json
 
+from packages.orchestration.order_story import ORDER_STORY_JOB_STATES
+
 #: What the job is doing now, one word. `queued` (exec-1017c, R-1340): planned and not running; its
 #: `state_detail.after_job` names the job of its order it runs after, when it waits for that one.
 STORY_STATES: tuple[str, ...] = (
@@ -91,6 +93,12 @@ STORY_QUESTIONS: tuple[str, ...] = (
 )
 
 
+#: What Remedy took out of a job's scope, the story's `scope_findings` (DECISION amend1023 D8, D9): a
+#: criterion naming a file neither the order nor the repository names, removed before the run; a new
+#: file the order forbade, removed from the result. Neither ever blocks the job.
+STORY_SCOPE_FINDINGS: tuple[str, ...] = ("criterion_dropped", "file_removed")
+
+
 def story_words() -> dict[str, object]:
     """The lists above as one JSON-ready dict, the `story` key of the machine client interface."""
     return {
@@ -103,6 +111,8 @@ def story_words() -> dict[str, object]:
         "reasons": {key: list(args) for key, args in STORY_REASONS.items()},
         "questions": list(STORY_QUESTIONS),
         "verification_statuses": list(STORY_VERIFICATION_STATUSES),
+        "scope_findings": list(STORY_SCOPE_FINDINGS),
+        "order_job_states": list(ORDER_STORY_JOB_STATES),
     }
 
 
@@ -167,6 +177,9 @@ def story_problems(story: dict[str, object]) -> list[str]:
         for task in step.get("tasks") or []:
             if task.get("status") not in STORY_STEP_STATUSES:
                 problems.append(f"task status {task.get('status')!r} is not closed")
+    for finding in story.get("scope_findings") or []:
+        if not isinstance(finding, dict) or finding.get("key") not in STORY_SCOPE_FINDINGS:
+            problems.append(f"scope finding {finding!r} is not in the closed list")
     text = json.dumps(story)
     if "$" in text or '"cost_usd"' in text:
         problems.append("the story names money")

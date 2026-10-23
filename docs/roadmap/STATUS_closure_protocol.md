@@ -24,6 +24,10 @@
    (R-1158). When the script exits 1, this closure's suite cost more than that
    limit above the previous feature's, and the closure registers a finding
    owned by the rolling findings paydown before this precondition holds.
+   After a repair that touches only documentation or a single test, only
+   the affected test files run again, never the full suite (operator
+   amendment amend1023-universe-trust, DECISION amend1023 D5); the full
+   suite runs again only when a repair changes production code.
 3. `remedy integrity check --json` → PASS; no relevant untracked files.
 4. Feature file's Built State section is current.
 5. Working tree clean, branch pushed, worker idle.
@@ -164,6 +168,16 @@
    `build_review_manifest.validate_verification_tests` on the produced
    `verification_tests.json` and require an empty problem list BEFORE
    paying for a package build.
+
+   A seventh, from operator amendment amend1023-universe-trust (DECISION
+   amend1023 D5): (g) each verification record's `duration_seconds` is
+   MEASURED — `time.monotonic()` read before and after the script's pytest
+   call, the difference rounded to the millisecond — never a fixed `0.0`.
+   The hand-written evidence scripts carried a fixed `0.0` from one closure
+   to the next (F058's, F074's, F289's and F151's among them, under
+   `.agent/authored/`), so their bundles claim the tests took no time.
+   `job_evidence._default_verification_runner` already measures; only the
+   hand-written script did not.
 
    Staging copies (operator amendment amend0929-context-hygiene,
    2026-09-29): in the round that builds the evidence bundle the worker

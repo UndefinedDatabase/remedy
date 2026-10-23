@@ -488,6 +488,25 @@ class _BrokenTransportBaseClassRetriesToy(_RetryingBaseToy, _ConformingCliToy):
     """transport: a retry loop inherited from a base class, not the adapter's own class."""
 
 
+def _toy_fetch_helper():
+    """A module function beside a toy; the transport it hides is the toy's own (amend1023 D4)."""
+    import time
+
+    return time.monotonic()
+
+
+class _BrokenTransportModuleFunctionToy(_ConformingCliToy):
+    """transport: the class itself is clean, the module function it calls touches `time`."""
+
+    def build_invocation(self, role, prompt_parts, options):
+        _toy_fetch_helper()
+        return super().build_invocation(role, prompt_parts, options)
+
+
+#: transport: a class built at run time has no source Python can read; it fails, never passes.
+_RuntimeBuiltToy = type("_RuntimeBuiltToy", (_ConformingCliToy,), {})
+
+
 _BROKEN_CASES = (
     ("capabilities", _BrokenCapabilitiesBadIdToy(), _CLI_SAMPLES,
      "does not match ^[a-z][a-z0-9-]*$"),
@@ -541,6 +560,9 @@ _BROKEN_CASES = (
      "outside ADAPTER_ERROR_CLASSES"),
     ("isolation", _BrokenIsolationNotNoneToy(), _CLI_SAMPLES, "isolation() must return None"),
     ("transport", _BrokenTransportBaseClassRetriesToy(), _CLI_SAMPLES, "_RetryingBaseToy:"),
+    ("transport", _BrokenTransportModuleFunctionToy(), _CLI_SAMPLES,
+     "_BrokenTransportModuleFunctionToy calls _toy_fetch_helper: import of 'time'"),
+    ("transport", _RuntimeBuiltToy(), _CLI_SAMPLES, "_RuntimeBuiltToy: its source cannot be read"),
 )
 
 

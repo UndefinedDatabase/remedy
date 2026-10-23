@@ -28,6 +28,9 @@ DO_SHAPE_SOURCE_PROJECTS = "the order's projects"
 DO_SHAPE_SOURCE_BOUNDED = "bounded lane"
 DO_SHAPE_SOURCE_FORCE_JOB = "--force-job"
 DO_SHAPE_SOURCE_FORCE_MISSION = "--force-mission"
+#: The order itself asked for one job: its header says `shape: single-job`, or its text names exactly
+#: one file (DECISION amend1023 D7); the planner may not overrule it.
+DO_SHAPE_SOURCE_ORDER = "the order"
 
 DO_STEP_DONE = "done"
 DO_STEP_SKIPPED = "skipped"

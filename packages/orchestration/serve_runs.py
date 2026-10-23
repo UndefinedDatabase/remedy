@@ -413,6 +413,9 @@ class OrderRecord:
     err_log: str
     exit_code: int | None = None
     ended_at: str | None = None
+    #: The name of the client whose token sent the order over HTTP; "" for the server's own token, the
+    #: command line and a record written before 1.29 (DECISION amend1023 D11).
+    client: str = ""
 
     def to_json(self) -> dict:
         return asdict(self)
@@ -710,7 +713,7 @@ class OrderLauncher:
                            record.to_json())
 
     def start(self, order_text: str, options: Sequence[str],
-              order_key: str | None = None) -> OrderRecord:
+              order_key: str | None = None, client: str = "") -> OrderRecord:
         """Write ORDER_TEXT to a new order's own folder and run it there; return its record.
 
         OPTIONS are the caller's own flags (`--no-llm`, `--builder-provider=fake`, ...); this
@@ -724,7 +727,8 @@ class OrderLauncher:
         symbolic link to that file, so the child, still run from its own folder with
         `-- order.md`, records the key's file as its order file and `remedy do`'s own refusal
         of an order file a running mission records applies to it (DECISION F253 D22 (3), (5)).
-        Without it, `order.md` is a plain file, as before.
+        Without it, `order.md` is a plain file, as before. CLIENT, the name of the client whose
+        token sent the order, is kept on the record for the order's story (DECISION amend1023 D11).
         """
         order_id = secrets.token_hex(8)
         self._paths.orders_dir.mkdir(parents=True, exist_ok=True)
@@ -751,7 +755,7 @@ class OrderLauncher:
             raise
         record = OrderRecord(order_id=order_id, pid=child.pid, started_at=_now(),
                              order_file=str(order_md.resolve()), out_log=str(out_log),
-                             err_log=str(err_log))
+                             err_log=str(err_log), client=client)
         self._write(record)
         with self._lock:
             reaper = threading.Thread(target=self._reap, args=(child, record), daemon=True,

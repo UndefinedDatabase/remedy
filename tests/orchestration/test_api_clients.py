@@ -215,3 +215,47 @@ def test_a_budget_answer_inside_the_ceilings_or_outside_the_policy_is_passed_on(
 
 def test_a_budget_answer_is_not_held_to_a_ceiling_the_client_does_not_have() -> None:
     assert client_budget_answer_refusal(_client(), ["max_total_tokens=999999"]) is None
+
+
+# -- amend1023 D6: the `host_tools` property ------------------------------------------------
+
+
+def test_host_tools_is_an_optional_key_that_reads_false_when_absent(tmp_path: Path) -> None:
+    _write(tmp_path, {"clients": [_entry(), _entry(name="beta", token=TOKEN_B, host_tools=True)]})
+    first, second = load_api_clients(tmp_path)
+    assert (first.host_tools, second.host_tools) == (False, True)
+
+
+@pytest.mark.parametrize("value", ["true", 1, None])
+def test_a_host_tools_value_that_is_no_boolean_holds_no_client(tmp_path: Path, value: Any) -> None:
+    _write(tmp_path, {"clients": [_entry(host_tools=value)]})
+    assert load_api_clients(tmp_path) == ()
+
+
+def test_grant_and_revoke_rewrite_only_that_entry_and_keep_the_file_private(tmp_path: Path) -> None:
+    from packages.orchestration.api_clients import set_client_host_tools
+
+    path = _write(tmp_path, {"clients": [_entry(), _entry(name="beta", token=TOKEN_B)]})
+    granted = set_client_host_tools("beta", True, tmp_path)
+    assert granted.host_tools is True and granted.token == TOKEN_B
+    document = json.loads(path.read_text(encoding="utf-8"))
+    assert document["clients"][0] == _entry()
+    assert document["clients"][1] == _entry(name="beta", token=TOKEN_B, host_tools=True)
+    assert path.stat().st_mode & 0o777 == 0o600
+    assert set_client_host_tools("beta", False, tmp_path).host_tools is False
+    assert json.loads(path.read_text(encoding="utf-8"))["clients"][1] == _entry(name="beta", token=TOKEN_B)
+
+
+def test_an_unknown_name_or_a_file_that_holds_no_client_changes_nothing(tmp_path: Path) -> None:
+    from packages.orchestration.api_clients import ApiClientRegistryError, set_client_host_tools
+
+    path = _write(tmp_path, {"clients": [_entry()]})
+    before = path.read_bytes()
+    with pytest.raises(ApiClientRegistryError) as unknown:
+        set_client_host_tools("nobody", True, tmp_path)
+    assert unknown.value.error == "client_not_found" and path.read_bytes() == before
+    _write(tmp_path, {"clients": [_entry()]}, mode=0o644)
+    with pytest.raises(ApiClientRegistryError) as unreadable:
+        set_client_host_tools("alpha", True, tmp_path)
+    assert unreadable.value.error == "client_registry_invalid"
+    assert "host_tools" not in path.read_text(encoding="utf-8")

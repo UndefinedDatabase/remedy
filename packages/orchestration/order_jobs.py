@@ -36,10 +36,11 @@ ORDER_JOB_PHASES = ("running", "waiting", "ready", "needs_plan_approval", "await
                     "declined", "blocked", "stopped", "cancelled", "failed", "checked")
 
 
-#: The keys of one entry of `order_jobs_view`, as the machine client interface declares them.
+#: The keys of one entry of `order_jobs_view`, as the machine client interface declares them;
+#: `blocking_criterion` and `mission_id` since 1.29 (DECISION amend1023 D11).
 ORDER_JOBS_KEY_TREE: dict[str, Any] = {key: {} for key in (
     "job_id", "title", "state", "phase", "executable", "waits_for", "waiting_reason", "verification",
-    "story")} | {"tasks": {"total": {}, "done": {}, "current": {}}}
+    "story", "blocking_criterion", "mission_id")} | {"tasks": {"total": {}, "done": {}, "current": {}}}
 
 
 def record_job_waits(job_ids: list[str], waiting_ids: list[str]) -> None:
@@ -99,17 +100,39 @@ def order_jobs_view(job_ids: list[str]) -> list[dict[str, Any]]:
     """
     from packages.orchestration.pingpong_job import load_job_plan
 
+    missions = job_mission_ids(job_ids)
     view: list[dict[str, Any]] = []
     for job_id in job_ids:
         job = load_job_plan(job_id)
-        view.append(_missing(job_id) if job is None else _job_entry(job))
+        entry = _missing(job_id) if job is None else _job_entry(job)
+        view.append({**entry, "mission_id": missions.get(job_id)})
     return view
+
+
+def job_mission_ids(job_ids: list[str]) -> dict[str, str]:
+    """The mission each of *job_ids* is linked to, read in one pass over the missions' chains."""
+    from packages.orchestration.mission_state import list_missions, project_ids_with_missions
+
+    wanted, found = set(job_ids), {}
+    for project_id in project_ids_with_missions() if wanted else []:
+        for mission in list_missions(project_id):
+            found.update({link.job_id: str(mission.id) for link in mission.job_links if link.job_id in wanted})
+    return found
 
 
 def _missing(job_id: str) -> dict[str, Any]:
     return {"job_id": job_id, "title": "", "state": "missing", "phase": "failed", "executable": False,
             "tasks": {"total": 0, "done": 0, "current": ""}, "waits_for": None, "waiting_reason": "",
-            "verification": None, "story": f"/api/v1/jobs/{job_id}/story"}
+            "verification": None, "story": f"/api/v1/jobs/{job_id}/story", "blocking_criterion": None}
+
+
+def job_blocking_criterion(job: Any) -> str | None:
+    """The criterion a blocked or failed job did not meet: the acceptance of its first task that ended
+    blocked or failed, in the planner's own words, or None (DECISION amend1023 D11)."""
+    from packages.orchestration.pingpong_job import TASK_BLOCKED, TASK_FAILED
+
+    task = next((task for task in job.tasks if task.status in (TASK_BLOCKED, TASK_FAILED)), None)
+    return (str(task.acceptance).strip() or None) if task is not None else None
 
 
 def _wait_reason(waits_for: str) -> str:
@@ -163,4 +186,5 @@ def _job_entry(job: Any) -> dict[str, Any]:
         "waiting_reason": _wait_reason(waits_for) if waiting else "",
         "verification": job_verification(job)["status"],
         "story": f"/api/v1/jobs/{job.job_id}/story",
+        "blocking_criterion": job_blocking_criterion(job) if phase in ("blocked", "failed") else None,
     }

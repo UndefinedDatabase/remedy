@@ -68,6 +68,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_order_cancel_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/orders/{order}"):
         "test_the_order_poll_route_is_pinned_with_its_statuses",
+    ("GET", "/api/v1/orders/{order}/story"):
+        "test_the_order_story_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/orders"):
         "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/jobs/{job}/logs"): "test_the_logs_route_answers_the_doctor_logs_command",
@@ -431,7 +433,15 @@ def test_the_exclusion_list_holds_the_feature_files_initial_entries():
         "patch.apply", "patch.revert", "rollback.*", "snapshot.create", "config.set",
         "config.init", "init.run", "self-repair.proposal-approve", "self-repair.proposal-deny",
         "worker.unload", "runtime.stop", "ui.stop", "queue.rm", "queue.reclaim",
+        "client.grant-host-tools", "client.revoke-host-tools",
     )
+
+
+def test_the_order_story_route_is_pinned_with_its_statuses():
+    """amend1023 D11: the order's story; `tests/orchestration/test_order_story.py` drives its answers."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/orders/{order}/story")
+    assert (route.method, route.twin, route.refusals) == ("GET", "client.order-story", (("order_not_found", 404),))
+    assert route.body == () and route.query == () and route.query_values == ()
 
 
 def test_command_is_excluded_matches_a_wildcard_entry():
@@ -679,7 +689,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
     assert (route.method, route.twin, route.refusals) == (
         "GET", "doctor.health", (("health_failed", 503),))
-    assert public_api.PUBLIC_API_VERSION == "1.28"
+    assert public_api.PUBLIC_API_VERSION == "1.29"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
                         ("check_disk_floor", "disk"), ("check_providers", "providers"),
@@ -897,9 +907,10 @@ def test_the_ledger_holds_one_line_per_request_in_order(tcp_server):
     records = [json.loads(line) for line in raw_lines]
     for record in records:
         assert list(record.keys()) == ["ts", "token_fp", "client", "method", "path", "status",
-                                       "error"]
+                                       "error", "host_tools"]
         assert record["method"] == "GET"
         assert record["client"] == ""
+        assert record["host_tools"] is False
 
     assert records[0]["status"] == 200
     assert records[0]["error"] == ""
@@ -928,6 +939,44 @@ def test_the_ledger_holds_one_line_per_request_in_order(tcp_server):
 
     assert (ledger_path.parent.stat().st_mode & 0o777) == 0o700
     assert (ledger_path.stat().st_mode & 0o777) == 0o600
+
+
+def test_a_write_naming_the_claude_code_cli_is_ledgered_host_tools_true(tmp_path_factory):
+    """amend1023 D6: every write whose body names `claude-cli` under a provider key is marked, even a
+    refused one; a write naming another provider is not. The supervisor's socket handler with a
+    runner, the door a write is served on (no order launcher here, so each order answers 405)."""
+    import socketserver
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path_factory.mktemp("ht") / "s.sock"
+    server = _Server(str(sock_path), socket_handler_class(SERVER_TOKEN, runner=SR.CommandRunner(serve_paths())))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        for body in ({"builder_provider": "claude-cli"}, {"planner_provider": "claude-cli"},
+                     {"reviewer_provider": "pi"}):
+            status, _answer, _headers = _unix_request(
+                sock_path, "POST", "/api/v1/orders", headers=_bearer(SERVER_TOKEN),
+                body=json.dumps(body).encode("utf-8"))
+            assert status == 405
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+    records = [json.loads(line) for line in (Path(os.environ["REMEDY_DATA_DIR"]) / "api" / "calls.jsonl")
+               .read_text(encoding="utf-8").splitlines()]
+    assert [(record["method"], record["host_tools"]) for record in records] == [
+        ("POST", True), ("POST", True), ("POST", False)]
+
+
+def test_the_host_tools_reading_of_a_body():
+    assert public_api.public_api_call_host_tools(b'{"reviewer_provider": "claude-cli"}') is True
+    assert public_api.public_api_call_host_tools(b'{"builder_provider": "pi"}') is False
+    assert public_api.public_api_call_host_tools(b"") is False
+    assert public_api.public_api_call_host_tools(b"[\"claude-cli\"]") is False
+    assert public_api.public_api_call_host_tools(b"\xff") is False
 
 
 # -- K: a failed ledger write never changes the answer ---------------------------
@@ -1087,7 +1136,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.28"
+    assert public_api.PUBLIC_API_VERSION == "1.29"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1277,7 +1326,7 @@ def test_the_stop_route_is_pinned_with_its_body_and_its_statuses():
     assert (route.refusal_default, route.refusals) == (
         409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
     assert "`api`" in route.description and "job_not_stoppable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.28"
+    assert public_api.PUBLIC_API_VERSION == "1.29"
 
 
 @pytest.mark.parametrize("body, reason", [({"reason": "obsolete"}, "obsolete"), ({}, "")])
@@ -1295,7 +1344,7 @@ def test_the_cancel_route_is_pinned_with_its_body_and_its_statuses():
     assert (route.refusal_default, route.refusals) == (
         409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
     assert "`api`" in route.description and "job_not_cancellable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.28"
+    assert public_api.PUBLIC_API_VERSION == "1.29"
 
 
 def test_a_cancel_post_runs_the_command_with_its_reason_and_the_api_door():
@@ -1460,7 +1509,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.28"
+    assert public_api.PUBLIC_API_VERSION == "1.29"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -1554,7 +1603,7 @@ def test_the_order_create_route_is_pinned_with_its_body_and_its_statuses():
         ("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
         ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
         ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
-        ("capture_review", "flag"))
+        ("capture_review", "flag"), ("planner_provider", "string"))
     assert route.refusals == ()
     assert route.refusal_default is None
     assert route.starts_order is True
@@ -1618,6 +1667,56 @@ def test_a_provider_http_does_not_offer_is_refused_before_anything_starts(regist
     calls, start = _recording_order_starter(_fixture_order_record())
     status, answer, _headers = _post_order({"order": _order_text(registered_project_slug), **body}, start)
     assert (status, answer["error"]) == (400, "api_provider_not_offered")
+    assert calls == []
+
+
+def _host_tools_client(granted: bool):
+    from packages.orchestration.api_clients import ApiClient
+
+    return ApiClient(name="orb-test", token="t" * 40, projects=(), max_total_tokens=None,
+                     max_provider_calls=None, may_apply=False, host_tools=granted)
+
+
+@pytest.mark.parametrize("body, options", [
+    ({"builder_provider": "claude-cli", "reviewer_provider": "claude-cli"},
+     ["--builder-provider=claude-cli", "--reviewer-provider=claude-cli"]),
+    ({"planner_provider": "claude-cli"}, ["--planner-provider=claude-cli"]),
+    ({"planner_provider": "ollama"}, ["--planner-provider=ollama"]),
+])
+def test_a_client_granted_host_tools_may_name_the_claude_code_cli_and_the_planner(
+        registered_project_slug, monkeypatch, body, options):
+    """amend1023 D6: the body passes to `remedy do` unchanged for a client holding `host_tools`."""
+    import shutil
+
+    from packages.orchestration import api_clients
+
+    monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(api_clients, "client_lists_project", lambda client, keys: True)
+    text = _order_text(registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    _run_calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(
+        ORDER_CREATE_PATH, json.dumps({"order": text, **body}).encode("utf-8"), run, start,
+        client=_host_tools_client(True))
+    assert status == 202, answer
+    assert calls == [(text, options)]
+
+
+@pytest.mark.parametrize("body", [{"builder_provider": "claude-cli"}, {"planner_provider": "ollama"},
+                                  {"planner_provider": "claude-cli"}])
+def test_every_other_client_is_refused_the_claude_code_cli_and_the_planner(
+        registered_project_slug, monkeypatch, body):
+    """amend1023 D6: without `host_tools`, the same 400 as before, naming the property."""
+    from packages.orchestration import api_clients
+
+    monkeypatch.setattr(api_clients, "client_lists_project", lambda client, keys: True)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    _run_calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(
+        ORDER_CREATE_PATH, json.dumps({"order": _order_text(registered_project_slug), **body}).encode("utf-8"),
+        run, start, client=_host_tools_client(False))
+    assert (status, answer["error"]) == (400, "api_provider_not_offered")
+    assert "host_tools" in answer["message"]
     assert calls == []
 
 
@@ -2585,7 +2684,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.28"
+    assert public_api.PUBLIC_API_VERSION == "1.29"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
@@ -2849,7 +2948,7 @@ def test_the_note_route_is_pinned_with_its_body_and_its_statuses():
         ("invalid_message", 400), ("unknown_task", 404),
     )
     assert "`api`" in route.description and "job_not_steerable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.28"
+    assert public_api.PUBLIC_API_VERSION == "1.29"
 
 
 def test_the_note_route_takes_a_steering_note_for_one_task(tmp_path):
@@ -3029,7 +3128,7 @@ def test_the_story_route_answers_the_client_story_command(tcp_server, unix_serve
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.story",
         (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.28"
+    assert public_api.PUBLIC_API_VERSION == "1.29"
     job_id = _saved_job_with_id("abc1230000000000")
     expected = build_ok(**job_client_story(job_id, require_job_plan(job_id)))
     assert expected["state"] == "queued" and story_problems(expected) == []     # exec-1017c: not "planning"
@@ -3110,7 +3209,7 @@ def test_the_now_route_answers_the_running_jobs_entry_and_workers(tcp_server, un
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/now")
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.now", (), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.28"
+    assert public_api.PUBLIC_API_VERSION == "1.29"
     job_id = _running_job_with_id("abc1234444444444")
     _write_insight_pulse(job_id)
 

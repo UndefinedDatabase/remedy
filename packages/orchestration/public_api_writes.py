@@ -127,8 +127,9 @@ _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
 _ORDER_CREATE_FLAGS: tuple[str, ...] = ("no_llm", "new_mission", "force_job", "force_mission", "capture_review")
 
 #: The strings of the order-create route's body, each passed as its `remedy do` option with its
-#: value (DECISION F253 D14 (1)).
-_ORDER_CREATE_STRINGS: tuple[str, ...] = ("builder_provider", "reviewer_provider", "deadline")
+#: value (DECISION F253 D14 (1)); `planner_provider` only ever reaches here from a client with
+#: `host_tools`, because `remote_provider_refusal` refuses it for every other (DECISION amend1023 D6).
+_ORDER_CREATE_STRINGS: tuple[str, ...] = ("builder_provider", "reviewer_provider", "planner_provider", "deadline")
 
 
 def _order_text_and_options(body: dict[str, Any],
@@ -164,7 +165,7 @@ def _order_text_and_options(body: dict[str, Any],
 
     if "order" not in body:
         raise PublicApiWriteRefusal(400, "api_body_invalid", "'order' is required")
-    if why := remote_provider_refusal(body):
+    if why := remote_provider_refusal(body, client):
         raise PublicApiWriteRefusal(400, API_PROVIDER_NOT_OFFERED, why)
     order_text = body["order"]
     try:

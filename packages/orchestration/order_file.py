@@ -10,7 +10,8 @@ blank line is ignored, the keys are `project` (once, or once per project of an
 order over several projects, each project at most once; DECISION F205 D4),
 `contract`, the four caps `max-cost-usd`, `max-total-tokens`, `max-provider-calls`
 and `max-wall-clock-minutes` (each at most once; DECISION F304 D14 added the last
-three) and `constraint` (as often as needed). The constraints
+three) and `constraint` (as often as needed), and `shape` (at most once, only the value
+`single-job`: the order is one job with no milestones, DECISION amend1023 D7). The constraints
 reach the planner appended to the order text. This module knows nothing of
 the command line; `apps/cli/commands/do_cmd.py` calls it first. DECISION
 F295 D3: `read_order_file` also returns the file's resolved absolute path
@@ -39,12 +40,16 @@ def order_no_cap_message(source: str) -> str:
             "Nothing was run.")
 
 
+#: The `shape:` header value that makes an order one job with no milestones (DECISION amend1023 D7).
+ORDER_SHAPE_SINGLE_JOB = "single-job"
+
 #: The header's recognised keys, each meaning what the flag of the same name
-#: means; `constraint` is the one key a header may repeat.
-ORDER_FILE_HEADER_KEYS = ("project", "contract", *ORDER_FILE_CAP_KEYS, "constraint")
+#: means; `constraint` is the one key a header may repeat, and `shape` takes only
+#: `ORDER_SHAPE_SINGLE_JOB`.
+ORDER_FILE_HEADER_KEYS = ("project", "contract", *ORDER_FILE_CAP_KEYS, "constraint", "shape")
 
 #: The single-valued keys — repeating one of these is `order_file_invalid_header`.
-_SINGLE_VALUED_KEYS = ("contract", *ORDER_FILE_CAP_KEYS)
+_SINGLE_VALUED_KEYS = ("contract", *ORDER_FILE_CAP_KEYS, "shape")
 
 #: The header's opening and closing delimiter, matched by exact line equality.
 _HEADER_DELIMITER = "---"
@@ -86,6 +91,8 @@ class OrderFile:
     max_wall_clock_minutes: str | None = None
     #: Every project the header names, in its order (DECISION F205 D4); `project` is the first.
     projects: tuple[str, ...] = ()
+    #: The header's `shape:` value, `ORDER_SHAPE_SINGLE_JOB` or None (DECISION amend1023 D7).
+    shape: str | None = None
 
     @property
     def project_selector(self) -> str | tuple[str, ...] | None:
@@ -157,6 +164,12 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
                     "order_file_invalid_header",
                     f"{path}: line {line_no} ({line!r}) has an empty value.",
                 )
+            if key == "shape" and value != ORDER_SHAPE_SINGLE_JOB:
+                raise OrderFileError(
+                    "order_file_invalid_header",
+                    f"{path}: line {line_no} ({line!r}) names the shape {value!r}; the one shape a "
+                    f"header may name is {ORDER_SHAPE_SINGLE_JOB!r}.",
+                )
             if key in _SINGLE_VALUED_KEYS:
                 if key in single_values:
                     raise OrderFileError(
@@ -194,7 +207,7 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
         max_total_tokens=single_values.get("max-total-tokens"),
         max_provider_calls=single_values.get("max-provider-calls"),
         max_wall_clock_minutes=single_values.get("max-wall-clock-minutes"),
-        projects=tuple(projects),
+        projects=tuple(projects), shape=single_values.get("shape"),
     )
 
 

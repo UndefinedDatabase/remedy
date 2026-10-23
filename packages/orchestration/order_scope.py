@@ -336,3 +336,20 @@ def work_task_ids(tasks: list[Any], requested: str) -> set[str]:
     out, and at least one task always stays."""
     keep = {t.id for t in tasks if not is_checking_only(f"{t.title}. {t.goal}", requested=requested)}
     return keep or {t.id for t in tasks}
+
+
+#: An order that forbids new files in its words, English or German (DECISION amend1023 D9): "no new
+#: documentation files", "do not create new files", "keine neuen Dokumentationsdateien", "keine neue
+#: Datei". Every new file outside the files the order names is then removed from the result.
+_NO_NEW_FILES = re.compile(
+    r"\bno\s+new\s+(?:documentation|docs?)\b(?:\s+files?)?"
+    r"|\bno\s+new\s+files?\b"
+    r"|\b(?:do\s+not|don't|never)\s+(?:create|add|write)\s+(?:any\s+)?new\s+(?:documentation\s+|docs?\s+)?files?\b"
+    r"|\bkeine\s+neuen?\s+(?:doku(?:mentations)?-?)?dateie?n?\b"
+    r"|\bkeine\s+neuen?\s+(?:doku(?:mentation)?)\b",
+    re.IGNORECASE)
+
+
+def order_forbids_new_files(order: str) -> bool:
+    """True when *order*'s words forbid new files or new documentation files (DECISION amend1023 D9)."""
+    return _NO_NEW_FILES.search(order) is not None

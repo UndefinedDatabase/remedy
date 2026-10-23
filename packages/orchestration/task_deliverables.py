@@ -402,3 +402,156 @@ def fold_inspection_tasks(plan: TaskPlan) -> TaskPlan | None:
         return TaskPlan.model_validate({**plan.model_dump(), "tasks": [t.model_dump() for t in tasks]})
     except ValidationError:
         return None
+
+
+#: A task's `inputs` key holding the scope findings of its job's plan, and a job's `metadata` key
+#: holding those of its run; the client story names both under `scope_findings` (DECISION amend1023 D8).
+TASK_SCOPE_FINDINGS_KEY = "scope_findings"
+#: A criterion that demands a file neither the order nor the repository names: removed before the run.
+SCOPE_FINDING_CRITERION_DROPPED = "criterion_dropped"
+#: A new file outside the order's named files, under an order that forbids new files: removed from the result.
+SCOPE_FINDING_FILE_REMOVED = "file_removed"
+#: The criterion every planned task carries when the order forbids new files (DECISION amend1023 D9), so the
+#: builder's prompt and the reviewer's check both read it; a stray file never blocks, Remedy removes it.
+NO_NEW_FILES_CRITERION = ("Creates no new file beyond the files the order names, because the order asks for no "
+                          "new files, documentation files included; Remedy removes such a file from the result "
+                          "and records it, so that file alone is no reason to fail the task.")
+
+
+def _named_by_order_or_repository(path: str, scope: list[str], tracked: list[str], own: list[str],
+                                  tests_requested: bool) -> bool:
+    """Whether *path* is a file the order names (*scope*), the repository tracks or holds as a folder, the
+    task itself declares (*own*, its deliverable the scope guard already judged), or a test the order asks for."""
+    from packages.orchestration.do_scope import _same_file, resolve_order_path
+    from packages.orchestration.order_scope import is_test_path
+
+    folder = path.rstrip("/") + "/"
+    return (any(_same_file(path, named, tracked) for named in (*scope, *own))
+            or resolve_order_path(path, tracked) is not None
+            or any(entry.startswith(folder) for entry in tracked)
+            or (tests_requested and is_test_path(path)))
+
+
+# WHY (amend1023 D8): F312's scope guard judged a task by its deliverable only; the probe of
+# 2026-10-23 blocked on a criterion demanding a notes file nobody ordered.
+def drop_unordered_criteria(plan: TaskPlan, order: str, repo: str) -> tuple[TaskPlan, list[dict[str, Any]]]:
+    """*plan* with every acceptance line removed that names a file neither *order* nor the repository at
+    *repo* names, and the findings, each ``{key, path, text}`` with the line's own wording.
+
+    A task whose every line is removed keeps its goal as its one criterion, so the plan stays valid; a
+    removed criterion never blocks anything. When the order forbids new files
+    (`order_scope.order_forbids_new_files`), every task also gains `NO_NEW_FILES_CRITERION`
+    (DECISION amend1023 D9). An empty *order* changes nothing.
+    """
+    if not order:
+        return plan, []
+    from packages.orchestration.do_lane import tracked_repo_files
+    from packages.orchestration.do_scope import order_scope_files
+    from packages.orchestration.order_scope import order_forbids_new_files, requests_test_files
+
+    tracked = tracked_repo_files(repo) if repo else []
+    scope, tests_requested = order_scope_files(order, tracked), requests_test_files(order)
+    no_new_files = order_forbids_new_files(order)
+    findings: list[dict[str, Any]] = []
+    tasks: list[PlannedTask] = []
+    for task in plan.tasks:
+        own = [str(hint).strip() for hint in task.files_hint if str(hint).strip()]
+        kept: list[str] = []
+        for line in task.acceptance:
+            foreign = [path for path in explicit_order_paths(line)
+                       if not _named_by_order_or_repository(path, scope, tracked, own, tests_requested)]
+            if foreign:
+                findings.append({"key": SCOPE_FINDING_CRITERION_DROPPED, "path": foreign[0], "text": line.strip()})
+            else:
+                kept.append(line)
+        if no_new_files and NO_NEW_FILES_CRITERION not in kept:
+            kept.append(NO_NEW_FILES_CRITERION)
+        tasks.append(task if kept == list(task.acceptance) else task.model_copy(
+            update={"acceptance": kept if any(line != NO_NEW_FILES_CRITERION for line in kept)
+                    else [task.goal, *kept]}))
+    return plan.model_copy(update={"tasks": tasks}), findings
+
+
+def attach_scope_findings(tasks: list[TaskEntry], findings: list[dict[str, Any]]) -> list[TaskEntry]:
+    """*tasks*, the first carrying *findings* under `TASK_SCOPE_FINDINGS_KEY` when there are any."""
+    if tasks and findings:
+        tasks[0].inputs[TASK_SCOPE_FINDINGS_KEY] = [dict(finding) for finding in findings]
+    return tasks
+
+
+def _job_order_text(job: Any) -> str:
+    """The whole order the job's batch came from, read from its mission; the job's own prompt otherwise."""
+    from packages.orchestration.mission_state import mission_for_job
+
+    job_id = str(job.job_id)
+    try:
+        mission = mission_for_job(job_id)
+    except (OSError, ValueError):
+        mission = None
+    link = next((link for link in getattr(mission, "job_links", ()) if link.job_id == job_id), None)
+    batch = next((batch for batch in getattr(mission, "orders", ())
+                  if link is not None and batch.order_id == link.order_id), None)
+    return str(getattr(batch, "text", "") or job.user_prompt or job.mission or "")
+
+
+def _is_new_file(workspace: str, base_tree: str, path: str) -> bool:
+    """True when *path* is absent from the job's starting tree *base_tree*; False when git cannot say,
+    which includes a workspace git does not read or a starting tree it does not hold."""
+    import subprocess
+
+    if not workspace or not base_tree:
+        return False
+    try:
+        for spec in (base_tree, f"{base_tree}:{path}"):
+            proc = subprocess.run(["git", "cat-file", "-e", spec], cwd=workspace, capture_output=True, timeout=30)
+            if proc.returncode != 0:
+                return spec != base_tree
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return False
+
+
+def _normal_path(path: Any) -> str:
+    """*path* as `pingpong_job.task_fence_refusal` reads a changed path: `/`-separated, no `.` part."""
+    return "/".join(part for part in str(path).replace("\\", "/").split("/") if part and part != ".")
+
+
+# WHY (amend1023 D9): an order that says "no new documentation files" is obeyed without blocking: the
+# file nobody ordered leaves the result and the story says so, the rest of the work stands.
+def drop_unordered_new_files(job: Any, result: Any, changed: list[str]) -> list[str]:
+    """*changed* without the new files the order forbade, each removed from the workspace and the result.
+
+    Acts only when the order of *job*'s batch forbids new files (`order_scope.order_forbids_new_files`).
+    A changed path that is new to the job's starting tree, is not named by the order, is no test the
+    order asks for and is no tool cache, is deleted from the job's workspace, taken out of *result*'s
+    `staged_files` and `safe_diff_files`, and recorded under the job's `TASK_SCOPE_FINDINGS_KEY` as
+    `SCOPE_FINDING_FILE_REMOVED`; it never blocks the task.
+    """
+    from pathlib import Path
+
+    from packages.orchestration.do_lane import tracked_repo_files
+    from packages.orchestration.do_scope import order_scope_files
+    from packages.orchestration.order_scope import order_forbids_new_files, requests_test_files
+    from packages.orchestration.pingpong_loop import _is_target_noise
+
+    order = _job_order_text(job)
+    if not changed or not order_forbids_new_files(order):
+        return changed
+    tracked = tracked_repo_files(str(job.repo_path or ""))
+    scope, tests_requested = order_scope_files(order, tracked), requests_test_files(order)
+    workspace = str(job.job_workspace_path or "")
+    removed = [path for path in changed
+               if not any(_is_target_noise(part) for part in path.split("/"))
+               and not _named_by_order_or_repository(path, scope, [], [], tests_requested)
+               and _is_new_file(workspace, str(job.job_initial_tree or ""), path)]
+    for path in removed:
+        target = Path(workspace) / path
+        if target.is_file() and not target.is_symlink() and Path(workspace).resolve() in target.resolve().parents:
+            target.unlink()
+        for listed in (result.staged_files, result.safe_diff_files):
+            listed[:] = [entry for entry in listed if _normal_path(entry) != path]
+    if removed:
+        known = job.metadata.setdefault(TASK_SCOPE_FINDINGS_KEY, [])
+        known += [{"key": SCOPE_FINDING_FILE_REMOVED, "path": path, "text": None} for path in removed
+                  if not any(entry.get("path") == path for entry in known)]
+    return [path for path in changed if path not in removed]

@@ -96,7 +96,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.28"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.29"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -300,6 +300,10 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({"job_not_cancellable"}),
         "a JobCancelRefused's token; the one JobCancelRefused(...) in "
         "packages/orchestration/job_cancel.py names job_not_cancellable (exec-1017c)",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_order_story:answer['error']": (
+        frozenset({"order_not_found"}),
+        "the one refusal order_story.order_story_answer builds (amend1023 D11)",
     ),
     "apps.cli.commands.client_cmd:_cmd_client_diff:exc.token": (
         frozenset({"diff_not_ready", "diff_unavailable"}),
@@ -579,10 +583,15 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         "the keys StopStatus.to_json in packages/orchestration/safe_points.py returns, and the "
         "job_status and stopped _print_status stores into that payload",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_order_story:**story": (
+        frozenset({"client", "missions", "order_id", "phase", "state"}),
+        "the keys order_client_story in packages/orchestration/order_story.py returns (amend1023 D11)",
+    ),
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
             "changes", "dirty_start", "end", "ended_at", "job_id", "next", "note_open", "numbers",
-            "order", "started_at", "state", "state_detail", "steps", "updated_at", "verification",
+            "order", "scope_findings", "started_at", "state", "state_detail", "steps", "updated_at",
+            "verification",
         }),
         "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
         "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",
@@ -751,6 +760,8 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
         set(hunk_decision_record._RECORD_KEYS))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_story:**story"] == (
         _returned_dict_keys("packages/orchestration/client_story.py", "build_client_story"))
+    assert sites["apps.cli.commands.client_cmd:_cmd_client_order_story:**story"] == (
+        _returned_dict_keys("packages/orchestration/order_story.py", "order_client_story"))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_diff:**answer"] == (
         _returned_dict_keys("packages/orchestration/client_diff.py", "job_client_diff"))
     assert sites["apps.cli.commands.cancel_cmd:_cmd_job_cancel:**answer"] == (
@@ -1494,6 +1505,10 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # and no order the supervisor started exists here; their real runs are tests/cli/test_cancel_cmd.py's.
     assert answer("job.abandon", ["job", "abandon", job_id], 1)["error"] == "job_not_cancellable"
     assert answer("client.cancel-order", ["client", "cancel-order", "0123456789abcdef"], 3)["error"] == (
+        "order_not_found")
+    # amend1023 D11: no order here either; the order story's real answers are
+    # tests/orchestration/test_order_story.py's and the recorded client-order-story-running.json.
+    assert answer("client.order-story", ["client", "order-story", "0123456789abcdef"], 3)["error"] == (
         "order_not_found")
     # Remedy's own health passes or fails on this machine's state, so the run accepts either exit
     # code; its answer's keys are the same in both (DECISION F199 D3).

@@ -1543,11 +1543,11 @@ class _RemedyHandler(BaseHTTPRequestHandler):
 
     def _send_public_api_answer(self, method: str, path: str, status: int,
                                  body: dict[str, Any], headers: dict[str, str],
-                                 client_name: str = "") -> None:
+                                 client_name: str = "", host_tools: bool = False) -> None:
         """Ledger one call under the public HTTP API, then send its decided answer.
 
-        CLIENT_NAME is the name of the client whose token the call presented, empty for the
-        server's token and for a refused one (DECISION F253 D16 (7)).
+        CLIENT_NAME is the name of the client whose token the call presented, empty for the server's token
+        and for a refused one (DECISION F253 D16 (7)); HOST_TOOLS marks a call naming `claude-cli` (amend1023 D6).
 
         The shared tail of `_send_public_api_get` and `_send_public_api_refused_method`:
         both decide their own `(status, body, headers)` first, so every attempt under this
@@ -1560,8 +1560,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         error = "" if body.get("ok") else body.get("error", "")
         try:
             append_public_api_call(
-                token_fp=token_fingerprint(self._supplied_bearer_token()),
-                client=client_name, method=method, path=path, status=status, error=error)
+                token_fp=token_fingerprint(self._supplied_bearer_token()), client=client_name, method=method,
+                path=path, status=status, error=error, host_tools=host_tools)
         except OSError:   # DECISION F253 D2 (1), F009 D14 clause four
             pass
         self._send_json(status, body, headers=headers)
@@ -1587,20 +1587,20 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                                      client_name=client.name if client else "")
 
     def _send_public_api_post(self, path: str, query: str) -> None:
-        """Answer a POST under the public HTTP API namespace through `command_runner` (DECISION
-        F253 D9).
+        """Answer a POST under the public HTTP API namespace through `command_runner` (DECISION F253 D9).
 
-        The token is decided first, before the body is read, so an unauthenticated caller
-        starts no child and learns nothing; a body above `COMMAND_REQUEST_MAX_BYTES` is refused
-        without being read, and a query string is refused, as no write route takes one.
+        The token is decided first, before the body is read, so an unauthenticated caller starts no child
+        and learns nothing; a body above `COMMAND_REQUEST_MAX_BYTES` is refused unread, and so is a query string.
         """
         from apps.cli.json_envelope import build_error
         from packages.orchestration.public_api import (
             answer_public_api_post,
+            public_api_call_host_tools,
             public_api_token_refusal,
         )
 
         headers: dict[str, str] = {}
+        raw_body = b""
         accepted, client = self._public_api_caller()
         if not accepted:
             status, body = public_api_token_refusal()
@@ -1620,16 +1620,16 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                     "api_query_invalid", f"'{path}' accepts no query string")
             else:
                 raw_body = self.rfile.read(length) if length else b""
-                start_order = self.order_launcher.start if self.order_launcher is not None else None
-                start_run = (
-                    (lambda job, options: self.run_launcher.start(
-                        job, json_output=True, options=options))
-                    if self.run_launcher is not None else None)
+                start_order = None if self.order_launcher is None else (    # amend1023 D11: who ordered it
+                    lambda text, options, **keys: self.order_launcher.start(
+                        text, options, client=client.name if client else "", **keys))
+                start_run = ((lambda job, options: self.run_launcher.start(job, json_output=True, options=options))
+                             if self.run_launcher is not None else None)
                 status, body, headers = answer_public_api_post(
                     path, raw_body, self.command_runner.run, start_order, client=client,
                     start_run=start_run)
-        self._send_public_api_answer("POST", path, status, body, headers,
-                                     client_name=client.name if client else "")
+        self._send_public_api_answer("POST", path, status, body, headers, client_name=client.name if client else "",
+                                     host_tools=public_api_call_host_tools(raw_body))
 
     def _send_public_api_refused_method(self, method: str, path: str) -> None:
         """Answer a method no route takes under the public HTTP API namespace: a POST with no runner,

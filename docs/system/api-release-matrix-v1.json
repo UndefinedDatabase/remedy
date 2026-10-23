@@ -1,8 +1,8 @@
 {
  "schema": "remedy_api_release_matrix_v1",
  "baseline": "1.17",
- "current": "1.28",
- "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.28 but `orders.plan_source`, a key no record ever carried (1.27); a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
+ "current": "1.29",
+ "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.29 but `orders.plan_source`, a key no record ever carried (1.27); a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
  "versions": [
   {
    "version": "1.18",
@@ -349,6 +349,39 @@
      "after": "measured to the moment of the answer (fix1022-review-findings, R-1423)"
     }
    ]
+  },
+  {
+   "version": "1.29",
+   "pr": null,
+   "branch": "feature/amend1023-universe-trust",
+   "added": [
+    "route `GET /api/v1/orders/{order}/story` and its twin `remedy client order-story`: the order's missions, milestones and jobs in closed words, with who gave it (amend1023-universe-trust, DECISION amend1023 D11)",
+    "order job keys `mission_id` and `blocking_criterion` in `GET /api/v1/orders/{order}` (DECISION amend1023 D11)",
+    "story key `scope_findings` and its words `criterion_dropped` and `file_removed` (DECISIONs amend1023 D8, D9)",
+    "execution answer key `host_tools`, and the order body key `planner_provider` for a client granted `host_tools` (DECISION amend1023 D6)",
+    "order file header key `shape` with the one value `single-job` (DECISION amend1023 D7)",
+    "call ledger field `host_tools` in `api/calls.jsonl` (DECISION amend1023 D6)"
+   ],
+   "value_changes": [
+    {
+     "field": "`offered_over_http` of `claude-cli` under `builder`, `reviewer` and `repair`, and `selectable_over_http` of `planner`, in `GET /api/v1/execution`",
+     "case": "a client token whose registry entry holds `host_tools`",
+     "before": "`false` for every caller",
+     "after": "`true`; every other caller still reads `false` (DECISION amend1023 D6)"
+    },
+    {
+     "field": "`not_offered_reason` of `claude-cli`, and of the `planner` and `repair` providers, in `GET /api/v1/execution`, and the `api_provider_not_offered` message",
+     "case": "a caller without `host_tools`",
+     "before": "says the Claude Code CLI is offered on the operator's command line only",
+     "after": "also names the property `host_tools` and `remedy client grant-host-tools` (DECISION amend1023 D6)"
+    },
+    {
+     "field": "`shape` and `shape_source` of a `remedy do` answer",
+     "case": "an order whose header says `shape: single-job`, or whose text names exactly one file, that routing does not bound",
+     "before": "the planner's shape, often `milestones` from `planner`",
+     "after": "`one job` from `the order`; the plan step's lane reason names the rule (DECISION amend1023 D7)"
+    }
+   ]
   }
  ],
  "inventory": {
@@ -442,7 +475,8 @@
    "POST /api/v1/jobs/{job}/run": "1.17",
    "POST /api/v1/jobs/{job}/stop": "1.18",
    "POST /api/v1/orders": "1.17",
-   "POST /api/v1/orders/{order}/cancel": "1.19"
+   "POST /api/v1/orders/{order}/cancel": "1.19",
+   "GET /api/v1/orders/{order}/story": "1.29"
   },
   "story.end_actions": {
    "abandon": "1.21",
@@ -550,7 +584,24 @@
    "state_detail": "1.17",
    "steps": "1.17",
    "updated_at": "1.17",
-   "verification": "1.17"
+   "verification": "1.17",
+   "scope_findings": "1.29"
+  },
+  "story.scope_findings": {
+   "criterion_dropped": "1.29",
+   "file_removed": "1.29"
+  },
+  "story.order_job_states": {
+   "planned": "1.29",
+   "waiting": "1.29",
+   "running": "1.29",
+   "blocked": "1.29",
+   "done": "1.29",
+   "applied": "1.29",
+   "stopped": "1.29",
+   "cancelled": "1.29",
+   "declined": "1.29",
+   "failed": "1.29"
   }
  }
 }

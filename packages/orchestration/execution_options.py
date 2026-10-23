@@ -8,6 +8,14 @@ CLI runs with the host's file and shell tools OUTSIDE the tool sandbox every Pi 
 unsandboxed agent over a repository. Remedy deliberately does not offer that over HTTP until its
 isolation is verified; it stays a command-line choice of the operator. A provider HTTP does not
 offer is refused before anything starts with 400 `api_provider_not_offered`, never substituted.
+
+Operator amendment amend1023-universe-trust (DECISION amend1023 D6) adds one exception the
+operator grants by hand: a client whose registry entry holds `host_tools` (granted only by
+`remedy client grant-host-tools` on this machine's command line) may name `claude-cli` as
+`builder_provider` and `reviewer_provider`, which repair follows, and may choose the planner with
+`planner_provider` (`ollama` or `claude-cli`). The boundary stays where it was: the property is set
+on the machine where the Claude Code CLI already runs with the same rights, never over HTTP. Every
+other caller, the server's own token included, is offered exactly what it was offered before.
 """
 from __future__ import annotations
 
@@ -23,26 +31,61 @@ REMOTE_ROLE_PROVIDERS: dict[str, tuple[str, ...]] = {
     "reviewer": ("pi", "ollama", "claude", "fake"),
 }
 
+#: What a client whose entry holds `host_tools` may name over HTTP, by role (DECISION amend1023 D6):
+#: `claude-cli` beside every provider above, and the planner, which no other client chooses.
+HOST_TOOLS_ROLE_PROVIDERS: dict[str, tuple[str, ...]] = {
+    "builder": (*REMOTE_ROLE_PROVIDERS["builder"], "claude-cli"),
+    "reviewer": (*REMOTE_ROLE_PROVIDERS["reviewer"], "claude-cli"),
+    "planner": ("ollama", "claude-cli"),
+}
+
+#: The client property that opens `HOST_TOOLS_ROLE_PROVIDERS`, as the registry and the answers spell it.
+HOST_TOOLS_PROPERTY = "host_tools"
+
 #: Providers the command line offers that HTTP does not, each with the reason a client is told.
 CLI_ONLY_PROVIDERS: dict[str, str] = {
     "claude-cli": ("the Claude Code CLI runs with the host's file and shell tools outside Remedy's "
-                   "tool sandbox, so it is offered on the operator's command line only"),
+                   "tool sandbox, so it is offered on the operator's command line, and over HTTP only "
+                   f"to a client the operator granted `{HOST_TOOLS_PROPERTY}` on this machine "
+                   "(remedy client grant-host-tools)"),
 }
 
 
-def remote_provider_refusal(body: dict[str, Any]) -> str:
-    """The sentence refusing a body's `builder_provider` or `reviewer_provider`, or "" when both are offered."""
-    for role, offered in REMOTE_ROLE_PROVIDERS.items():
-        value = body.get(f"{role}_provider")
+def client_has_host_tools(client: Any) -> bool:
+    """True for a client token whose registry entry holds `host_tools`; False for the server's own token."""
+    return bool(getattr(client, HOST_TOOLS_PROPERTY, False))
+
+
+def remote_role_providers(client: Any = None) -> dict[str, tuple[str, ...]]:
+    """Each role's providers CLIENT may name over HTTP: `HOST_TOOLS_ROLE_PROVIDERS` for a client with
+    `host_tools`, `REMOTE_ROLE_PROVIDERS` for every other caller (DECISION amend1023 D6)."""
+    return HOST_TOOLS_ROLE_PROVIDERS if client_has_host_tools(client) else REMOTE_ROLE_PROVIDERS
+
+
+#: The body keys that name a provider, the planner's included; a call naming `claude-cli` in any of
+#: them is a host-tools call the ledger marks (DECISION amend1023 D6).
+PROVIDER_BODY_KEYS: tuple[str, ...] = ("builder_provider", "reviewer_provider", "planner_provider")
+
+
+def remote_provider_refusal(body: dict[str, Any], client: Any = None) -> str:
+    """The sentence refusing a body's `builder_provider`, `reviewer_provider` or `planner_provider`, or
+    "" when each it names is offered to CLIENT and available here."""
+    offer = remote_role_providers(client)
+    for key in PROVIDER_BODY_KEYS:
+        value = body.get(key)
+        role = key.removesuffix("_provider")
+        offered = offer.get(role, ())
         if value is None or value in offered:
             continue
-        why = CLI_ONLY_PROVIDERS.get(str(value), "it is not a provider of this role")
-        return (f"{role}_provider {value!r} is not offered over HTTP: {why}; offered: "
-                f"{', '.join(offered)}. Nothing was started.")
-    for role in REMOTE_ROLE_PROVIDERS:
-        value = body.get(f"{role}_provider")
-        if value in ("pi", "claude") and not _available(value, None):
-            return (f"{role}_provider {value!r} is offered but not available on this server (see GET "
+        why = (CLI_ONLY_PROVIDERS.get(str(value), "it is not a provider of this role") if offered else
+               f"the planner is the server's configuration; only a client granted `{HOST_TOOLS_PROPERTY}` "
+               "chooses it over HTTP")
+        return (f"{key} {value!r} is not offered over HTTP: {why}; offered: "
+                f"{', '.join(offered) or 'none'}. Nothing was started.")
+    for key in PROVIDER_BODY_KEYS:
+        value = body.get(key)
+        if value in ("pi", "claude", "claude-cli") and not _available(value, None):
+            return (f"{key} {value!r} is offered but not available on this server (see GET "
                     f"/api/v1/execution). Nothing was started.")
     return ""
 
@@ -86,11 +129,21 @@ def _available(provider: str, ollama_models: list[str] | None) -> bool:
     return provider == "fake"
 
 
-def _not_offered_reason(role: str, provider: str) -> str:
-    if provider in REMOTE_ROLE_PROVIDERS.get(role, ()):
+def _offered_over_http(role: str, provider: str, client: Any) -> bool:
+    """Whether CLIENT may have PROVIDER serve ROLE over HTTP. Repair is never named over HTTP: it runs
+    on the builder's provider unless the server configures one, so a client with `host_tools` that
+    names `claude-cli` as builder is offered it for repair too (DECISION amend1023 D6)."""
+    if role == "repair":
+        return client_has_host_tools(client) and provider == "claude-cli"
+    return provider in remote_role_providers(client).get(role, ())
+
+
+def _not_offered_reason(role: str, provider: str, client: Any = None) -> str:
+    if _offered_over_http(role, provider, client):
         return ""
-    if role not in REMOTE_ROLE_PROVIDERS:
-        return "this role's provider is the server's configuration; HTTP does not choose it"
+    if role not in remote_role_providers(client):
+        return (f"this role's provider is the server's configuration; HTTP does not choose it, except "
+                f"`claude-cli` for planning and repair by a client granted `{HOST_TOOLS_PROPERTY}`")
     return CLI_ONLY_PROVIDERS.get(provider, "not a provider this role takes over HTTP")
 
 
@@ -104,12 +157,14 @@ def _role_default(role: str) -> tuple[str, str]:
     return config.provider, config.model or ""
 
 
-def execution_capabilities() -> dict[str, Any]:
-    """What this server offers a client for an execution, read now from its own configuration.
+def execution_capabilities(client: Any = None) -> dict[str, Any]:
+    """What this server offers CLIENT for an execution, read now from its own configuration.
 
-    `GET /api/v1/execution` and `remedy client execution --json` answer it. `available` is measured
-    (an executable found, the Ollama endpoint answering, an API key set) and never names a secret or
-    a host path; `offered_over_http` is the server's rule (`REMOTE_ROLE_PROVIDERS`).
+    `GET /api/v1/execution` answers it for the calling token, `remedy client execution --json` for
+    the server's own. `available` is measured (an executable found, the Ollama endpoint answering,
+    an API key set) and never names a secret or a host path; `offered_over_http` and
+    `selectable_over_http` are the server's rule for that caller (`remote_role_providers`, DECISION
+    amend1023 D6), and `host_tools` says whether the caller holds the property.
     """
     from packages.orchestration.budget_profiles import budget_profiles_offer, provider_class
     from packages.orchestration.client_story_words import STORY_STEP_IDS
@@ -130,18 +185,19 @@ def execution_capabilities() -> dict[str, Any]:
         default_provider, default_model = _role_default(role)
         roles[role] = {
             "default_provider": default_provider, "default_model": default_model,
-            "selectable_over_http": role in REMOTE_ROLE_PROVIDERS,
+            "selectable_over_http": role in remote_role_providers(client),
             "providers": [{
                 "id": provider, "available": _available(provider, models),
-                "offered_over_http": provider in REMOTE_ROLE_PROVIDERS.get(role, ()),
+                "offered_over_http": _offered_over_http(role, provider, client),
                 "isolation": _PROVIDER_ISOLATION[provider],
                 "class": provider_class(provider),
-                "not_offered_reason": _not_offered_reason(role, provider),
+                "not_offered_reason": _not_offered_reason(role, provider, client),
                 "models": (models or []) if provider in ("pi", "ollama") else [],
             } for provider in providers],
         }
     limits = pi_loop_limits()
     return {
+        HOST_TOOLS_PROPERTY: client_has_host_tools(client),
         "roles": roles,
         "lanes": [DO_LANE_BOUNDED, DO_LANE_FULL, DO_LANE_HOLD],
         "order_flags": list(_ORDER_CREATE_FLAGS),

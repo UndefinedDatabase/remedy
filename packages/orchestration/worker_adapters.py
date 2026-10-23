@@ -1,9 +1,9 @@
 """
-Worker Adapter Foundation v0 — provider-neutral worker specifications.
+The worker adapter contract v2's list of workers — provider-neutral worker specifications.
 
-Defines WorkerProviderSpec as a data-only description of external worker
-providers (LLM services, local processes, future harnesses).  No network
-calls, no secrets, no shell execution, no actual provider connections.
+Defines WorkerProviderSpec as a data-only description of worker providers (LLM services, local
+processes, external harnesses). No network calls, no secrets, no shell execution, no actual
+provider connections. `docs/system/worker-adapter-contract-v2.md` is the page of the same name.
 
 Provider-neutral: specs describe capabilities and roles without binding
 to any specific provider SDK, API key, or endpoint.
@@ -14,11 +14,11 @@ Public API::
     export_worker_specs_json(specs) -> dict[str, Any]
     summarize_worker_specs(specs) -> str
 
-A v1 ``WorkerProviderSpec`` DESCRIBES a worker — its roles and status — and says
-nothing about running one. Its ``adapter_ref`` names the v2 adapter
+A ``WorkerProviderSpec`` DESCRIBES a worker — its roles and status — and says
+nothing about running one. Its ``adapter_ref`` names the adapter
 (`packages/contracts/adapter_contract.py`'s ``WorkerAdapter``) that EXECUTES the
 contract for it; a record without a reference is a worker still awaiting its
-adapter (DECISION F151 D5 (1)).
+adapter (DECISION F151 D5 (1)), and its notes say so (amend1023 D4).
 """
 
 from __future__ import annotations
@@ -59,15 +59,18 @@ _SPECS: tuple[WorkerProviderSpec, ...] = (
         supported_roles=("planner", "builder", "reviewer"),
         execution_mode="local_process",
         status="available",
-        notes="Local LLM inference via Ollama. Currently used for planning.",
+        notes=("Local LLM inference via Ollama, used today for planning and reviewing through "
+               "Remedy's own call path. No worker adapter yet."),
     ),
     WorkerProviderSpec(
         provider_id="claude_code",
         display_name="Claude Code (external harness)",
         supported_roles=("builder", "reviewer", "refactorer"),
         execution_mode="external_harness",
-        status="future",
-        notes="Anthropic Claude Code CLI as external build worker. Not yet integrated.",
+        status="available",
+        notes=("Anthropic Claude Code CLI as builder and reviewer; its reference adapter "
+               "claude-cli builds the invocation and maps its output. The loop still calls the "
+               "CLI provider directly."),
         adapter_ref="claude-cli",
     ),
     WorkerProviderSpec(
@@ -75,8 +78,9 @@ _SPECS: tuple[WorkerProviderSpec, ...] = (
         display_name="Pi Dev (local agent)",
         supported_roles=("builder", "reviewer"),
         execution_mode="local_process",
-        status="future",
-        notes="Local development agent. Not yet integrated.",
+        status="available",
+        notes=("The Pi harness inside Remedy's tool sandbox, today's default builder and "
+               "reviewer, through Remedy's own call path. No worker adapter yet."),
     ),
     WorkerProviderSpec(
         provider_id="copilot",

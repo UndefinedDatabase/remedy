@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-160 of 314 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+160 of 315 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -44,7 +44,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 4 | 17 |
-| 8 | Worker Ecosystem & Neutrality | 1 | 12 |
+| 8 | Worker Ecosystem & Neutrality | 1 | 13 |
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
@@ -904,7 +904,7 @@ and how its errors are classed, while retries, timeouts and failover stay in Rem
 reusable conformance kit proves an adapter honours that contract and refuses one that retries or
 opens a process itself; today's claude-cli path is wrapped as the reference adapter with no change
 in behaviour; `remedy worker show claude_code` names the adapter and what it declares; the page
-`docs/system/worker-adapter-contract-v1.md` describes it).
+`docs/system/worker-adapter-contract-v2.md` describes it).
 
 Accepted in Tier 12 so far:
 F200 daemon mode (`remedy serve start` runs one long-lived supervisor for a data root, and
