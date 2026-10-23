@@ -6,13 +6,13 @@ building, stream and usage mapping, isolation) with a reusable conformance kit, 
 wrapped as the reference adapter with golden equality, and orchestration importing only the contract.
 
 ## Current Step
-Round 6: R-1439 (the guard's parent-package form) and R-1440 (the `none` capabilities line), the
-docs page `docs/system/worker-adapter-contract-v1.md`, its index rows, and the architecture page's
-worker section.
+Round 7, the closure's integration gate: the checklist's consolidation pass, the self-use item run
+to its approval gate and never applied, and the feature's one full suite with its CPU cost.
 
 ## Next Steps
-1. The closure sequence: the integration gate with the one full suite and the self-use run, the
-   evidence round, then the closing round.
+1. The evidence round: the evidence job and the review package.
+2. The closing round: the Built State, the rotation, the STATUS line, the README and the pull
+   request, left unmerged.
 
 ## Risks
-- None open beyond R-1439 and R-1440, which this round repairs.
+- A red full suite or a self-use run defect becomes a repair round before the evidence round.
