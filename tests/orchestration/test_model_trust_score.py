@@ -20,6 +20,8 @@ from packages.orchestration.model_trust_score import (
     COST_BASIS_PROVIDER_REPORTED,
     COST_BASIS_UNKNOWN,
     MODEL_TRUST_SNAPSHOT_FILENAME,
+    TRUST_COST_BASIS_MIXED,
+    TRUST_COST_BASIS_PRICE_TABLE,
     TRUST_COST_BASIS_TOKENS,
     TrustConfigError,
     TrustMetric,
@@ -57,21 +59,22 @@ def _attempts(root: Path, job: str, task: str, attempts: list[dict]) -> None:
 
 def _call(root: Path, job: str, task: str | None, role: str, seq: int | None, model: str | None,
           tokens_in: int | None, tokens_out: int | None, *, cost: float | None = None,
-          ts: str = RECENT) -> None:
+          cost_basis: str | None = None, ts: str = RECENT) -> None:
     call_id = f"{job}:{task}:{seq}" if seq is not None else f"{job}:{task}"
+    basis = cost_basis if cost_basis is not None else ("unknown" if cost is None else "provider_reported")
     assert record_call(CallRecord(
         call_id=call_id, job_id=job, task_id=task, role=role, model=model, ts_utc=ts,
-        tokens_in=tokens_in, tokens_out=tokens_out, cost_usd=cost,
-        cost_basis="unknown" if cost is None else "provider_reported"),
+        tokens_in=tokens_in, tokens_out=tokens_out, cost_usd=cost, cost_basis=basis),
         path=token_ledger_path_for(PROJECT, root))
 
 
-def _postmortem(root: Path, job: str, task: str, role: str, round_no: int = 1) -> None:
+def _postmortem(root: Path, job: str, task: str, role: str, round_no: int = 1,
+                 failure_class: FailureClass = FailureClass.PARSE) -> None:
     directory = (job_evidence_dir(job, root) / "task_runs" / task / "streams" / role
                  / f"round-{round_no:02d}" / "attempt")
     directory.mkdir(parents=True, exist_ok=True)
     write_postmortem(directory, PostmortemV1(
-        failure_class=FailureClass.PARSE, signal_source="test", job_id=job, task_id=task,
+        failure_class=failure_class, signal_source="test", job_id=job, task_id=task,
         role=role, provider="fake"), root=directory)
 
 
@@ -164,6 +167,34 @@ class TestUnsettled:
         assert table.unsettled_tasks == 1
 
 
+class TestSettlement:
+    """R-1429 survivors (1) and (2): the settled-fail and settled-pass status sets."""
+
+    def test_a_blocked_task_is_counted_as_a_settled_fail(self, tmp_path):
+        from packages.orchestration.pingpong_job import TASK_BLOCKED
+
+        _task_run(tmp_path, "jobblocked", "T001", status=TASK_BLOCKED, repair_rounds=0,
+                  builder_model="m-blocked", builder_calls=[(False, 0.01)],
+                  reviewer_model="r", reviewer_cost=0.01)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        row = table.lookup("m-blocked", "builder")
+        assert row is not None
+        assert row.settled_tasks == 1
+        assert row.pass_quota == TrustMetric(value=0.0, n=1)
+        assert table.unsettled_tasks == 0
+
+    @pytest.mark.parametrize("status", ["applied_to_job_workspace", "completed"])
+    def test_a_done_status_other_than_passed_is_counted_as_a_pass(self, tmp_path, status):
+        _task_run(tmp_path, f"jobdone{status}", "T001", status=status, repair_rounds=0,
+                  builder_model="m-done", builder_calls=[(False, 0.01)],
+                  reviewer_model="r", reviewer_cost=0.01)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        row = table.lookup("m-done", "builder")
+        assert row is not None
+        assert row.pass_quota == TrustMetric(value=1.0, n=1)
+        assert table.unsettled_tasks == 0
+
+
 class TestAttribution:
     def test_a_role_served_by_two_models_is_attributed_to_the_last_calls_model(self, tmp_path):
         _job(tmp_path, "jobswap", {"T001": {"status": "passed", "repair_rounds_used": 0}})
@@ -222,15 +253,46 @@ class TestFormatErrors:
         # post-mortem) are each marked exactly once; seq 2, the retry itself, never is.
         assert row.format_error_rate == TrustMetric(value=2 / 3, n=3)
 
+    def test_a_later_rounds_parse_retry_is_not_charged_to_an_earlier_rounds_call(self, tmp_path):
+        """R-1429 survivor (3): the retry's own round must match the earlier call's round."""
+        _job(tmp_path, "jobroundcross", {"T001": {"status": "passed", "repair_rounds_used": 1}})
+        _attempts(tmp_path, "jobroundcross", "T001", [
+            {"seq": 1, "round": 1, "role": "builder", "model": "m", "is_parse_retry": False},
+            {"seq": 2, "round": 2, "role": "builder", "model": "m", "is_parse_retry": True},
+        ])
+        _call(tmp_path, "jobroundcross", "T001", "builder", 1, None, 100, 10, cost=0.01)
+        _call(tmp_path, "jobroundcross", "T001", "builder", 2, None, 100, 10, cost=0.01)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        row = table.lookup("m", "builder")
+        # seq 1 belongs to round 1; round 2's own retry never charges a different round's call.
+        # seq 2 is the retry itself and carries no post-mortem, so it is never marked either.
+        assert row.format_error_rate == TrustMetric(value=0.0, n=2)
+
+    def test_a_postmortem_of_a_class_other_than_parse_charges_nothing(self, tmp_path):
+        """R-1429 survivor (4): only a `parse`-class post-mortem may mark a format error."""
+        from packages.orchestration.failure_postmortem import FailureClass
+
+        _job(tmp_path, "jobotherclass", {"T001": {"status": "passed", "repair_rounds_used": 0}})
+        _attempts(tmp_path, "jobotherclass", "T001", [
+            {"seq": 1, "round": 1, "role": "builder", "model": "m", "is_parse_retry": False},
+        ])
+        _call(tmp_path, "jobotherclass", "T001", "builder", 1, None, 100, 10, cost=0.01)
+        _postmortem(tmp_path, "jobotherclass", "T001", "builder", round_no=1,
+                    failure_class=FailureClass.PROVIDER_TIMEOUT)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        row = table.lookup("m", "builder")
+        assert row.format_error_rate == TrustMetric(value=0.0, n=1)
+
 
 class TestCostBases:
     def _one_pass(self, root: Path, job: str, model: str, *, tokens_in: int | None,
-                  tokens_out: int | None, cost: float | None) -> None:
+                  tokens_out: int | None, cost: float | None, cost_basis: str | None = None) -> None:
         _job(root, job, {"T001": {"status": "passed", "repair_rounds_used": 0}})
         _attempts(root, job, "T001", [
             {"seq": 1, "round": 1, "role": "builder", "model": model, "is_parse_retry": False},
         ])
-        _call(root, job, "T001", "builder", 1, None, tokens_in, tokens_out, cost=cost)
+        _call(root, job, "T001", "builder", 1, None, tokens_in, tokens_out, cost=cost,
+              cost_basis=cost_basis)
 
     def test_provider_reported_when_every_call_has_a_cost(self, tmp_path):
         self._one_pass(tmp_path, "jobcost", "m", tokens_in=100, tokens_out=10, cost=0.03)
@@ -260,6 +322,41 @@ class TestCostBases:
         table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
         row = table.lookup("m", "builder")
         assert row.cost_per_pass == TrustMetric(value=None, n=0)
+
+    def test_price_table_calls_are_labelled_price_table(self, tmp_path):
+        """DECISION F133 D3 (2): the ledger's own `price_table` basis is read, not ignored."""
+        self._one_pass(tmp_path, "jobpricetable", "m", tokens_in=100, tokens_out=10, cost=0.04,
+                       cost_basis=TRUST_COST_BASIS_PRICE_TABLE)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        row = table.lookup("m", "builder")
+        assert row.cost_basis == TRUST_COST_BASIS_PRICE_TABLE
+        assert row.cost_per_pass == TrustMetric(value=0.04, n=1)
+
+    def test_mixed_bases_among_priced_calls_are_labelled_mixed(self, tmp_path):
+        """DECISION F133 D3 (2): priced calls that do not share one basis are `mixed`."""
+        _job(tmp_path, "jobmixed", {"T001": {"status": "passed", "repair_rounds_used": 0}})
+        _attempts(tmp_path, "jobmixed", "T001", [
+            {"seq": 1, "round": 1, "role": "builder", "model": "m", "is_parse_retry": False},
+            {"seq": 2, "round": 1, "role": "builder", "model": "m", "is_parse_retry": False},
+        ])
+        _call(tmp_path, "jobmixed", "T001", "builder", 1, None, 100, 10, cost=0.01,
+              cost_basis=COST_BASIS_PROVIDER_REPORTED)
+        _call(tmp_path, "jobmixed", "T001", "builder", 2, None, 100, 10, cost=0.02,
+              cost_basis=TRUST_COST_BASIS_PRICE_TABLE)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        row = table.lookup("m", "builder")
+        assert row.cost_basis == TRUST_COST_BASIS_MIXED
+        assert row.cost_per_pass == TrustMetric(value=0.03, n=1)
+
+    def test_a_call_with_a_figure_but_basis_unknown_is_treated_as_unpriced(self, tmp_path):
+        """R-1430: a call carrying a cost figure but basis `unknown` is never counted as priced."""
+        self._one_pass(tmp_path, "jobfigureunknown", "m", tokens_in=100, tokens_out=10, cost=0.05,
+                       cost_basis=COST_BASIS_UNKNOWN)
+        table = build_model_trust_table(PROJECT, now=NOW, root=tmp_path)
+        row = table.lookup("m", "builder")
+        # Not priced, but every call's tokens are known, so the basis falls to `tokens`.
+        assert row.cost_basis == TRUST_COST_BASIS_TOKENS
+        assert row.cost_per_pass == TrustMetric(value=110.0, n=1)
 
 
 class TestThin:
@@ -368,8 +465,10 @@ class TestResolveTrustSettings:
 
 
 def test_cost_basis_constants_match_the_ledgers_own_vocabulary():
+    from packages.orchestration.token_ledger import COST_BASIS_PRICE_TABLE as LEDGER_PRICE_TABLE
     from packages.orchestration.token_ledger import COST_BASIS_PROVIDER_REPORTED as LEDGER_REPORTED
     from packages.orchestration.token_ledger import COST_BASIS_UNKNOWN as LEDGER_UNKNOWN
 
     assert COST_BASIS_PROVIDER_REPORTED == LEDGER_REPORTED
     assert COST_BASIS_UNKNOWN == LEDGER_UNKNOWN
+    assert TRUST_COST_BASIS_PRICE_TABLE == LEDGER_PRICE_TABLE

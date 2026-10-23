@@ -127,6 +127,18 @@ def test_role_keeps_only_that_roles_rows(project, capsys):
     assert {c["role"] for c in body["changes"]} == {"reviewer"}
 
 
+def test_role_keeps_only_that_roles_rows_in_the_text_view(project, capsys):
+    """R-1429 survivor (6): `--role` must filter the TEXT view too, not only `--json`."""
+    _seed(project)
+    _task(project, "jobreviewer02", "T001", status="passed", repair_rounds=0, role="reviewer",
+          model="claude-reviewer-v1", cost=0.01)
+    code, out = _run(["stats", "trust", "--project", project.slug, "--role", "reviewer"], capsys)
+    assert code == 0, out
+    assert "claude-reviewer-v1" in out
+    assert "claude-strong-v1" not in out
+    assert "claude-thin-v1" not in out
+
+
 def test_the_prior_window_shows_the_change_and_new_for_an_absent_row(project, capsys):
     window_days = 90
     now = datetime.now(timezone.utc)
@@ -169,3 +181,54 @@ def test_a_malformed_setting_is_refused_as_a_usage_error(project, capsys):
     code, out = _run(["stats", "trust", "--project", project.slug, "--json"], capsys)
     assert code == 2
     assert json.loads(out)["error"] == "invalid_trust_setting"
+
+
+def _row(*, pass_quota_value, pass_quota_n=10, cost_value=0.01, cost_basis="provider_reported",
+         cost_n=10):
+    from packages.orchestration.model_trust_score import ModelTrustRow, TrustMetric
+
+    return ModelTrustRow(
+        role="builder", model="m", pass_quota=TrustMetric(value=pass_quota_value, n=pass_quota_n),
+        repair_need=TrustMetric(value=0.0, n=pass_quota_n),
+        format_error_rate=TrustMetric(value=0.0, n=pass_quota_n),
+        cost_per_pass=TrustMetric(value=cost_value, n=cost_n), cost_basis=cost_basis,
+        settled_tasks=pass_quota_n, thin=False)
+
+
+def _table(*rows):
+    from packages.orchestration.model_trust_score import ModelTrustTable
+
+    return ModelTrustTable(
+        project_id="p", updated_at="2026-01-01T00:00:00+00:00", window_days=90, sample_floor=20,
+        window_start="2025-10-03T00:00:00+00:00", ledger_present=True, rows=rows,
+        unattributed_calls=0, unsettled_tasks=0)
+
+
+def test_a_row_with_no_settled_task_prints_a_dash_never_0_percent_for_its_pass_quota():
+    """R-1429 survivor (5): a missing pass quota prints a dash, never `0%`."""
+    from apps.cli.commands.stats_trust_cmd import DASH, trust_rows
+
+    row = _row(pass_quota_value=None, pass_quota_n=0, cost_value=None, cost_n=0,
+               cost_basis="unknown")
+    rendered = trust_rows(_table(row), _table())
+    assert rendered[0][3] == DASH
+    assert "0%" not in rendered[0][3]
+
+
+def test_the_cost_cell_names_its_passes():
+    """R-1431: the cost cell names the passes its figure rests on."""
+    from apps.cli.commands.stats_trust_cmd import _format_cost
+
+    row = _row(pass_quota_value=1.0, pass_quota_n=15, cost_value=0.0123,
+                cost_basis="provider_reported", cost_n=15)
+    assert _format_cost(row) == "$0.0123 (provider_reported, 15 passes)"
+
+
+def test_a_falling_pass_quota_prints_a_minus_sign_and_a_rising_one_a_plus_sign():
+    """R-1429 survivor (7): the change against the prior window keeps its sign."""
+    from apps.cli.commands.stats_trust_cmd import _format_change
+
+    falling = _format_change(_row(pass_quota_value=0.5), _table(_row(pass_quota_value=0.8)))
+    rising = _format_change(_row(pass_quota_value=0.8), _table(_row(pass_quota_value=0.5)))
+    assert falling.startswith("-") and falling.endswith("pp")
+    assert rising.startswith("+") and rising.endswith("pp")
