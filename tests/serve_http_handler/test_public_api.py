@@ -68,6 +68,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_order_cancel_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/orders/{order}"):
         "test_the_order_poll_route_is_pinned_with_its_statuses",
+    ("GET", "/api/v1/orders/{order}/story"):
+        "test_the_order_story_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/orders"):
         "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/jobs/{job}/logs"): "test_the_logs_route_answers_the_doctor_logs_command",
@@ -431,7 +433,15 @@ def test_the_exclusion_list_holds_the_feature_files_initial_entries():
         "patch.apply", "patch.revert", "rollback.*", "snapshot.create", "config.set",
         "config.init", "init.run", "self-repair.proposal-approve", "self-repair.proposal-deny",
         "worker.unload", "runtime.stop", "ui.stop", "queue.rm", "queue.reclaim",
+        "client.grant-host-tools", "client.revoke-host-tools",
     )
+
+
+def test_the_order_story_route_is_pinned_with_its_statuses():
+    """amend1023 D11: the order's story; `tests/orchestration/test_order_story.py` drives its answers."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/orders/{order}/story")
+    assert (route.method, route.twin, route.refusals) == ("GET", "client.order-story", (("order_not_found", 404),))
+    assert route.body == () and route.query == () and route.query_values == ()
 
 
 def test_command_is_excluded_matches_a_wildcard_entry():
@@ -931,19 +941,34 @@ def test_the_ledger_holds_one_line_per_request_in_order(tcp_server):
     assert (ledger_path.stat().st_mode & 0o777) == 0o600
 
 
-def test_a_write_naming_the_claude_code_cli_is_ledgered_host_tools_true(unix_server):
+def test_a_write_naming_the_claude_code_cli_is_ledgered_host_tools_true(tmp_path_factory):
     """amend1023 D6: every write whose body names `claude-cli` under a provider key is marked, even a
-    refused one; a write naming another provider is not."""
-    data_root = Path(os.environ["REMEDY_DATA_DIR"])
-    for body in ({"builder_provider": "claude-cli"}, {"planner_provider": "claude-cli"},
-                 {"reviewer_provider": "pi"}):
-        status, _answer, _headers = _unix_request(
-            unix_server, "POST", "/api/v1/orders", headers=_bearer(SERVER_TOKEN),
-            body=json.dumps(body).encode("utf-8"))
-        assert status in (400, 405)
-    records = [json.loads(line) for line in
-               (data_root / "api" / "calls.jsonl").read_text(encoding="utf-8").splitlines()]
-    assert [record["host_tools"] for record in records] == [True, True, False]
+    refused one; a write naming another provider is not. The supervisor's socket handler with a
+    runner, the door a write is served on (no order launcher here, so each order answers 405)."""
+    import socketserver
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path_factory.mktemp("ht") / "s.sock"
+    server = _Server(str(sock_path), socket_handler_class(SERVER_TOKEN, runner=SR.CommandRunner(serve_paths())))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        for body in ({"builder_provider": "claude-cli"}, {"planner_provider": "claude-cli"},
+                     {"reviewer_provider": "pi"}):
+            status, _answer, _headers = _unix_request(
+                sock_path, "POST", "/api/v1/orders", headers=_bearer(SERVER_TOKEN),
+                body=json.dumps(body).encode("utf-8"))
+            assert status == 405
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+    records = [json.loads(line) for line in (Path(os.environ["REMEDY_DATA_DIR"]) / "api" / "calls.jsonl")
+               .read_text(encoding="utf-8").splitlines()]
+    assert [(record["method"], record["host_tools"]) for record in records] == [
+        ("POST", True), ("POST", True), ("POST", False)]
 
 
 def test_the_host_tools_reading_of_a_body():

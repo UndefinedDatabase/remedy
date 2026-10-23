@@ -162,7 +162,8 @@ def test_without_a_header_the_probe_still_walks_as_the_planners_milestones(repo,
 def test_the_header_shape_single_job_makes_the_probe_one_job_the_planner_cannot_split(
         repo, tmp_path, capsys, monkeypatch):
     order_file = tmp_path / "probe.md"
-    order_file.write_text(f"---\nshape: single-job\n---\n{PROBE_ORDER}\n", encoding="utf-8")
+    order_file.write_text(f"---\nshape: single-job\nmax-total-tokens: 200000\n---\n{PROBE_ORDER}\n",
+                          encoding="utf-8")
     data, asked = _walk(monkeypatch, capsys, str(order_file))
     assert (data["shape"], data["shape_source"]) == ("one job", "the order")
     assert len(data["job_ids"]) == 1 and "mission_plan" not in asked

@@ -77,7 +77,7 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         command_id="client.order-story",
         group_id="client",
         subcommand="order-story",
-        description="Read the story of an order (an order file or text) the supervisor started, in closed words a client translates: who gave it, its missions and milestones, each Job's state, the criterion a blocked Job did not meet, its tasks done and total, and the round and tool of the Job that runs (read-only).",
+        description="Read the story of an order (an order file or text) the supervisor started, in closed words a client translates: who gave it, its missions and milestones, each Job's state, the criterion a blocked Job did not meet, its tasks done and total, and for the Job that runs its round, one pass of build and review inside its run, and the last tool its model called (read-only).",
         action_class="read_only",
         args=(
             ArgDef("order", "The order id the supervisor answered when it started your order "

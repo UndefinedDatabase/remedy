@@ -22,6 +22,7 @@ DECISION amend1023 D<n> in `.agent/decisions.md`. Code, docs, commits and featur
 - No test run until the end: one full suite run, then the repair loop, then only the affected
   test files again; never the full suite a second time for a docs repair.
 - The structure ratchet's listed files and functions do not grow.
+- Resource safety: pytest runs capped by `tests/conftest.py`; one full suite run, `-n auto`.
 
 ## Steps
 The item-status table lives in the handback.

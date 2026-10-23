@@ -31583,3 +31583,11 @@ THE DECISION: (1) `packages/orchestration/order_story.py` builds the story from 
 ALTERNATIVES CONSIDERED: (a) adding the story to the order poll's answer, REJECTED because the poll's keys are pinned since 1.18 and a client that wants the whole story asks for it; (b) a second order-to-job index, REJECTED because the mission chain is the one record of which jobs exist.
 
 HOW TO REVERSE: delete `order_story.py`, the route, the command, the two job keys, the record's `client` and its recorded answer, and this entry.
+
+## DECISION amend1023 D12 — the repair after the one full suite run: the worker doctor probes the two workers D4 made available, and the guards' pins learn the new names (2026-10-23)
+
+THE PROBLEM: the one full suite run on `91c5b84df` (tree `8634a83f2`) read `14 failed, 23716 passed, 11 skipped` with exit 1. Thirteen failures were pins a new command, route or key must also update (the route pin list, the exclusion list pin, the exit-code guide, the client interface's hand-verified sites and its real-run coverage, the vocabulary meaning of "Round" and "Worker" in a description, the import-reachability allowlist, the context file's resource-safety line, a test order file without a cap, and a ledger test on a server with no runner). One was a real regression of D4: `remedy worker doctor` fails every `available` worker it has no probe for, and D4 made `claude_code` and `pi_dev` available, so the doctor would read NOT READY on every machine.
+
+THE DECISION: (1) The doctor probes `claude` for `claude_code` and `pi` for `pi_dev`, as it probes `ollama`, each with the line "<name> on PATH" or "<name> not found on PATH"; its tests set all three on PATH for READY, and a new test holds each probe. (2) Every pin is updated to the new names; no assertion was weakened and no test was removed. (3) As the order rules, only the ten affected test files ran again: `855 passed`, exit 0.
+
+HOW TO REVERSE: drop the two probes with D4's statuses; the pins follow the code.

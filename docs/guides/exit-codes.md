@@ -99,7 +99,11 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy chat show` | 3 |
 | `remedy chat ask` | 3 |
 | `remedy client order` | 3 |
+| `remedy client order-story` | 3 |
 | `remedy client cancel-order` | 3 |
+| `remedy client show` | 3 |
+| `remedy client grant-host-tools` | 3 |
+| `remedy client revoke-host-tools` | 3 |
 | `remedy client diff` | 3 |
 | `remedy client run` | 3 |
 | `remedy runtime serve` | 3, 4, 5 |

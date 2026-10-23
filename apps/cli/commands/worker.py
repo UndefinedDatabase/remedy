@@ -256,13 +256,16 @@ def _cmd_worker_doctor(*, json_output: bool = False) -> None:
     specs = list_worker_specs()
     _check("worker_specs", True, f"{len(specs)} provider specs loaded")
 
+    # amend1023 D4: the executable each worker that runs today needs on PATH.
+    executables = {"ollama": "ollama", "claude_code": "claude", "pi_dev": "pi"}
     for spec in specs:
         if spec.status != "available":
             continue
-        if spec.provider_id == "ollama":
-            found = shutil.which("ollama") is not None
-            _check("provider_ollama", found,
-                   "ollama on PATH" if found else "ollama not found on PATH")
+        if spec.provider_id in executables:
+            name = executables[spec.provider_id]
+            found = shutil.which(name) is not None
+            _check(f"provider_{spec.provider_id}", found,
+                   f"{name} on PATH" if found else f"{name} not found on PATH")
         else:
             # An `available` spec this doctor has no probe for: say so rather
             # than silently reporting it as though it had passed one.
