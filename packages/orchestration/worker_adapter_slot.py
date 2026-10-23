@@ -14,6 +14,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from packages.contracts.adapter_contract import CliInvocation, InvocationOptions, WorkerAdapter
+from packages.orchestration.token_actuals import UsageActuals, parse_cli_result_detailed
 
 #: Adapter reference to the factory (an adapter class) the wiring layer installed for it.
 _INSTALLED_WORKER_ADAPTERS: dict[str, Callable[..., WorkerAdapter]] = {}
@@ -56,3 +57,14 @@ def adapter_cli_argv(
     if not isinstance(invocation, CliInvocation):
         raise TypeError(f"adapter {adapter_ref!r} built {type(invocation).__name__}, not a command line")
     return list(invocation.argv)
+
+
+# WHY: the installed adapter maps a call's usage (DECISION F315 D3); the contract answers None
+# without saying why, so only then does the shared envelope reader name the reason the
+# provider records ("is_error", "usage_missing", ...).
+def adapter_usage_actuals(adapter_ref: str, raw: str, **settings: Any) -> tuple[UsageActuals | None, str]:
+    """The usage the installed adapter maps from `raw`, with `"ok"` or the reason it has none."""
+    mapped = installed_worker_adapter(adapter_ref, **settings).map_usage(raw)
+    if mapped is not None:
+        return mapped.actuals, "ok"
+    return None, parse_cli_result_detailed(raw)[1]

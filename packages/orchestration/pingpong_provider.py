@@ -49,14 +49,11 @@ from packages.orchestration.structured_outputs import (
 from packages.orchestration.structured_outputs import (
     reviewer_structured_enabled as _reviewer_structured_enabled,
 )
-from packages.orchestration.token_actuals import (
-    _usage_from_payload,
-    parse_cli_result_detailed,
-)
+from packages.orchestration.token_actuals import _usage_from_payload
 from packages.orchestration.token_actuals import (
     parse_cli_envelope as _parse_cli_envelope,
 )
-from packages.orchestration.worker_adapter_slot import adapter_cli_argv
+from packages.orchestration.worker_adapter_slot import adapter_cli_argv, adapter_usage_actuals
 
 # ---------------------------------------------------------------------------
 # Provider output contracts
@@ -1173,7 +1170,8 @@ class ClaudeCliProvider:
             raise _CliNonZeroExit(proc.returncode, proc.stderr or "")
         raw = proc.stdout or ""
 
-        actuals, parse_reason = parse_cli_result_detailed(raw)
+        actuals, parse_reason = adapter_usage_actuals(
+            "claude-cli", raw, claude_path=claude, write_mode=self._write_mode)
         resolved_version = self._resolve_version()
 
         # is_error is an honest provider error regardless of any result text.
