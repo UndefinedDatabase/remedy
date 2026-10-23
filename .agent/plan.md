@@ -6,13 +6,13 @@ building, stream and usage mapping, isolation) with a reusable conformance kit, 
 wrapped as the reference adapter with golden equality, and orchestration importing only the contract.
 
 ## Current Step
-Round 5: R-1438's tests, and T003's second half under DECISION F151 D5 — the `adapter_ref` linkage,
-the adapter registry reached by `remedy worker show`, the import guard, and `LLMWorker` deleted.
+Round 6: R-1439 (the guard's parent-package form) and R-1440 (the `none` capabilities line), the
+docs page `docs/system/worker-adapter-contract-v1.md`, its index rows, and the architecture page's
+worker section.
 
 ## Next Steps
-1. The docs page for the contract, the architecture page's worker section, and the README index.
-2. The closure sequence.
+1. The closure sequence: the integration gate with the one full suite and the self-use run, the
+   evidence round, then the closing round.
 
 ## Risks
-- The surviving call path is spread over several modules; wrapping it must not move transport,
-  retries or evidence out of the loop (the feature file's Do-not-touch).
+- None open beyond R-1439 and R-1440, which this round repairs.
