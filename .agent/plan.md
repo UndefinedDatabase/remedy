@@ -2,26 +2,20 @@
 
 ## Goal
 An everyday order with no header and no file path is read by a strong model, built as ONE job
-by default, tried out by its builder, and lands as an applicable change. Nothing that does not
-serve this is touched (operator amendment amend1024-one-real-order, 2026-10-24).
+by default, tried out by its builder, and lands as an applicable change (2026-10-24).
 
 ## Current Step
-Parts A to F on `feature/amend1024-one-real-order`; E and F2/F5 delegated to two isolated
-workers whose branches are merged into this one.
+Parts A to G built on `feature/amend1024-one-real-order`; F317 registered and accepted with the
+real run's evidence (`evidence/current/f317_real_order/`). The closing step: the full suite green,
+the merge into `main`, the push and the handback
+`~/.remedy-loop/amend1024-one-real-order.handback.md`.
 
 ## Next Steps
-1. A: claude-cli is the product default for planner, builder, reviewer, repair; the planner
-   reads `[roles]` (R-1448); host_tools HTTP clients default to claude-cli, others stay as before.
-2. B: the scope decision (one job unless the planner says otherwise with a reason), evidence
-   `scope_decision.json`, regex lanes only as fallback; the probe test proves the new behaviour.
-3. C: the claude-cli builder's Bash allowlist, documented, refusal tested and logged.
-4. D: the isolation allowlist widened; a real claude call through the adapter, evidence, ADR.
-5. E (worker): USD hidden unless `cost.show_usd`; advanced commands hidden; max-cost-usd discouraged.
-6. F: register and close F317; park the named features (worker: dependency check, F5 apps/ui);
-   F316 trimmed; ratchet rows raised with a sentence each.
-7. G: the real run over the public API with a host_tools client; evidence under `evidence/current`.
-8. One full suite at the end, review and repair loop until green; ruff green; merge to main.
+1. The next session: Phase 1 rule 1 (`.agent/STOP`), then Rule A5, which reads F316 (findings
+   paydown v11, narrowed by Part F3) as the next line.
+2. The operator: restart the long-running supervisor so its HTTP route runs this code, grant
+   `host_tools` to the universe's client, and answer Q28 (the 33 features not parked).
 
 ## Risks
-- The real run (G) needs the real `claude` binary and the operator's login through the adapter.
-- The running serve supervisor (pid 740108, started 2026-10-20) runs old code; G needs its own server.
+- The operator's supervisor started 2026-10-20 runs the old HTTP route in memory until restarted,
+  while every walk it spawns already runs this code (editable install).
