@@ -11,11 +11,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from packages.contracts.capability_matrix import format_capability_degradations
+from packages.orchestration.capability_evidence import task_capability_degradations
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
 # WHY: the lines `format_job_report_text` prints under one task, beyond its status line — moved
-# here unchanged (DECISION F157 D5 (4)) so a later call can add to them without growing that row.
+# here unchanged (DECISION F157 D5 (4)) so a later call can add to them without growing that row;
+# the degradations line is the later call, added here under the same roof (DECISION F157 D5 (2)).
 def task_report_detail_lines(
     job: JobPlan, task: TaskEntry, steering_map: dict[str, list[dict[str, Any]]],
 ) -> list[str]:
@@ -24,4 +27,7 @@ def task_report_detail_lines(
         lines.append(
             "      Steering not consumed: “" + note["text"].replace("\n", "\n        ") + "”"
         )
+    degradations = task_capability_degradations(job.job_id, task.task_id, task.run_id)
+    if degradations:
+        lines.append(f"      Degradations: {format_capability_degradations(degradations)}")
     return lines

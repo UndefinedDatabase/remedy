@@ -167,3 +167,11 @@ own line, so the evidence follows the pair. `ClaudeCliProvider` reads `routed_re
 `REMEDY_REVIEWER_FREETEXT` that `structured_outputs.py` owns still kept in force beside the route.
 `read_capability_degradations(evidence_dir)` reads the evidence file back into the run's
 degradations, `capability_degradation_entries` over every decision across every line.
+
+`packages/orchestration/capability_evidence.py` reads a run's or a job task's degradations back
+across every directory a build may have written to (DECISION F157 D5 (2)). `remedy run show`'s
+JSON answer always carries the list under `capability_degradations`, and its text prints a
+`Degradations:` line, worded through `format_capability_degradations`, only when that list is not
+empty. The job report prints the same wording under a task whose own evidence names a
+degradation, right after that task's steering lines, and prints nothing for a task or a job with
+none.

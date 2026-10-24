@@ -7,6 +7,8 @@ The three functions below moved unchanged out of `apps/cli/commands/do_cmd.py`, 
 from __future__ import annotations
 
 from apps.cli.json_envelope import emit_ok, fail
+from packages.contracts.capability_matrix import CAPABILITY_DEGRADATIONS_FIELD
+from packages.orchestration.capability_evidence import capability_report_line, run_capability_degradations
 from packages.orchestration.model_failover import failover_report_line
 from packages.orchestration.tier_escalation import escalation_report_lines
 
@@ -23,6 +25,8 @@ def _cmd_run_show(
     if data is None:
         fail("run_not_found", f"No run matches {run_id!r}. Try: remedy run list.",
              json_output=json_output)
+
+    data[CAPABILITY_DEGRADATIONS_FIELD] = run_capability_degradations(run_id, data)
 
     if json_output:
         emit_ok(**data)
@@ -107,7 +111,7 @@ def _print_text_report(run_id: str, data: dict) -> None:
         print(f"Builder: {data.get('builder_provider', 'unknown')}")
         print(f"Reviewer: {data.get('reviewer_provider', 'unknown')}")
 
-    for line in (failover_report_line(data), *escalation_report_lines(data)):
+    for line in (failover_report_line(data), *escalation_report_lines(data), capability_report_line(data)):
         if line is not None:
             print(line)
 

@@ -123,3 +123,80 @@ class TestRunShowFailoverLine:
         _cmd_run_show(result.run_id, json_output=True)
         payload = json.loads(capsys.readouterr().out)
         assert "failover" in payload["rounds"][0]["builder"]
+
+
+_MINIMAL_RUN_RECORD = {
+    "goal": "demo", "repo_path": "/x", "mode": "pingpong",
+    "builder_provider": "claude-cli", "reviewer_provider": "fake",
+    "max_rounds": 1, "total_rounds": 0, "resumed_from_run_id": None,
+    "resume_declined": {}, "final_status": "completed", "staged_files": [],
+    "changed_target_files": [], "ignored_target_noise_files": [],
+    "target_noise_detected": False, "target_mutated": False, "tests_not_run": False,
+    "context_categories": [], "reviewer_parse_retry_count": 0, "rounds": [],
+}
+
+
+def _write_minimal_run_record(run_id: str, *, job_id: str = "") -> pathlib.Path:
+    """DECISION F157 D5 (2)/(3): a run's own directory, minimal enough for `_cmd_run_show`'s
+    not-found check and `_print_text_report`'s defensive `.get`s, so the test is about the
+    degradations line and nothing else."""
+    from packages.orchestration import data_paths
+
+    directory = data_paths.run_dir(run_id)
+    directory.mkdir(parents=True, exist_ok=True)
+    record = {"run_id": run_id, "job_id": job_id, **_MINIMAL_RUN_RECORD}
+    (directory / "result.json").write_text(json.dumps(record), encoding="utf-8")
+    return directory
+
+
+_DEGRADED_LINE = json.dumps({
+    "role": "builder", "provider": "claude-cli", "model": "m",
+    "decisions": [
+        {"feature_key": "stream_evidence_capture", "mode": "degraded",
+         "strategy": "buffered_output", "missing": ["streaming"]},
+    ],
+})
+
+
+class TestRunShowCapabilityDegradationsLine:
+    """DECISION F157 D5 (3): `remedy run show` prints the line when the run's directory holds a
+    degradation and none otherwise, and its JSON answer carries the list both ways."""
+
+    def test_a_degraded_directory_prints_the_line_and_an_absent_one_prints_none(
+        self, tmp_path, monkeypatch, capsys,
+    ):
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
+        from packages.orchestration.capability_routes import CAPABILITY_DECISIONS_FILENAME
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        degraded_dir = _write_minimal_run_record("run-degraded")
+        (degraded_dir / CAPABILITY_DECISIONS_FILENAME).write_text(_DEGRADED_LINE + "\n", encoding="utf-8")
+
+        _cmd_run_show("run-degraded", json_output=False)
+        out = capsys.readouterr().out
+        assert "Degradations: stream_evidence_capture as buffered_output" in out
+
+        _write_minimal_run_record("run-native")
+        _cmd_run_show("run-native", json_output=False)
+        out2 = capsys.readouterr().out
+        assert "Degradations:" not in out2
+
+    def test_json_output_carries_the_list_both_ways(self, tmp_path, monkeypatch, capsys):
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
+        from packages.orchestration.capability_routes import CAPABILITY_DECISIONS_FILENAME
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        degraded_dir = _write_minimal_run_record("run-degraded-json")
+        (degraded_dir / CAPABILITY_DECISIONS_FILENAME).write_text(_DEGRADED_LINE + "\n", encoding="utf-8")
+
+        _cmd_run_show("run-degraded-json", json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["capability_degradations"] == [
+            {"feature_key": "stream_evidence_capture", "mode": "degraded",
+             "strategy": "buffered_output", "missing": ["streaming"]},
+        ]
+
+        _write_minimal_run_record("run-native-json")
+        _cmd_run_show("run-native-json", json_output=True)
+        payload2 = json.loads(capsys.readouterr().out)
+        assert payload2["capability_degradations"] == []
