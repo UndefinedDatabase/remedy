@@ -1,0 +1,232 @@
+$ git diff HEAD...remedy/job-480f4964cc1f4cdb  (exit 0)
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index 091d05974..d379cf9b3 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -441,6 +441,19 @@ def _cmd_do(
+                  f"planner; the planners are {', '.join(PLANNER_PROVIDERS)}. "
+                  "Nothing was run.", json_output=json_output, exit_code=2)
+ 
++    # R-1448: read the project's [roles] table once, before any step, so every
++    # planner call in the walk uses the same provider.  A table that cannot be
++    # used is refused with exit 2 before any step.  When no --planner-provider
++    # was given, the table's planner (if any) is used instead.
++    from packages.orchestration.project_roles import ProjectRolesError, read_project_roles
++    try:
++        _project_roles = read_project_roles(repo)
++    except ProjectRolesError as exc:
++        fail("invalid_roles_table", f"{exc} Nothing was run.",
++             json_output=json_output, exit_code=2)
++    if planner_provider is None:
++        planner_provider = _project_roles.get("planner") or None
++
+     # DECISION F269 D1 (4): a name that is not a template exits 2 before any step.
+     if contract is not None:
+         from packages.orchestration.contract_templates import list_contract_templates
+diff --git a/packages/orchestration/project_roles.py b/packages/orchestration/project_roles.py
+index a170660e5..0331cbdab 100644
+--- a/packages/orchestration/project_roles.py
++++ b/packages/orchestration/project_roles.py
+@@ -1,15 +1,12 @@
+-"""R-1326: a project's own choice of builder and reviewer provider, read from the `[roles]` table
+-of its `.remedy/config.toml` (DECISION F314 D4, D5).
++"""R-1326: a project's own choice of builder, reviewer and planner provider, read from the
++`[roles]` table of its `.remedy/config.toml` (DECISION F314 D4, D5, R-1448).
+ 
+ `read_project_roles` is the one place that table is read. `resolve_job_execution_config` in
+-`execution_config.py` reads it for the builder and the reviewer. The table sits above the product
+-default and below an explicit option or a continued job's own persisted record.
+-
+-DECISION F314 D5 (2): the table does not yet choose the planner. `resolve_planner_target` in
+-`intake.py` is called at four places of a `remedy do` walk without the walk's repository, and
+-reading the table at one of them would make the walk record one planner and call another; a
+-`planner` key is refused instead, naming `--planner-provider` and `planner.provider` of
+-`remedy.toml` as the ways to choose the planner today. R-1448 carries the design that reads it.
++`execution_config.py` reads it for the builder and the reviewer. `_cmd_do` in
++`apps/cli/commands/do_cmd.py` reads it once before any step for the planner (R-1448): it
++passes the resolved `planner_provider` through `DoContext` so every planner call in the walk
++uses the same provider. The table sits above the product default and below an explicit option
++or a continued job's own persisted record.
+ """
+ from __future__ import annotations
+ 
+@@ -23,8 +20,8 @@ try:                                   # Python >= 3.11
+ except ModuleNotFoundError:            # Python 3.10 with the tomli backport
+     import tomli as tomllib  # type: ignore[no-redef]
+ 
+-#: The only keys a `[roles]` table may name (DECISION F314 D5 (2); `planner` is refused, R-1448).
+-PROJECT_ROLES_KEYS = ("builder", "reviewer")
++#: The keys a `[roles]` table may name (R-1448: `planner` accepted; DECISION F314 D4, D5).
++PROJECT_ROLES_KEYS = ("builder", "reviewer", "planner")
+ 
+ 
+ class ProjectRolesError(ValueError):
+@@ -38,12 +35,12 @@ def read_project_roles(repo_root: str | Path | None) -> dict[str, str]:
+     says nothing about its roles changes nothing downstream. Raises :class:`ProjectRolesError`,
+     each message naming the file's relative path `.remedy/config.toml` and the table `[roles]`
+     and saying what to write instead, when: the file cannot be read or parsed; `roles` is not a
+-    table; the key is `planner` (DECISION F314 D5 (2); R-1448 carries the design that accepts it
+-    again); a key is not one of `PROJECT_ROLES_KEYS`; a value is not a non-empty string; or
+-    `builder` or `reviewer` names a provider outside `ROLE_PROVIDER_NAMES`, or `builder` names one
+-    `non_writing_provider_refusal` refuses.
++    table; a key is not one of `PROJECT_ROLES_KEYS`; a value is not a non-empty string; `builder`
++    or `reviewer` names a provider outside `ROLE_PROVIDER_NAMES`, or `builder` names one
++    `non_writing_provider_refusal` refuses; or `planner` names a value outside `PLANNER_PROVIDERS`
++    (R-1448: `planner` is now accepted; `_cmd_do` reads it once before any step).
+ 
+-    The two name sets are imported here rather than at module level: `non_writing_provider_refusal`
++    The name sets are imported here rather than at module level: `non_writing_provider_refusal`
+     lives on `do_role_guards.py`, and a module-level import of either risks a cycle with a caller
+     that imports this module for the resolution it holds.
+     """
+@@ -70,26 +67,30 @@ def read_project_roles(repo_root: str | Path | None) -> dict[str, str]:
+ 
+     result: dict[str, str] = {}
+     for key, value in table.items():
+-        if key == "planner":
+-            raise ProjectRolesError(
+-                f"{CONFIG_RELPATH}: [roles] does not choose the planner; choose it with "
+-                f"--planner-provider or planner.provider of remedy.toml instead")
+         if key not in PROJECT_ROLES_KEYS:
+             raise ProjectRolesError(
+-                f"{CONFIG_RELPATH}: [roles] names {key!r}; write builder or reviewer instead")
++                f"{CONFIG_RELPATH}: [roles] names {key!r}; "
++                f"write one of {', '.join(PROJECT_ROLES_KEYS)} instead")
+         if not isinstance(value, str) or not value:
+             raise ProjectRolesError(
+                 f"{CONFIG_RELPATH}: [roles].{key} must be a non-empty string naming a provider, "
+                 f"got {value!r}")
+-        if value not in ROLE_PROVIDER_NAMES:
+-            raise ProjectRolesError(
+-                f"{CONFIG_RELPATH}: [roles].{key} names {value!r}, which is not a provider; "
+-                f"write one of {', '.join(sorted(ROLE_PROVIDER_NAMES))} instead")
+-        if key == "builder":
+-            refusal = non_writing_provider_refusal("builder", value)
+-            if refusal:
++        if key == "planner":
++            from packages.orchestration.intake import PLANNER_PROVIDERS
++            if value not in PLANNER_PROVIDERS:
++                raise ProjectRolesError(
++                    f"{CONFIG_RELPATH}: [roles].planner names {value!r}, which is not a planner; "
++                    f"write one of {', '.join(PLANNER_PROVIDERS)} instead")
++        else:
++            if value not in ROLE_PROVIDER_NAMES:
+                 raise ProjectRolesError(
+-                    f"{CONFIG_RELPATH}: [roles].builder names {value!r}, which cannot write "
+-                    f"files; write a provider that can, such as pi, instead")
++                    f"{CONFIG_RELPATH}: [roles].{key} names {value!r}, which is not a provider; "
++                    f"write one of {', '.join(sorted(ROLE_PROVIDER_NAMES))} instead")
++            if key == "builder":
++                refusal = non_writing_provider_refusal("builder", value)
++                if refusal:
++                    raise ProjectRolesError(
++                        f"{CONFIG_RELPATH}: [roles].builder names {value!r}, which cannot write "
++                        f"files; write a provider that can, such as pi, instead")
+         result[key] = value
+     return result
+diff --git a/tests/cli/test_do_flags.py b/tests/cli/test_do_flags.py
+index ab008b7ad..2a37a913b 100644
+--- a/tests/cli/test_do_flags.py
++++ b/tests/cli/test_do_flags.py
+@@ -234,6 +234,56 @@ def test_planner_model_reaches_every_structured_planner_call(repo, capsys, monke
+     assert [model for _name, model in calls] == ["p1"] * len(calls), calls
+ 
+ 
++# ── R-1448: the [roles] table's planner ──────────────────────────────────────
++
++
++def test_roles_table_planner_is_used_when_no_planner_provider_flag(repo, capsys, monkeypatch):
++    """R-1448: a project's [roles] table with planner = "ollama" is read once in _cmd_do
++    before any step and used when --planner-provider was not given, causing
++    make_structured_call_fn to be called with provider="ollama" rather than
++    make_provider_call_fn (which is what happens when planner_provider is None)."""
++    calls: list[tuple[str, object]] = []
++
++    def recorder(model_cls, **kwargs):
++        calls.append((model_cls.__name__, kwargs.get("provider")))
++        return None
++
++    monkeypatch.setattr("packages.orchestration.intake.make_structured_call_fn", recorder)
++    monkeypatch.setattr("packages.orchestration.study.study_call_fn", lambda *a, **kw: None)
++
++    (repo / ".remedy").mkdir(exist_ok=True)
++    (repo / ".remedy" / "config.toml").write_text('[roles]\nplanner = "ollama"\n', encoding="utf-8")
++
++    data = json.loads(_do(capsys, "--json", "--plan-only", llm=True,
++                          order="Write CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md and SUPPORT.md"))
++
++    assert data["ok"] is True
++    assert any(provider == "ollama" for _name, provider in calls), (
++        f"Expected make_structured_call_fn called with provider='ollama' from the [roles] table; "
++        f"got calls: {calls}")
++
++
++def test_an_invalid_roles_table_exits_2_before_any_step(repo, capsys):
++    """R-1448: a [roles] table that cannot be used is refused with exit 2 before any step."""
++    from packages.orchestration.pingpong_job import list_job_plans
++    from packages.orchestration.project_registry import resolve_project
++
++    (repo / ".remedy").mkdir(exist_ok=True)
++    (repo / ".remedy" / "config.toml").write_text(
++        '[roles]\nplanner = "no-such-planner"\n', encoding="utf-8")
++
++    code, out, err = _exit_code_and_output(capsys)
++
++    assert code == 2
++    assert err == ""
++    body = json.loads(out)
++    assert body["ok"] is False
++    assert body["error"] == "invalid_roles_table"
++    assert "Nothing was run." in body["message"]
++    assert resolve_project(repo) is None
++    assert list_job_plans() == []
++
++
+ # ── one route under `do` (DECISION F268 D16 (1), (2), R-0933) ────────────────
+ 
+ 
+diff --git a/tests/orchestration/test_project_roles.py b/tests/orchestration/test_project_roles.py
+index 29b23e51f..126139e2c 100644
+--- a/tests/orchestration/test_project_roles.py
++++ b/tests/orchestration/test_project_roles.py
+@@ -1,4 +1,5 @@
+-"""R-1326, DECISIONs F314 D4 and D5 — the project's own `[roles]` table of `.remedy/config.toml`.
++"""R-1326, R-1448, DECISIONs F314 D4 and D5 — the project's own `[roles]` table of
++`.remedy/config.toml`.
+ 
+ One test per answer `read_project_roles` can give, and one per refusal it raises. Every test
+ writes its own `.remedy/config.toml` under `tmp_path`; none drives a job or a provider.
+@@ -40,6 +41,20 @@ class TestTheAnswers:
+         assert read_project_roles(tmp_path) == {
+             "builder": "claude-cli", "reviewer": "fake"}
+ 
++    def test_planner_key_is_accepted(self, tmp_path: Path) -> None:
++        """R-1448: [roles].planner is now accepted and returned."""
++        _write_config(tmp_path, '[roles]\nplanner = "ollama"\n')
++        assert read_project_roles(tmp_path) == {"planner": "ollama"}
++
++    def test_all_three_keys_together(self, tmp_path: Path) -> None:
++        """R-1448: builder, reviewer and planner may all appear together."""
++        _write_config(
++            tmp_path,
++            '[roles]\nbuilder = "claude-cli"\nreviewer = "fake"\nplanner = "claude-cli"\n',
++        )
++        assert read_project_roles(tmp_path) == {
++            "builder": "claude-cli", "reviewer": "fake", "planner": "claude-cli"}
++
+ 
+ class TestTheRefusals:
+     def test_a_file_that_is_not_readable_toml_is_refused(self, tmp_path: Path) -> None:
+@@ -83,8 +98,8 @@ class TestTheRefusals:
+         with pytest.raises(ProjectRolesError, match="cannot write files"):
+             read_project_roles(tmp_path)
+ 
+-    def test_a_planner_key_is_refused(self, tmp_path: Path) -> None:
+-        """DECISION F314 D5 (2): the table does not yet choose the planner (R-1448)."""
+-        _write_config(tmp_path, '[roles]\nplanner = "ollama"\n')
+-        with pytest.raises(ProjectRolesError, match="--planner-provider"):
++    def test_a_planner_value_outside_planner_providers_is_refused(self, tmp_path: Path) -> None:
++        """R-1448: [roles].planner with a value that is not a planner is refused."""
++        _write_config(tmp_path, '[roles]\nplanner = "bogus-planner"\n')
++        with pytest.raises(ProjectRolesError, match="is not a planner"):
+             read_project_roles(tmp_path)

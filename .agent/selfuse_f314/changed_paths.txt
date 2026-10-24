@@ -1,0 +1,4 @@
+apps/cli/commands/do_cmd.py
+packages/orchestration/project_roles.py
+tests/cli/test_do_flags.py
+tests/orchestration/test_project_roles.py
