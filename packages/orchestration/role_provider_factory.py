@@ -85,9 +85,8 @@ def create_role_provider(
             provider: PingPongProvider = ClaudeCliProvider(write_mode=write_mode, **common)
         else:
             provider = ClaudeCliProvider(**common)
-        record_worker_isolation(
-            stream_evidence_dir, role=role, provider="claude-cli", model=model,
-            record=adapter_isolation_record("claude-cli"))
+        record_worker_isolation(stream_evidence_dir, role=role, provider="claude-cli",
+            model=model, record=adapter_isolation_record("claude-cli"))
     elif name == "pi":
         # WHY here: Pi must run in the job workspace with the role's own tool allowlist.
         from packages.orchestration.pi_provider import make_pi_provider

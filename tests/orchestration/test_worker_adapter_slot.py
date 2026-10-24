@@ -25,6 +25,7 @@ from packages.orchestration.worker_adapter_slot import (
     WorkerAdapterNotInstalled,
     adapter_child_env,
     adapter_cli_argv,
+    adapter_isolation_record,
     adapter_usage_actuals,
     install_worker_adapters,
     installed_worker_adapter,
@@ -290,6 +291,27 @@ def test_adapter_child_env_refuses_a_throwaway_home_declaration(monkeypatch):
     monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _ThrowawayAdapter)
     with pytest.raises(ValueError, match="declares throwaway_home"):
         adapter_child_env("claude-cli")
+
+
+class _NarrowAdapter:
+    """A real-world case this contract always had to tolerate: an installed adapter missing
+    `isolation()` (and every other newer member), the shape F157/F151's own reduced-capability
+    test doubles use. `adapter_child_env`/`adapter_isolation_record` must not raise on it."""
+
+    adapter_id = "claude-cli"
+
+    def __init__(self, **settings):
+        pass
+
+
+def test_adapter_child_env_is_none_for_an_adapter_without_isolation(monkeypatch):
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _NarrowAdapter)
+    assert adapter_child_env("claude-cli") is None
+
+
+def test_adapter_isolation_record_is_none_for_an_adapter_without_isolation(monkeypatch):
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _NarrowAdapter)
+    assert adapter_isolation_record("claude-cli") is None
 
 
 def _env_logging_claude(tmp_path: Path) -> tuple[Path, Path]:

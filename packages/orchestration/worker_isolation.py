@@ -72,10 +72,12 @@ def worker_isolation_record(
 # WHY: the run's isolation evidence lives beside its capability decisions, one line per provider
 # build, never per call (DECISION F152 D3 (4)); shaped like `record_capability_decisions`.
 def record_worker_isolation(
-    evidence_dir: str | None, *, role: str, provider: str, model: str, record: dict[str, Any],
+    evidence_dir: str | None, *, role: str, provider: str, model: str,
+    record: dict[str, Any] | None,
 ) -> None:
-    """Append one `worker_isolation.jsonl` line; nothing written for a falsy EVIDENCE_DIR."""
-    if not evidence_dir:
+    """Append one `worker_isolation.jsonl` line; nothing written for a falsy EVIDENCE_DIR or a
+    falsy RECORD (an installed adapter that declares no isolation at all, e.g. a test double)."""
+    if not evidence_dir or not record:
         return
     directory = Path(evidence_dir)
     directory.mkdir(parents=True, exist_ok=True)

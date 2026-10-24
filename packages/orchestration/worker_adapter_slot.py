@@ -74,10 +74,14 @@ def adapter_usage_actuals(adapter_ref: str, raw: str, **settings: Any) -> tuple[
 
 # WHY: the one place a call policy reads to build its own `env=`, so the declared isolation
 # reaches the child exactly as built (DECISION F152 D3 (3)); refuses a throwaway home because no
-# call path provides one yet (D3 (5)).
+# call path provides one yet (D3 (5)); None (inherit) for an adapter that is not a full
+# WorkerAdapter at all, such as a test double built for a narrower contract.
 def adapter_child_env(adapter_ref: str, **settings: Any) -> dict[str, str] | None:
     """The installed adapter's declared child environment, built from this process's own."""
-    declaration = installed_worker_adapter(adapter_ref, **settings).isolation()
+    adapter = installed_worker_adapter(adapter_ref, **settings)
+    if not isinstance(adapter, WorkerAdapter):
+        return None
+    declaration = adapter.isolation()
     if declaration.throwaway_home:
         raise ValueError(
             f"adapter {adapter_ref!r} declares throwaway_home, but no call path provides one yet")
@@ -86,8 +90,12 @@ def adapter_child_env(adapter_ref: str, **settings: Any) -> dict[str, str] | Non
 
 # WHY: the evidence twin of `adapter_child_env` — the same declaration and environment, shaped
 # for `record_worker_isolation` instead of a `Popen` (DECISION F152 D3 (4)).
-def adapter_isolation_record(adapter_ref: str, **settings: Any) -> dict[str, Any]:
-    """`worker_isolation_record` for the installed adapter's own declaration and environment."""
-    declaration = installed_worker_adapter(adapter_ref, **settings).isolation()
+def adapter_isolation_record(adapter_ref: str, **settings: Any) -> dict[str, Any] | None:
+    """`worker_isolation_record` for the installed adapter's own declaration and environment, or
+    None for an adapter that is not a full WorkerAdapter at all (see `adapter_child_env`)."""
+    adapter = installed_worker_adapter(adapter_ref, **settings)
+    if not isinstance(adapter, WorkerAdapter):
+        return None
+    declaration = adapter.isolation()
     env = isolated_child_env(declaration, os.environ)
     return worker_isolation_record(declaration, env)

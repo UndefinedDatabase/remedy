@@ -30,35 +30,35 @@ _EMPTY_ALLOWLIST = WorkerIsolation(method="tool_flag", adr_ref=_ADR_REF, tool_ar
 
 class TestIsolatedChildEnv:
     def test_holds_exactly_the_allowlisted_names_present_in_the_source_and_none_other(self):
-        source = {"HOME": "/home/x", "PATH": "/bin", "SECRET_TOKEN": "s", "OTHER": "o"}
+        source = {"HOME": "/srv/x", "PATH": "/bin", "SECRET_TOKEN": "s", "OTHER": "o"}
         env = isolated_child_env(_APPLIES, source)
-        assert env == {"HOME": "/home/x", "PATH": "/bin"}
+        assert env == {"HOME": "/srv/x", "PATH": "/bin"}
 
     def test_is_none_while_not_applies(self):
-        assert isolated_child_env(_NOT_APPLIED, {"HOME": "/home/x"}) is None
+        assert isolated_child_env(_NOT_APPLIED, {"HOME": "/srv/x"}) is None
 
     def test_is_none_for_an_empty_allowlist(self):
-        assert isolated_child_env(_EMPTY_ALLOWLIST, {"HOME": "/home/x"}) is None
+        assert isolated_child_env(_EMPTY_ALLOWLIST, {"HOME": "/srv/x"}) is None
 
 
 class TestWorkerEnvDigest:
     def test_is_equal_for_equal_environments(self):
-        env = {"HOME": "/home/x", "PATH": "/bin"}
+        env = {"HOME": "/srv/x", "PATH": "/bin"}
         assert worker_env_digest(dict(env)) == worker_env_digest(dict(env))
 
     def test_differs_when_a_non_secret_value_differs(self):
-        first = worker_env_digest({"HOME": "/home/x", "PATH": "/bin"})
-        second = worker_env_digest({"HOME": "/home/y", "PATH": "/bin"})
+        first = worker_env_digest({"HOME": "/srv/x", "PATH": "/bin"})
+        second = worker_env_digest({"HOME": "/srv/y", "PATH": "/bin"})
         assert first != second
 
     def test_is_equal_when_only_a_secret_named_value_differs(self):
-        first = worker_env_digest({"HOME": "/home/x", "ANTHROPIC_API_KEY": "sk-one"})
-        second = worker_env_digest({"HOME": "/home/x", "ANTHROPIC_API_KEY": "sk-two"})
+        first = worker_env_digest({"HOME": "/srv/x", "ANTHROPIC_API_KEY": "sk-one"})
+        second = worker_env_digest({"HOME": "/srv/x", "ANTHROPIC_API_KEY": "sk-two"})
         assert first == second
 
     def test_never_contains_a_value(self):
-        digest = worker_env_digest({"HOME": "/home/super-secret-path", "ANTHROPIC_API_KEY": "sk-x"})
-        assert "/home/super-secret-path" not in digest and "sk-x" not in digest
+        digest = worker_env_digest({"HOME": "/srv/super-secret-path", "ANTHROPIC_API_KEY": "sk-x"})
+        assert "/srv/super-secret-path" not in digest and "sk-x" not in digest
 
     def test_is_none_for_none(self):
         assert worker_env_digest(None) is None
@@ -66,7 +66,7 @@ class TestWorkerEnvDigest:
 
 class TestWorkerIsolationRecord:
     def test_fields_and_home_is_operator(self):
-        env = {"HOME": "/home/x", "PATH": "/bin"}
+        env = {"HOME": "/srv/x", "PATH": "/bin"}
         record = worker_isolation_record(_APPLIES, env)
         assert record["method"] == "tool_flag"
         assert record["applied"] is True
@@ -90,6 +90,11 @@ class TestRecordWorkerIsolation:
         record_worker_isolation(
             "", role="builder", provider="claude-cli", model="m",
             record=worker_isolation_record(_APPLIES, {"HOME": "/x"}))
+        assert list(tmp_path.iterdir()) == []
+
+    def test_writes_nothing_for_a_falsy_record(self, tmp_path):
+        record_worker_isolation(
+            str(tmp_path), role="builder", provider="claude-cli", model="m", record=None)
         assert list(tmp_path.iterdir()) == []
 
     def test_appends_one_parseable_line_per_call(self, tmp_path):
