@@ -124,12 +124,13 @@ entry's registered fallback runs instead, named by its `strategy` token; or `una
 one absent and the entry has no fallback, which is legal only for a feature that may refuse
 outright.
 
-The four entries frozen by DECISION F157 D2: `reviewer_schema_gate` and `planner_schema_gate` each
-require `json_schema` and degrade to `schema_in_prompt`; `parked_session_resume` requires
+The three entries the register holds since DECISION F157 D3 (4): `reviewer_schema_gate` requires
+`json_schema` and degrades to `schema_in_prompt`; `parked_session_resume` requires
 `session_resume` and degrades to `full_context_resend`; `stream_evidence_capture` requires
-`streaming` and degrades to `buffered_output`. Three declared capabilities have no consumer yet —
-`vision`, `tool_use` and `max_context_tokens` — and `CAPABILITY_NO_CONSUMER_NOTES` records why for
-each.
+`streaming` and degrades to `buffered_output`. No planner is an entry, because neither the Ollama
+planner nor `ClaudeCliPlanner` builds its call through an installed adapter today. Three declared
+capabilities have no consumer yet — `vision`, `tool_use` and `max_context_tokens` — and
+`CAPABILITY_NO_CONSUMER_NOTES` records why for each.
 
 Two guards in `tests/contracts/test_capability_matrix.py` keep the register honest: the read guard
 sweeps every file under `packages/` and `apps/` and fails on a `.capabilities(` call outside

@@ -217,7 +217,6 @@ class TestWorkerShowAdapterLinkage:
         entry = json.loads(capsys.readouterr().out)["providers"][0]
         assert entry["capability_matrix"] == [
             {"feature_key": "reviewer_schema_gate", "mode": "native", "strategy": None, "missing": []},
-            {"feature_key": "planner_schema_gate", "mode": "native", "strategy": None, "missing": []},
             {"feature_key": "parked_session_resume", "mode": "native", "strategy": None, "missing": []},
             {"feature_key": "stream_evidence_capture", "mode": "native", "strategy": None, "missing": []},
         ]
@@ -250,7 +249,28 @@ class TestWorkerShowAdapterLinkage:
         # DECISION F157 D2 (8): every entry degrades when the adapter declares no capability.
         assert (
             "  Degradations: reviewer_schema_gate as schema_in_prompt, "
-            "planner_schema_gate as schema_in_prompt, "
             "parked_session_resume as full_context_resend, "
             "stream_evidence_capture as buffered_output"
         ) in out
+
+    def test_the_unavailable_form_of_the_degradations_line_is_held_by_a_test(self, monkeypatch, capsys):
+        """R-1451 — no test held the `unavailable` form of the `Degradations:` line before this one."""
+        import types
+
+        import packages.contracts.capability_matrix as capability_matrix
+
+        original = capability_matrix.capability_matrix_for
+        refusing = types.MappingProxyType({
+            "refusing_feature": capability_matrix.CapabilityRequirement(
+                requires=("vision",), degradation=None, notes="refuses outright",
+            ),
+        })
+
+        def _patched(adapter, model, *, requirements=refusing):
+            return original(adapter, model, requirements=requirements)
+
+        monkeypatch.setattr(capability_matrix, "capability_matrix_for", _patched)
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=False)
+        out = capsys.readouterr().out
+        assert "  Degradations: refusing_feature unavailable" in out

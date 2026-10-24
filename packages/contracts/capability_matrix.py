@@ -5,6 +5,10 @@ A consumer asks this register, never an adapter's ``capabilities()`` directly; `
 and ``capability_matrix_for`` take the resolved ``(adapter, model)`` pair and call
 ``capabilities(model)`` themselves, so a mid-job failover that changes the pair changes what the
 next read sees.
+
+No planner asks this register today, because neither the Ollama planner nor ``ClaudeCliPlanner``
+builds its call through an installed adapter. An entry for a planner returns with the first one
+that does (DECISION F157 D3 (4)).
 """
 from __future__ import annotations
 
@@ -50,11 +54,6 @@ CAPABILITY_REQUIREMENTS: types.MappingProxyType[str, CapabilityRequirement] = ty
         requires=("json_schema",),
         degradation="schema_in_prompt",
         notes="The reviewer states the schema in the prompt and parses the free-text answer.",
-    ),
-    "planner_schema_gate": CapabilityRequirement(
-        requires=("json_schema",),
-        degradation="schema_in_prompt",
-        notes="The planner states the schema in the prompt and parses the free-text answer.",
     ),
     "parked_session_resume": CapabilityRequirement(
         requires=("session_resume",),
