@@ -42,7 +42,7 @@
 | environment variable | [environment.md](guides/environment.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
 | sandbox / Bubblewrap / Pi isolation | [tool-sandbox-v1.md](system/tool-sandbox-v1.md) | system |
-| sandbox model / profile honesty table | [sandbox-model.md](system/sandbox-model.md) | system, generated |
+| sandbox model / profile honesty table | [sandbox-model.md](system/sandbox-model.md) | system |
 | exit code | [exit-codes.md](guides/exit-codes.md) | guide |
 | explanations / terms | [explanation-layer-user-guide-v1.md](archive/explanation-layer-user-guide-v1.md) | archive |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
