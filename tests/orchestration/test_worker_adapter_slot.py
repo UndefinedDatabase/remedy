@@ -24,9 +24,11 @@ from packages.contracts.adapter_contract import (
 )
 from packages.orchestration import worker_adapter_slot as slot
 from packages.orchestration.claude_cli_command import build_claude_cli_args
+from packages.orchestration.config import reset_config
 from packages.orchestration.exec_guard import ExecGuardPolicy
 from packages.orchestration.pingpong_loop import run_pingpong
 from packages.orchestration.pingpong_provider import ClaudeCliProvider
+from packages.orchestration.sandbox_profiles import SandboxProfileLoosened
 from packages.orchestration.worker_adapter_slot import (
     WorkerAdapterNotInstalled,
     adapter_child_env,
@@ -395,6 +397,47 @@ def test_adapter_sandbox_record_claude_cli_on_linux_matches_the_dict_literal():
             "tmp_quota_mb": "nothing to limit",
         },
     }
+
+
+# -- a project's own choice: DECISION F162 D6 (3), reading the real `REMEDY_CLAUDE_CLI_SANDBOX_` --
+# -- `PROFILE`, as `test_claude_cli_command.py`'s own `TestTheKeysAreRegistered` reads one --------
+
+
+def test_adapter_exec_policy_tightens_onto_the_chosen_builtin(monkeypatch, tmp_path):
+    monkeypatch.setenv("REMEDY_CLAUDE_CLI_SANDBOX_PROFILE", "strict")
+    reset_config()
+    try:
+        base = ExecGuardPolicy(cwd=str(tmp_path), core_file_bytes=0)
+        policy = adapter_exec_policy("claude-cli", base)
+        assert policy.cpu_seconds == 600
+        assert policy.address_space_bytes == 2048 * 1048576
+        assert policy.open_files == 256
+        assert policy.deny_network is True
+        assert policy.sandbox is None
+    finally:
+        reset_config()
+
+
+def test_adapter_sandbox_record_names_the_chosen_builtin(monkeypatch):
+    monkeypatch.setenv("REMEDY_CLAUDE_CLI_SANDBOX_PROFILE", "strict")
+    reset_config()
+    try:
+        assert adapter_sandbox_record("claude-cli")["profile"] == "strict"
+    finally:
+        reset_config()
+
+
+def test_adapter_exec_policy_and_record_both_refuse_a_looser_choice(monkeypatch, tmp_path):
+    monkeypatch.setenv("REMEDY_CLAUDE_CLI_SANDBOX_PROFILE", "net-local")
+    reset_config()
+    try:
+        base = ExecGuardPolicy(cwd=str(tmp_path), core_file_bytes=0)
+        with pytest.raises(SandboxProfileLoosened):
+            adapter_exec_policy("claude-cli", base)
+        with pytest.raises(SandboxProfileLoosened):
+            adapter_sandbox_record("claude-cli")
+    finally:
+        reset_config()
 
 
 def _env_logging_claude(tmp_path: Path) -> tuple[Path, Path]:

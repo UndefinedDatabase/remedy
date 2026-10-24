@@ -56,4 +56,16 @@ CLAUDE_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=bool,
         default=False,
     ),
+    ConfigKeySpec(
+        key="claude_cli.sandbox_profile",
+        env_var="REMEDY_CLAUDE_CLI_SANDBOX_PROFILE",
+        description=(
+            "A stricter built-in sandbox profile for a claude-cli worker: strict, standard or "
+            "net-local. It must lie within the adapter's own default profile; a looser one is "
+            "refused, naming that default. strict and standard deny the network, so a claude-cli "
+            "worker under them cannot reach its model (F162, DECISION F162 D6)."
+        ),
+        value_type=str,
+        default=None,
+    ),
 )

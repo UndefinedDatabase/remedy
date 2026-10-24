@@ -33,6 +33,7 @@ from packages.orchestration.sandbox_profiles import (
     SandboxProfileError,
     SandboxProfileLoosened,
     SandboxUlimits,
+    effective_sandbox_profile,
     get_sandbox_profile,
     load_builtin_sandbox_profiles,
     parse_sandbox_profile,
@@ -40,6 +41,7 @@ from packages.orchestration.sandbox_profiles import (
     profile_within,
     record_worker_sandbox,
     run_guarded_with_sandbox_profile,
+    sandbox_profile_config_key,
     sandbox_profile_enforcement,
     sandbox_profile_guard_policy,
     sandbox_runner_available,
@@ -47,6 +49,7 @@ from packages.orchestration.sandbox_profiles import (
     worker_sandbox_record,
 )
 from packages.orchestration.tool_sandbox import SandboxSpec, SandboxUnavailable, require_sandbox
+from packages.providers.adapters.claude_cli_reference import ClaudeCliReferenceAdapter
 
 #: A profile that satisfies every rule of DECISION F162 D2 (3); every refusal case below is one
 #: line of this text dropped, replaced or added.
@@ -788,3 +791,57 @@ class TestRecordWorkerSandbox:
         parsed = [json.loads(line) for line in lines]
         assert [p["role"] for p in parsed] == ["builder", "reviewer"]
         assert all(p["provider"] == "claude-cli" and p["model"] == "m" for p in parsed)
+
+
+# ---------------------------------------------------------------------------
+# F162 round 6 C3: a project's chosen profile, tightened against the adapter's own default
+# (DECISION F162 D6)
+# ---------------------------------------------------------------------------
+
+
+class _Config(dict):
+    """A stand-in for `RemedyConfig`: `get` answers the value a key was given, else None."""
+
+
+def test_sandbox_profile_config_key_turns_the_dash_into_an_underscore():
+    assert sandbox_profile_config_key("claude-cli") == "claude_cli.sandbox_profile"
+
+
+class TestEffectiveSandboxProfile:
+    """DECISION F162 D6 (2): the resolver never reaches a call looser than the adapter's own
+    default, which is the policy minimum."""
+
+    def _adapter(self) -> ClaudeCliReferenceAdapter:
+        return ClaudeCliReferenceAdapter()
+
+    @pytest.mark.parametrize("value", [None, "", "   "])
+    def test_an_unset_or_blank_value_answers_the_adapters_own_default(self, value):
+        profile = effective_sandbox_profile(
+            self._adapter(), config=_Config({"claude_cli.sandbox_profile": value}))
+        assert profile.name == "claude-cli"
+        assert profile.net == SandboxNet(mode="allowlist", hosts=("api.anthropic.com",))
+
+    def test_a_stricter_builtin_tightens_the_default_and_is_returned_by_its_own_name(self):
+        profile = effective_sandbox_profile(
+            self._adapter(), config=_Config({"claude_cli.sandbox_profile": "strict"}))
+        assert profile == get_sandbox_profile("strict")
+
+    def test_net_local_loosens_net_and_is_refused_naming_the_default(self):
+        with pytest.raises(SandboxProfileLoosened) as exc_info:
+            effective_sandbox_profile(
+                self._adapter(), config=_Config({"claude_cli.sandbox_profile": "net-local"}))
+        assert exc_info.value.minimum_name == "claude-cli"
+        assert "'claude-cli'" in str(exc_info.value)
+
+    def test_an_unknown_name_is_refused_naming_the_three_builtins(self):
+        with pytest.raises(SandboxProfileError, match="strict, standard, net-local"):
+            effective_sandbox_profile(
+                self._adapter(), config=_Config({"claude_cli.sandbox_profile": "bogus"}))
+
+    def test_with_no_config_it_reads_the_process_config(self, monkeypatch):
+        import packages.orchestration.config as config_module
+
+        monkeypatch.setattr(
+            config_module, "get_config",
+            lambda: _Config({"claude_cli.sandbox_profile": "strict"}))
+        assert effective_sandbox_profile(self._adapter()) == get_sandbox_profile("strict")

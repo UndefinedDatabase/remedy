@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NoReturn
 
+from packages.contracts.adapter_contract import WorkerAdapter
 from packages.orchestration.exec_guard import ExecGuardPolicy, ExecGuardResult, run_guarded
 from packages.orchestration.tool_sandbox import SandboxSpec, SandboxUnavailable, require_sandbox
 
@@ -335,6 +336,34 @@ def tighten_sandbox_profile(minimum: SandboxProfile, requested: SandboxProfile) 
     if loosenings:
         raise SandboxProfileLoosened(minimum.name, loosenings, requested.name)
     return requested
+
+
+# ---------------------------------------------------------------------------
+# T003: a project's chosen profile, tightened against the adapter's own default
+# (DECISION F162 D6)
+# ---------------------------------------------------------------------------
+
+
+def sandbox_profile_config_key(adapter_id: str) -> str:
+    """The config key naming *adapter_id*'s sandbox profile choice (DECISION F162 D6 (1))."""
+    return f"{adapter_id.replace('-', '_')}.sandbox_profile"
+
+
+# WHY: the one place a project's chosen built-in reaches a call, the evidence line or the
+# doctor; the adapter's own declared default is the policy minimum, so nothing looser than it
+# ever compiles onto a call (DECISION F162 D6 (2)).
+def effective_sandbox_profile(adapter: WorkerAdapter, *, config: Any = None) -> SandboxProfile:
+    """*adapter*'s declared default, tightened by a project's chosen built-in profile, if any."""
+    declaration = adapter.sandbox_default()
+    default = parse_sandbox_profile(adapter.adapter_id, declaration.profile_toml)
+    if config is None:
+        from packages.orchestration.config import get_config
+
+        config = get_config()
+    requested = config.get(sandbox_profile_config_key(adapter.adapter_id))
+    if not isinstance(requested, str) or not requested.strip():
+        return default
+    return tighten_sandbox_profile(default, get_sandbox_profile(requested.strip()))
 
 
 # ---------------------------------------------------------------------------
