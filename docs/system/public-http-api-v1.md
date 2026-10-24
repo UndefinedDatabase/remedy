@@ -341,7 +341,15 @@ reads `selectable_over_http` `true`, with `ollama` and `claude-cli` offered, and
 /api/v1/orders` takes the body key `planner_provider`, passed to `remedy do` as
 `--planner-provider`. `POST /api/v1/jobs/{job}/run` and `/retry` take `claude-cli` for both of
 their keys. Every other caller that names `claude-cli` or a `planner_provider` is refused with the
-same 400 `api_provider_not_offered` as before, and its `not_offered_reason` names the property. A
+same 400 `api_provider_not_offered` as before, and its `not_offered_reason` names the property.
+**Which providers an order runs on when it names none (operator amendment amend1024-one-real-order).**
+For a client granted `host_tools` it is the product default, `claude-cli`, for the planner, the
+builder and the reviewer, unless the project's `[roles]` table chooses otherwise. For every other
+caller, the server's own token included, the route keeps the defaults it had before: it passes
+`--builder-provider=pi`, `--reviewer-provider=pi` and `--planner-provider=ollama` for each role
+that neither the body nor the project's `[roles]` table names (the planner also not when
+`planner.provider` is configured). The answer's `default_provider` under `roles` reads the same
+for the calling token. A
 `claude-cli` that is offered but not installed here is refused as not available. A run's effective configuration is the job's `execution_config` in the
 `job run` answer and in the review report (`docs/system/review-reports-v1.md`).
 

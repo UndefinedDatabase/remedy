@@ -178,3 +178,25 @@ def _several_projects_repo(projects: tuple[str, ...], repo: str | None, *,
         if position == 0:
             lead = selected.canonical_repo_path
     return lead
+
+
+# WHY: every planner call of a walk must name one service, so the project's `[roles]` planner is
+# read ONCE, before any step, and becomes the walk's planner (amend1024 A2, closing R-1448).
+def project_roles_planner(repo: str, *, json_output: bool) -> str | None:
+    """The `planner` of REPO's `[roles]` table in `.remedy/config.toml`, or None when it names none.
+
+    None too for a folder that is no repository: the init step names that fault as it always has.
+    A table that cannot be used is refused with `invalid_argument` and exit 2, the token the
+    machine contract already lists for `do.run`.
+    """
+    from packages.orchestration.project_roles import ProjectRolesError, read_project_roles
+    from packages.orchestration.worktrees import WorktreeError, repo_root
+
+    try:
+        root = repo_root(repo)
+    except (WorktreeError, OSError, subprocess.SubprocessError):
+        return None
+    try:
+        return read_project_roles(root).get("planner")
+    except ProjectRolesError as exc:
+        fail("invalid_argument", f"{exc}. Nothing was run.", json_output=json_output, exit_code=2)

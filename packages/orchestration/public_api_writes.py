@@ -150,7 +150,11 @@ def _order_text_and_options(body: dict[str, Any],
     (R-1244, DECISION F205 D6).
     """
     from packages.orchestration.api_clients import client_order_refusal
-    from packages.orchestration.execution_options import API_PROVIDER_NOT_OFFERED, remote_provider_refusal
+    from packages.orchestration.execution_options import (
+        API_PROVIDER_NOT_OFFERED,
+        http_order_default_options,
+        remote_provider_refusal,
+    )
     from packages.orchestration.order_file import (
         OrderFileError,
         order_no_cap_message,
@@ -202,6 +206,8 @@ def _order_text_and_options(body: dict[str, Any],
     options = [f"--{flag.replace('_', '-')}" for flag in _ORDER_CREATE_FLAGS if body.get(flag)]
     options += [f"--{key.replace('_', '-')}={body[key]}" for key in _ORDER_CREATE_STRINGS
                 if key in body]
+    lead = projects[0]
+    options += http_order_default_options(body, client, lead.canonical_repo_path or next(iter(lead.repo_paths), None))
     return order_text, options
 
 
