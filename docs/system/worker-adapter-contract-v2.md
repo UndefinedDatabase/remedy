@@ -122,9 +122,17 @@ operator's own home. `adapter_child_env` builds that environment and both `_cli_
 it reaches the child exactly as built. `create_role_provider` writes one line per claude-cli
 provider build to `worker_isolation.jsonl` beside the run's `capability_decisions.jsonl`, always,
 naming the method, whether it applied, the home kind, the environment digest, the names kept and
-the declaration's own ADR reference. The throwaway-home create/remove pair exists in
-`packages/orchestration/worker_isolation.py`, but no call path hands one to `adapter_child_env`
-yet; it refuses a declaration that asks for one.
+the declaration's own ADR reference. `declared_isolation` refuses an installed adapter that
+carries no `isolation()` member at all, so an adapter never runs with the operator's whole
+environment by a quiet fallback (DECISION F152 D4 (1)). `run_isolation_ab`, also in
+`packages/orchestration/worker_isolation.py`, is the throwaway-home pair's first caller: it builds
+an adapter's own declared command line once, runs it twice against one poisoned throwaway home —
+un-isolated with the operator's whole environment, isolated with the declaration's own flags and
+environment — and reports whether the declared isolation actually hid the poison (DECISION F152 D4
+(2)). Its stand-in proof runs in every selection against a test double standing in for `claude`,
+together with two red controls that show the utility can fail when a declaration or a command line
+really does leak. The run against the real binary waits for the operator's permission to spend a
+paid call, the question DECISION F152 D4 (4) still holds open.
 
 ## The capability matrix
 `packages/contracts/capability_matrix.py` holds a declarative register,

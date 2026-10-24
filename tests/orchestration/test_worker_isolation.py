@@ -1,24 +1,31 @@
-"""F152 T001, DECISION F152 D3 (3) to (5); T002, DECISION F152 D4 (1) — the worker isolation
-module's own pure helpers."""
+"""F152 T001, DECISION F152 D3 (3) to (5); T002, DECISION F152 D4 — the worker isolation module's
+own pure helpers and its A/B proof utility."""
 from __future__ import annotations
 
+import dataclasses
+import functools
 import json
 import os
 import stat
+import sys
+from pathlib import Path
 
 import pytest
 
-from packages.contracts.adapter_contract import WorkerIsolation
+from packages.contracts.adapter_contract import CliInvocation, WorkerIsolation
 from packages.orchestration.worker_isolation import (
+    ISOLATION_POISON_ENV,
     WORKER_ISOLATION_FILENAME,
     create_throwaway_home,
     declared_isolation,
     isolated_child_env,
     record_worker_isolation,
     remove_throwaway_home,
+    run_isolation_ab,
     worker_env_digest,
     worker_isolation_record,
 )
+from packages.providers.adapters.claude_cli_reference import ClaudeCliReferenceAdapter
 
 _ADR_REF = "docs/adr/0002-claude-cli-worker-isolation.md"
 
@@ -147,3 +154,167 @@ class TestThrowawayHome:
         with pytest.raises(ValueError, match="worker-home-"):
             remove_throwaway_home(str(other))
         assert other.exists()
+
+
+def _write_stand_in_claude(bin_dir: Path) -> str:
+    """A `claude` stand-in imitating the surfaces its own help text says the tool loads
+    (`.agent/f302_claude_help.txt`): it prints `REMEDY_ISOLATION_POISON`'s value when present in
+    its own environment; the text of `$HOME/.claude/settings.json` unless `--setting-sources` is
+    given without `user` in its value (`:228-229`); and the text of `$HOME/.claude.json` unless
+    `--strict-mcp-config` is given (`:232-233`)."""
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    path = bin_dir / "claude"
+    path.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        "argv = sys.argv[1:]\n"
+        f"poison = os.environ.get({ISOLATION_POISON_ENV!r})\n"
+        "if poison:\n"
+        "    print(poison)\n"
+        "sources = argv[argv.index('--setting-sources') + 1] if '--setting-sources' in argv else None\n"
+        "settings_suppressed = sources is not None and 'user' not in sources.split(',')\n"
+        "home = os.environ.get('HOME', '')\n"
+        "settings_path = os.path.join(home, '.claude', 'settings.json')\n"
+        "if not settings_suppressed and os.path.exists(settings_path):\n"
+        "    print(open(settings_path).read())\n"
+        "mcp_suppressed = '--strict-mcp-config' in argv\n"
+        "mcp_path = os.path.join(home, '.claude.json')\n"
+        "if not mcp_suppressed and os.path.exists(mcp_path):\n"
+        "    print(open(mcp_path).read())\n"
+        "print(json.dumps({'type': 'result', 'is_error': False, 'result': 'ab-proof'}))\n"
+    )
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return str(path)
+
+
+def _poison_home(home: str, marker: str, *, settings: bool, mcp: bool) -> None:
+    """Write MARKER into `$HOME/.claude/settings.json` and/or `$HOME/.claude.json` under HOME,
+    the two file-based surfaces the stand-in claude reads besides its own environment."""
+    if settings:
+        claude_dir = os.path.join(home, ".claude")
+        os.makedirs(claude_dir, exist_ok=True)
+        Path(claude_dir, "settings.json").write_text(json.dumps({"marker": marker}))
+    if mcp:
+        Path(home, ".claude.json").write_text(json.dumps({"marker": marker}))
+
+
+def _no_leftover_worker_home(parent: Path) -> bool:
+    """True when PARENT holds no `worker-home-*` directory."""
+    return not any(p.name.startswith("worker-home-") for p in parent.iterdir())
+
+
+class TestRunIsolationAb:
+    """F152 T002, DECISION F152 D4 (2) and (3): the A/B proof utility, proved against a stand-in
+    `claude` rather than the real binary, which this session cannot run (DECISION F152 D2 (3))."""
+
+    def _adapter(self, tmp_path, cls=ClaudeCliReferenceAdapter, customizations=False):
+        claude_path = _write_stand_in_claude(tmp_path / "bin")
+        return cls(claude_path=claude_path, config={"claude_cli.customizations": customizations})
+
+    def test_proves_isolation_for_a_poison_in_both_settings_and_mcp(self, tmp_path):
+        adapter = self._adapter(tmp_path)
+        result = run_isolation_ab(
+            adapter, marker="M-both", parent=str(tmp_path),
+            poison_home=functools.partial(_poison_home, settings=True, mcp=True))
+        assert result.proves_isolation
+
+    def test_a_variable_only_poison_is_present_unisolated_and_absent_isolated(self, tmp_path):
+        adapter = self._adapter(tmp_path)
+        result = run_isolation_ab(
+            adapter, marker="M-var", parent=str(tmp_path),
+            poison_home=functools.partial(_poison_home, settings=False, mcp=False))
+        assert result.marker_unisolated is True
+        assert result.marker_isolated is False
+
+    def test_a_settings_only_poison_is_present_unisolated_and_absent_isolated(self, tmp_path):
+        adapter = self._adapter(tmp_path)
+        result = run_isolation_ab(
+            adapter, marker="M-settings", parent=str(tmp_path),
+            poison_home=functools.partial(_poison_home, settings=True, mcp=False))
+        assert result.marker_unisolated is True
+        assert result.marker_isolated is False
+
+    def test_an_mcp_only_poison_is_present_unisolated_and_absent_isolated(self, tmp_path):
+        adapter = self._adapter(tmp_path)
+        result = run_isolation_ab(
+            adapter, marker="M-mcp", parent=str(tmp_path),
+            poison_home=functools.partial(_poison_home, settings=False, mcp=True))
+        assert result.marker_unisolated is True
+        assert result.marker_isolated is False
+
+    def test_a_declaration_that_still_allows_the_poison_variable_fails_the_variable_only_proof(
+        self, tmp_path,
+    ):
+        class _LeakyEnvAdapter(ClaudeCliReferenceAdapter):
+            """Red control (D4 (3)): its declaration keeps letting `ISOLATION_POISON_ENV` through
+            its own allowlist, so the isolated run should still see the variable-only poison."""
+
+            def isolation(self):
+                declared = super().isolation()
+                return dataclasses.replace(
+                    declared, env_allowlist=declared.env_allowlist + (ISOLATION_POISON_ENV,))
+
+        adapter = self._adapter(tmp_path, _LeakyEnvAdapter)
+        result = run_isolation_ab(
+            adapter, marker="M-leaky", parent=str(tmp_path),
+            poison_home=functools.partial(_poison_home, settings=False, mcp=False))
+        assert result.marker_isolated is True
+
+    def test_a_declaration_dropping_strict_mcp_config_fails_the_mcp_only_proof(self, tmp_path):
+        class _McpLeakingAdapter(ClaudeCliReferenceAdapter):
+            """Red control (D4 (3)): its declaration drops `--strict-mcp-config` from its own
+            tool_args, so its command line drops it too and the isolated run should still see
+            the mcp-only poison."""
+
+            def isolation(self):
+                declared = super().isolation()
+                return dataclasses.replace(
+                    declared,
+                    tool_args=tuple(a for a in declared.tool_args if a != "--strict-mcp-config"))
+
+        adapter = self._adapter(tmp_path, _McpLeakingAdapter)
+        result = run_isolation_ab(
+            adapter, marker="M-mcp-leak", parent=str(tmp_path),
+            poison_home=functools.partial(_poison_home, settings=False, mcp=True))
+        assert result.marker_isolated is True
+
+    def test_a_declaration_that_does_not_apply_raises_and_leaves_no_home(self, tmp_path):
+        adapter = self._adapter(tmp_path, customizations=True)
+        with pytest.raises(ValueError, match="does not apply"):
+            run_isolation_ab(
+                adapter, marker="M-x", parent=str(tmp_path), poison_home=lambda h, m: None)
+        assert _no_leftover_worker_home(tmp_path)
+
+    def test_a_command_line_lacking_the_declared_flags_raises_and_leaves_no_home(self, tmp_path):
+        class _FlagDroppingAdapter(ClaudeCliReferenceAdapter):
+            """A command line that lacks the flags its own declaration still claims — the shape
+            `run_isolation_ab`'s own refusal exists to catch."""
+
+            def build_invocation(self, role, prompt_parts, options):
+                invocation = super().build_invocation(role, prompt_parts, options)
+                tool_args = self.isolation().tool_args
+                return CliInvocation(argv=invocation.argv[: len(invocation.argv) - len(tool_args)])
+
+        adapter = self._adapter(tmp_path, _FlagDroppingAdapter)
+        with pytest.raises(ValueError, match="does not end with"):
+            run_isolation_ab(
+                adapter, marker="M-y", parent=str(tmp_path), poison_home=lambda h, m: None)
+        assert _no_leftover_worker_home(tmp_path)
+
+    def test_the_home_is_gone_after_a_run(self, tmp_path):
+        adapter = self._adapter(tmp_path)
+        run_isolation_ab(
+            adapter, marker="M-z", parent=str(tmp_path),
+            poison_home=functools.partial(_poison_home, settings=False, mcp=False))
+        assert _no_leftover_worker_home(tmp_path)
+
+    def test_the_home_is_gone_after_a_poison_home_that_raises(self, tmp_path):
+        adapter = self._adapter(tmp_path)
+
+        def _raising_poison(home, marker):
+            raise RuntimeError("boom")
+
+        with pytest.raises(RuntimeError, match="boom"):
+            run_isolation_ab(
+                adapter, marker="M-w", parent=str(tmp_path), poison_home=_raising_poison)
+        assert _no_leftover_worker_home(tmp_path)
