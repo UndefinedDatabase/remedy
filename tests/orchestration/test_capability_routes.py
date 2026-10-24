@@ -16,6 +16,8 @@ from packages.orchestration.capability_routes import (
     routed_parked_resume,
     routed_reviewer_schema,
 )
+from packages.orchestration.pingpong_loop import resume_declined_reasons
+from packages.orchestration.pingpong_provider import ReviewerOutput
 from packages.orchestration.role_provider_factory import create_role_provider
 
 
@@ -210,3 +212,45 @@ class TestRoutedParkedResume:
         monkeypatch.setitem(worker_adapter_slot._INSTALLED_WORKER_ADAPTERS, "claude-cli",
                              _ResumeAndSchemaReducedAdapter)
         assert routed_parked_resume("m") is False
+
+
+class TestClaudeCliProviderRoutesResumeAndSchema:
+    """`ClaudeCliProvider`, built through `create_role_provider`, reads both routes per call
+    (DECISION F157 D4 (2))."""
+
+    def _reviewer(self, tmp_path):
+        return create_role_provider(
+            "claude-cli", role="reviewer", staging_dir=str(tmp_path / "staging"),
+            model="m", with_failover=False,
+        )
+
+    def test_supports_resume_true_with_the_registrys_adapter(self, tmp_path):
+        assert self._reviewer(tmp_path).supports_resume is True
+
+    def test_supports_resume_false_with_the_reduced_adapter(self, monkeypatch, tmp_path):
+        monkeypatch.setitem(worker_adapter_slot._INSTALLED_WORKER_ADAPTERS, "claude-cli",
+                             _ResumeAndSchemaReducedAdapter)
+        assert self._reviewer(tmp_path).supports_resume is False
+
+    def test_resume_declined_reasons_names_the_reviewer_for_the_reduced_adapter(
+        self, monkeypatch, tmp_path,
+    ):
+        monkeypatch.setitem(worker_adapter_slot._INSTALLED_WORKER_ADAPTERS, "claude-cli",
+                             _ResumeAndSchemaReducedAdapter)
+        reviewer = self._reviewer(tmp_path)
+        declined = resume_declined_reasons({"reviewer": "sess-1"}, builder=None, reviewer=reviewer)
+        assert "reviewer" in declined
+
+    def test_review_prepares_a_cli_native_input_with_the_registrys_adapter(self, tmp_path):
+        reviewer = self._reviewer(tmp_path)
+        reviewer._review_impl = lambda *args, **kwargs: ReviewerOutput()
+        out = reviewer.review("prompt text")
+        assert out.prepared_input.mode == "cli-native"
+
+    def test_review_prepares_a_cli_legacy_input_with_the_reduced_adapter(self, monkeypatch, tmp_path):
+        monkeypatch.setitem(worker_adapter_slot._INSTALLED_WORKER_ADAPTERS, "claude-cli",
+                             _ResumeAndSchemaReducedAdapter)
+        reviewer = self._reviewer(tmp_path)
+        reviewer._review_impl = lambda *args, **kwargs: ReviewerOutput()
+        out = reviewer.review("prompt text")
+        assert out.prepared_input.mode == "cli-legacy"

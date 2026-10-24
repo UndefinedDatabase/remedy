@@ -151,13 +151,19 @@ degraded or `<feature_key> unavailable` when unavailable; a worker with no adapt
 line. Its JSON answer carries `capability_matrix`, the list of the register's decisions in
 register order, or `null` without an adapter.
 
-`packages/orchestration/capability_routes.py` is the second consumer, and the first routed one: a
-route function calls `require_or_degrade` with its register key as a string literal on the role's
-installed adapter and model, and decides only a feature the run actually asked for — a stream is
-decided only when the run requested stream evidence. Round 3 routes `stream_evidence_capture`
-inside `create_role_provider`'s `"stream_evidence"` setting. The run's decisions are written beside
-the run, as `capability_decisions.jsonl` in the evidence directory `create_role_provider` receives:
-one JSON line per provider build that decided anything, carrying `role`, `provider`, `model` and
-`decisions`; a failover link built mid-run writes its own line, so the evidence follows the pair.
-`read_capability_degradations(evidence_dir)` reads that file back into the run's degradations,
-`capability_degradation_entries` over every decision across every line.
+`packages/orchestration/capability_routes.py` is the second consumer, and the first routed one. It
+holds three routes — `stream_capture_route`, `reviewer_schema_route` and `parked_resume_route` —
+each calling `require_or_degrade` with its register key as a string literal on the role's installed
+adapter and model; a route decides only a feature the run actually asked for, so a stream is
+decided only when the run requested stream evidence. `routed_claude_cli_build` is
+`create_role_provider`'s one call for a claude-cli build's whole set of decisions: it reads the
+resume route for every role, the reviewer-schema route for the reviewer, and the stream route when
+the run requested one, and it records every decision it read in a single line, but only when at
+least one of them is not native — an all-native build writes nothing. The recorded line carries
+`role`, `provider`, `model` and `decisions`, written beside the run as `capability_decisions.jsonl`
+in the evidence directory `create_role_provider` receives; a failover link built mid-run writes its
+own line, so the evidence follows the pair. `ClaudeCliProvider` reads `routed_reviewer_schema` and
+`routed_parked_resume` on every call that needs them, with the operator switch
+`REMEDY_REVIEWER_FREETEXT` that `structured_outputs.py` owns still kept in force beside the route.
+`read_capability_degradations(evidence_dir)` reads the evidence file back into the run's
+degradations, `capability_degradation_entries` over every decision across every line.
