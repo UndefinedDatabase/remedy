@@ -173,7 +173,7 @@ class TestThrowawayHome:
 
 def _write_stand_in_claude(bin_dir: Path) -> str:
     """A `claude` stand-in imitating the surfaces its own help text says the tool loads
-    (`.agent/f302_claude_help.txt`): it prints `REMEDY_ISOLATION_POISON`'s value when present in
+    (`.agent/f302_claude_help.txt`): it prints `WORKER_ISOLATION_POISON`'s value when present in
     its own environment; the text of `$HOME/.claude/settings.json` unless `--setting-sources` is
     given without `user` in its value (`:228-229`); and the text of `$HOME/.claude.json` unless
     `--strict-mcp-config` is given (`:232-233`)."""

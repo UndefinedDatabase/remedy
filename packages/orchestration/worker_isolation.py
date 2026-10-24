@@ -35,7 +35,7 @@ WORKER_ISOLATION_FILENAME = "worker_isolation.jsonl"
 
 #: D4 (2)'s poison channel: an un-isolated run exports it with the marker so the A/B proof can
 #: show whether an isolated run still sees it.
-ISOLATION_POISON_ENV = "REMEDY_ISOLATION_POISON"
+ISOLATION_POISON_ENV = "WORKER_ISOLATION_POISON"
 
 
 # WHY: the one place that decides what a worker's child process actually sees, so a route never
