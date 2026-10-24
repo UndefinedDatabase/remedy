@@ -200,6 +200,9 @@ class SandboxSpec:
     workspace: str
     mounts: tuple[tuple[str, str, bool], ...] = ()
     setenv: tuple[tuple[str, str], ...] = ()
+    #: WHY: an allowlist profile needs the host's network to reach its hosts; DECISION F162 D3
+    #: compiles that into this field rather than widening the sandbox's own private namespace.
+    share_network: bool = False
 
     def _program_exists(self, program: str, path_value: str, cwd: str) -> bool:
         """Whether *program* will be found inside: on `PATH`, relative to *cwd*, or in a mount."""
@@ -227,9 +230,14 @@ class SandboxSpec:
         # A project's own virtual environment (F299 hands it over as VIRTUAL_ENV) may live in the
         # target checkout outside the worktree; it is the one such tree exposed, read-only.
         venv = _virtualenv_dir(source.get("VIRTUAL_ENV", ""), workspace)
-        args = [bwrap, "--unshare-all", "--die-with-parent", "--new-session",
-                "--hostname", "remedy-sandbox", "--proc", "/proc", "--dev", "/dev",
-                "--tmpfs", "/tmp", "--dir", SANDBOX_HOME, "--dir", SANDBOX_RUN_DIR]
+        args = [bwrap, "--unshare-all"]
+        if self.share_network:
+            args += ["--share-net"]
+        args += [
+            "--die-with-parent", "--new-session", "--hostname", "remedy-sandbox", "--proc",
+            "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--dir", SANDBOX_HOME, "--dir",
+            SANDBOX_RUN_DIR,
+        ]
         for path in _SYSTEM_DIRS:
             if os.path.islink(path):
                 args += ["--symlink", os.readlink(path), path]

@@ -433,3 +433,16 @@ def test_a_symlinked_toolchain_or_venv_in_the_workspace_leads_nowhere(world, tmp
     done = sh(ws, f"cat {private}/bin/token.txt; true",
               PATH=f"{ws}/.venv/bin:/usr/bin:/bin", VIRTUAL_ENV=f"{ws}/.venv")
     assert SECRET.encode() not in done.stdout
+
+
+# --- F162 R3 C2: share_network puts --share-net right after --unshare-all ----------------------
+
+def test_share_network_holds_share_net_right_after_unshare_all_and_default_holds_none(
+        tmp_path, sandbox_ready):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    shared = TS.SandboxSpec(workspace=str(ws), share_network=True).wrap(["/bin/true"], None, str(ws))
+    index = shared.index("--unshare-all")
+    assert shared[index + 1] == "--share-net"
+    default = TS.SandboxSpec(workspace=str(ws)).wrap(["/bin/true"], None, str(ws))
+    assert "--share-net" not in default
