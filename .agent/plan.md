@@ -9,15 +9,17 @@ what each profile does and does not prevent, every row linked to a test
 (`docs/roadmap/features/T8_F162.md`).
 
 ## Current Step
-Round 9: repair R-1469 under DECISION F162 D9 — the honesty document says "no limit declared" for
-an unlimited dimension and proves it with the record test that pins it. The building slices T001
-to T003 are complete with this round.
+Round 10, the closure's integration-gate round (session 2): book round 9 (PASS) with R-1469
+resolved; register and repair R-1470, the docs index row whose type cell reads `system, generated`;
+the checklist's one consolidation pass; the closure's self-use item run to its approval gate, never
+applied; and the feature's one full suite with its CPU cost.
 
 ## Next Steps
-1. The closure sequence, in a fresh session (session 2): book round 9 after re-running
-   `.remedy-wt/f162-r9/prep/verify.py`, then follow `docs/roadmap/STATUS_closure_protocol.md` —
-   the self-use run, the integration gate (the one full suite), the evidence package and review
-   zip, the Built State, the ledger rotation, the STATUS acceptance and the pull request.
+1. Round 11: the reviewer books round 10, R-1470 and every self-use run defect; then a repair round
+   naming every bad node id if the suite is red, else the evidence script, the evidence bundle and
+   the review package.
+2. The closing round: the Built State, the ledger rotation, the STATUS acceptance with the README
+   sync and the self-use queue's `consumed_by`, and the pull request.
 
 ## Risks
 - The container fixtures need a local `python:3.12-slim`; where it is absent they skip, NOT VERIFIED.
