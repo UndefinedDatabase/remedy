@@ -8,15 +8,15 @@ when a degradation ran; a guard fails a capability read outside the matrix
 (`docs/roadmap/features/T8_F157.md`).
 
 ## Current Step
-Round 5: book round 4's verdict, R-1452's resolution and R-1453, DECISION F157 D5; repair R-1453;
-one wording for a degradation, the readers of a run's and a task's evidence, `remedy run show`'s
-line and JSON list, and the job report's per-task line behind a structural step.
+Round 6: book round 5's verdict and R-1453's resolution; the reduced-capability end-to-end of
+DECISION F157 D3 (6), a one-task job run through the command handler with a reduced adapter,
+its evidence, its job report and its run report golden, beside a control with the registry's
+adapter.
 
 ## Next Steps
-1. The reduced-capability end-to-end: a job run through the loop with a reduced adapter whose
-   evidence, run report and job report name exactly the degradations the register predicts
-   (DECISION F157 D3 (6)).
-2. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
+1. The closure sequence (`docs/roadmap/STATUS_closure_protocol.md`): the integration gate with the
+   one full suite, the evidence package and review zip, the Built State, the checklist
+   consolidation, the STATUS acceptance and the pull request.
 
 ## Risks
 - `pingpong_provider.py`, `pingpong_loop.py` and `format_job_report_text` are structure-ledger
