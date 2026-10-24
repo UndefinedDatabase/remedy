@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 330.0s (the launcher's reading); pytest's own reported wall time: 329.18s (0:05:29)
+summary line: 1 failed, 23940 passed, 11 skipped, 1 warning in 329.18s (0:05:29)
+bad node ids (failed + errors):
+  - tests/orchestration/test_env_registry.py::test_every_remedy_name_production_code_spells_is_registered
+leftover processes: NONE
+tree it ran on: 7816704be (F152 R7 C3: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C3 changed only .agent/ files, the checklist page and the self-use queue
+reflog before: 7816704be HEAD@{2026-10-24 10:10:25 +0200}: commit: F152 R7 C3: the closure's self-use item run to its approval gate, never applied
+reflog after: 7816704be HEAD@{2026-10-24 10:10:25 +0200}: commit: F152 R7 C3: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F152 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1405.29 CPU seconds, 329.21 wall seconds, 23952 tests collected, exit status 1, recorded 2026-10-24T08:16:02Z
+This closure's suite used 1405.29 CPU seconds, 0.6 percent less than F157's 1413.16, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F157's closure run:
+  +2.98 s  tests/test_grouped_cli.py (30.80 -> 33.78)
+  +2.88 s  tests/serve_http_handler/test_public_api.py (15.14 -> 18.02)
+  +2.71 s  tests/orchestration/test_task_deliverables.py (3.15 -> 5.86)
+  +2.34 s  tests/orchestration/test_self_use_runner.py (4.74 -> 7.08)
+  +1.96 s  tests/test_structure_ratchet.py (1.59 -> 3.55)
+  +1.54 s  tests/cli/test_do_scale_matrix.py (37.87 -> 39.41)
+  +1.47 s  tests/orchestration/test_run_manifest_prework_resume.py (2.94 -> 4.41)
+  +1.24 s  tests/orchestration/test_review_zip_hygiene.py (38.04 -> 39.28)
+  +1.20 s  tests/orchestration/test_run_manifest_task_lifecycle_binding.py (3.41 -> 4.61)
+  +1.20 s  tests/orchestration/test_public_api_gate_paths.py (18.91 -> 20.11)
