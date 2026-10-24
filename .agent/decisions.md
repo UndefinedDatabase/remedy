@@ -32071,3 +32071,7 @@ THE PROBLEM: Part G2 says "create a client with remedy client"; the group has `s
 ## DECISION amend1024 D7 — 22 of the 55 named features parked; 33 kept because a feature that stays depends on them
 
 Part F2's own rule: a dependency that would tear is written down, not improvised. The 33 and their dependents are in operator question Q28.
+
+## DECISION amend1024 D8 — `cost.show_usd` replaces `[cockpit] show_cost_usd`; dollars are hidden, not deleted
+
+`cost.show_usd` in `remedy.toml` (default false, `REMEDY_COST_SHOW_USD`) replaces the per-project `[cockpit] show_cost_usd` switch of `.remedy/config.toml` (amend1015). Deleted: `job_tokens.cockpit_show_cost_usd` and its uses in `do_summary`, `job_digest` and `job_tokens.dashboard_token_usage`; they read `cost_currency.show_cost_usd()` now. `visible_cost_usd` nulls every `*_usd` field of a JSON answer (limits and flags kept, so no key set and no interface version changes), `visible_cost_text` prints `not-shown` in a text column; `remedy stats`, `remedy job show`, `remedy do` and every public API answer go through them. `stats valuations`, `stats recompute-costs` and `worker pricing-update` are `advanced` catalog entries, left out of the group help and still runnable. F158's calculation is kept. Reverse: set `cost.show_usd = true`, or delete the two helpers and their calls.
