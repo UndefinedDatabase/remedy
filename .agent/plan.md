@@ -8,15 +8,14 @@ sandbox as reinforcement) with a required ADR, the call builder applies it and r
 adapter without its ADR (`docs/roadmap/features/T8_F152.md`).
 
 ## Current Step
-Round 4: book round 3's FAIL and R-1455 to R-1457; repair them (the capability-route test states
-its property, an adapter without a declaration is refused, the record's Consequences follow D3);
-and T002 under DECISION F152 D4, the A/B proof utility with its stand-in proof and red controls.
+Round 5: book round 4's FAIL, resolve R-1455 to R-1457 and register R-1458 and R-1459; repair
+both; and T003 under DECISION F152 D5 — the kit's record and flag requirement, the isolation
+checks of `worker doctor`, and the docs.
 
 ## Next Steps
-1. T003: the per-adapter doctor check, the conformance-kit requirement that the record exists and
-   that the command line carries the declared flags, and the docs.
-2. The closure sequence: the integration gate, the evidence package, the STATUS acceptance, with
-   the real-binary A/B named as the open risk while operator question Q26 is unanswered.
+1. The closure sequence: the integration gate with the one full suite, the evidence package and
+   the review zip, the Built State, the STATUS acceptance and the pull request, with the
+   real-binary A/B named as the open risk while operator question Q26 is unanswered.
 
 ## Risks
 - A worker that reached its model through variables outside the allowlist loses them; the
