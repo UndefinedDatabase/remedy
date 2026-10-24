@@ -823,6 +823,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     )
     from packages.orchestration.order_verification import require_order_tests
     from packages.orchestration.repo_mission import link_order_job
+    from packages.orchestration.scope_decision import record_scope_decision
     from packages.orchestration.scope_question import ScopeQuestionRaised
 
     lane = settle_do_lane(ctx)
@@ -830,7 +831,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         shape, source = resolve_do_shape(ctx.mission_plan, force_job=ctx.force_job,
                                          force_mission=ctx.force_mission,
                                          projects=len(ctx.projects), bounded=lane.bounded,
-                                         single_job=bool(lane.single_job))
+                                         single_job=bool(lane.single_job), scope_decided=lane.scope_decided)
     except ValueError as exc:
         return DO_STEP_FAILED, str(exc)
     ctx.shape, ctx.shape_source = shape, source
@@ -865,6 +866,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         if milestone_id is not None and str(target.project.id) == str(cast("RemyProject", ctx.project).id):  # R-1425
             record_job_milestone(job_id, milestone_id)
         merge_contract_slice_into_dod(mission, milestone_id, job_id, hold_on_milestone=False)
+        record_scope_decision(ctx.scope_decision, job_id)    # amend1024 B1: the decision is evidence
         require_order_tests(job_id, ctx.order)     # exec-1017 D2: a test run the order asks for blocks
         grant_contract_job_repository(mission, job_id)
         ctx.job_ids.append(job_id)

@@ -31,6 +31,8 @@ DO_SHAPE_SOURCE_FORCE_MISSION = "--force-mission"
 #: The order itself asked for one job: its header says `shape: single-job`, or its text names exactly
 #: one file (DECISION amend1023 D7); the planner may not overrule it.
 DO_SHAPE_SOURCE_ORDER = "the order"
+#: The planner's scope decision made it one job (operator amendment amend1024-one-real-order, B2).
+DO_SHAPE_SOURCE_SCOPE_DECISION = "the planner's scope decision"
 
 DO_STEP_DONE = "done"
 DO_STEP_SKIPPED = "skipped"
@@ -123,6 +125,9 @@ class DoContext:
     confirm_plan: Callable[[Any], bool] | None = None
     #: The lane the order walks (amend1014 D1), decided once by `settle_do_lane`; ``None`` until then.
     lane: DoLaneDecision | None = None
+    #: The planner's scope decision (amend1024 B1), as `scope_decision.decide_order_scope` records
+    #: it; ``None`` when the walk did not ask one. Each job of the walk keeps it as evidence.
+    scope_decision: dict[str, Any] | None = None
     #: The repository is small enough that its study needs no provider narration.
     tiny_repo: bool = False
     #: Where a human-facing walk says what it is doing (amend1014 D4); ``None`` under `--json`.

@@ -83,8 +83,8 @@ An ordinary, bounded request needs nothing but the order:
 remedy do "Add one concise project-description paragraph below the heading in README.md. Change no other files." --repo .
 ```
 
-`remedy do` reads the order and the repository and picks a lane without asking a model. It
-first sorts the order's sentences into **deliverables** (the change asked for) and
+`remedy do` reads the order and the repository, asks the planner how many jobs the order is (the
+scope decision below) and picks a lane. It first sorts the order's sentences into **deliverables** (the change asked for) and
 **constraints**: "change only README.md", "change no other files", "run npm test", "the tests
 must pass", "apply nothing automatically", "review the diff", "report the result", in English or
 German, and every header `constraint:` line. Remedy enforces each constraint itself (the scope
@@ -134,7 +134,22 @@ HTTP no client can name a test command: it is always the project's own. In a fen
 nothing else"), a planned task whose deliverable the order did not ask for is left out, and a plan
 of nothing else fails (exec-1017 D2).
 
-The lane is decided from the order and the repository's tracked files, with no model call:
+**The scope decision (operator amendment amend1024-one-real-order).** Before any milestone is
+planned, the planner (claude-cli unless `--planner-provider` or `[roles]` names another) reads the
+order, the repository's tracked paths (paths only, at most 2,000 lines) and one question: is this
+one job, or does it really need several? It answers one JSON object with `single_job`, `files` and
+`reason` (one German sentence), kept in each job's evidence folder as `scope_decision.json`. One job
+is the default: the order walks as one job without milestones, whose tasks the planner plans, and
+a bounded order whose files the planner agrees with keeps its bounded lane. Several jobs, the full
+lane's milestones, come only from `single_job: false` with a reason. An order whose header says
+`shape: single-job`, or whose text spells its files in the bounded lane, is not asked: it says what
+it is. Neither is an order under `--no-llm`, `--force-job` or `--force-mission`, nor one over
+several projects. **The lanes below are the fallback:** when the planner is not reachable, its call
+fails, or its answer is not that object after one parse retry, the lane is decided from the order
+and the repository's tracked files alone, with no model call, exactly as before, and
+`scope_decision.json` says why (`planner_unreachable`, `planner_failed`, `answer_invalid`).
+
+The fallback lanes, decided from the order and the repository's tracked files with no model call:
 
 | Lane | When | What happens |
 |------|------|--------------|
