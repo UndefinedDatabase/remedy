@@ -16,6 +16,7 @@ wrong (a model id Remedy does not ship, a price in a currency other than the con
 from __future__ import annotations
 
 import datetime
+import difflib
 import math
 import re
 from dataclasses import dataclass
@@ -188,3 +189,59 @@ def price_catalog_warnings(catalog: PriceCatalog, *, currency: str = COST_CURREN
                             f"{price.currency}, not {currency}; with no exchange rate configured, "
                             f"and none invented, its cost stays unnormalized")
     return warnings
+
+
+@dataclass(frozen=True)
+class PriceCatalogUpdate:
+    """An imported catalog checked against the current one: the difference to show, and its text."""
+
+    adapter: str
+    target: Path
+    current_version: int | None
+    new_version: int
+    changed: bool
+    diff: tuple[str, ...]
+    warnings: tuple[str, ...]
+    text: str
+
+
+def plan_price_catalog_update(text: str, *, directory: Path | None = None) -> PriceCatalogUpdate:
+    """Check an imported catalog's `text` against the current file and compute the difference.
+
+    The imported catalog must pass every rule `parse_price_catalog` applies, and a catalog that
+    changes anything must raise `pricing_version` above the current one, so every valuation keeps
+    recording which prices it used. Nothing is written here; `write_price_catalog_update` writes.
+    """
+    try:
+        header = tomllib.loads(text).get("catalog")
+    except tomllib.TOMLDecodeError as exc:
+        raise PriceCatalogError(f"imported price catalog: not valid TOML: {exc}") from exc
+    adapter = header.get("adapter") if isinstance(header, dict) else None
+    if not isinstance(adapter, str) or not adapter:
+        raise PriceCatalogError("imported price catalog: [catalog] adapter must name an adapter")
+    imported = parse_price_catalog(text, adapter=adapter)
+    target = (directory or PRICE_CATALOG_DIR) / f"{adapter}.toml"
+    current_text = target.read_text(encoding="utf-8") if target.is_file() else ""
+    current = parse_price_catalog(current_text, adapter=adapter) if current_text else None
+    changed = text != current_text
+    if changed and current is not None and imported.pricing_version <= current.pricing_version:
+        raise _refuse(adapter, f"the imported catalog changes the current one but its pricing_version "
+                               f"{imported.pricing_version} is not above the current "
+                               f"{current.pricing_version}; raise it")
+    diff = tuple(difflib.unified_diff(current_text.splitlines(), text.splitlines(),
+                                      fromfile=f"{adapter}.toml (current)",
+                                      tofile=f"{adapter}.toml (imported)", lineterm=""))
+    return PriceCatalogUpdate(
+        adapter=adapter, target=target,
+        current_version=None if current is None else current.pricing_version,
+        new_version=imported.pricing_version, changed=changed, diff=diff,
+        warnings=tuple(price_catalog_warnings(imported)), text=text)
+
+
+def write_price_catalog_update(update: PriceCatalogUpdate) -> bool:
+    """Write a planned update's catalog over its target; False, writing nothing, when it changes nothing."""
+    if not update.changed:
+        return False
+    update.target.parent.mkdir(parents=True, exist_ok=True)
+    update.target.write_text(update.text, encoding="utf-8")
+    return True

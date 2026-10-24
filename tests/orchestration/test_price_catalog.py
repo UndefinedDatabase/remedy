@@ -16,9 +16,11 @@ from packages.orchestration.price_catalog import (
     load_price_catalog,
     load_price_catalogs,
     parse_price_catalog,
+    plan_price_catalog_update,
     price_catalog_warnings,
     registered_adapter_refs,
     stale_model_prices,
+    write_price_catalog_update,
 )
 
 KNOWN_MODEL = builtin_model_ids()[0]
@@ -197,3 +199,42 @@ class TestStaleness:
         assert [p.model for p in stale] == [KNOWN_MODEL]
         assert [p.model for p in stale_model_prices(
             catalog, today=datetime.date(2026, 12, 1), window_days=60)] == sorted([KNOWN_MODEL, "zz-model"])
+
+
+class TestTheUpdatePlan:
+    def test_a_first_catalog_has_no_current_version_and_is_written(self, tmp_path: Path) -> None:
+        update = plan_price_catalog_update(VALID, directory=tmp_path)
+        assert (update.adapter, update.current_version, update.new_version) == ("claude-cli", None, 3)
+        assert update.changed is True
+        assert update.target == tmp_path / "claude-cli.toml"
+        assert update.diff[:2] == ("--- claude-cli.toml (current)", "+++ claude-cli.toml (imported)")
+        assert write_price_catalog_update(update) is True
+        assert update.target.read_text(encoding="utf-8") == VALID
+
+    def test_an_unchanged_catalog_is_not_written(self, tmp_path: Path) -> None:
+        (tmp_path / "claude-cli.toml").write_text(VALID, encoding="utf-8")
+        update = plan_price_catalog_update(VALID, directory=tmp_path)
+        assert (update.changed, update.diff) == (False, ())
+        assert write_price_catalog_update(update) is False
+
+    def test_a_change_must_raise_the_version(self, tmp_path: Path) -> None:
+        (tmp_path / "claude-cli.toml").write_text(VALID, encoding="utf-8")
+        with pytest.raises(PriceCatalogError, match="pricing_version 3 is not above the current 3"):
+            plan_price_catalog_update(_with("input_per_million = 2", "input_per_million = 4"),
+                                      directory=tmp_path)
+
+    def test_a_lower_version_is_refused_too(self, tmp_path: Path) -> None:
+        (tmp_path / "claude-cli.toml").write_text(VALID, encoding="utf-8")
+        with pytest.raises(PriceCatalogError, match="is not above the current 3"):
+            plan_price_catalog_update(_with("pricing_version = 3", "pricing_version = 2"),
+                                      directory=tmp_path)
+
+    def test_the_imported_text_must_name_its_adapter(self, tmp_path: Path) -> None:
+        with pytest.raises(PriceCatalogError, match="adapter must name an adapter"):
+            plan_price_catalog_update("[catalog]\npricing_version = 1\n\n[models]\n", directory=tmp_path)
+        with pytest.raises(PriceCatalogError, match="not valid TOML"):
+            plan_price_catalog_update("[catalog\n", directory=tmp_path)
+
+    def test_the_update_carries_the_catalogs_warnings(self, tmp_path: Path) -> None:
+        update = plan_price_catalog_update(VALID, directory=tmp_path)
+        assert update.warnings == tuple(price_catalog_warnings(parse_price_catalog(VALID, adapter="claude-cli")))
