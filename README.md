@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-165 of 316 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+166 of 316 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -44,7 +44,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 4 | 17 |
-| 8 | Worker Ecosystem & Neutrality | 5 | 13 |
+| 8 | Worker Ecosystem & Neutrality | 6 | 13 |
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
@@ -943,7 +943,19 @@ a looser choice is refused naming the minimum; each claude-cli build writes a `w
 line saying which limits are enforced and which are not; `remedy worker doctor` warns about every
 unenforced one; an optional container runner applies the same profile when podman or docker is
 installed; the generated page `docs/system/sandbox-model.md` tables what each profile does and does
-not prevent, every row linked to the test that proves it).
+not prevent, every row linked to the test that proves it),
+F158 cost normalization and price catalog (one configured currency, `cost.currency`, which accepts
+only usd because every budget is kept in dollars, with a guard that refuses a second currency in
+any display; a versioned price catalog per worker adapter, each price carrying its date and its
+source, shipped empty for claude-cli because that tool reports each call's cost itself; every call
+mirrored into the token ledger is valued beside its untouched row, the provider's own cost winning,
+the catalog computing a cost otherwise and cross-checking it, a difference above the configured
+threshold flagged, and an unpriced call left unknown with the reason; `remedy worker
+pricing-update` shows the difference to the current catalog and writes only with `--yes`;
+`remedy stats recompute-costs` values a project's calls again after a catalog changes, and
+`remedy stats valuations` totals each kind of evidence on its own and warns about flagged calls and
+stale prices without blocking; the pages `docs/system/cost-currency-v1.md` and
+`docs/system/price-catalog-v1.md` describe it).
 
 Accepted in Tier 12 so far:
 F200 daemon mode (`remedy serve start` runs one long-lived supervisor for a data root, and

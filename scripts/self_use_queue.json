@@ -671,7 +671,7 @@
       "title": "Write the first tests for packages/orchestration/do_study.py",
       "why": "No file under `tests/` imports `packages.orchestration.do_study`.",
       "job_markdown": "# Job: Write the first tests for packages/orchestration/do_study.py\n\n## Task 1\nNo file under `tests/` imports `packages.orchestration.do_study`, so nothing tests `packages/orchestration/do_study.py` directly. The names to test are `repo_has_committed_file`, `do_step_study`.\n\nWrite its first tests, in a test file named after the module, `test_do_study.py`, beside the tests of its package — a new file, or the existing file of that name if there is one. The file imports `packages.orchestration.do_study` and holds at least one meaningful test for each name above. Change no production code, and do not edit any file under `.agent/`.\n\nAcceptance:\n- A test file under `tests/` imports `packages.orchestration.do_study`, and pytest passes on it.\n- Each of `repo_has_committed_file`, `do_step_study` is exercised by at least one of the new tests.\n- No file under `.agent/` is changed by this task.\n",
-      "consumed_by": "",
+      "consumed_by": "F158",
       "provenance": "generated (self-use-generator tier 5, untested module, packages/orchestration/do_study.py)"
     }
   ]
