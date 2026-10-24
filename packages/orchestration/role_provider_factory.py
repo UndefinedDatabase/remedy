@@ -12,7 +12,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
-from packages.orchestration.capability_routes import routed_stream_evidence
+from packages.orchestration.capability_routes import routed_claude_cli_build
 from packages.orchestration.model_failover import (
     FailoverLink,
     FailoverProvider,
@@ -74,7 +74,7 @@ def create_role_provider(
         common: dict[str, Any] = {
             "cwd": staging_dir,
             "model": model,
-            "stream_evidence": routed_stream_evidence(role, model, stream_evidence, stream_evidence_dir),
+            "stream_evidence": routed_claude_cli_build(role, model, stream_evidence, stream_evidence_dir),
             "stream_evidence_dir": stream_dir,
             "stream_rel_prefix": rel_prefix,
             "stream_counters": counters,

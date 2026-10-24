@@ -3,7 +3,7 @@ actually built, and where that decision's evidence is written and read back (DEC
 
 A route decides only a feature the run asked for — a stream is decided only when the run requested
 stream evidence — and calls `require_or_degrade` with its register key as a string literal, so the
-read guard of `tests/contracts/test_capability_matrix.py` reads every key this module names.
+consumer guard of `tests/contracts/test_capability_matrix.py` reads every key this module names.
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from packages.contracts.capability_matrix import (
     capability_degradation_entries,
     require_or_degrade,
 )
+from packages.orchestration.structured_outputs import reviewer_structured_enabled
 from packages.orchestration.worker_adapter_slot import installed_worker_adapter
 
 # WHY: the one file name every route writes to and every reader opens, named once (DECISION F157 D3 (3)).
@@ -30,6 +31,39 @@ def stream_capture_route(model: str, **settings) -> CapabilityDecision:
         installed_worker_adapter("claude-cli", streaming=True, **settings),
         model,
     )
+
+
+# WHY: the route for `reviewer_schema_gate`, a literal key so the matrix's consumer guard holds.
+def reviewer_schema_route(model: str, **settings) -> CapabilityDecision:
+    return require_or_degrade(
+        "reviewer_schema_gate",
+        installed_worker_adapter("claude-cli", **settings),
+        model,
+    )
+
+
+# WHY: the route for `parked_session_resume`, a literal key so the matrix's consumer guard holds.
+def parked_resume_route(model: str, **settings) -> CapabilityDecision:
+    return require_or_degrade(
+        "parked_session_resume",
+        installed_worker_adapter("claude-cli", **settings),
+        model,
+    )
+
+
+# WHY: the claude-cli provider's one reviewer-schema reading (DECISION F157 D4 (2)): the operator
+# switch and the route's answer together, so a degraded adapter never claims native enforcement.
+def routed_reviewer_schema(model: str) -> bool:
+    return (
+        reviewer_structured_enabled()
+        and reviewer_schema_route(model).mode == CAPABILITY_MODE_NATIVE
+    )
+
+
+# WHY: the claude-cli provider's one resume reading (DECISION F157 D4 (2)): the route's answer for
+# `parked_session_resume`, the only input `ClaudeCliProvider.supports_resume` needs.
+def routed_parked_resume(model: str) -> bool:
+    return parked_resume_route(model).mode == CAPABILITY_MODE_NATIVE
 
 
 # WHY: the run's decisions live beside the run, one line per provider build that decided anything
@@ -55,18 +89,27 @@ def record_capability_decisions(
         handle.write(line + "\n")
 
 
-# WHY: `create_role_provider`'s one call for `stream_evidence_capture`, the request and the
-# register's answer together, so the setting a provider actually gets is what the evidence names.
-def routed_stream_evidence(
-    role: str, model: str, requested: bool, evidence_dir: str | None,
+# WHY: `create_role_provider`'s one call for the claude-cli build's whole set of decisions
+# (DECISION F157 D4 (3)): resume on every role, the reviewer's schema for the reviewer, the
+# stream setting when requested, recorded in one line only when something degraded (D4 (4)).
+def routed_claude_cli_build(
+    role: str, model: str, requested_stream: bool, evidence_dir: str | None,
 ) -> bool:
-    if not requested:
+    decisions = [parked_resume_route(model)]
+    if role == "reviewer":
+        decisions.append(reviewer_schema_route(model))
+    stream_decision: CapabilityDecision | None = None
+    if requested_stream:
+        stream_decision = stream_capture_route(model)
+        decisions.append(stream_decision)
+    if any(decision.mode != CAPABILITY_MODE_NATIVE for decision in decisions):
+        record_capability_decisions(
+            evidence_dir, role=role, provider="claude-cli", model=model,
+            decisions=tuple(decisions),
+        )
+    if stream_decision is None:
         return False
-    decision = stream_capture_route(model)
-    record_capability_decisions(
-        evidence_dir, role=role, provider="claude-cli", model=model, decisions=(decision,),
-    )
-    return decision.mode == CAPABILITY_MODE_NATIVE
+    return stream_decision.mode == CAPABILITY_MODE_NATIVE
 
 
 # WHY: the run's degradations, read back from the evidence file this module writes.
