@@ -127,7 +127,13 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
    the Pi harness's own event stream (null when it made no record), and the tokens by kind, `input`, `output`, `cache_read` and
    `cache_creation`, that the projects' cost ledgers hold for the job and for the UTC day. A
    kind no call reported is null, never 0; a job no ledger names reads 0 harness invocations, or null
-   when a ledger could not be read. Each completed job also carries
+   when a ledger could not be read. Remedy judges a run by these tokens and invocations: every
+   dollar field of every answer — a job's `cost.value_usd`, a project's `cost_today.value_usd`,
+   `remedy do`'s `cost_usd` fields and `order_budget` spend — keeps its key and reads null unless
+   `cost.show_usd = true` is set in `remedy.toml`, and the `basis` beside it still says whether the
+   cost was measured (operator amendment amend1024-one-real-order Part E,
+   `docs/system/cost-currency-v1.md`). A cap the client set, such as `max_cost_usd`, is always
+   answered. Each completed job also carries
    `approval_card`, what an operator approves its result on, read from the job's record and its
    mission's contract alone: how many files its tasks changed and the first twenty of them by
    name, the test command the job ran with, and each task's title, reviewer's verdict and repair
@@ -224,7 +230,7 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
 | `job_id` | digest jobs and decisions; `remedy change proof` | the job |
 | `order_id` | digest jobs | the order the job belongs to; null for a job of no order |
 | `state` | digest jobs | the job's state: `stopped`, `completed` and the others |
-| `cost` | digest jobs | `value_usd` and its `basis`, measured, never guessed |
+| `cost` | digest jobs | `value_usd` and its `basis`, measured, never guessed; `value_usd` reads null unless `cost.show_usd` is true |
 | `evidence` | digest jobs | the job's evidence references |
 | `run_manifest_path` | digest job evidence | the run manifest the job's runs wrote |
 | `waits_for_apply` | digest jobs | true while a completed job's result is not applied |

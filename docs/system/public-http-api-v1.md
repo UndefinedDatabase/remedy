@@ -225,7 +225,13 @@ no project, or one that names a project this machine does not register as exactl
 before anything starts, with 409 `api_order_project_unknown` — because the order would otherwise
 run in a folder nobody chose. An order whose header sets no cap — none of `max-cost-usd`,
 `max-total-tokens`, `max-provider-calls` and `max-wall-clock-minutes` — is refused before anything
-starts with 400 `order_file_no_cost_cap` and the sentence `remedy do` refuses it with. Every other
+starts with 400 `order_file_no_cost_cap` and the sentence `remedy do` refuses it with. Cap an order
+by `max-total-tokens`, `max-provider-calls` and `max-wall-clock-minutes`: `max-cost-usd` is still
+accepted but not recommended, because Remedy judges a run by its tokens and provider calls and a
+dollar cap cannot be enforced while any call carries no price (operator amendment
+amend1024-one-real-order Part E). For the same reason every answer of this API reads null in each
+dollar field, keeping its key, unless `cost.show_usd = true` is set in `remedy.toml`; a cap the
+client set is always answered (`docs/system/cost-currency-v1.md`). Every other
 refusal is `remedy do`'s own, read back only once the order is polled. When the order's child process cannot be started at all, nothing is left behind:
 the order's folder is removed and the call answers 500 with `api_command_failed`. The refusals
 this paragraph and the paragraph on keys below name are the route's own, not `remedy do`'s:
