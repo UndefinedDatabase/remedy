@@ -7,7 +7,7 @@
 
 | Keyword | File | Category |
 |---------|------|----------|
-| ADR / decision record | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md) | adr |
+| ADR / decision record | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md), [0002-claude-cli-worker-isolation.md](adr/0002-claude-cli-worker-isolation.md) | adr |
 | agent conventions | [worker_conventions.md](agents/worker_conventions.md), [reviewer_conventions.md](agents/reviewer_conventions.md), [teacher_conventions.md](agents/teacher_conventions.md) | agents |
 | handback template | [handback_template.md](agents/handback_template.md) | agents |
 | integration gate | [integration_gate.md](agents/integration_gate.md) | agents |
@@ -245,9 +245,16 @@ edits the status line themselves; each proposed record ships with a
 ready-to-apply unified diff beside it, and applying that diff is always a
 human action.
 
+A worker isolation record (F152) is a second kind of record in this folder: a
+research record that pins how one worker tool keeps the operator's personal
+configuration out of a run. It ships with no diff and needs no human apply
+step; its status line says which of its claims are verified, and the
+conformance kit requires every adapter to name its record.
+
 | File | Description | Status |
 |------|-------------|--------|
 | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md) | Raise `CYCLE_SAFETY_CAP` 1 → 8 on the F075 10/10 gate evidence; the shipped default stays 1 | ACCEPTED & APPLIED 2026-08-07 |
+| [0002-claude-cli-worker-isolation.md](adr/0002-claude-cli-worker-isolation.md) | How the claude-cli worker keeps the operator's personal configuration out of a run: its flags, its environment and its login | RESEARCH RECORD, partly verified 2026-10-24 |
 
 ## Contract Templates (`docs/contracts/`)
 
