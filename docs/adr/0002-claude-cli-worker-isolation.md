@@ -68,49 +68,46 @@ What that means for each of the three methods T8_F152.md names:
   same consequence as `clean_env`, by the same mechanism (a different `HOME`), with the same
   `FORBIDDEN_ENV_KEYS` floor still sitting beneath whatever allowlist the caller composes.
 
-## The chosen mechanism (a proposal for T001 to declare)
+## The chosen mechanism (declared by DECISION F152 D3)
 
-**Method: `clean_env`.** A flag alone cannot be shown, from the captured text, to remove the
-operator's `~/.claude` directory itself — managed settings pass through BOTH of the broadest flags
-by the help text's own words, and a flag's suppression list is one tool version's promise, which
-the feature file's own words call unstable ("tools change flags"). A throwaway `HOME` removes the
-directory rather than trusting each flag's list to stay complete.
+**Method: `tool_flag`, not `clean_env`.** DECISION F152 D3 rejects this record's own
+`clean_env`/throwaway-home proposal above: "The login" section just above shows a fresh `HOME`
+very likely hides the operator's own login, which would make every paid worker call fail to
+authenticate — isolating the login and preserving it are two different goals, and a throwaway
+home serves only the first. D3 declares `tool_flag` instead: no new `HOME`, so the operator's
+login stays exactly where it is.
 
 **Exact flags.** Keep `--safe-mode` (already appended by `claude_cli_launch_switches`,
-`claude_cli_command.py:46-59`), and add `--strict-mcp-config` with no `--mcp-config` argument — a
+`claude_cli_command.py:46-59`, unrelated to this feature), and add `--setting-sources
+project,local` (keeping the operator's own user-level settings and every MCP server not named on
+the command line out, while the project's own settings still load) and `--strict-mcp-config` (a
 second, independent closure of the MCP surface, since `--safe-mode`'s own claim to disable MCP
-servers is one flag's prose and not yet proven against the real binary. Do NOT add `--bare`: its
-narrowing of accepted auth to `ANTHROPIC_API_KEY`/`apiKeyHelper` would, per "The login" above, break
-authentication for an operator whose login rides on OAuth or keychain, which this feature must not
-do as a side effect of isolating configuration. Do NOT add `--restricted`: it also strips
-Bash/REPL/code-running tools, a write-capability concern F302 D2 already governs and T8_F152.md's
-"Do not touch" list keeps out of this feature.
+servers is one flag's prose and not yet proven against the real binary).
 
-**Environment allowlist (names only):** `PATH`, `HOME`, `LANG`, `LC_ALL`, `LC_CTYPE`, `LOGNAME`,
-`SHELL`, `TERM`, `TMPDIR`, `TZ`, `USER` — the same shape `_PI_ENV_ALLOWLIST`
-(`packages/orchestration/pi_provider.py:96-97`) already uses for a different worker tool, since
-claude-cli's process-plumbing needs are the same as Pi's and none of this is the operator's own
-customization surface. `HOME` in this list names the THROWAWAY home's path, never the operator's.
-This list is composed with `exec_guard.py`'s `FORBIDDEN_ENV_KEYS` floor (`:104-110`) beneath it, as
-every allowlist in this repository already is.
+**Environment allowlist (names only, not counted):** `HOME`, `LANG`, `LC_ALL`, `LC_CTYPE`,
+`LOGNAME`, `PATH`, `SHELL`, `TERM`, `TMPDIR`, `TZ`, `USER`, plus the names the tool needs to reach
+its model the way it does today: `ANTHROPIC_API_KEY` and the proxy variables in both spellings
+(`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY` and their lower-case forms). `HOME` in this
+list names the OPERATOR's own home, never a throwaway one. `packages/orchestration/worker_isolation.py`'s
+`isolated_child_env` builds the child's environment from this list directly, and
+`_cli_exec_policy`/`_stream_exec_policy` set it as `env=` with `env_allowlist` left `None`, so the
+dict reaches the child exactly as built — never re-scrubbed by `exec_guard.py`'s
+`FORBIDDEN_ENV_KEYS` floor, which would otherwise drop `ANTHROPIC_API_KEY` and the proxy
+variables this method deliberately lets through.
 
-**Throwaway home: yes.** Built fresh per call, modeled on `worktrees.py`'s `create`/`remove` pair
-(`.agent/f152_inventory.md` §6) and registered with `data_reclaim.py` so a crash-left one is swept —
-the same gap the inventory already names for this exact mechanism.
+**Throwaway home: no caller yet.** `create_throwaway_home`/`remove_throwaway_home` exist
+(modeled on `worktrees.py`'s `create`/`remove` pair, `.agent/f152_inventory.md` §6), but
+`adapter_child_env` refuses a declaration that asks for one, because `tool_flag` declares none
+and no other call path provides one; T002's A/B proof utility is its first intended user.
 
-**What this mechanism leaves reaching the run, stated plainly.** The ten allowlisted names above
-pointed at the throwaway home's empty directory tree; `--safe-mode`'s and `--strict-mcp-config`'s
-suppression (verified for what their text claims, unverified for completeness against the real
-binary); and, only if the operator has configured one, an `ANTHROPIC_API_KEY` placed directly onto
-`policy.env` by Remedy's own code — never read from the inherited environment, and never named in
-the allowlist, so `scrub_child_env`'s floor has nothing to strip and nothing to let through by
-accident. It does NOT leave reaching the run: any proxy variable, cloud credential or other
-`FORBIDDEN_ENV_KEYS` member even if accidentally named; the operator's real `~/.claude` directory;
-or an OAuth/keychain-based login, which this record cannot confirm survives a throwaway `HOME` at
-all (inference only) — T002's real-binary probe, behind the Q26 switch, is the one proof that can
-settle it. Whether `env=` really reaches a child unscrubbed when `env_allowlist` does not name a key
-present on it is Remedy's own code (`exec_guard.py:383-387`) and is a probe this feature can prove
-today, listed below.
+**What this mechanism leaves reaching the run, stated plainly.** The allowlisted names above,
+pointed at the operator's own, unchanged home; `--safe-mode`'s, `--setting-sources`'s and
+`--strict-mcp-config`'s suppression (verified for what their text claims, unverified for
+completeness against the real binary); and the operator's own login, wherever it lives, because
+nothing in this method touches `HOME`. It does NOT leave reaching the run: any proxy variable,
+cloud credential or other name this allowlist does not itself name; the operator's own
+customizations, CLAUDE.md auto-discovery, skills, plugins or hooks, which `--safe-mode` already
+suppresses independently of this feature; or any MCP server not named on the command line.
 
 ## Verification owed
 

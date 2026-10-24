@@ -16,6 +16,7 @@ import pytest
 
 from packages.orchestration import pingpong_provider as pp
 from packages.orchestration.pingpong_provider import ClaudeCliProvider
+from packages.orchestration.worker_adapter_slot import adapter_child_env
 
 
 def _provider(tmp_path, body: str) -> ClaudeCliProvider:
@@ -89,8 +90,11 @@ class TestStageOnePolicyAndShape:
         policy = pp._cli_exec_policy(12, "/somewhere")
         assert policy.wall_timeout_seconds == 12.0 and policy.cwd == "/somewhere"
         assert policy.core_file_bytes == 0
-        # Deliberate stage-1 gaps, pinned so a later round cannot close them in silence.
-        assert policy.output_cap_bytes is None and policy.env_allowlist is None
+        # Deliberate stage-1 gap, pinned so a later round cannot close it in silence; `env` is
+        # DECISION F152 D3's declared, cleaned environment, and `env_allowlist` stays None so it
+        # reaches the child exactly as built.
+        assert policy.output_cap_bytes is None
+        assert policy.env == adapter_child_env("claude-cli") and policy.env_allowlist is None
         assert policy.cpu_seconds is None and policy.address_space_bytes is None
 
     def test_the_probe_and_the_runner_hold_no_subprocess_spawn(self):

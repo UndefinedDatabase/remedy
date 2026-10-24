@@ -112,6 +112,20 @@ the failure post-mortem from every signal it has, of every provider alike; both 
 evidence the loop owns, and the adapter's `map_stream` and `classify_error` answer the same
 functions for the kit and for `remedy worker show`.
 
+## Worker isolation
+Every claude-cli adapter declares `isolation()` (DECISION F152 D3): method `tool_flag`,
+`--setting-sources project,local` and `--strict-mcp-config` appended to the call line, and a
+cleaned environment carrying the shell/process names a worker needs plus the model's own
+credential and proxy variables — no throwaway home, because the operator's login lives under the
+operator's own home. `adapter_child_env` builds that environment and both `_cli_exec_policy` and
+`_stream_exec_policy` in `pingpong_provider.py` set it as `env=`, leaving `env_allowlist` `None` so
+it reaches the child exactly as built. `create_role_provider` writes one line per claude-cli
+provider build to `worker_isolation.jsonl` beside the run's `capability_decisions.jsonl`, always,
+naming the method, whether it applied, the home kind, the environment digest, the names kept and
+the declaration's own ADR reference. The throwaway-home create/remove pair exists in
+`packages/orchestration/worker_isolation.py`, but no call path hands one to `adapter_child_env`
+yet; it refuses a declaration that asks for one.
+
 ## The capability matrix
 `packages/contracts/capability_matrix.py` holds a declarative register,
 `CAPABILITY_REQUIREMENTS`, mapping each capability-consuming feature to the adapter capability it

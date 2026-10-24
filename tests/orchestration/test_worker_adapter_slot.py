@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import stat
 import subprocess
 import sys
@@ -15,13 +16,14 @@ from pathlib import Path
 
 import pytest
 
-from packages.contracts.adapter_contract import HttpInvocation, InvocationOptions
+from packages.contracts.adapter_contract import HttpInvocation, InvocationOptions, WorkerIsolation
 from packages.orchestration import worker_adapter_slot as slot
 from packages.orchestration.claude_cli_command import build_claude_cli_args
 from packages.orchestration.pingpong_loop import run_pingpong
 from packages.orchestration.pingpong_provider import ClaudeCliProvider
 from packages.orchestration.worker_adapter_slot import (
     WorkerAdapterNotInstalled,
+    adapter_child_env,
     adapter_cli_argv,
     adapter_usage_actuals,
     install_worker_adapters,
@@ -261,3 +263,58 @@ def test_a_claude_cli_job_runs_its_calls_through_the_installed_adapter(
     assert "builder" in marking_adapter.roles and "reviewer" in marking_adapter.roles
     calls = _logged(log)
     assert calls and all(call[-1] == MARKER for call in calls)
+
+
+# -- adapter_child_env: DECISION F152 D3 (3), the declared, cleaned environment ----------------
+
+
+def test_adapter_child_env_drops_an_unlisted_variable_and_keeps_path(monkeypatch):
+    monkeypatch.setenv("REMEDY_F152_LEAK_PROBE", "leaked")
+    env = adapter_child_env("claude-cli", config={})
+    assert env is not None
+    assert "REMEDY_F152_LEAK_PROBE" not in env
+    assert env["PATH"] == os.environ["PATH"]
+
+
+def test_adapter_child_env_is_none_with_customizations_true():
+    assert adapter_child_env("claude-cli", config={"claude_cli.customizations": True}) is None
+
+
+def test_adapter_child_env_refuses_a_throwaway_home_declaration(monkeypatch):
+    class _ThrowawayAdapter(ClaudeCliReferenceAdapter):
+        def isolation(self):
+            return WorkerIsolation(
+                method="clean_env", adr_ref="docs/adr/0002-claude-cli-worker-isolation.md",
+                env_allowlist=("PATH",), throwaway_home=True)
+
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _ThrowawayAdapter)
+    with pytest.raises(ValueError, match="declares throwaway_home"):
+        adapter_child_env("claude-cli")
+
+
+def _env_logging_claude(tmp_path: Path) -> tuple[Path, Path]:
+    """A `claude` on PATH that logs the NAMES, never the values, of its own environment."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "env_names.json"
+    payload = json.dumps({"type": "result", "is_error": False, "result": "ok"})
+    script = bin_dir / "claude"
+    script.write_text(
+        f"#!{sys.executable}\nimport json, os\n"
+        f"open({str(log)!r}, 'w').write(json.dumps(sorted(os.environ)))\n"
+        f"print({payload!r})\n")
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    return bin_dir, log
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+def test_the_real_child_drops_the_planted_variable_and_keeps_path(monkeypatch, tmp_path, streaming):
+    monkeypatch.setenv("REMEDY_F152_LEAK_PROBE", "leaked")
+    bin_dir, log = _env_logging_claude(tmp_path)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    stream_dir = str(tmp_path / "streams") if streaming else None
+    provider = ClaudeCliProvider(stream_evidence=streaming, stream_evidence_dir=stream_dir)
+    provider.build("build it")
+    names = json.loads(log.read_text())
+    assert "REMEDY_F152_LEAK_PROBE" not in names
+    assert "PATH" in names
