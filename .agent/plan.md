@@ -8,15 +8,13 @@ when a degradation ran; a guard fails a capability read outside the matrix
 (`docs/roadmap/features/T8_F157.md`).
 
 ## Current Step
-Round 7: book round 6's verdict, DECISION F157 D6, and repair R-1454 by stating in the contract
-page, the route module's docstring and `routed_claude_cli_build`'s comment what a run's
-degradations name.
+Round 8, the closure's integration-gate round: book round 7 and R-1454's resolution, the
+checklist's consolidation pass, the self-use item run to its approval gate, and the one full suite.
 
 ## Next Steps
-1. The closure sequence (`docs/roadmap/STATUS_closure_protocol.md`): book round 7 and R-1454's
-   resolution, the integration gate with the one full suite, the evidence package and review zip,
-   the Built State, the checklist consolidation, the STATUS acceptance and the pull request.
+1. The evidence bundle and the review package (closure algorithm steps 1 and 2).
+2. The closing round: the Built State, the ledger rotation, the STATUS line, the README and the
+   pull request.
 
 ## Risks
-- `pingpong_provider.py`, `pingpong_loop.py` and `format_job_report_text` are structure-ledger
-  rows; every edit keeps their length or lowers the row in the same commit.
+- A red full suite or a self-use run defect turns the next round into a repair round first.
