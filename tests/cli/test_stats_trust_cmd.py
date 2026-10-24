@@ -226,6 +226,33 @@ def test_the_cost_cell_names_its_passes():
     row = _row(pass_quota_value=1.0, pass_quota_n=15, cost_value=0.0123,
                 cost_basis="provider_reported", cost_n=15)
     assert _format_cost(row) == "$0.0123 (provider_reported, 15 passes)"
+    # Operator amendment amend1024 Part E: without `cost.show_usd` the dollars read `not-shown`;
+    # a cost per pass in tokens is no dollar figure and stays.
+    assert _format_cost(row, show_usd=False) == "not-shown (provider_reported, 15 passes)"
+    tokens = _row(pass_quota_value=1.0, pass_quota_n=15, cost_value=1234.0, cost_basis="tokens",
+                  cost_n=15)
+    assert _format_cost(tokens, show_usd=False) == _format_cost(tokens)
+
+
+def test_the_command_shows_no_dollar_figure_unless_cost_show_usd_is_true(project, capsys, monkeypatch):
+    """amend1024 Part E: the text's cost cell reads `not-shown`, the JSON's value null."""
+    from packages.orchestration.config import reset_config
+
+    _seed(project)
+    code, out = _run(["stats", "trust", "--project", project.slug], capsys)
+    assert code == 0, out
+    strong_row = next(r for r in out.splitlines() if "claude-strong-v1" in r)
+    assert "not-shown (provider_reported" in strong_row
+    assert "$" not in out
+    code, out = _run(["stats", "trust", "--project", project.slug, "--json"], capsys)
+    strong = next(r for r in json.loads(out)["table"]["rows"] if r["model"] == "claude-strong-v1")
+    assert strong["cost_per_pass"]["value"] is None and strong["cost_per_pass"]["n"] == 20
+
+    monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+    reset_config()
+    code, out = _run(["stats", "trust", "--project", project.slug, "--json"], capsys)
+    strong = next(r for r in json.loads(out)["table"]["rows"] if r["model"] == "claude-strong-v1")
+    assert strong["cost_per_pass"]["value"] == pytest.approx(0.02)
 
 
 def test_a_falling_pass_quota_prints_a_minus_sign_and_a_rising_one_a_plus_sign():

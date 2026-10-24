@@ -5,7 +5,9 @@ were measured and their P20, P50 and P80 of tokens and of cost, which classes ar
 window, the sample floor and how old the measurement is. It reads the project's cost ledger and job
 records and never writes either; the one file it may write is the calibration snapshot beside the
 ledger, which it measures again when the snapshot is older than its limit
-(`docs/system/estimate-calibration-v1.md`).
+(`docs/system/estimate-calibration-v1.md`). Its cost percentiles are dollars, so they read `not-shown`
+in the text and null in the JSON unless `cost.show_usd` is true (operator amendment
+amend1024-one-real-order Part E); the token percentiles are always shown.
 """
 from __future__ import annotations
 
@@ -13,6 +15,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from apps.cli.json_envelope import emit_ok, fail
+from packages.orchestration.cost_currency import (
+    COST_USD_HIDDEN_LABEL,
+    COST_USD_HIDDEN_NOTE,
+    show_cost_usd,
+    visible_cost_usd,
+)
 
 #: The version of this command's own JSON payload.
 CALIBRATION_OUTPUT_VERSION = 1
@@ -31,21 +39,25 @@ def _estimates_cell(table: Any, entry: Any) -> str:
     return f"class default ({entry.tokens.n} of {table.sample_floor})"
 
 
-def calibration_rows(table: Any) -> list[list[str]]:
-    """One row per task class and role, the whole task first within its class."""
+def calibration_rows(table: Any, *, show_usd: bool = True) -> list[list[str]]:
+    """One row per task class and role, the whole task first within its class; a priced cost
+    reads `not-shown` without ``show_usd``."""
     from packages.orchestration.estimate_calibration import TASK_TOTAL_ROLE
 
     rows = []
     for entry in sorted(table.entries, key=lambda e: (e.task_class, e.role != TASK_TOTAL_ROLE, e.role)):
         tokens, cost = entry.tokens, entry.cost_usd
         costs = [f"${v:.4f}" for v in (cost.p20, cost.p50, cost.p80)] if cost is not None else [UNPRICED] * 3
+        if cost is not None and not show_usd:
+            costs = [COST_USD_HIDDEN_LABEL] * 3
         rows.append([entry.task_class, entry.role, str(tokens.n),
                      *(f"{round(v):,}" for v in (tokens.p20, tokens.p50, tokens.p80)), *costs,
                      _estimates_cell(table, entry)])
     return rows
 
 
-def render_calibration_text(table: Any, *, max_age_seconds: int, now: datetime) -> str:
+def render_calibration_text(table: Any, *, max_age_seconds: int, now: datetime,
+                            show_usd: bool = True) -> str:
     """The table with its window, its floor and its staleness, or why every estimate stays on its default."""
     lines = [f"Estimate calibration of project {table.project_id}, measured from its cost ledger"]
     if not table.ledger_present:
@@ -58,7 +70,7 @@ def render_calibration_text(table: Any, *, max_age_seconds: int, now: datetime) 
                  f"the first read after {(measured + timedelta(seconds=max_age_seconds)).isoformat()} "
                  "measures again.")
     if table.entries:
-        rows = calibration_rows(table)
+        rows = calibration_rows(table, show_usd=show_usd)
         widths = [max(len(h), *(len(r[i]) for r in rows)) for i, h in enumerate(_HEADERS)]
         lines.append("  ".join(h.ljust(widths[i]) for i, h in enumerate(_HEADERS)).rstrip())
         lines += ["  ".join(c.ljust(widths[i]) for i, c in enumerate(r)).rstrip() for r in rows]
@@ -66,6 +78,8 @@ def render_calibration_text(table: Any, *, max_age_seconds: int, now: datetime) 
         lines.append("No measured task falls inside the window, so every estimate stays on its class default.")
     lines.append(f"Not counted: {table.unclassified_tasks} tasks with no class on record, "
                  f"{table.unmeasured_tasks} tasks whose calls did not all report their tokens.")
+    if not show_usd:
+        lines.append(COST_USD_HIDDEN_NOTE)
     return "\n".join(lines)
 
 
@@ -96,10 +110,12 @@ def _cmd_stats_calibration(*, project: str | None = None, json_output: bool = Fa
         max_age_seconds=settings["max_age_seconds"])
     if json_output:
         calibrated = sorted({e.task_class for e in table.entries if table.calibrated_tokens(e.task_class)})
-        emit_ok(version=CALIBRATION_OUTPUT_VERSION, max_age_seconds=settings["max_age_seconds"],
-                calibrated_classes=calibrated, **table.to_json())
+        emit_ok(**visible_cost_usd({
+            "version": CALIBRATION_OUTPUT_VERSION, "max_age_seconds": settings["max_age_seconds"],
+            "calibrated_classes": calibrated, **table.to_json()}))
     else:
-        print(render_calibration_text(table, max_age_seconds=settings["max_age_seconds"], now=now))
+        print(render_calibration_text(table, max_age_seconds=settings["max_age_seconds"], now=now,
+                                      show_usd=show_cost_usd()))
 
 
 COMMAND_HANDLERS = {

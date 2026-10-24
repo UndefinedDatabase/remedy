@@ -102,6 +102,16 @@ COST_EMPTY_COMPARISON = (
 )
 
 
+def _usd_figure(name: str, value: int | float | None, *, show_usd: bool) -> str:
+    """`_figure`, except that a reported cost reads `not-shown` while `cost.show_usd` is false
+    (operator amendment amend1024-one-real-order Part E)."""
+    from packages.orchestration.cost_currency import COST_USD_HIDDEN_LABEL
+
+    if name == "cost_usd" and value is not None and not show_usd:
+        return COST_USD_HIDDEN_LABEL
+    return _figure(value)
+
+
 def _figure(value: int | float | None) -> str:
     """One measurement, or the word — a 0 never stands in for nobody-reported."""
     if value is None:
@@ -365,14 +375,17 @@ def _table(header: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
     return lines
 
 
-def _cost_section(cost: CostReport) -> list[str]:
+def _cost_section(cost: CostReport, *, show_usd: bool = True) -> list[str]:
+    from packages.orchestration.cost_currency import COST_USD_HIDDEN_NOTE
+
     total = cost.total
     header = ("bucket", "calls", *(label for _, label in COST_FIGURE_COLUMNS), "basis")
     rows = [
         (
             row.bucket if row.bucket is not None else COST_UNNAMED_BUCKET_LABEL,
             str(row.calls),
-            *(_figure(getattr(row, name)) for name, _ in COST_FIGURE_COLUMNS),
+            *(_usd_figure(name, getattr(row, name), show_usd=show_usd)
+              for name, _ in COST_FIGURE_COLUMNS),
             f"{row.measured_calls}/{row.calls} measured",
         )
         for row in cost.rows
@@ -381,7 +394,8 @@ def _cost_section(cost: CostReport) -> list[str]:
         (
             "TOTAL",
             str(total.calls),
-            *(_figure(getattr(total, name)) for name, _ in COST_FIGURE_COLUMNS),
+            *(_usd_figure(name, getattr(total, name), show_usd=show_usd)
+              for name, _ in COST_FIGURE_COLUMNS),
             f"{total.measured_calls}/{total.calls} measured",
         )
     )
@@ -405,6 +419,8 @@ def _cost_section(cost: CostReport) -> list[str]:
     lines.append(
         "No price is computed: a cost appears only where a provider reported one."
     )
+    if not show_usd:
+        lines.append(COST_USD_HIDDEN_NOTE)
     lines.append("")
     return lines
 
@@ -458,6 +474,8 @@ def _comparison_section(
     cost: CostReport,
     prior: CostReport | None,
     no_comparison_reason: str | None,
+    *,
+    show_usd: bool = True,
 ) -> list[str]:
     lines = ["## Compared to the previous period", ""]
     # A window nobody read and a window that held nothing are BOTH absences, and
@@ -469,9 +487,12 @@ def _comparison_section(
     rows = [
         (
             label,
-            _figure(getattr(cost.total, name)),
-            _figure(getattr(prior.total, name)),
-            _delta_cell(getattr(cost.total, name), getattr(prior.total, name)),
+            _usd_figure(name, getattr(cost.total, name), show_usd=show_usd),
+            _usd_figure(name, getattr(prior.total, name), show_usd=show_usd),
+            _usd_figure(name, _delta_value(getattr(cost.total, name), getattr(prior.total, name)),
+                        show_usd=False)
+            if name == "cost_usd" and not show_usd
+            else _delta_cell(getattr(cost.total, name), getattr(prior.total, name)),
         )
         for name, label in COMPARISON_ROW_KEYS
     ]
@@ -494,8 +515,13 @@ def render_cost_report_markdown(
     label: str | None = None,
     prior: CostReport | None = None,
     no_comparison_reason: str | None = None,
+    show_usd: bool = True,
 ) -> str:
-    """The human-readable report. Same facts as the json, same bytes twice."""
+    """The human-readable report. Same facts as the json, same bytes twice.
+
+    With ``show_usd`` false (``cost.show_usd``, operator amendment amend1024 Part E) a reported
+    cost reads ``not-shown`` and the cost section says how to show it.
+    """
     _same_question(cost, shares, prior)
     name = label if label is not None else COST_DEFAULT_LABEL
     lines = [f"# Cost report — {name}", ""]
@@ -519,7 +545,7 @@ def render_cost_report_markdown(
             "existing evidence."
         )
         return "\n".join(lines).rstrip("\n") + "\n"
-    lines += _cost_section(cost)
+    lines += _cost_section(cost, show_usd=show_usd)
     lines += _segment_section(shares)
-    lines += _comparison_section(cost, prior, no_comparison_reason)
+    lines += _comparison_section(cost, prior, no_comparison_reason, show_usd=show_usd)
     return "\n".join(lines).rstrip("\n") + "\n"

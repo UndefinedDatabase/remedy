@@ -20,7 +20,9 @@ exists to prevent.
 Remedy deliberately does NOT compute a price anywhere here. ``cost_usd`` is
 printed only where a provider reported one; there is no price table, so an
 unpriced call stays unpriced instead of being multiplied into a plausible
-figure.
+figure. And it is printed only when ``cost.show_usd`` is true (operator
+amendment amend1024-one-real-order Part E): otherwise a reported cost prints
+``not-shown`` and its JSON figure reads null, beside the tokens and calls.
 
 THE FILES REMAIN THE SOURCE OF TRUTH AND THE DATABASE IS A MIRROR. `cost` reads
 the mirror; `verify-ledger` is how a disagreement between the two is found; and
@@ -31,6 +33,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from apps.cli.json_envelope import emit_ok, fail
+from packages.orchestration.cost_currency import (
+    COST_USD_HIDDEN_LABEL,
+    COST_USD_HIDDEN_NOTE,
+    show_cost_usd,
+    visible_cost_usd,
+)
 from packages.orchestration.cost_report import COST_UNMEASURED_LABEL
 
 EXIT_USAGE = 2
@@ -235,7 +243,16 @@ def _figure(value) -> str:
     return str(value)
 
 
-def _render_cost_human(report, *, ledgers_read: list[str], scope_label: str) -> str:
+def _cell(row, name: str, *, show_usd: bool) -> str:
+    """One figure cell; a reported cost reads `not-shown` while `cost.show_usd` is false."""
+    value = getattr(row, name)
+    if name == "cost_usd" and value is not None and not show_usd:
+        return COST_USD_HIDDEN_LABEL
+    return _figure(value)
+
+
+def _render_cost_human(report, *, ledgers_read: list[str], scope_label: str,
+                       show_usd: bool = True) -> str:
     """A readable table in which no unmeasured figure can be mistaken for a zero."""
     lines = [f"Cost from the token ledger — {scope_label}, "
              f"{len(ledgers_read)} ledger(s) read"]
@@ -260,7 +277,7 @@ def _render_cost_human(report, *, ledgers_read: list[str], scope_label: str) -> 
         [
             row.bucket if row.bucket is not None else "(unnamed)",
             str(row.calls),
-            *(_figure(getattr(row, name)) for name, _ in _FIGURE_COLUMNS),
+            *(_cell(row, name, show_usd=show_usd) for name, _ in _FIGURE_COLUMNS),
             f"{_row_basis(row)} ({row.measured_calls}/{row.calls})",
         ]
         for row in report.rows
@@ -269,7 +286,7 @@ def _render_cost_human(report, *, ledgers_read: list[str], scope_label: str) -> 
     body.append([
         "TOTAL",
         str(total.calls),
-        *(_figure(getattr(total, name)) for name, _ in _FIGURE_COLUMNS),
+        *(_cell(total, name, show_usd=show_usd) for name, _ in _FIGURE_COLUMNS),
         f"{_row_basis(total)} ({total.measured_calls}/{total.calls})",
     ])
     widths = [max(len(headers[i]), *(len(r[i]) for r in body)) for i in range(len(headers))]
@@ -300,6 +317,8 @@ def _render_cost_human(report, *, ledgers_read: list[str], scope_label: str) -> 
             f"to any figure above — this is NOT a complete total."
         )
     lines.append("No price is computed: a cost appears only where a provider reported one.")
+    if not show_usd:
+        lines.append(COST_USD_HIDDEN_NOTE)
     return "\n".join(lines)
 
 
@@ -351,11 +370,12 @@ def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
         since=since, job=job, by=by, project=project,
         all_projects=all_projects, json_output=json_output)
     if json_output:
-        emit_ok(**_cost_payload(
-            report, ledgers_read=ledgers_read, scope_label=scope_label))
+        emit_ok(**visible_cost_usd(_cost_payload(
+            report, ledgers_read=ledgers_read, scope_label=scope_label)))
     else:
         print(_render_cost_human(
-            report, ledgers_read=ledgers_read, scope_label=scope_label))
+            report, ledgers_read=ledgers_read, scope_label=scope_label,
+            show_usd=show_cost_usd()))
 
 
 #: What a share prints when its inputs WERE reported and are both zero. That is
@@ -567,12 +587,12 @@ def _cmd_stats_report(*, since: str = "", until: str = "", job: str = "",
             cost, shares, label=label, prior=prior,
             no_comparison_reason=no_comparison_reason,
         )
-        emit_ok(**document)
+        emit_ok(**visible_cost_usd(document))
         return
 
     rendered = render_cost_report_markdown(
         cost, shares, label=label, prior=prior,
-        no_comparison_reason=no_comparison_reason,
+        no_comparison_reason=no_comparison_reason, show_usd=show_cost_usd(),
     )
     # The markdown renderer already ends in exactly one newline; print must
     # not add a second.

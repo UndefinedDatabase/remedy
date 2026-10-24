@@ -63,7 +63,9 @@ def test_the_command_is_catalogued_read_only_and_handled():
     assert "stats.calibration" in collect_all_handlers()
 
 
-def test_the_text_shows_each_class_and_role_with_its_basis_window_floor_and_age(project, capsys):
+def test_the_text_shows_each_class_and_role_with_its_basis_window_floor_and_age(project, capsys, monkeypatch):
+    # `cost.show_usd = true` (operator amendment amend1024 Part E): the cost percentiles are printed.
+    monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
     _seed(project)
     # One task whose job record is gone: counted as unclassified, never guessed.
     assert record_call(CallRecord(call_id="jobgone:T001", job_id="jobgone", task_id="T001", role="builder",
@@ -92,6 +94,35 @@ def test_the_text_shows_each_class_and_role_with_its_basis_window_floor_and_age(
             "$0.1560"] in rows
     assert lines[-1] == ("Not counted: 1 tasks with no class on record, 0 tasks whose calls did not all "
                          "report their tokens.")
+
+
+def test_the_text_shows_no_dollar_figure_unless_cost_show_usd_is_true(project, capsys):
+    """amend1024 Part E: the token percentiles stay; a priced cost reads `not-shown`."""
+    from packages.orchestration.cost_currency import COST_USD_HIDDEN_LABEL, COST_USD_HIDDEN_NOTE
+
+    _seed(project)
+    code, out = _run(["stats", "calibration", "--project", project.slug], capsys)
+    assert code == 0, out
+    rows = [line.split() for line in out.splitlines()[4:-2]]
+    assert ["format", "builder", "3", "2,000", "2,000", "2,000", *[COST_USD_HIDDEN_LABEL] * 3] in rows
+    assert "$" not in out
+    assert out.splitlines()[-1] == COST_USD_HIDDEN_NOTE
+
+
+def test_the_json_nulls_the_cost_percentiles_unless_cost_show_usd_is_true(project, capsys, monkeypatch):
+    _seed(project)
+    code, out = _run(["stats", "calibration", "--project", project.slug, "--json"], capsys)
+    assert code == 0, out
+    builder = next(e for e in json.loads(out)["entries"] if (e["task_class"], e["role"]) == ("format", "builder"))
+    assert builder["tokens"]["n"] == 3
+    assert builder["cost_usd"] is None
+    monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+    from packages.orchestration.config import reset_config
+
+    reset_config()
+    code, out = _run(["stats", "calibration", "--project", project.slug, "--json"], capsys)
+    builder = next(e for e in json.loads(out)["entries"] if (e["task_class"], e["role"]) == ("format", "builder"))
+    assert builder["cost_usd"]["p50"] == pytest.approx(0.02)
 
 
 def test_the_json_names_the_calibrated_classes_and_the_measurement(project, capsys):
