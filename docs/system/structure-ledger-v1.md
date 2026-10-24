@@ -419,7 +419,7 @@ with the code that calls it.
 | 122 | `packages/orchestration/artifact_contract_gate.py` | `check_stream_artifacts` |
 | 122 | `packages/orchestration/pingpong_job.py` | `_import_job` |
 | 121 | `packages/orchestration/project_summary.py` | `build_project_summary` |
-| 120 | `packages/orchestration/job_report.py` | `format_job_report_text` |
+| 117 | `packages/orchestration/job_report.py` | `format_job_report_text` |
 | 120 | `packages/orchestration/scope_fences.py` | `_load_fence_spec_effective` |
 | 120 | `packages/orchestration/spec_compliance.py` | `build_spec_compliance_checklist` |
 | 120 | `packages/orchestration/study.py` | `run_study` |
