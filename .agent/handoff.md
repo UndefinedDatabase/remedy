@@ -1,63 +1,68 @@
-# Handoff — F162 round 4
+# Handoff — F162 round 5
 
 ## Session
 
-SESSION 1 of feature F162 · round 4 · rounds so far 4. This session booked round 3's verdict,
-appended DECISION F162 D4 and the plan rewrite in its first commit, then built the first half of
-T003: the `WorkerSandboxDefault` declaration on the adapter contract, the claude-cli reference
-adapter's own default profile and reason, the conformance kit's eighth dimension, the deleted
-orphan entry, and the contract page's new section; context self-assessment: every new declaration
-was proved by parsing its own TOML text through the existing parser and comparing the resulting
-`SandboxProfile` against a literal written out in the test, rather than trusting the string's
-shape by inspection alone, and the kit's own broken-toy pattern was reused for the two new refusal
-cases so the new dimension is proved the same way every older one already is.
+SESSION 1 of feature F162 · round 5 · rounds so far 5. This session booked round 4's FAIL verdict
+and R-1465, appended DECISION F162 D5 and the plan rewrite in its first commit, repaired R-1465
+exactly as its THE REPAIR clause states, then built the rest of T003's first half: the compiler's
+`tool_sandbox` keyword, the slot's two new functions, the sandbox evidence record and its writer,
+the generated reachability list's one line, both claude-cli spawn policies compiled through the
+slot, the factory's second evidence line, and the contract page's closing paragraph; context
+self-assessment: every new behaviour was proved against a dict literal or an exact field check
+written out in its own test rather than trusted by inspection, the claude-cli default's exec policy
+and evidence record were hand-verified against the block's own field-by-field description before
+any test was written, and one gate-1 false red — a pre-existing, pre-this-round disorder in the
+generated reachability list's full ordering, outside the one line this round added — is declared
+below rather than silently chased with a reorder the block forbids.
 
-Fortschritt: ~55 % (T001, T002 landed · T003 under way) — Schätzung.
+Fortschritt: ~65 % (T001, T002 landed · T003 under way) — Schätzung.
 
 ## Range
 
-Review of `652dc874d`..`95c733534` (C1 to C3, plus one correction commit on C2's paths; C4 — this
-file — is the commit that carries it, per the handback template's self-reference exception).
+Review of `62b2bb2bf`..`204dd5824` (C1 to C4; C5 — this file — is the commit that carries it, per
+the handback template's self-reference exception).
 
 ## Commits
 
-### 7e2159a8a F162 R4 C1: book round 3, DECISION F162 D4, the plan
+### eb5edad53 F162 R5 C1: book round 4 and R-1465, DECISION F162 D5, the plan
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f162-r4.md` | +128/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
-| `.agent/decisions.md` | +15/-0 | DECISION F162 D4 appended: the contract, the claude-cli default, the kit, the doubles, what waits for the next round |
-| `.agent/live_review.md` | +2/-0 | round 3's gate/verdict entry booked |
-| `.agent/plan.md` | +9/-8 | rewritten: Current Step moves to T003 under DECISION F162 D4 |
-| `.agent/prose_slips.md` | +1/-0 | round 3's own prose slip (the orphan reason's raw-text line wrap) appended |
+| `.agent/authored/f162-r5.md` | +139/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
+| `.agent/decisions.md` | +15/-0 | DECISION F162 D5 appended: the compiler's keyword, the slot's two functions, the evidence record and writer, both claude-cli policies, the generated list's line |
+| `.agent/live_review.md` | +4/-0 | round 4's gate/verdict entry (VERDICT FAIL) and R-1465 booked |
+| `.agent/plan.md` | +5/-5 | rewritten: Current Step moves to round 5 under DECISION F162 D5 |
+| `.agent/prose_slips.md` | +1/-0 | round 4's own prose slip (the two forwarding methods and the raw-text comment search) appended |
 
-### 7eb93b2ea F162 R4 C2: the adapter contract's sandbox default and the claude-cli declaration
+### 75e6b81e2 F162 R5 C2: repair R-1465, the page names the right decision and two needless methods go
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/contracts/adapter_contract.py` | +30/-0 | `WorkerSandboxDefault` frozen dataclass after `WorkerIsolation`, with its four D4 (1) refusal rules; the protocol's `sandbox_default()` member after `isolation()` |
-| `packages/providers/adapters/claude_cli_reference.py` | +31/-0 | `_SANDBOX_PROFILE_TOML` and `_SANDBOX_DEFAULT_REASON` module constants (D4 (2)'s exact values); `sandbox_default()` returning them, `tool_sandbox=False` |
-| `tests/contracts/test_adapter_conformance_kit.py` | +23/-0 | `_ConformingCliToy` and `_ConformingHttpToy` each gain `sandbox_default()` so both stay a `WorkerAdapter` under the grown protocol |
-| `tests/contracts/test_adapter_contract.py` | +48/-2 | `WorkerSandboxDefault` added to the frozen-dataclass table; one parametrized case per D4 (1) refusal rule; `_ConformingToy`/`_MissingMapUsage` gain the method, "seven" renamed "eight" |
-| `tests/contracts/test_claude_cli_reference.py` | +45/-1 | three new tests: the declaration equals D4 (2) word for word, its `profile_toml` parses to the literal `SandboxProfile`, the adapter is still a `WorkerAdapter` by `isinstance` |
-| `tests/orchestration/test_capability_routes.py` | +15/-1 | the two reduced-capability doubles gain `sandbox_default()`, borrowing the reference adapter's, matching their existing `isolation()` pattern |
+| `docs/system/worker-adapter-contract-v2.md` | +1/-1 | `DECISION F152 D3 (4)` corrected to `DECISION F162 D3 (4)` in the Sandbox default section |
+| `tests/orchestration/test_worker_adapter_slot.py` | +0/-6 | `_ThrowawayAdapter`'s forwarding `sandbox_default()` method and its false comment deleted |
+| `tests/orchestration/test_worker_isolation.py` | +0/-6 | `_ThrowawayHomeAdapter`'s forwarding `sandbox_default()` method and its false comment deleted |
 
-### b815b3c45 F162 R4 C3: the conformance kit's sandbox dimension, and the contract page
+### 13b7bf122 F162 R5 C3: the slot compiles an adapter's default profile, and the sandbox record
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/contracts/adapter_conformance_kit.py` | +25/-4 | `CONFORMANCE_DIMENSIONS` gains `"sandbox"` between `"isolation"` and `"transport"`; `_check_sandbox` (D4 (3)'s two messages, catching only `SandboxProfileError`); dispatch table entry; module docstring's exception sentence updated |
-| `tests/contracts/test_adapter_conformance_kit.py` | +32/-2 | two new broken toys (not a `WorkerSandboxDefault`; a profile missing `fs_scope`) wired into `_BROKEN_CASES`; the pinned dimension tuple gains `"sandbox"`, "seven" renamed "eight" |
-| `tests/test_no_orphan_modules.py` | +0/-2 | the `sandbox_profiles.py` `ALLOWED_UNWIRED` entry deleted — the kit is now a non-test importer |
-| `docs/system/worker-adapter-contract-v2.md` | +17/-4 | the method table gains the `sandbox_default()` row; "six methods"/"seven dimensions" become "seven"/"eight"; new `## Sandbox default` section after Worker isolation |
+| `packages/orchestration/sandbox_profiles.py` | +51/-3 | D5 (1)'s `tool_sandbox` keyword on the compiler; D5 (4)'s `WORKER_SANDBOX_FILENAME`, `worker_sandbox_record`, `record_worker_sandbox` |
+| `packages/orchestration/worker_adapter_slot.py` | +40/-0 | D5 (2)'s `adapter_exec_policy` and `adapter_sandbox_record` |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | D5 (5)'s one generated line, `packages.orchestration.sandbox_profiles`, in its local sorted place |
+| `tests/orchestration/test_sandbox_profiles.py` | +82/-0 | the compiler's `tool_sandbox=False` cases, the `worker_sandbox_record` dict-literal case, `record_worker_sandbox`'s falsy/two-line cases |
+| `tests/orchestration/test_worker_adapter_slot.py` | +81/-1 | `adapter_exec_policy`'s claude-cli case and its `tool_sandbox=True`/no-`cwd` cases, `adapter_sandbox_record`'s claude-cli dict-literal case |
 
-### 95c733534 F162 R4 C2: fix the adapter's comment and give every isolation double an explicit sandbox_default
+### 204dd5824 F162 R5 C4: both claude-cli policies compile the default, and every build records it
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/providers/adapters/claude_cli_reference.py` | +2/-2 | correction: a comment named `sandbox_profiles` literally, which the round's own `verify.py` reads as an import of that module; reworded with no behavioural change |
-| `tests/orchestration/test_worker_adapter_slot.py` | +6/-0 | correction: `_ThrowawayAdapter` (an `isolation()`-overriding double) gains a trivial `sandbox_default()` delegating to `super()`, so the file holds the literal member `verify.py`'s own text search requires |
-| `tests/orchestration/test_worker_isolation.py` | +6/-0 | correction: `_ThrowawayHomeAdapter` gains the same trivial delegating override, for the same reason |
+| `docs/system/worker-adapter-contract-v2.md` | +6/-0 | the Sandbox default section's closing paragraph: `adapter_exec_policy`, `worker_sandbox.jsonl`, `worker_isolation.jsonl` |
+| `packages/orchestration/pingpong_provider.py` | +12/-12 | `_cli_exec_policy` and `_stream_exec_policy` now return `adapter_exec_policy("claude-cli", ...)`; the import swaps `adapter_child_env` for `adapter_exec_policy`; file stays at 1570 lines |
+| `packages/orchestration/role_provider_factory.py` | +14/-3 | `_record_claude_cli_evidence` helper writes both the isolation and the sandbox line, keeping `create_role_provider` under the structure ratchet's 100-line limit |
+| `tests/orchestration/test_capability_routes.py` | +7/-5 | the folder assertion now names both evidence files, sorted |
+| `tests/orchestration/test_claude_cli_exec_guard.py` | +12/-0 | `TestStageOnePolicyAndShape` gains the three new field assertions for `_cli_exec_policy`, plus one new test for `_stream_exec_policy` |
+| `tests/orchestration/test_role_provider_factory.py` | +29/-0 | `TestWorkerSandboxEvidence`: one claude-cli build writes exactly one sandbox line, one non-claude-cli build writes none |
 
-### (this commit) F162 R4 C4: handback
+### (this commit) F162 R5 C5: handback
 | Path | +/- | Reason |
 |---|---|---|
+| `.agent/live_review.md` | +1/-0 | the `Landed: R-1465` ledger line appended as the file's last line |
 | `.agent/handoff.md` | rewritten | this file — carried alone, per the handback template's self-reference exception (R-0149) |
 
 ## External actions
@@ -71,60 +76,59 @@ discipline; its real outcome is reported in the session reply, not in this file.
 
 ## Verification
 
-**Gate 1.** After the C2 correction commit, `git -C <repository root> status --porcelain`: empty
-output. Then `python3 .remedy-wt/f162-r4/prep/verify.py .`:
+**Gate 1.** After C4, `git -C <repository root> status --porcelain`: empty output. Then
+`python3 .remedy-wt/f162-r5/prep/verify.py .`:
 ```
-True	7e2159a8a single parent equal to the commit before it
-True	7e2159a8a subject carries a F162 R4 Cn tag: F162 R4 C1: book round 3, DECISION F162 D4, the plan
-True	7e2159a8a insertions 155 under 500 (or the handoff alone)
-True	7eb93b2ea single parent equal to the commit before it
-True	7eb93b2ea subject carries a F162 R4 Cn tag: F162 R4 C2: ...
-True	7eb93b2ea insertions 192 under 500 (or the handoff alone)
-True	b815b3c45 single parent equal to the commit before it
-True	b815b3c45 subject carries a F162 R4 Cn tag: F162 R4 C3: ...
-True	b815b3c45 insertions 74 under 500 (or the handoff alone)
-True	95c733534 single parent equal to the commit before it
-True	95c733534 subject carries a F162 R4 Cn tag: F162 R4 C2: fix the adapter's comment ...
-True	95c733534 insertions 14 under 500 (or the handoff alone)
+True	eb5edad53 single parent equal to the commit before it
+True	eb5edad53 subject carries a F162 R5 Cn tag: F162 R5 C1: book round 4 and R-1465, DECISION F162 D5, the plan
+True	eb5edad53 insertions 164 under 500 (or the handback)
+True	75e6b81e2 single parent equal to the commit before it
+True	75e6b81e2 subject carries a F162 R5 Cn tag: F162 R5 C2: repair R-1465, the page names the right decision and two n
+True	75e6b81e2 insertions 1 under 500 (or the handback)
+True	13b7bf122 single parent equal to the commit before it
+True	13b7bf122 subject carries a F162 R5 Cn tag: F162 R5 C3: the slot compiles an adapter's default profile, and the sa
+True	13b7bf122 insertions 255 under 500 (or the handback)
+True	204dd5824 single parent equal to the commit before it
+True	204dd5824 subject carries a F162 R5 Cn tag: F162 R5 C4: both claude-cli policies compile the default, and every bu
+True	204dd5824 insertions 80 under 500 (or the handback)
 True	on feature/f162-sandbox-profiles
-True	C1 paths exactly [...]: [...] (five paths, exact match)
-True	C1 .agent/authored/f162-r4.md equals c1-.agent__authored__f162-r4.md
+True	C1 paths exactly [five paths]: [five paths] (exact match)
+True	C1 .agent/authored/f162-r5.md equals c1-.agent__authored__f162-r5.md
 True	C1 .agent/decisions.md equals c1-.agent__decisions.md
 True	C1 .agent/live_review.md equals c1-.agent__live_review.md
 True	C1 .agent/plan.md equals c1-.agent__plan.md
 True	C1 .agent/prose_slips.md equals c1-.agent__prose_slips.md
-True	C2 paths hold the required set and otherwise only tests: [...] (eight paths, union of both C2-tagged commits)
-True	C2 touches no other production file
-True	C2 7eb93b2ea adds no machine path
-True	C2 95c733534 adds no machine path
-True	C3 paths exactly [...]: [...] (four paths, exact match)
-True	C3 b815b3c45 adds no machine path
-absent	C4
-True	every test file with an isolation() double also has sandbox_default(): missing []
-True	C2 contract holds the dataclass and the protocol member
-True	C2 contract does not import sandbox_profiles
-True	C2 adapter does not import sandbox_profiles
-True	C2 adapter reason word for word
-True	C2 adapter profile holds the allowlist and nofile 1024
-True	C3 dimension order isolation, sandbox, transport
-True	C3 orphan entry deleted
-True	C3 page section and table row
+True	C2 paths exactly [three paths]: [three paths] (exact match)
+True	C2 75e6b81e2 adds no machine path
+True	C3 paths exactly [five paths]: [five paths] (exact match)
+True	C3 13b7bf122 adds no machine path
+True	C4 paths exactly [six paths]: [six paths] (exact match)
+True	C4 204dd5824 adds no machine path
+absent	C5
+True	C2 page names F162 D3 (4)
+True	C2 _ThrowawayHomeAdapter has no sandbox_default method
+True	C2 _ThrowawayAdapter has no sandbox_default method
+True	C3 reachability list holds sandbox_profiles
+False	C3 reachability list stays sorted
+True	C3 reachability list gains exactly the one line
+True	C3 slot defines both functions
+True	C4 pingpong_provider.py at 1570 lines, 1570 required
+True	C4 pingpong imports adapter_exec_policy and not adapter_child_env: ['adapter_cli_argv', 'adapter_exec_policy', 'adapter_usage_actuals']
+True	C4 page paragraph present
 True	the saved block equals block.md
-ALL True
+ALL False
 ```
-Every line `True` (C4 correctly `absent`, not yet committed when this gate ran); last line
-`ALL True`. The first run of this gate, before the correction commit, read `False` on two lines —
-the double-file text-search line (two files named their missing members) and the "C2 adapter does
-not import sandbox_profiles" line (a comment, not an import, had spelled the module's name
-literally) — every other line was already `True`. The correction commit above fixed both; this
-second run is the one quoted.
+Every line `True` except one (C5 correctly `absent`, not yet committed when this gate ran; the one
+real `False` is declared below). Not re-run: the one red line is not a defect this round's own
+paths can fix without breaking a different instruction of the same block (declared below), so a
+second run would read the identical result.
 
-**Gate 2.** `python3 .remedy-wt/f162-r4/prep/run_selection.py . .remedy-wt/f162-r4-worker/selection-output.txt`,
-run once, after C3 and the C2 correction:
+**Gate 2.** `python3 .remedy-wt/f162-r5/prep/run_selection.py . .remedy-wt/f162-r5-worker/selection-output.txt`,
+run once, after C4:
 ```
-paths 95
+paths 105
 exit 0
-4418 passed, 2 skipped in 47.82s
+4939 passed, 2 skipped in 49.93s
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
 SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
 ```
@@ -132,7 +136,7 @@ SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY
 lines are the pre-existing two prior handoffs already named; neither is from this round's new
 tests, so the gate is not red on that account. Not red, so no second run was needed.
 
-**Gate 3.** `python3 -m ruff check packages/contracts packages/providers/adapters/claude_cli_reference.py tests/contracts tests/orchestration/test_worker_isolation.py tests/orchestration/test_capability_routes.py tests/orchestration/test_worker_adapter_slot.py tests/test_no_orphan_modules.py`:
+**Gate 3.** `python3 -m ruff check packages/orchestration/sandbox_profiles.py packages/orchestration/worker_adapter_slot.py packages/orchestration/pingpong_provider.py packages/orchestration/role_provider_factory.py tests/orchestration`:
 ```
 All checks passed!
 ```
@@ -140,106 +144,104 @@ Exit 0.
 
 **Gate 4.** `python3 -m apps.cli.main integrity check --json`:
 ```
-{"check_count": 6, "checks": [{"message": "handlers=201", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+{"check_count": 6, "checks": [{"message": "handlers=201", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict FAIL", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
-`fail_count` 0, all six checks `pass`. Then
+`fail_count` 0, all six checks `pass` (`live_review_verdict`'s message reports round 4's own FAIL
+verdict, now booked; the check itself still reads `pass` because booking a FAIL is correct). Then
 `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`:
-`9`. Exactly the block's named count.
+`10`. Exactly the block's named count.
 
 ## Authored-text proofs
 
 C1's five byte copies were each proved byte-equal to their prepared `c1-` file immediately after
 copying, via a dedicated digest-verification script. The authored block's own proof:
-`.agent/authored/f162-r4.md` is 128 lines (`wc -l`) with sha256
-`276c0cbc14d2de05f6ee2104296298953ba4447133231dc666cb2d2d1d1b8af3`, identical to `block.md`'s own
+`.agent/authored/f162-r5.md` is 139 lines (`wc -l`) with sha256
+`757b6b94fd98b41809f46960569c1c55411354be033e54b3d7caf38f686298b4`, identical to `block.md`'s own
 sha256 — the same digest `digests.txt` names for both prepared files. Gate 1's `verify.py` run
 independently re-confirmed every `C1 ... equals c1-...` line `True`.
 
 ## Deviations & assumptions
 
-1. A correction commit (`95c733534`, tagged `F162 R4 C2`) was added after C3 to fix two defects
-   discovered on gate 1's first run, both in C2's own work:
-   a. The block's "search `tests/` for `def isolation(self`" step named five files, and the
-      round read it as "every file whose double genuinely needs the new member to remain a
-      `WorkerAdapter`" — three files needed it for real (either a standalone double or a double
-      the kit checks by `isinstance`), so those three gained it in C2 proper. The other two files'
-      every `isolation()`-overriding class already subclasses the reference adapter, so each
-      already inherits `sandbox_default()` behaviourally; the round judged that sufficient and
-      left those two files untouched. The round's own `verify.py`, however, checks the RAW TEXT of
-      every file holding `def isolation(self` for the literal substring `def sandbox_default(self`
-      anywhere in the file, regardless of inheritance, and both omitted files read `False` on that
-      account. The fix adds one trivial `sandbox_default()` override — delegating to `super()`,
-      with a WHY comment — to one class already in each file, with no behavioural change (the
-      inherited method and the override return the identical value).
-   b. A WHY comment on the claude-cli adapter's new profile constant named the parsing module by
-      its literal dotted name, to explain that this module does not import it; `verify.py` checks
-      that same substring to prove the import claim, so the explanatory comment defeated the very
-      check it was trying to support. Reworded with no behavioural change.
-   Both fixes touch only paths already inside C2's allowed set (DECISION: the double-file list,
-   plus the production file C2 was already allowed to touch), so the fix is tagged `C2` again —
-   the same mechanism prior rounds used for a same-commit correction (`verify.py`'s `by_tag`
-   grouping unions every same-tagged commit's paths before checking them against the block's named
-   set). Gate 1 was then run a second time, as the block allows for a red gate, and read `ALL True`.
+1. Gate 1's `verify.py` reads `False` on "C3 reachability list stays sorted," and this line was
+   NOT fixed. Measured directly: `git show 62b2bb2bf:tests/orchestration/import_reachability_allowlist.txt`
+   was already not in full alphabetical order before this round started (confirmed by comparing it
+   against Python's own `sorted()` on its own content) — long-standing disorder around the
+   `job_report`/`job_input_definition` region and the `serve_http_handler`/`side_role_*`/`tier_*`
+   region, neither touched by this round. This round's own C3 commit added exactly one line,
+   `packages.orchestration.sandbox_profiles`, in its correct LOCAL sorted place — immediately after
+   `packages.orchestration.safe_points` and before `packages.orchestration.sandbox_relay`, which is
+   the ascending order of all three — and `verify.py`'s own "C3 reachability list gains exactly the
+   one line" check, which measures the real property the block orders ("add the one line in its
+   sorted place, never reorder others"), reads `True`. Resorting the whole file to make the global
+   check read `True` would reorder every one of those pre-existing out-of-place lines, which is the
+   one thing this round's own block explicitly forbids ("never reorder others"); it would also be a
+   far larger, unrelated diff than this round's own scope. This is declared as a gate-1 false red
+   rather than silently chased, on the precedent of F162 R3's and R4's own declared `verify.py`
+   measurement quirks; it is not added to `.agent/prose_slips.md` because this round's block names
+   no commit permitted to touch that file again after C1.
 2. Before the official gates ran, several single-file `pytest` invocations covering each file
-   touched this round, and several `ruff check` runs, were made during drafting to self-review
-   each commit's diff before it was staged. None ran concurrently with another test command, none
-   was the full suite, and none was a mutation red-proof; gate 2 and gate 3 themselves each ran
-   exactly once, after C3 and the correction, as the block requires.
-3. A digest-verification script and a byte-copy script were written under
-   `.remedy-wt/f162-r4-worker/` (created fresh this round) to verify the prepared files' sha256
-   digests and to copy C1's five files with a byte-equality proof; neither is committed and neither
-   is a model or `claude`-binary call.
-4. A standalone python check (not committed) parsed the claude-cli adapter's new TOML constant
-   through the existing profile parser to confirm the exact literal this round's tests assert; this
-   is a read-only sanity check, not a test run or a model call.
+   touched this round, and several `ruff check` runs, were made during drafting to self-review each
+   commit's diff before it was staged. None ran concurrently with another test command, none was
+   the full suite, and none was a mutation red-proof; gate 2 and gate 3 themselves each ran exactly
+   once, after C4, as the block requires.
+3. A digest-verification script, a byte-copy script, and several standalone read-only sanity checks
+   (confirming `adapter_exec_policy`'s and `adapter_sandbox_record`'s field-by-field behaviour
+   against the block's own prose before any test was written) were run under
+   `.remedy-wt/f162-r5-worker/` (created fresh this round); none is committed and none is a model or
+   `claude`-binary call.
+4. `create_role_provider` in `packages/orchestration/role_provider_factory.py` grew to 102 lines
+   when the sandbox-evidence call was first added inline, which `tests/test_structure_ratchet.py`
+   caught as a new function above the 100-line limit with no ledger row. Rather than add a row to
+   `docs/system/structure-ledger-v1.md` — scope this round's block never orders — the two evidence
+   calls were folded into one small helper, `_record_claude_cli_evidence`, bringing the function
+   back to 97 lines. This is a deviation in STYLE only: the block's own text, "The factory writes
+   `record_worker_sandbox(...)` right after the isolation line," is satisfied exactly — both calls
+   happen together, in order, for every claude-cli build — just inside the helper rather than
+   written out twice in the outer function's own body.
 
-No other departure from the block's ordered commit sequence beyond the one declared correction
-above: no file touched outside the paths named per commit, no mutation red-proof, no full suite run
-beyond gate 2's own selection, no `REMEDY_TEST_MAX_WORKERS`, no two test commands run at once, no
-`claude` binary invoked, no worktree of my own, and no `gh pr merge`, `git checkout`/`git switch`
-away from the feature branch, branch creation, rebase, amend, force-push, or `--no-verify`.
+No other departure from the block's ordered commit sequence beyond the two declared above: no file
+touched outside the paths named per commit, no mutation red-proof, no full suite run beyond gate
+2's own selection, no `REMEDY_TEST_MAX_WORKERS`, no two test commands run at once, no `claude`
+binary invoked, no worktree of my own, and no `gh pr merge`, `git checkout`/`git switch` away from
+the feature branch, branch creation, rebase, amend, force-push, or `--no-verify`.
 
 ## For the operator, in plain sentences
 
-This session finished booking the previous session's result and then built most of the next piece
-of the sandbox work: every backend now has to state, in a machine-checked way, what its default
-safety profile is and whether its process runs inside the strongest protection this project offers.
-The one backend that exists today declares an outside-the-strongest-protection default, because its
-login credential lives in a place that protection would hide, and its default only names the one
-external address its calls are actually for — a promise that is written down and checked for shape,
-though nothing yet refuses a call that breaks it. The machine-checked proof that every backend
-honors its promises grew an eighth test to cover this new requirement, matching the shape of the
-seven checks already there. A small number of long-standing test stand-ins for a backend needed a
-one-line addition each to keep counting as a complete stand-in now that the requirement grew, and
-one of those additions, plus one explanatory comment, had to be corrected once a first verification
-pass caught that they did not yet satisfy the round's own machine check; both were fixed in a
-dedicated follow-up commit before anything moved on. What still needs doing is connecting this new
-declaration to how a real worker actually starts, letting a project state its own choice, and
-telling the project's health check what to warn about when it cannot trust what it is told.
+This session recorded the previous session's result, fixed the two small mistakes that session's
+own verification caught, and finished connecting the new safety declaration to how a real worker
+call actually runs. Every limit a backend declares for itself now actually reaches the process that
+runs its calls, with the strongest protection skipped exactly where a backend says it must be, and
+every such call now leaves behind a written record of which limits applied and which did not, right
+beside the record already kept of how its environment was cleaned. One already-existing ordering
+problem in a generated bookkeeping file, unrelated to anything touched this session, was found and
+left alone rather than fixed by a change far outside this session's own boundary, because fixing it
+correctly needs its own separate pass. What still needs doing is letting a project state its own
+tighter choice, and telling the project's health check what to warn about when it cannot trust what
+it is told.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
 | C1 | done | five files byte-equal to the prepared snapshots; numstat matched the manifest exactly |
-| C2 | done | the contract's dataclass and protocol member, the claude-cli declaration, their tests, the doubles that needed it; 192 insertions |
-| C2 correction | deviated | declared above; fixes two gate-1 defects (two double files missing the literal member, one comment naming the module it must not import); 14 insertions |
-| C3 | done | the kit's eighth dimension, the deleted orphan entry, the contract page's row and new section; 74 insertions |
-| C4 | done | this handoff, committed alone per the self-reference exception |
-| Gate 1 | done | red on two lines on the first run (declared above), green on the re-run: every line `True`, last line `ALL True` |
-| Gate 2 | done | exit 0, `4418 passed, 2 skipped`, no FAILED/ERROR/`process(es) behind`, no SKIPPED from this round's new tests |
+| C2 | done | the page's decision reference corrected; both forwarding `sandbox_default()` methods and their false comments deleted; 1 insertion |
+| C3 | done | the compiler's `tool_sandbox` keyword, the slot's two functions, the evidence record and writer, the generated list's one line; 255 insertions |
+| C4 | done | both claude-cli policies compiled through the slot, the factory's second evidence line, the page's closing paragraph; 80 insertions |
+| C5 | done | this handoff, committed alone per the self-reference exception, plus the one `Landed:` ledger line |
+| R-1465 | done | RESOLVED at F162 R5 by C2, `75e6b81e2` |
+| Gate 1 | deviated | one real `False` line declared above (pre-existing, unrelated disorder in a generated file); every other line `True` |
+| Gate 2 | done | exit 0, `4939 passed, 2 skipped`, no FAILED/ERROR/`process(es) behind`, no SKIPPED from this round's new tests |
 | Gate 3 | done | `All checks passed!`, exit 0 |
-| Gate 4 | done | `fail_count` 0; open id count `9`, matching the block exactly |
+| Gate 4 | done | `fail_count` 0; open id count `10`, matching the block exactly |
 | Push | pending | runs immediately after this commit, per the block's push discipline; outcome reported in the reply |
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` before any new work (absent as of this session).
 2. Phase 1 rule 2: the Open PR Gate, before any new branch.
-3. Book round 4's verdict in the next round's first commit.
-4. T003: the declaration compiled onto the claude-cli spawn policies, the evidence, the project's
-   choice and the doctor, DECISION F162 D5.
+3. Book round 5's verdict in the next round's first commit.
+4. T003: a project's choice in `remedy.toml` and the doctor's warnings, DECISION F162 D6.
 
 Operator questions open: 3.
-Open findings: 9 (R-1246, R-1281, R-1351, R-1353, R-1426, R-1428, R-1448, R-1450 and R-1464, owned by
-F316; F162 takes none of them).
+Open findings: 10 (R-1246, R-1281, R-1351, R-1353, R-1426, R-1428, R-1448, R-1450, R-1464 and
+R-1465, owned by F316 and F162).
