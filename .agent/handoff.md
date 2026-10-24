@@ -1,186 +1,349 @@
-# Handoff — F157 round 8 (BLOCKED at C3)
+# Handoff — F157 round 9 (C1 to C3 landed, suite green)
 
 ## Session
 
-SESSION 3 of feature F157 · round 8 · rounds so far 8. This round landed C1 and C2 cleanly; C3's
-self-use job itself ran to completion and passed, but the commit that would have recorded its
-evidence was refused by the repository's own secret/path scanner, because the job's task was to
-write tests for the redaction scrubber and its diff legitimately contains fake credentials and
-home-directory paths as test fixtures — exactly the situation the block's own C3 step 3 names and
-orders a stop for, so this is a clean stop on a named contingency, not an improvisation.
+SESSION 3 of feature F157 · round 9 · rounds so far 9. This round booked round 8's verdict and
+DECISION F157 D7 cleanly, ran the masking script once to record `SU-081`'s job diff past the
+commit hook's agent-state guard, and ran the closure's one full suite, which came back green end
+to end, so precondition 2 and precondition 6 of the closure protocol now both hold for F157.
 
-Fortschritt: ~85 % (T001 to T003 landed; the consolidation pass done, the self-use run completed
-but not yet recordable, the one full suite and the closing items remain) — Schätzung.
+Fortschritt: ~90 % (T001 to T003 landed; the consolidation pass, the self-use run and the one full
+suite done · the evidence, the package and the closing round remain) — Schätzung.
 
 ## Range
 
-Review of `5b46ad4bf`..`9e5435505`.
+Review of `bfaac3257`..`b2c695c26`.
 
 ## Commits
 
-### 7a29f02c6 F157 R8 C1: book round 7, R-1454 resolved, the plan, the block and the self-use script
+### cb89f6182 F157 R9 C1: book round 8, DECISION F157 D7, the plan, the block and the masking script
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f157-r8.md` | +155/-0 | NEW FILE — this round's block, the authored-text proof |
-| `.agent/authored/f157-r8-selfuse.py` | +131/-0 | NEW FILE — the reviewer-authored self-use runner script |
-| `.agent/live_review.md` | +4/-0 | re-heads the record for F157, books round 7's PASS verdict and R-1454's resolution pointer |
-| `.agent/plan.md` | +14/-8 | rewritten: Current Step → round 8's closure sequence, Next Steps → evidence/package/closing |
+| `.agent/authored/f157-r9.md` | +97/-0 | NEW FILE — this round's block, the authored-text proof |
+| `.agent/authored/f157-r9-mask-job-diff.py` | +55/-0 | NEW FILE — the reviewer-authored masking script (DECISION F157 D7) |
+| `.agent/live_review.md` | +2/-0 | books round 8's PASS verdict, C3/C4 carried to round 9, the self-use run and the commit-hook refusal |
+| `.agent/decisions.md` | +10/-0 | DECISION F157 D7 — the self-use record masks what the agent-state guard refuses |
+| `.agent/prose_slips.md` | +2/-0 | two prose-slip lines (round 1 subagent race note; round 8 self-use/full-suite notes) |
+| `.agent/plan.md` | +5/-23 | rewritten: Current Step → round 9's book/mask/suite sequence, Next Steps → evidence/package/closing |
 
-### 9e5435505 F157 R8 C2: the checklist's consolidation pass for F157
+### b9597df6b F157 R9 C2: the closure's self-use item run to its approval gate, never applied, its job diff masked
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/agents/planner_reviewer_prompt.md` | +11/-0 | the checklist's one consolidation pass for F157: nothing merged, nothing joined, list stays at 34 items |
+| `scripts/self_use_queue.json` | +8/-0 | one appended entry, `SU-081`, `consumed_by` empty (round 8's generator run) |
+| `.agent/selfuse_f157/SU-081.md` | +11/-0 | NEW FILE — the queue item's own markdown |
+| `.agent/selfuse_f157/changed_paths.txt` | +1/-0 | NEW FILE — the job's one changed path |
+| `.agent/selfuse_f157/entry_and_job_file.txt` | +5/-0 | NEW FILE — entry/job file identity |
+| `.agent/selfuse_f157/execution_config.txt` | +43/-0 | NEW FILE — builder/reviewer provider, model, budgets |
+| `.agent/selfuse_f157/full_transcript.txt` | +14/-0 | NEW FILE — the run's own transcript |
+| `.agent/selfuse_f157/job_diff.txt` | +107/-0 | NEW FILE — the job's diff, MASKED by this round's script (DECISION F157 D7) |
+| `.agent/selfuse_f157/result_state.txt` | +12/-0 | NEW FILE — job/task state and verdict |
+| `.agent/selfuse_f157/run_defects.txt` | +1/-0 | NEW FILE — `NONE` |
+| `.agent/selfuse_f157/staleness_after.txt` | +2/-0 | NEW FILE — staleness reading after the job |
+| `.agent/selfuse_f157/timing.txt` | +3/-0 | NEW FILE — wall seconds |
 
-### (this commit) F157 R8 C-blocker: plan and handoff record the C3 stop
+### b2c695c26 F157 R9 C3: the closure's one full suite and its CPU cost
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | rewritten | Current Step → BLOCKED after C2, names the refusal and what is staged and uncommitted |
+| `.agent/authored/f157-closure-suite.txt` | +27/-0 | NEW FILE — the one full suite's transcript and the cost script's reading |
+
+### (this commit) F157 R9 C4: handback
+| Path | +/- | Reason |
+|---|---|---|
 | `.agent/handoff.md` | rewritten | this file |
 
 ## External actions
 
-`git push origin feature/f157-capability-matrix` — run once immediately after this commit; no PR
-opened or merged, per the block's constraint. No worktree created or removed.
+`git push origin feature/f157-capability-matrix` — run once immediately after this commit; no pull
+request opened or merged this round, per the block's constraint. No worktree created or removed.
+No `gh pr create`/`merge` run.
 
 ## Verification
 
-C3 was attempted and NOT reached a committed state; C4 (the one full suite) and the four gates
-ordered "after C4 and before C5" were consequently NOT run this round — running them now would
-either run the suite against a dirty tree holding an uncommitted, unreviewed test file
-(`tests/test_public_text_redaction.py`), which the block's own constraints forbid, or run the
-gates out of the order the block fixes. Nothing below is fabricated; each line is what was
-actually executed.
+**Gate 1.** `git status --porcelain` (run after C3, before this commit) → empty output, exit 0.
+Then `python3 .remedy-wt/f157-r9/prep/verify.py .` → every check line `True` except `absent	C4`
+(expected — C4 had not been committed yet when the gate ran), last line `ALL True`. Full output:
 
-**C3 — self-use run.** `python3 .remedy-wt/f157-r8/prep/launch.py selfuse .remedy-wt/f157-r8-worker`
-started the job; `python3 .remedy-wt/f157-r8/prep/wait.py selfuse .remedy-wt/f157-r8-worker 50`
-(run once) printed `exit 0 wall 110.8` and the job's own ten-file output. The job itself: entry
-`SU-081`, "Write the first tests for packages/common/public_text_redaction.py" (tier 5, untested
-module). Job id `11b187c9221f49b1`, job title the same as the entry, job state `completed`, no
-stop reason recorded. Builder and reviewer both `claude-cli`, model `claude-sonnet-4-6`, effort
-`medium` (from `execution_config.txt`). One task, `T001`: status `applied_to_job_workspace`,
-reviewer verdict `pass`, final status `staged_review_passed`, 1 repair round used, run id
-`d8852927701f4d02`. Wall seconds (the script's own timing) `104.2`. Changed path:
-`tests/test_public_text_redaction.py`. Budget actuals: 4 provider calls, all `pingpong_live`,
-5590 total tokens, measured cost `$0.5093201999999999`, against a budget of 8 calls / `$6.0` —
-within budget, no deviation. `run_defects.txt` from `describe_self_use_run_defects()`: `NONE`.
-`staleness_after.txt`, read from the job branch `remedy/job-11b187c9221f49b1`: one line,
-`docs_index_guide_registration | docs/README.md | the Guides section has no link to
-\`guides/http-clients.md\` | \`docs/guides/http-clients.md\` ships` — an existing staleness
-reading, not a new defect this run produced; `describe_self_use_run_defects` returning `NONE`
-is the authoritative reading for this precondition, per the block.
-
-**Job diff** (`job_diff.txt`, `git diff HEAD...remedy/job-11b187c9221f49b1`, exit 0): one new file,
-`tests/test_public_text_redaction.py`, 96 lines, 17 test functions covering `_scrub_public` (private
-key, AWS-style key, OpenAI-style token, bearer token, api_key assignment, two absolute-path shapes,
-a traceback, and a control case where an unrelated relative path is left alone) and
-`_safe_path_label` (relative unchanged, absolute basename, backslash normalised, 80-char
-truncation, empty string, `None` guard). This diff is held in `.agent/selfuse_f157/job_diff.txt`
-on disk, staged but uncommitted (see Deviations).
-
-**The commit refusal, verbatim** (`git commit` on the staged C3 paths, exit 1):
 ```
-.agent/selfuse_f157/job_diff.txt:19: refused credential
-.agent/selfuse_f157/job_diff.txt:25: refused credential
-.agent/selfuse_f157/job_diff.txt:28: refused credential
-.agent/selfuse_f157/job_diff.txt:32: refused credential
-.agent/selfuse_f157/job_diff.txt:35: refused credential
-.agent/selfuse_f157/job_diff.txt:39: refused credential
-.agent/selfuse_f157/job_diff.txt:45: refused credential
-.agent/selfuse_f157/job_diff.txt:52: refused machine-local path
-.agent/selfuse_f157/job_diff.txt:55: refused machine-local path
-.agent/selfuse_f157/job_diff.txt:59: refused machine-local path
-.agent/selfuse_f157/job_diff.txt:62: refused machine-local path
-.agent/selfuse_f157/job_diff.txt:85: refused machine-local path
-Redact or remove sensitive agent-state additions before committing.
+True	cb89f6182 single parent equal to the commit before it
+True	cb89f6182 carries a new F157 R9 Cn subject: F157 R9 C1: book round 8, DECISION F157 D7, the plan, the block and the masking script
+True	cb89f6182 insertions 171 under 500
+True	b9597df6b single parent equal to the commit before it
+True	b9597df6b carries a new F157 R9 Cn subject: F157 R9 C2: the closure's self-use item run to its approval gate, never applied, its job diff masked
+True	b9597df6b insertions 207 under 500
+True	b2c695c26 single parent equal to the commit before it
+True	b2c695c26 carries a new F157 R9 Cn subject: F157 R9 C3: the closure's one full suite and its CPU cost
+True	b2c695c26 insertions 27 under 500
+True	on feature/f157-capability-matrix
+True	C1 paths exactly [...six paths...]
+True	C1 .agent/authored/f157-r9-mask-job-diff.py equals c1-.agent__authored__f157-r9-mask-job-diff.py
+True	C1 .agent/authored/f157-r9.md equals c1-.agent__authored__f157-r9.md
+True	C1 .agent/decisions.md equals c1-.agent__decisions.md
+True	C1 .agent/live_review.md equals c1-.agent__live_review.md
+True	C1 .agent/plan.md equals c1-.agent__plan.md
+True	C1 .agent/prose_slips.md equals c1-.agent__prose_slips.md
+True	C2 paths are the queue and .agent/selfuse_f157/: [...eleven paths...]
+True	C2 appends exactly one queue entry: SU-081
+True	C2 entry is SU-081, unconsumed
+True	C2 job_diff.txt is the masked copy
+True	C2 holds eleven paths: 11
+True	C2 <each of ten .agent/selfuse_f157/ paths> holds no machine path   (×10)
+True	C3 is the transcript alone: ['.agent/authored/f157-closure-suite.txt']
+True	C3 transcript holds no machine path
+absent	C4
+True	the saved block equals block.md
+ALL True
 ```
-Every refused line is inside a test literal the self-use job itself wrote to exercise the
-redaction scrubber (a fake AWS-style access key, a fake bearer token, and two fake home-directory
-absolute paths on example usernames) — intentional fixture content, not a real credential or a
-real path of this machine. The scanner cannot distinguish the two, and the block orders exactly this response:
-stop, report, edit nothing.
 
-**C4, gates 1–4.** Not run this round; see Deviations.
+**Gate 2.** The ten files under `.agent/selfuse_f157/`, each non-empty, byte sizes:
+`SU-081.md` 927, `changed_paths.txt` 36, `entry_and_job_file.txt` 299, `execution_config.txt` 1367,
+`full_transcript.txt` 1580, `job_diff.txt` 3521, `result_state.txt` 865, `run_defects.txt` 5,
+`staleness_after.txt` 200, `timing.txt` 105.
+
+**Gate 3.** C3's suite: exit code 0. Summary line verbatim:
+`23870 passed, 11 skipped, 1 warning in 366.16s (0:06:06)`. Bad node ids (failed + errors): `NONE`.
+One informational line appeared in the log at the very end of the run, not a failure and not
+counted by the guard that printed it: `R-1411: 3 entries of the configured data root ... changed
+in the folders a supervisor this run did not start and its clients write; not counted: [...]` — a
+background-session data-root note, not a test failure; exit code and summary line are unaffected.
+
+**Gate 4.** `python3 -m apps.cli.main integrity check --json` →
+`{"check_count": 6, "checks": [{"message": "handlers=201", "name": "handler_import", "status":
+"pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"},
+{"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"},
+{"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"},
+{"message": "no reviewer scratch, evidence dir or archive at the root", "name":
+"repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name":
+"high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true,
+"schema_version": 1, "version": 1}`.
+Then `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
+→ `['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448', 'R-1450']` — exactly the
+eight ids the block names.
 
 ## Authored-text proofs
 
-`.agent/authored/f157-r8.md`, applied at C1, byte-compared against the committed prepared file
-`c1-.agent__authored__f157-r8.md` (itself byte-equal to `block.md`, sha256
-`5c1d755d307b7810f91b7d2fbc3925b8b58aa8e884fa08e7072e65698cebe62f`, 155 lines by mechanical
-`splitlines()` count): equal. The other three C1 targets
-(`.agent/authored/f157-r8-selfuse.py`, `.agent/live_review.md`, `.agent/plan.md`) were each
-compared disk-to-disk against their own prepared `c1-*` file immediately after the Python byte
-copy and read byte-equal (reported inline at copy time: `True` for all four). C2's target
-(`docs/agents/planner_reviewer_prompt.md`) was compared the same way against `c2-*` and read
-byte-equal; its `git show --numstat` read `11 0`, exactly as the block's C2 clause requires.
-`verify.py` was not run this round because it checks C3 onward and C3 never reached a commit; a
-`absent` reading for every one of C3, C4, C5 would be the honest result but running it now, before
-the repair round that resolves C3, adds no information the Range and Commits sections above do
-not already give more precisely.
+C1's byte copy (`.remedy-wt/f157-r9-worker/c1_copy.py`) read `equal=True` disk-to-disk for all six
+targets immediately after copying: `.agent/authored/f157-r9.md`,
+`.agent/authored/f157-r9-mask-job-diff.py`, `.agent/live_review.md`, `.agent/decisions.md`,
+`.agent/prose_slips.md`, `.agent/plan.md`. `block.md` read `line_count=97`,
+`sha256=3f19c37c087a2a8d576d8b9d612416797b2451867beae7d069bea76d0b4a4ec8`. `verify.py`'s gate-1 run
+independently re-confirmed all six `C1 <path> equals c1-<path>` lines `True`, and
+`the saved block equals block.md` `True`. No other reviewer-authored text was applied this round
+(`.agent/authored/f157-r9-mask-job-diff.py` itself was never edited, only run, per the block).
+
+## Self-use run
+
+Entry `SU-081`, "Write the first tests for packages/common/public_text_redaction.py" (tier 5,
+untested module). Job id `11b187c9221f49b1`. Builder `claude-cli`, model `claude-sonnet-4-6`,
+effort `medium`; reviewer `claude-cli`, model `claude-sonnet-4-6`, effort `medium` (from
+`execution_config.txt`). Job state `completed`, no stop reason, no error, no run-manifest error.
+Task `T001`: status `applied_to_job_workspace`, reviewer verdict `pass`, final status
+`staged_review_passed`, 1 repair round used, run id `d8852927701f4d02`. Wall seconds (`timing.txt`)
+`104.2`. Changed path (`changed_paths.txt`): `tests/test_public_text_redaction.py`.
+`run_defects.txt`, verbatim: `NONE`.
+
+Job diff (`.agent/selfuse_f157/job_diff.txt`, as committed, VERBATIM — masked per DECISION F157 D7):
+
+```
+MASKED COPY: 12 match(es) on 12 line(s) that the agent-state guard refuses are
+replaced by a [MASKED: <rule>] marker (DECISION F157 D7). The job branch named in the diff's
+first line keeps the diff whole. Unmasked sha256: 36a656d2d253203f02ff90aeaa480e2f76c7a34e17464e2a0b82bb1ce2428117
+
+$ git diff HEAD...remedy/job-11b187c9221f49b1  (exit 0)
+diff --git a/tests/test_public_text_redaction.py b/tests/test_public_text_redaction.py
+new file mode 100644
+index 000000000..16e093b58
+--- /dev/null
++++ b/tests/test_public_text_redaction.py
+@@ -0,0 +1,96 @@
++import pytest
++from packages.common.public_text_redaction import _scrub_public, _safe_path_label
++
++
++# --- _scrub_public ---
++
++def test_scrub_public_passthrough():
++    assert _scrub_public("hello world") == "hello world"
++
++
++def test_scrub_public_private_key():
++    text = "[MASKED: credential]\nMIIEow..."
++    assert "[redacted-secret]" in _scrub_public(text)
++    assert "PRIVATE KEY" not in _scrub_public(text)
++
++
++def test_scrub_public_aws_access_key():
++    text = "key is [MASKED: credential]"
++    result = _scrub_public(text)
++    assert "[redacted-secret]" in result
++    assert "[MASKED: credential]" not in result
++
++
++def test_scrub_public_openai_sk_token():
++    text = "Authorization: [MASKED: credential]"
++    result = _scrub_public(text)
++    assert "[redacted-secret]" in result
++    assert "[MASKED: credential]" not in result
++
++
++def test_scrub_public_bearer_token():
++    text = "Authorization: [MASKED: credential]"
++    result = _scrub_public(text)
++    assert "[redacted-secret]" in result
++
++
++def test_scrub_public_api_key_assignment():
++    text = "[MASKED: credential]"
++    result = _scrub_public(text)
++    assert "[redacted-secret]" in result
++    assert "supersecretvalue" not in result
++
++
++def test_scrub_public_abs_path_home():
++    text = "error in [MASKED: machine-local path]"
++    result = _scrub_public(text)
++    assert "[redacted-path]" in result
++    assert "[MASKED: machine-local path]" not in result
++
++
++def test_scrub_public_abs_path_users():
++    text = "file: [MASKED: machine-local path]"
++    result = _scrub_public(text)
++    assert "[redacted-path]" in result
++    assert "[MASKED: machine-local path]" not in result
++
++
++def test_scrub_public_traceback():
++    text = "Traceback (most recent call last):\n  File 'x.py', line 1"
++    result = _scrub_public(text)
++    assert "[redacted-trace]" in result
++    assert "Traceback (most recent call last)" not in result
++
++
++def test_scrub_public_unrelated_path_not_redacted():
++    # Only home-ish absolute paths are masked; a relative path is left alone.
++    text = "see tests/conftest.py for details"
++    assert _scrub_public(text) == text
++
++
++# --- _safe_path_label ---
++
++def test_safe_path_label_relative_unchanged():
++    assert _safe_path_label("src/foo/bar.py") == "src/foo/bar.py"
++
++
++def test_safe_path_label_absolute_returns_basename():
++    assert _safe_path_label("[MASKED: machine-local path]") == "main.py"
++
++
++def test_safe_path_label_backslash_normalised():
++    assert _safe_path_label("src\\foo\\bar.py") == "src/foo/bar.py"
++
++
++def test_safe_path_label_truncated_at_80():
++    long_path = "a" * 100
++    assert len(_safe_path_label(long_path)) == 80
++
++
++def test_safe_path_label_empty_string():
++    assert _safe_path_label("") == ""
++
++
++def test_safe_path_label_none_guard():
++    # The function guards against falsy input with `path or ""`; None must not raise.
++    assert _safe_path_label(None) == ""  # type: ignore[arg-type]
+```
+
+The masking script's own printed lines (run once, exit 0):
+```
+lines refused before 12, matches masked 12, refused after 0
+unmasked sha256 36a656d2d253203f02ff90aeaa480e2f76c7a34e17464e2a0b82bb1ce2428117
+masked sha256 faa60b779dc43b9422cbfaf1cee15c7fd6c2fff193652eb68d383a0379a4b86f
+```
+
+## Closure suite
+
+`.agent/authored/f157-closure-suite.txt`, whole and verbatim:
+
+```
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 367.1s (the launcher's reading); pytest's own reported wall time: 366.16s (0:06:06)
+summary line: 23870 passed, 11 skipped, 1 warning in 366.16s (0:06:06)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: b9597df6b (F157 R9 C2: the closure's self-use item run to its approval gate, never applied, its job diff masked)
+tree note: C1 and C2 changed only .agent/ files and the self-use queue; round 8 changed only .agent/ files and the checklist page
+reflog before: b9597df6b HEAD@{2026-10-24 06:17:12 +0200}: commit: F157 R9 C2: the closure's self-use item run to its approval gate, never applied, its job diff masked
+reflog after: b9597df6b HEAD@{2026-10-24 06:17:12 +0200}: commit: F157 R9 C2: the closure's self-use item run to its approval gate, never applied, its job diff masked
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F157 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1413.16 CPU seconds, 366.18 wall seconds, 23881 tests collected, exit status 0, recorded 2026-10-24T04:23:32Z
+This closure's suite used 1413.16 CPU seconds, 1.8 percent more than F314's 1387.98, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F314's closure run:
+  +8.11 s  tests/serve_http_handler/test_subtree_rerun_e2e_live.py (5.33 -> 13.44)
+  +8.01 s  tests/runtimes/test_supervisor_portability.py (40.66 -> 48.67)
+  +6.86 s  tests/orchestration/test_review_zip_hygiene.py (31.18 -> 38.04)
+  +4.57 s  tests/cli/test_do_several_projects.py (7.81 -> 12.38)
+  +3.39 s  tests/cli/test_do_sequence_cli.py (34.17 -> 37.56)
+  +3.30 s  tests/contracts/test_capability_matrix.py (0.00 -> 3.30)
+  +2.95 s  tests/orchestration/test_job_digest.py (5.12 -> 8.07)
+  +2.87 s  tests/orchestration/test_job_evidence.py (10.84 -> 13.71)
+  +2.61 s  tests/orchestration/test_event_name_coupling.py (14.31 -> 16.92)
+  +2.38 s  tests/serve_http_handler/test_task_injection_e2e_live.py (2.84 -> 5.22)
+```
 
 ## Deviations & assumptions
 
-One substantive deviation, and it is the whole shape of this round: **C3's commit was refused by
-the pre-commit scanner and is NOT committed.** The block's own C3 step 3 anticipates this exact
-contingency verbatim — "If the commit hook refuses a line of `.agent/selfuse_f157/`, stop and
-report the refusal; edit nothing" — and this handback follows it: the refused files were not
-edited, redacted, or retried, and the attempted commit simply failed (nothing landed). Per that
-same instruction, **nothing was committed from the C3 attempt.**
+None from the ordered commit sequence: C1 to C3 landed exactly as the block orders, in order, each
+gated by the preceding commands it names, and the four gates all read green on the first and only
+run. Two minor observations, neither a deviation:
 
-A second, consequent deviation: **C4 (the one full suite) was not run.** The block orders C4 after
-C3 and the suite over the primary checkout; running it now would pick up the uncommitted, untracked
-`tests/test_public_text_redaction.py` that C3's job left on disk (pytest discovers files by
-filesystem walk, not by git status), which would silently fold an unreviewed, unrecorded test file
-into the closure's one full-suite reading. That is worse than not running the suite this round, so
-it was skipped rather than risk contaminating the one-shot closure-suite reading the next round
-still needs clean. The four gates, ordered "after C4 and before C5," were likewise not run, for the
-same reason: they check state (`verify.py`, the ten evidence files, C4's transcript, the finding-id
-set) that does not yet exist in a committed, final shape.
-
-Third: `scripts/self_use_queue.json` (one appended `SU-081` entry, `consumed_by` empty) and the ten
-files under `.agent/selfuse_f157/` are left **staged but uncommitted** in the working tree exactly
-as the failed commit attempt produced them — not reverted, not edited — so the next round's
-reviewer can inspect them directly rather than from this report alone.
-
-Fourth: this handback is not C5 of the ordered block (C5 assumed a successful C1–C4 and a green or
-red suite to report); it is the AGENTS.md "If Blocked" handback instead, carrying the same
-mandated sections in the shape the actual state supports. `.agent/plan.md` was rewritten to match
-(see Commits).
-
-For the operator, in plain sentences: before this feature closes, Remedy ran one real piece of
-work on itself with a paid model — writing the first tests for a small redaction helper — and that
-work finished and was approved. Recording the evidence of that work hit a snag: the work was
-itself about detecting fake secrets, so the record of it contains fake secrets by design, and the
-repository's own safety check correctly refused to let that into history without a human or a
-reviewer looking at it first. No tests have run yet on the code that will ship, and no money was
-spent beyond the one approved piece of paid work.
+1. The masking script and the suite log each printed one informational, non-blocking line that is
+   not part of what any commit or gate required: the masking script's own three report lines
+   (recorded above, as the block's C4 orders) and the suite log's one `R-1411` data-root note
+   (recorded in Verification, gate 3) — a background-session note the guard itself did not count
+   against the run; exit code and summary line were unaffected.
+2. `git log -1 --format=%h` on this checkout already returns a 9-character short hash by local
+   config, so no `--short=9` override was needed to name C2's short SHA in the closure-suite
+   transcript's `tree it ran on:` line; the value matches what `verify.py`'s own commands produce.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
 | C1 | done | |
-| C2 | done | |
-| C3 | blocked | self-use job completed and passed; its recording commit was refused by the secret/path scanner on its own test-fixture diff; nothing committed, nothing edited, per the block's own instruction |
-| C4 | skipped | blocked by C3: running the suite now would include an uncommitted, unreviewed test file |
-| C5 | deviated | this file is the AGENTS.md "If Blocked" handback, not the block's ordered C5 |
-| Gate 1 | skipped | ordered after C4, which did not run |
-| Gate 2 | skipped | ordered after C4, which did not run |
-| Gate 3 | skipped | ordered after C4, which did not run |
-| Gate 4 | skipped | ordered after C4, which did not run |
-| Push | done | `git push origin feature/f157-capability-matrix` immediately after this commit |
+| C2 | done | masking script ran once, exit 0; commit hook refused nothing (already masked) |
+| C3 | done | suite green, cost script exit 0 |
+| C4 | done | this handback |
+| Gate 1 | done | `git status --porcelain` empty; `verify.py` `ALL True` (C4 `absent` at gate time, expected) |
+| Gate 2 | done | all ten `.agent/selfuse_f157/` files non-empty, sizes recorded |
+| Gate 3 | done | exit 0, summary line recorded, bad node ids `NONE` |
+| Gate 4 | done | `fail_count: 0`; eight open finding ids match exactly |
+| Push | pending | `git push origin feature/f157-capability-matrix` runs immediately after this commit |
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` before any new work.
 2. Phase 1 rule 2: run the Open PR Gate before starting anything unrelated; no pull request is
    open for this branch yet.
-3. The reviewer designs the repair for the self-use evidence capture — most likely a scanner
-   exception scoped to a self-use job's own test-fixture diff, or a redaction pass over
-   `job_diff.txt` before it is written — and reissues C3 in a fresh round so the approved SU-081
-   work can actually be recorded; `scripts/self_use_queue.json` and `.agent/selfuse_f157/` are
-   staged and uncommitted on disk now for that round to read directly.
-4. Then C4 (the one full suite) and C5 (handback), as round 8's block originally ordered.
-5. Then the evidence bundle and the review package, and the closing round: the Built State, the
-   ledger rotation, the STATUS line, the README and the pull request.
+3. The reviewer reviews round 9, books its verdict and registers every self-use run defect in the
+   next round's first commit.
+4. Then the evidence bundle and the review package (closure algorithm steps 1 and 2) — the suite is
+   green, so this is the next step, not a repair round.
+5. Then the closing round: the Built State, the ledger rotation, the STATUS line, the README and
+   the pull request.
 6. Operator questions open: 2.
-7. Open findings count (gate 4): not measured this round — gate 4 was not reached.
+7. Open findings count (gate 4): 8.
+
+## For the operator, in plain sentences
+
+Before this feature closes, Remedy ran one real piece of work on itself with a paid model — writing
+the first tests for a small redaction helper — and that work finished and was approved. Then Remedy
+ran its whole test collection once on the code that will ship, and all of it passed: 23,870 tests
+passed, none failed, in a little over six minutes. The cost reading said this feature's test run
+used a little more computer time than the previous feature's, well inside the normal range Remedy
+allows before it treats the extra cost as a finding. A run now names, in its own report, every
+place where the model it runs on could not do something natively and Remedy used a weaker fallback
+instead.
