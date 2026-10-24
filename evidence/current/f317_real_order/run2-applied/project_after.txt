@@ -1,0 +1,7 @@
+git log:
+66f9cee greet: two modules, a README and three tests
+
+git status --short:
+ M README.md
+ M greet/core.py
+ M tests/test_greet.py

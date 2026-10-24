@@ -1,0 +1,55 @@
+diff --git a/README.md b/README.md
+index a2c7a7d..3dd53d0 100644
+--- a/README.md
++++ b/README.md
+@@ -3,3 +3,5 @@
+ A tiny package that builds a greeting.
+ 
+     python3 -c "from greet.core import build_greeting; print(build_greeting('Ada'))"
++
++`build_greeting` automatically capitalises names regardless of how they were originally typed, so `ada`, `ADA` and `Ada` all produce the same greeting.
+diff --git a/greet/core.py b/greet/core.py
+index 503aa34..5f32cd5 100644
+--- a/greet/core.py
++++ b/greet/core.py
+@@ -3,4 +3,4 @@
+ 
+ def build_greeting(name: str) -> str:
+     """Return the greeting for NAME."""
+-    return f"Hallo, {name.strip()}!"
++    return f"Hallo, {name.strip().title()}!"
+diff --git a/tests/test_greet.py b/tests/test_greet.py
+index 1766d41..33c25e0 100644
+--- a/tests/test_greet.py
++++ b/tests/test_greet.py
+@@ -10,6 +10,30 @@ def test_greeting_trims_spaces():
+     assert build_greeting("  Ada ") == "Hallo, Ada!"
+ 
+ 
++def test_greeting_capitalises_lowercase_name():
++    assert build_greeting("john") == "Hallo, John!"
++
++
++def test_greeting_normalises_all_caps_name():
++    assert build_greeting("JOHN DOE") == "Hallo, John Doe!"
++
++
++def test_greeting_normalises_all_caps_single_word_name():
++    assert build_greeting("JOHN") == "Hallo, John!"
++
++
++def test_greeting_capitalises_lowercase_multi_word_name():
++    assert build_greeting("john doe") == "Hallo, John Doe!"
++
++
++def test_greeting_normalises_mixed_case_single_word_name():
++    assert build_greeting("jOhN") == "Hallo, John!"
++
++
++def test_greeting_normalises_mixed_case_multi_word_name():
++    assert build_greeting("jOHN dOE") == "Hallo, John Doe!"
++
++
+ def test_cli_prints_the_greeting(capsys):
+     assert main(["Ada"]) == 0
+     assert capsys.readouterr().out == "Hallo, Ada!\n"
