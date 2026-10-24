@@ -278,7 +278,7 @@ class TestAParkedClaudeCliTaskResumesOnRelaunch:
             parked = run_job(
                 job.job_id, builder_name="claude-cli", reviewer_name="claude-cli",
                 builder_model="claude-sonnet-4-6", reviewer_model="claude-sonnet-4-6",
-                repair_rounds=0)
+                repair_rounds=0, stream_evidence=False)
             assert parked.state == JOB_PAUSED
             parked_run_id = parked.tasks[0].run_id
             assert parked_run_id
@@ -291,7 +291,7 @@ class TestAParkedClaudeCliTaskResumesOnRelaunch:
             resumed = run_job(
                 job.job_id, builder_name="claude-cli", reviewer_name="claude-cli",
                 builder_model="claude-sonnet-4-6", reviewer_model="claude-sonnet-4-6",
-                repair_rounds=0)
+                repair_rounds=0, stream_evidence=False)
 
         assert resumed.state == JOB_COMPLETED
         relaunch_builder_calls = [c for c in calls if c["role"] == "builder"][1:]
@@ -321,7 +321,7 @@ class TestAParkedClaudeCliTaskResumesOnRelaunch:
             interrupted = run_job(
                 job.job_id, builder_name="claude-cli", reviewer_name="claude-cli",
                 builder_model="claude-sonnet-4-6", reviewer_model="claude-sonnet-4-6",
-                repair_rounds=0)
+                repair_rounds=0, stream_evidence=False)
             assert interrupted.state == JOB_STOPPED
             interrupted_run_id = interrupted.tasks[0].run_id
             assert interrupted_run_id
@@ -333,7 +333,7 @@ class TestAParkedClaudeCliTaskResumesOnRelaunch:
             resumed = run_job(
                 job.job_id, builder_name="claude-cli", reviewer_name="claude-cli",
                 builder_model="claude-sonnet-4-6", reviewer_model="claude-sonnet-4-6",
-                repair_rounds=0)
+                repair_rounds=0, stream_evidence=False)
 
         assert resumed.state == JOB_COMPLETED
         relaunch_builder_calls = [c for c in calls if c["role"] == "builder"][1:]
@@ -365,7 +365,7 @@ class TestAParkedClaudeCliTaskResumesOnRelaunch:
             parked = run_job(
                 job.job_id, builder_name="claude-cli", reviewer_name="claude-cli",
                 builder_model="claude-sonnet-4-6", reviewer_model="claude-sonnet-4-6",
-                repair_rounds=0)
+                repair_rounds=0, stream_evidence=False)
             assert parked.state == JOB_PAUSED
             builder_calls = [c for c in calls if c["role"] == "builder"]
             assert len(builder_calls) == 1
@@ -374,7 +374,7 @@ class TestAParkedClaudeCliTaskResumesOnRelaunch:
             resumed = run_job(
                 job.job_id, builder_name="claude-cli", reviewer_name="claude-cli",
                 builder_model="claude-sonnet-4-6", reviewer_model="claude-sonnet-4-6",
-                repair_rounds=0)
+                repair_rounds=0, stream_evidence=False)
 
         assert resumed.state == JOB_COMPLETED
         relaunch_builder_calls = [c for c in calls if c["role"] == "builder"][1:]

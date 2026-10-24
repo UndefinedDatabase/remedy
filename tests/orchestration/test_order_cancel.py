@@ -289,6 +289,7 @@ def _streaming_planner(monkeypatch, on_plan_call):
             return chunks if stream else next(chunks)
 
     monkeypatch.setattr(ollama, "Client", Client)
+    monkeypatch.setenv("REMEDY_PLANNER_PROVIDER", "ollama")     # amend1024 A1: no longer the default
     return service, marks
 
 

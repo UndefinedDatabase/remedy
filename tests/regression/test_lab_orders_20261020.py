@@ -117,10 +117,14 @@ def _fake_planner(monkeypatch, task_plan_json_fn):
     """
     from packages.orchestration.mission_plan_schema import MissionPlanDraft
     from packages.orchestration.schemas.models import TaskPlan
+    from packages.orchestration.scope_decision import OrderScopeDecision
 
     calls: list[int] = []
 
     def _fake(model_cls, **kwargs):
+        if model_cls is OrderScopeDecision:      # amend1024 B: the lab's planner asks for its milestones
+            return lambda prompt, attempt: json.dumps(
+                {"single_job": False, "files": [], "reason": "Stil und Index sind zwei Lieferungen."})
         if model_cls is MissionPlanDraft:
             return lambda prompt, attempt: _mission_plan_json()
         if model_cls is TaskPlan:

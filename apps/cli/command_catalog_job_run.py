@@ -30,7 +30,7 @@ JOB_RUN_COMMANDS: tuple[CommandEntry, ...] = (
             ArgDef("--tasks", "Max tasks to execute (omitted keeps persisted; 0=all)", required=False, is_option=True, default=None),
             ArgDef("--timeout-sec", "Raw per-call timeout in seconds (omitted keeps persisted/default)", required=False, is_option=True, default=None),
             ArgDef("--max-output-chars", "Max provider output chars (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--builder-provider", "Builder provider: claude, claude-cli, fake or pi (default: claude-cli, the Claude Code CLI; pi is the local Pi harness with Ollama; ollama alone cannot write files; persisted on continuation)", required=False, is_option=True, default=None),
+            ArgDef("--builder-provider", "Builder provider: claude, claude-cli, fake or pi (default: claude-cli, the Claude Code CLI; pi is the local Pi harness with the Ollama model muse-glimmer:latest; ollama alone cannot write files; persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--builder-model", "Model for builder role", required=False, is_option=True, default=None),
             ArgDef("--builder-effort", "Effort level for builder role", required=False, is_option=True, default=None),
             ArgDef("--reviewer-provider", "Reviewer provider: claude, claude-cli, fake, ollama or pi (default: claude-cli, read-only tools; persisted on continuation)", required=False, is_option=True, default=None),

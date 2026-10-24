@@ -456,7 +456,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--repo` | yes | no | yes | no | Path to target repository (default: the registered repository of the project --project or the order file names, else the current directory) |
 | `--project` | yes | no | yes | no | Select a registered project by slug or id instead of the repository's own |
 | `--json` | yes | no | no | no | Output JSON |
-| `--builder-provider` | yes | no | yes | no | Builder provider for `do`: claude, claude-cli, fake or pi (default: claude-cli, the Claude Code CLI; pi is the local Pi harness with Ollama; ollama alone cannot write files) |
+| `--builder-provider` | yes | no | yes | no | Builder provider for `do`: claude, claude-cli, fake or pi (default: claude-cli, the Claude Code CLI; pi is the local Pi harness with the Ollama model muse-glimmer:latest; ollama alone cannot write files) |
 | `--reviewer-provider` | yes | no | yes | no | Reviewer provider for `do`: claude, claude-cli, fake, ollama or pi (default: claude-cli, read-only tools) |
 | `--builder-model` | yes | no | yes | no | Model for the builder role on every task `do` runs (default: the builder role config) |
 | `--reviewer-model` | yes | no | yes | no | Model for the reviewer role on every task `do` runs (default: the reviewer role config) |
@@ -594,7 +594,7 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--tasks` | yes | no | yes | no | Max tasks to execute (omitted keeps persisted; 0=all) |
 | `--timeout-sec` | yes | no | yes | no | Raw per-call timeout in seconds (omitted keeps persisted/default) |
 | `--max-output-chars` | yes | no | yes | no | Max provider output chars (omitted keeps persisted/default) |
-| `--builder-provider` | yes | no | yes | no | Builder provider: claude, claude-cli, fake or pi (default: claude-cli, the Claude Code CLI; pi is the local Pi harness with Ollama; ollama alone cannot write files; persisted on continuation) |
+| `--builder-provider` | yes | no | yes | no | Builder provider: claude, claude-cli, fake or pi (default: claude-cli, the Claude Code CLI; pi is the local Pi harness with the Ollama model muse-glimmer:latest; ollama alone cannot write files; persisted on continuation) |
 | `--builder-model` | yes | no | yes | no | Model for builder role |
 | `--builder-effort` | yes | no | yes | no | Effort level for builder role |
 | `--reviewer-provider` | yes | no | yes | no | Reviewer provider: claude, claude-cli, fake, ollama or pi (default: claude-cli, read-only tools; persisted on continuation) |

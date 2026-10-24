@@ -32,7 +32,7 @@ from typing import ClassVar
 from pydantic import BaseModel, ValidationError
 
 from packages.orchestration.failure_postmortem import FailureSignals, classify, utc_now_iso
-from packages.orchestration.intake import make_structured_call_fn
+from packages.orchestration.intake import make_structured_call_fn, planner_service_of
 from packages.orchestration.role_config import resolve_role_config
 from packages.orchestration.side_role_routing import side_role_call_fn
 from packages.orchestration.structured_outputs import run_structured_call
@@ -365,7 +365,8 @@ def summary_call_fn() -> Callable[[str, int], str] | None:
     role_cfg = resolve_role_config("summary")
     return side_role_call_fn(
         "summary", GeneratedSummaryContent,
-        lambda: make_structured_call_fn(GeneratedSummaryContent, model=role_cfg.model))
+        lambda: make_structured_call_fn(GeneratedSummaryContent, model=role_cfg.model,
+                                        provider=planner_service_of(role_cfg.provider)))
 
 
 def select_relevant_sections(

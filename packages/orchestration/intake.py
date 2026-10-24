@@ -284,6 +284,13 @@ def run_intake(
 PLANNER_PROVIDERS: tuple[str, ...] = ("ollama", "claude-cli")
 
 
+# WHY: a side role (study, summary) runs on its OWN provider through the planner factory, never on
+# the planner role's default, which became claude-cli by operator amendment amend1024-one-real-order.
+def planner_service_of(provider: str | None) -> str | None:
+    """PROVIDER when it is a planner service ``make_structured_call_fn`` can build, else None."""
+    return provider if provider in PLANNER_PROVIDERS else None
+
+
 def resolve_planner_target(
     provider: str | None = None, model: str | None = None,
 ) -> tuple[str, str | None]:

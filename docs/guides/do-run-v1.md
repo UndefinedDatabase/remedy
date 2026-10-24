@@ -416,8 +416,8 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
 - `--repo` — target repository path (default `.`)
 - `--project` — select a registered project by slug or id instead of the repository's own
 - `--json` — the JSON output above
-- `--builder-provider` — `pi` (the default), claude, claude-cli or fake; `ollama` is refused
-- `--reviewer-provider` — `pi` (the default), claude, claude-cli, fake or ollama
+- `--builder-provider` — `claude-cli` (the default), pi, claude or fake; `ollama` is refused
+- `--reviewer-provider` — `claude-cli` (the default), pi, claude, fake or ollama
 - `--builder-model`, `--reviewer-model` — model for the role on every task `do` runs
 - `--planner-model` — model for every planner call of the plan and shape steps
 - `--planner-provider` — which service makes those planner calls: `ollama`

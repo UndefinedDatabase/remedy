@@ -30,6 +30,9 @@ class FakePlannerService:
     calls: list[dict[str, Any]] = field(default_factory=list)
     #: Each call's prompt, in call order, for the tests that read what the planner was shown.
     prompts: list[str] = field(default_factory=list)
+    #: The answer to the scope decision (amend1024 B); None leaves it unanswered, so every walk keeps
+    #: the regex lane its case was written for and spends no call on it.
+    scope_answer: dict[str, Any] | None = None
 
     def answer(self, schema_title: str, prompt: str) -> str:
         began = time.monotonic()
@@ -54,6 +57,7 @@ class FakePlannerService:
                                                                  "goal": "Make the change.",
                                                                  "est_band": "S"}]}]},
             "StudyCategoryNarration": {"narrative": "A small project."},
+            "OrderScopeDecision": self.scope_answer,
         }
         self.calls[-1]["seconds"] = round(time.monotonic() - began, 6)
         return json.dumps(documents[schema_title])
@@ -89,7 +93,14 @@ class FakePlannerService:
 
         import ollama
 
+        # amend1024 A1: the planner's default is claude-cli; this fake serves as the Ollama planner.
+        monkeypatch.setenv("REMEDY_PLANNER_PROVIDER", "ollama")
         monkeypatch.setattr("packages.providers.ollama_planner.provider.OllamaPlanner", _FakePlanner)
+        if self.scope_answer is None:
+            from packages.orchestration import scope_decision
+
+            monkeypatch.setattr(scope_decision, "decide_order_scope", lambda *a, **k: {
+                "outcome": "planner_unreachable", "decided": scope_decision.SCOPE_REGEX_FALLBACK})
         monkeypatch.setattr(ollama, "Client", _FakeClient)
         return service
 

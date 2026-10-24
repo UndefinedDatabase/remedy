@@ -107,6 +107,8 @@ def _install_fake_claude_cli(monkeypatch) -> list[list[str]]:
         return subprocess.CompletedProcess(cmd, 0, json.dumps(payload) + "\n", "")
 
     monkeypatch.setattr(provider_mod, "_guarded_cli_run", _fake_guarded_cli_run)
+    # The fake stands for the binary too: no real `claude` is on a test's PATH (tests/conftest.py).
+    monkeypatch.setattr(provider_mod.ClaudeCliProvider, "_get_claude_path", lambda self: "/fake/claude")
     return calls
 
 
@@ -121,6 +123,7 @@ def _run_one_task_job(demo_repo: Path) -> types.SimpleNamespace:
         job_id=job.job_id, builder_provider="claude-cli", reviewer_provider="claude-cli",
         max_tasks="1",
     )
+    args.stream_evidence = False    # the fake answers the JSON envelope; amend1024 D5 streams by default
     _run_job_handler(args)
     return job
 
