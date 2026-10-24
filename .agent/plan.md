@@ -6,21 +6,20 @@ usd) shared by budgets, previews, the ledger and the catalog; a versioned price 
 with sources; each ledger call valued with a normalized cost, the pricing version and a basis
 (provider_reported wins, the catalog cross-checks and warns past a threshold, a stale catalog warns
 and never blocks); and `remedy worker pricing-update` imports catalogs behind a shown diff
-(`docs/roadmap/features/T8_F158.md`, amendments A1 and A2). F153 waits behind F316 (D1).
+(`docs/roadmap/features/T8_F158.md`, amendments A1 to A3). F153 waits behind F316 (D1).
 
 ## Current Step
-Round 5 (session 1), T003 part 1 per DECISION F158 D6: book round 4, move the catalog's `worker`
-group to its own module (structure rule 2), the update planner in
-`packages/orchestration/price_catalog.py`, and `remedy worker pricing-update` with its shown
-difference and `--yes`.
+Round 6 (session 1), T003 part 2 per DECISION F158 D7: book round 5, the recompute and the summary
+in `packages/orchestration/call_valuation.py`, `remedy stats recompute-costs` and `remedy stats
+valuations`, `docs/system/price-catalog-v1.md`, amendment A3, and the end-to-end. With it T001 to
+T003 are built.
 
 ## Next Steps
-1. Round 6, T003 part 2: the recompute of valuations after a catalog's pricing version changes,
-   with the `calls` rows proven unchanged, `remedy stats cost` reporting the valuations with their
-   basis and their flagged and stale prices, the docs, and the end-to-end, DECISION F158 D7.
-2. The closure, in the next session: the consolidation pass, the self-use run, the one full suite,
-   the evidence job, the review package and the STATUS line.
+1. The closure, in session 2 (STATUS_closure_protocol.md): book round 6; the Built State; the
+   checklist consolidation pass; the self-use run; the one full suite with its transcript.
+2. The evidence job and the review package, then the ledger rotation, the STATUS acceptance with
+   its README sync, and the pull request, left unmerged for the next session's Open PR Gate.
 
 ## Risks
 - Catalog prices may cite only sources already on disk (DECISION F158 D2 (3)); the shipped
-  catalog is empty, so the goldens use fixture catalogs.
+  catalog is empty, so a priced valuation needs an imported catalog.
