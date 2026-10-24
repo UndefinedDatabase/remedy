@@ -8,15 +8,16 @@ when a degradation ran; a guard fails a capability read outside the matrix
 (`docs/roadmap/features/T8_F157.md`).
 
 ## Current Step
-Round 4: book round 3's verdict, R-1451's resolution and R-1452, DECISION F157 D4; repair R-1452;
-route `reviewer_schema_gate` and `parked_session_resume` inside the claude-cli provider, every
-decision of a build recorded by `routed_claude_cli_build`.
+Round 5: book round 4's verdict, R-1452's resolution and R-1453, DECISION F157 D5; repair R-1453;
+one wording for a degradation, the readers of a run's and a task's evidence, `remedy run show`'s
+line and JSON list, and the job report's per-task line behind a structural step.
 
 ## Next Steps
-1. The report section, the run's `Degradations:` line and the reduced-capability end-to-end
-   (DECISION F157 D3 (5) and (6)).
+1. The reduced-capability end-to-end: a job run through the loop with a reduced adapter whose
+   evidence, run report and job report name exactly the degradations the register predicts
+   (DECISION F157 D3 (6)).
 2. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
 
 ## Risks
-- `pingpong_provider.py` and `pingpong_loop.py` are structure-ledger file rows; every edit there
-  keeps their length, and `create_role_provider` stays at or under 100 lines.
+- `pingpong_provider.py`, `pingpong_loop.py` and `format_job_report_text` are structure-ledger
+  rows; every edit keeps their length or lowers the row in the same commit.
