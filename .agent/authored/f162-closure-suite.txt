@@ -1,0 +1,27 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 404.1s (the launcher's reading); pytest's own reported wall time: 403.19s (0:06:43)
+summary line: 24116 passed, 11 skipped, 1 warning in 403.19s (0:06:43)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 2fa84a217 (F162 R10 C4: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C4 changed only .agent/ files, one docs index cell, the checklist page and the self-use queue
+reflog before: 2fa84a217 HEAD@{2026-10-24 15:25:36 +0200}: commit: F162 R10 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: 2fa84a217 HEAD@{2026-10-24 15:25:36 +0200}: commit: F162 R10 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F162 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1453.59 CPU seconds, 403.22 wall seconds, 24127 tests collected, exit status 0, recorded 2026-10-24T13:32:26Z
+This closure's suite used 1453.59 CPU seconds, 4.8 percent less than F152's 1526.77, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F152's closure run:
+  +9.67 s  tests/cli/test_do_sequence_cli.py (35.83 -> 45.50)
+  +5.81 s  tests/orchestration/test_serve_daemon.py (23.31 -> 29.12)
+  +4.54 s  tests/orchestration/test_run_manifest_task_lifecycle_binding.py (4.04 -> 8.58)
+  +3.63 s  tests/runtimes/test_supervisor_portability.py (48.40 -> 52.03)
+  +3.63 s  tests/orchestration/test_public_api_gate_paths.py (18.60 -> 22.23)
+  +3.54 s  tests/orchestration/test_self_use_generator.py (7.57 -> 11.11)
+  +2.83 s  tests/orchestration/test_subtree_rerun_prepare.py (17.09 -> 19.92)
+  +2.69 s  tests/orchestration/test_event_name_coupling.py (14.93 -> 17.62)
+  +2.58 s  tests/cli/test_quick_start.py (2.15 -> 4.73)
+  +2.50 s  tests/cli/test_do_scale_matrix.py (38.22 -> 40.72)
