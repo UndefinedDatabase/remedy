@@ -323,7 +323,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [~] F314 — Findings paydown v10
+- [x] F314 — Findings paydown v10 (T001–T008 complete; R-1246, R-1281, R-1351, R-1353, R-1426, R-1428, R-1448 and R-1450 open — owned by F316; accepted 2026-10-24 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f314r8e1001 · package remedy-review-20261024-030553-READY_FOR_REVIEW.zip · SHA-256 cbcf7163ae8ffa580d6ea95e572df6e29b2260b71129ab428280f7a96687fec3 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7e02a9110f3253ff93ece51a2ba3dbc0c408373f)
 
 ## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane, continued)
 
