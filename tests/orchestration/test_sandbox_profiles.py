@@ -763,7 +763,10 @@ def test_worker_sandbox_record_net_local_sandboxed_linux_matches_the_dict_litera
 
 
 class TestRecordWorkerSandbox:
-    def test_writes_nothing_for_a_falsy_directory(self, tmp_path):
+    def test_writes_nothing_for_a_falsy_directory(self, tmp_path, monkeypatch):
+        # R-1466: a stray write for a falsy directory would land relative to the working
+        # directory, so the working directory is set to tmp_path before either call.
+        monkeypatch.chdir(tmp_path)
         record = worker_sandbox_record(
             get_sandbox_profile("net-local"), tool_sandbox=True, platform="linux",
             sandbox_available=True)
