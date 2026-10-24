@@ -48,8 +48,8 @@ _ISOLATION_ENV_ALLOWLIST = (
 )
 
 #: D4 (2)'s exact default profile, TOML text parsed by `parse_sandbox_profile` elsewhere (this
-#: module does not import `sandbox_profiles`); the same layout as `sandbox_profile_files/strict.toml`,
-#: one key per line, `[ulimits]` last.
+#: module itself imports no sandbox-profile parsing code); the same layout as
+#: `sandbox_profile_files/strict.toml`, one key per line, `[ulimits]` last.
 _SANDBOX_PROFILE_TOML = (
     'fs_scope = ["{workspace}"]\n'
     'net = { allow = ["api.anthropic.com"] }\n'
