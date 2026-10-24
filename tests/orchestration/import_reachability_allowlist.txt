@@ -20,6 +20,7 @@ apps.cli.command_catalog_project
 apps.cli.command_catalog_stats
 apps.cli.command_catalog_steer
 apps.cli.command_catalog_types
+apps.cli.command_catalog_worker
 apps.cli.commands
 apps.cli.commands.absorb_cmd
 apps.cli.commands.bench_cmd
@@ -78,6 +79,7 @@ apps.cli.commands.stats_calibration_cmd
 apps.cli.commands.stats_calls_cmd
 apps.cli.commands.stats_ledger_cmd
 apps.cli.commands.stats_trust_cmd
+apps.cli.commands.stats_valuation_cmd
 apps.cli.commands.status_cmd
 apps.cli.commands.study_cmd
 apps.cli.commands.teacher_cmd
@@ -85,6 +87,7 @@ apps.cli.commands.test_cmds
 apps.cli.commands.ui
 apps.cli.commands.worker
 apps.cli.commands.worker_facade_cmd
+apps.cli.commands.worker_pricing_cmd
 apps.cli.cost_preview_confirm
 apps.cli.exit_codes
 apps.cli.grouped
@@ -134,6 +137,7 @@ packages.orchestration.builder_models
 packages.orchestration.burn_detector
 packages.orchestration.call_identity
 packages.orchestration.call_tokens
+packages.orchestration.call_valuation
 packages.orchestration.capability_bench
 packages.orchestration.capability_evidence
 packages.orchestration.capability_routes
@@ -175,6 +179,7 @@ packages.orchestration.context_inspector
 packages.orchestration.continue_from_node
 packages.orchestration.contract_hygiene
 packages.orchestration.contract_templates
+packages.orchestration.cost_currency
 packages.orchestration.cost_preview
 packages.orchestration.cost_report
 packages.orchestration.crash_report
@@ -325,6 +330,7 @@ packages.orchestration.planner_cancel
 packages.orchestration.planner_models
 packages.orchestration.preview_control
 packages.orchestration.preview_runner
+packages.orchestration.price_catalog
 packages.orchestration.product_smoke
 packages.orchestration.project_brain
 packages.orchestration.project_brain_aggregate

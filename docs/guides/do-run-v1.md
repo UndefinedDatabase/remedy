@@ -307,8 +307,8 @@ show_cost_usd = true
 ```
 
 The key defaults to `false`. With it set, the `Cost:` line shows the measured
-dollar figure. The `--json` output always carries `cost.cost_usd`, because it is for programs,
-not people (operator amendment amend1015).
+dollar figure. The `--json` output always carries it as the `cost_usd` field of its `cost` object,
+because it is for programs, not people (operator amendment amend1015).
 
 ## --plan-only and --step-by-step
 

@@ -1,21 +1,20 @@
-# Plan — F162 Sandbox profiles per adapter
+# Plan — F158 Cost normalization & price catalog
 
 ## Goal
-What a worker process may touch becomes a named, testable profile: a profile file declares its
-filesystem scope, network (deny or a host allowlist), resource limits, allowed binaries and a tmp
-quota; each adapter declares its default profile; a project may tighten but never loosen below the
-policy minimum; an optional container runner reads the same profile; and an honesty document tables
-what each profile does and does not prevent, every row linked to a test
-(`docs/roadmap/features/T8_F162.md`).
+Cross-vendor money becomes comparable, honestly: one configured currency (`cost.currency`, default
+usd) shared by budgets, previews, the ledger and the catalog; a versioned price catalog per adapter
+with sources; each ledger call valued with a normalized cost, the pricing version and a basis; and
+`remedy worker pricing-update` imports catalogs behind a shown diff
+(`docs/roadmap/features/T8_F158.md`, amendments A1 to A3). F153 waits behind F316 (D1).
 
 ## Current Step
-Round 12, the closing round (session 2): book round 11 (PASS), the Built State, the ledger rotation,
-the STATUS acceptance with the README sync and SU-083's `consumed_by`, and the pull request, left
-unmerged. F162 is accepted with this round.
+Round 9 (session 2), the closing round: book round 8; the Built State; the ledger rotation; the
+STATUS acceptance with its README sync and SU-084's `consumed_by`; the pull request, left unmerged.
+F158 is then closed PASS_WITH_RISKS for R-1472, owned by F316.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F162's pull request, then the
-   first commit of the next feature books round 12's verdict, then Rule A5.
+1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F158's pull
+   request, then round 9's verdict is booked in the next feature's first commit, then Rule A5.
 
 ## Risks
-- R-1467 (the container runner's configuration key) is owned by F246; F162 closes PASS_WITH_RISKS.
+- None open for F158; R-1472 (self-use runs reach no token ledger) is owned by F316.

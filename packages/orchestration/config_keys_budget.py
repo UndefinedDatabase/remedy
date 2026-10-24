@@ -138,6 +138,42 @@ BUDGET_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=float,
         default=0.5,
     ),
+    # F158 T001 (DECISION F158 D3): the one currency budgets, previews, the ledger and the price
+    # catalog share; `packages/orchestration/cost_currency.py` accepts only usd while every budget
+    # field above is a USD field.
+    ConfigKeySpec(
+        key="cost.currency",
+        env_var="REMEDY_COST_CURRENCY",
+        description=(
+            "Currency every cost figure is stated and normalized in; usd is the only accepted "
+            "value while every budget field is a USD field (F158)"
+        ),
+        value_type=str,
+        default="usd",
+    ),
+    # F158 T002 (DECISION F158 D5): `packages/orchestration/call_valuation.py` flags a provider-reported
+    # cost the catalog prices more than this many percent apart; a catalog price older than the
+    # stale window is warned about and never blocks anything.
+    ConfigKeySpec(
+        key="cost.cross_check_threshold_percent",
+        env_var="REMEDY_COST_CROSS_CHECK_THRESHOLD_PERCENT",
+        description=(
+            "Percent by which a catalog-computed cost may differ from the cost the provider "
+            "reported before the call is flagged and a warning is logged (F158)"
+        ),
+        value_type=float,
+        default=5.0,
+    ),
+    ConfigKeySpec(
+        key="cost.catalog_stale_days",
+        env_var="REMEDY_COST_CATALOG_STALE_DAYS",
+        description=(
+            "Days after a catalog price's valid-from date when Remedy warns that the price may be "
+            "stale; a stale price is still used and never blocks a run (F158)"
+        ),
+        value_type=int,
+        default=60,
+    ),
     ConfigKeySpec(
         key="budget.deadline",
         env_var="REMEDY_BUDGET_DEADLINE",

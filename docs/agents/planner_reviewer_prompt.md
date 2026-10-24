@@ -890,6 +890,16 @@ end the response with:
   documentation staleness check reads as a folder, was found by the reviewer's probe of the
   closure's own self-use generator. The sixth, R-1467, the container runner's configuration key, is
   owned by F246. The list stays at 34 items.
+  Consolidated again at F158's closure on 2026-10-24: nothing joined and no two items were merged,
+  because F158 wrote no line in `.agent/prose_slips.md`, and the two gaps the reviewer's mutations
+  found in round 6, the configured stale window and the word printed for an unknown cost, were
+  closed by tests the reviewer added to its own dry run before delegating, which is item 18's
+  reading of an ordered list of tests against the property it must establish. Its one finding,
+  R-1471, a guide sentence the documentation staleness check began to read as a configuration key
+  once round 2 made `cost` a key prefix, was found by the reviewer's probe of the closure's own
+  self-use generator and repaired in the closure; a new key widening the set of prefixes a checker
+  reads every guide against is item 34's reading of the guards that bind a file an order changes.
+  The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

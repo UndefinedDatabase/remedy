@@ -1,0 +1,24 @@
+# The price catalog of the claude-cli adapter (F158, DECISION F158 D4).
+#
+# It lists no model yet, on purpose. A price enters this file only with a source a reviewer can
+# open, and no Anthropic price list is stored in this repository. The claude command line reports
+# each call's cost itself, and that provider-reported cost is the basis that wins, so the calls are
+# not left unmeasured. A maintained catalog is imported with `remedy worker pricing update`, which
+# shows the difference before it writes anything.
+#
+# Each model, when one is added, is a table like this, prices per million tokens:
+#
+#   [models."<model id>"]
+#   input_per_million = <number>
+#   output_per_million = <number>
+#   cache_read_per_million = <number>
+#   cache_write_per_million = <number>
+#   currency = "usd"
+#   valid_from = <a TOML date such as 2026-10-01>
+#   source = "<where these prices were read>"
+
+[catalog]
+adapter = "claude-cli"
+pricing_version = 1
+
+[models]

@@ -240,4 +240,47 @@ STATS_COMMANDS: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    CommandEntry(
+        command_id="stats.valuations",
+        group_id="stats",
+        subcommand="valuations",
+        description=(
+            "Each call's normalized cost from the ledger, per basis and never blended: what the "
+            "provider reported, what a price catalog computed, and what is unknown; with the calls "
+            "whose catalog price disagrees with the provider beyond the threshold and the catalog "
+            "prices older than the stale window (read-only)."
+        ),
+        action_class="read_only",
+        supports_json=True,
+        related=("stats.recompute-costs", "stats.cost", "worker.pricing-update"),
+        args=(
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
+            ArgDef("--catalog-dir", "Read the price catalogs from this folder instead of the ones Remedy ships", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+    CommandEntry(
+        command_id="stats.recompute-costs",
+        group_id="stats",
+        subcommand="recompute-costs",
+        description=(
+            "Value every call in a project's ledger again after a price catalog changed, rewriting "
+            "only the valuations that changed; the calls' token counts and reported costs are only "
+            "read and never change."
+        ),
+        action_class="write_metadata",
+        supports_json=True,
+        related=("stats.valuations", "worker.pricing-update"),
+        args=(
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
+            ArgDef("--catalog-dir", "Read the price catalogs from this folder instead of the ones Remedy ships", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
 )
