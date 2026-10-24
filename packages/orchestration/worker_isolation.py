@@ -1,9 +1,11 @@
-"""The worker isolation evidence and its pure helpers (F152 T001, DECISION F152 D3 (3) to (5)).
+"""The worker isolation evidence and its pure helpers (F152 T001, DECISION F152 D3 (3) to (5);
+T002, DECISION F152 D4 (1)).
 
 Builds the child environment a `WorkerIsolation` declaration lets through, the stable digest and
 evidence record that describe it without ever printing a value, and the per-build evidence
-writer, shaped like `capability_routes.record_capability_decisions`. The throwaway-home pair is
-built here too, though no call path uses it yet (D3 (5)).
+writer, shaped like `capability_routes.record_capability_decisions`. `declared_isolation` is the
+one place an adapter with no declaration becomes a loud bug rather than a silent neutral fallback
+(D4 (1)). The throwaway-home pair is built here too, though no call path uses it yet (D3 (5)).
 """
 from __future__ import annotations
 
@@ -34,6 +36,23 @@ def isolated_child_env(
     if not isolation.applies or not isolation.env_allowlist:
         return None
     return {name: source[name] for name in isolation.env_allowlist if name in source}
+
+
+# WHY: the one place "no declaration" becomes a loud bug instead of a silent neutral fallback,
+# so every reader of an adapter's isolation goes through the same check (DECISION F152 D4 (1)).
+def declared_isolation(adapter: object) -> WorkerIsolation:
+    """ADAPTER's own `isolation()` answer. Raises `TypeError` naming ADAPTER's `adapter_id` and
+    either that it has no `isolation` member, or the value `isolation()` answered, when that
+    value is not a `WorkerIsolation`."""
+    adapter_id = getattr(adapter, "adapter_id", repr(adapter))
+    isolation = getattr(adapter, "isolation", None)
+    if isolation is None:
+        raise TypeError(f"adapter {adapter_id!r} declares no isolation(): no such member")
+    declaration = isolation()
+    if not isinstance(declaration, WorkerIsolation):
+        raise TypeError(
+            f"adapter {adapter_id!r} declares no isolation(): isolation() answered {declaration!r}")
+    return declaration
 
 
 # WHY: the one digest every worker_isolation.jsonl line carries, stable at equal configuration
@@ -73,11 +92,10 @@ def worker_isolation_record(
 # build, never per call (DECISION F152 D3 (4)); shaped like `record_capability_decisions`.
 def record_worker_isolation(
     evidence_dir: str | None, *, role: str, provider: str, model: str,
-    record: dict[str, Any] | None,
+    record: dict[str, Any],
 ) -> None:
-    """Append one `worker_isolation.jsonl` line; nothing written for a falsy EVIDENCE_DIR or a
-    falsy RECORD (an installed adapter that declares no isolation at all, e.g. a test double)."""
-    if not evidence_dir or not record:
+    """Append one `worker_isolation.jsonl` line; nothing written for a falsy EVIDENCE_DIR."""
+    if not evidence_dir:
         return
     directory = Path(evidence_dir)
     directory.mkdir(parents=True, exist_ok=True)

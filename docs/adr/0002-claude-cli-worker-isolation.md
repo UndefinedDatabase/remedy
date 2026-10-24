@@ -141,17 +141,21 @@ suppresses independently of this feature; or any MCP server not named on the com
 
 ## Consequences
 
-**T001** builds the `isolation()` contract member returning `method="clean_env"`, `adr_ref` pointing
-here, the throwaway-home create/remove pair, the per-call `worker_isolation` evidence field (shaped
-like `capability_decisions.jsonl`, `.agent/f152_inventory.md` §5), and the unit test for probe 6 —
-all buildable without the real binary, with the declaration's exact shape frozen by DECISION
-F152 D3 from this reviewed record.
+**T001**, closed under DECISION F152 D3: the `isolation()` contract member returns
+`method="tool_flag"`, not this record's own rejected `clean_env` proposal above — "The chosen
+mechanism" is the section that rules the method, and this section only reports what landed. It
+built the claude-cli declaration (`adr_ref` pointing here, the exact flags and the environment
+allowlist D3 (2) names), the throwaway-home create/remove pair (D3 (5), with no caller yet), the
+per-build `worker_isolation.jsonl` evidence line (D3 (4)), and the unit test for probe 6 — all
+without the real binary.
 
-**T002** builds the enforcement that wires the method into `_cli_exec_policy`/`_stream_exec_policy`,
-the `--strict-mcp-config` flag addition, the stub-executable A/B proof that runs in every selection
-(probe 4), and the real-binary A/B proof behind the Q26 switch (probe 3) — plus probes 1, 2 and 5,
-which this feature's own research must still close before this record's rows can read fully
-VERIFIED rather than "partly verified".
+**T002**, under DECISION F152 D4: `declared_isolation` refuses an installed adapter that carries
+no `isolation()` member or answers anything but a `WorkerIsolation`, closing the neutral fallback
+R-1456 found; the reusable `run_isolation_ab` utility runs an adapter's own declared command line
+twice, isolated and not, against one poisoned throwaway home, and its stand-in-`claude` proof and
+two red controls run in every selection (probe 4). The real-binary A/B proof (probe 3) and probes
+1, 2 and 5 all wait on the operator question that holds the real-binary proof, Q26 (D4 (4)); this
+record's rows stay "partly verified" until that answer lets a session run them.
 
 **T003** builds the `worker.doctor` check (`apps/cli/commands/worker.py:248-311`, not any
 `doctor_*.py` file — `.agent/f152_inventory.md` §7), the conformance kit's `adr_ref` requirement,

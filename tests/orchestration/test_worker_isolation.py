@@ -1,4 +1,5 @@
-"""F152 T001, DECISION F152 D3 (3) to (5) — the worker isolation module's own pure helpers."""
+"""F152 T001, DECISION F152 D3 (3) to (5); T002, DECISION F152 D4 (1) — the worker isolation
+module's own pure helpers."""
 from __future__ import annotations
 
 import json
@@ -11,6 +12,7 @@ from packages.contracts.adapter_contract import WorkerIsolation
 from packages.orchestration.worker_isolation import (
     WORKER_ISOLATION_FILENAME,
     create_throwaway_home,
+    declared_isolation,
     isolated_child_env,
     record_worker_isolation,
     remove_throwaway_home,
@@ -39,6 +41,27 @@ class TestIsolatedChildEnv:
 
     def test_is_none_for_an_empty_allowlist(self):
         assert isolated_child_env(_EMPTY_ALLOWLIST, {"HOME": "/srv/x"}) is None
+
+
+class TestDeclaredIsolation:
+    def test_returns_the_adapters_own_isolation_answer(self):
+        class _Declaring:
+            adapter_id = "stub"
+
+            def isolation(self):
+                return _APPLIES
+
+        assert declared_isolation(_Declaring()) is _APPLIES
+
+    def test_raises_naming_the_adapter_for_an_isolation_answering_none(self):
+        class _NoneIsolation:
+            adapter_id = "stub-none"
+
+            def isolation(self):
+                return None
+
+        with pytest.raises(TypeError, match="stub-none"):
+            declared_isolation(_NoneIsolation())
 
 
 class TestWorkerEnvDigest:
@@ -90,11 +113,6 @@ class TestRecordWorkerIsolation:
         record_worker_isolation(
             "", role="builder", provider="claude-cli", model="m",
             record=worker_isolation_record(_APPLIES, {"HOME": "/x"}))
-        assert list(tmp_path.iterdir()) == []
-
-    def test_writes_nothing_for_a_falsy_record(self, tmp_path):
-        record_worker_isolation(
-            str(tmp_path), role="builder", provider="claude-cli", model="m", record=None)
         assert list(tmp_path.iterdir()) == []
 
     def test_appends_one_parseable_line_per_call(self, tmp_path):

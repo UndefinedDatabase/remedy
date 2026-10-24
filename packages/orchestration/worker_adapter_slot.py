@@ -16,7 +16,11 @@ from typing import Any
 
 from packages.contracts.adapter_contract import CliInvocation, InvocationOptions, WorkerAdapter
 from packages.orchestration.token_actuals import UsageActuals, parse_cli_result_detailed
-from packages.orchestration.worker_isolation import isolated_child_env, worker_isolation_record
+from packages.orchestration.worker_isolation import (
+    declared_isolation,
+    isolated_child_env,
+    worker_isolation_record,
+)
 
 #: Adapter reference to the factory (an adapter class) the wiring layer installed for it.
 _INSTALLED_WORKER_ADAPTERS: dict[str, Callable[..., WorkerAdapter]] = {}
@@ -74,14 +78,12 @@ def adapter_usage_actuals(adapter_ref: str, raw: str, **settings: Any) -> tuple[
 
 # WHY: the one place a call policy reads to build its own `env=`, so the declared isolation
 # reaches the child exactly as built (DECISION F152 D3 (3)); refuses a throwaway home because no
-# call path provides one yet (D3 (5)); None (inherit) for an adapter that is not a full
-# WorkerAdapter at all, such as a test double built for a narrower contract.
+# call path provides one yet (D3 (5)); refuses an adapter with no declaration at all rather than
+# silently inheriting the operator's whole environment (DECISION F152 D4 (1)).
 def adapter_child_env(adapter_ref: str, **settings: Any) -> dict[str, str] | None:
     """The installed adapter's declared child environment, built from this process's own."""
     adapter = installed_worker_adapter(adapter_ref, **settings)
-    if not isinstance(adapter, WorkerAdapter):
-        return None
-    declaration = adapter.isolation()
+    declaration = declared_isolation(adapter)
     if declaration.throwaway_home:
         raise ValueError(
             f"adapter {adapter_ref!r} declares throwaway_home, but no call path provides one yet")
@@ -90,12 +92,9 @@ def adapter_child_env(adapter_ref: str, **settings: Any) -> dict[str, str] | Non
 
 # WHY: the evidence twin of `adapter_child_env` — the same declaration and environment, shaped
 # for `record_worker_isolation` instead of a `Popen` (DECISION F152 D3 (4)).
-def adapter_isolation_record(adapter_ref: str, **settings: Any) -> dict[str, Any] | None:
-    """`worker_isolation_record` for the installed adapter's own declaration and environment, or
-    None for an adapter that is not a full WorkerAdapter at all (see `adapter_child_env`)."""
+def adapter_isolation_record(adapter_ref: str, **settings: Any) -> dict[str, Any]:
+    """`worker_isolation_record` for the installed adapter's own declaration and environment."""
     adapter = installed_worker_adapter(adapter_ref, **settings)
-    if not isinstance(adapter, WorkerAdapter):
-        return None
-    declaration = adapter.isolation()
+    declaration = declared_isolation(adapter)
     env = isolated_child_env(declaration, os.environ)
     return worker_isolation_record(declaration, env)

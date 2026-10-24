@@ -294,9 +294,10 @@ def test_adapter_child_env_refuses_a_throwaway_home_declaration(monkeypatch):
 
 
 class _NarrowAdapter:
-    """A real-world case this contract always had to tolerate: an installed adapter missing
-    `isolation()` (and every other newer member), the shape F157/F151's own reduced-capability
-    test doubles use. `adapter_child_env`/`adapter_isolation_record` must not raise on it."""
+    """A real-world case: an installed adapter missing `isolation()` (and every other newer
+    member), the shape F157/F151's own reduced-capability test doubles used to use.
+    `adapter_child_env`/`adapter_isolation_record` must raise `TypeError` on it rather than run
+    such a worker call with no declared isolation at all (R-1456, DECISION F152 D4 (1))."""
 
     adapter_id = "claude-cli"
 
@@ -304,14 +305,16 @@ class _NarrowAdapter:
         pass
 
 
-def test_adapter_child_env_is_none_for_an_adapter_without_isolation(monkeypatch):
+def test_adapter_child_env_raises_for_an_adapter_without_isolation(monkeypatch):
     monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _NarrowAdapter)
-    assert adapter_child_env("claude-cli") is None
+    with pytest.raises(TypeError, match="claude-cli"):
+        adapter_child_env("claude-cli")
 
 
-def test_adapter_isolation_record_is_none_for_an_adapter_without_isolation(monkeypatch):
+def test_adapter_isolation_record_raises_for_an_adapter_without_isolation(monkeypatch):
     monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _NarrowAdapter)
-    assert adapter_isolation_record("claude-cli") is None
+    with pytest.raises(TypeError, match="claude-cli"):
+        adapter_isolation_record("claude-cli")
 
 
 def _env_logging_claude(tmp_path: Path) -> tuple[Path, Path]:
