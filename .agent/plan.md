@@ -9,16 +9,16 @@ and never blocks); and `remedy worker pricing update` imports catalogs behind a 
 (`docs/roadmap/features/T8_F158.md`, amendment A1). F153 waits behind F316 (DECISION F158 D1).
 
 ## Current Step
-Round 3 (session 1), T002 part 1 per DECISION F158 D4: book round 2, amendment A1, the catalog
-format with its loader and refusals in `packages/orchestration/price_catalog.py`, and the shipped
-`claude-cli` catalog, empty until a price with a source is imported.
+Round 4 (session 1), T002 part 2 per DECISION F158 D5: book round 3, the two cost keys, the
+`call_valuations` table and its basis rules in `packages/orchestration/call_valuation.py`, the
+evidence hook valuing each mirrored call, the staleness check, and their goldens.
 
 ## Next Steps
-1. Round 4, T002 part 2: each ledger call valued at record time — the normalized cost, its basis,
-   the pricing version, the cross-check warning past the threshold and the staleness warning —
-   with their goldens, frozen by DECISION F158 D5; the orphan entry for the catalog goes.
-2. T003: the recompute by pricing version with the raw counters immutable, `remedy worker pricing
-   update` with its shown diff, the docs and the end-to-end; then the closure.
+1. Round 5, T003 part 1: the recompute of valuations when a catalog's pricing version changes, with
+   the `calls` rows proven unchanged by a hash, and `remedy worker pricing update` with its shown
+   diff, frozen by DECISION F158 D6.
+2. T003 part 2: `remedy stats cost` reading the valuations with their basis, flagged and stale
+   rows, the docs and the end-to-end; then the closure in the next session.
 
 ## Risks
 - Catalog prices may cite only sources already on disk (DECISION F158 D2 (3)); the shipped
