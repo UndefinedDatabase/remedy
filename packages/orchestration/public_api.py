@@ -575,7 +575,9 @@ def answer_public_api_get(
             scope["project_ids"] = client_project_ids(client)
         if route.twin in _CALLER_AWARE_TWINS:
             scope["client"] = client
-        body = visible_cost_usd(_TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments, **scope))
+        body = _TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments, **scope)
+        # amend1024 E1: an answer's dollars obey `cost.show_usd`; the interface only DESCRIBES keys.
+        body = body if route.twin == "client.interface" else visible_cost_usd(body)
         if body.get("ok"):
             status = 200
         else:
