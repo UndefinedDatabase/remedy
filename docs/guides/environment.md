@@ -52,6 +52,8 @@ not read as its type; neither warning stops Remedy from running.
 | `REMEDY_CLAUDE_ENABLED` | yes or no (1, true, yes / 0, false, no) | no | env-only | Enable Claude provider (env-only flag) |
 | `REMEDY_CLAUDE_PLANNER_MODEL` | text | none | env-only | Model for the Claude CLI planner; beats planner.model and the alias table's default (env-only) |
 | `REMEDY_CLAUDE_PLANNER_TIMEOUT` | a whole number | `300` | env-only | Per-call wall timeout of the Claude CLI planner, in whole seconds (env-only) |
+| `REMEDY_COST_CATALOG_STALE_DAYS` | a whole number | `60` | `cost.catalog_stale_days` | Days after a catalog price's valid-from date when Remedy warns that the price may be stale; a stale price is still used and never blocks a run (F158) |
+| `REMEDY_COST_CROSS_CHECK_THRESHOLD_PERCENT` | a number | `5.0` | `cost.cross_check_threshold_percent` | Percent by which a catalog-computed cost may differ from the cost the provider reported before the call is flagged and a warning is logged (F158) |
 | `REMEDY_COST_CURRENCY` | text | `usd` | `cost.currency` | Currency every cost figure is stated and normalized in; usd is the only accepted value while every budget field is a USD field (F158) |
 | `REMEDY_COST_PREVIEW_CONFIRM_ABOVE_USD` | a number | `0.5` | `cost_preview.confirm_above_usd` | USD threshold above which an expensive command's cost preview requires operator confirmation before it runs (F114) |
 | `REMEDY_COVERAGE_FAIL_UNDER` | a whole number | none | `quality.coverage_fail_under` | Minimum test coverage percentage |
