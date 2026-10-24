@@ -543,6 +543,29 @@ def sandbox_runner_available() -> bool:
     return True
 
 
+# WHY: `worker doctor` reads the same resolved profile a call and its evidence read, so a
+# refused choice is the only way this check fails; an honest unenforced dimension only warns
+# (DECISION F162 D6 (4)).
+def sandbox_doctor_checks(
+    adapter: WorkerAdapter, *, provider_id: str, config: Any = None,
+) -> tuple[tuple[str, bool, str], ...]:
+    """One `(name, ok, detail)` triple, named `sandbox_<provider_id>`."""
+    name = f"sandbox_{provider_id}"
+    try:
+        profile = effective_sandbox_profile(adapter, config=config)
+    except SandboxProfileError as exc:
+        return ((name, False, str(exc)),)
+    declaration = adapter.sandbox_default()
+    sandbox_available = sandbox_runner_available() if declaration.tool_sandbox else False
+    enforcement = sandbox_profile_enforcement(
+        profile, platform=sys.platform, sandbox_available=sandbox_available)
+    unenforced = [item for item in enforcement if item.state == "unenforced"]
+    if not unenforced:
+        return ((name, True, f"profile {profile.name}; every dimension enforced"),)
+    warning = "; ".join(f"{item.key} ({item.reason})" for item in unenforced)
+    return ((name, True, f"profile {profile.name}; warning, unenforced: {warning}"),)
+
+
 # ---------------------------------------------------------------------------
 # T003: the sandbox evidence, beside worker_isolation.jsonl (DECISION F162 D5 (4))
 # ---------------------------------------------------------------------------

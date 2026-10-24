@@ -155,12 +155,19 @@ already records an allowlist as unenforced, so a host the tool also reaches make
 promise false. The conformance kit's sandbox dimension refuses a `sandbox_default()` answer that
 is not a `WorkerSandboxDefault`, and refuses a declared profile whose TOML `parse_sandbox_profile`
 cannot parse, naming the parser's own refusal text.
+
 Both claude-cli spawn policies compile that default through `adapter_exec_policy` in the worker
 adapter slot (DECISION F162 D5): outside the tool sandbox, so for the claude-cli default it adds an
 open-files limit of 1024 and nothing else. Every claude-cli provider build writes one line to
 `worker_sandbox.jsonl` beside `worker_isolation.jsonl`, naming the profile, the runner, whether the
 process runs inside the tool sandbox, and each dimension's enforced or unenforced state with its
 reason.
+
+A project names a stricter built-in with `claude_cli.sandbox_profile`, a looser or unknown name is
+refused naming the adapter's default before any call, the call, its evidence line and
+`worker doctor` read the same resolved profile, and the doctor's `sandbox_<provider_id>` check
+passes with a warning naming each unenforced dimension and fails only on a refused choice
+(DECISION F162 D6).
 
 ## The capability matrix
 `packages/contracts/capability_matrix.py` holds a declarative register,

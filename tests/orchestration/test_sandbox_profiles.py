@@ -21,6 +21,7 @@ import threading
 import pytest
 
 import packages.orchestration.sandbox_profiles as SP
+from packages.contracts.adapter_contract import WorkerSandboxDefault
 from packages.orchestration.exec_guard import ExecGuardPolicy, ExecGuardResult
 from packages.orchestration.sandbox_profiles import (
     BUILTIN_SANDBOX_PROFILE_NAMES,
@@ -41,6 +42,7 @@ from packages.orchestration.sandbox_profiles import (
     profile_within,
     record_worker_sandbox,
     run_guarded_with_sandbox_profile,
+    sandbox_doctor_checks,
     sandbox_profile_config_key,
     sandbox_profile_enforcement,
     sandbox_profile_guard_policy,
@@ -845,3 +847,76 @@ class TestEffectiveSandboxProfile:
             config_module, "get_config",
             lambda: _Config({"claude_cli.sandbox_profile": "strict"}))
         assert effective_sandbox_profile(self._adapter()) == get_sandbox_profile("strict")
+
+
+# ---------------------------------------------------------------------------
+# F162 round 6 C4: worker doctor names each worker's sandbox profile and its
+# unenforced dimensions (DECISION F162 D6 (4))
+# ---------------------------------------------------------------------------
+
+
+class _EveryDimensionEnforcedDouble(ClaudeCliReferenceAdapter):
+    """`standard`'s own values, `tmp_quota_mb` changed to unlimited, `tool_sandbox` True: with
+    `sandbox_runner_available` also answering True, nothing here is left unenforced."""
+
+    def sandbox_default(self) -> WorkerSandboxDefault:
+        return WorkerSandboxDefault(
+            profile_toml=(
+                'fs_scope = ["{workspace}"]\n'
+                'net = "deny"\n'
+                'allowed_binaries = "any"\n'
+                'tmp_quota_mb = "unlimited"\n'
+                "[ulimits]\n"
+                "cpu_s = 1800\n"
+                'mem_mb = "unlimited"\n'
+                "nofile = 1024\n"
+            ),
+            tool_sandbox=True,
+        )
+
+
+class TestSandboxDoctorChecks:
+    @pytest.mark.skipif(not sys.platform.startswith("linux"),
+                         reason="the claude-cli default's enforcement text is pinned to linux")
+    def test_the_claude_cli_default_warns_on_fs_scope_and_net(self):
+        checks = sandbox_doctor_checks(
+            ClaudeCliReferenceAdapter(), provider_id="claude_code", config=_Config())
+        assert checks == (
+            ("sandbox_claude_code", True,
+             "profile claude-cli; warning, unenforced: "
+             "fs_scope (no tool sandbox: only the working directory is pinned); "
+             "net (the host network is shared and hosts are not filtered)"),
+        )
+
+    @pytest.mark.skipif(not sys.platform.startswith("linux"),
+                         reason="strict's enforcement text outside the tool sandbox is pinned to linux")
+    def test_strict_chosen_warns_on_every_dimension_outside_the_tool_sandbox(self):
+        checks = sandbox_doctor_checks(
+            ClaudeCliReferenceAdapter(), provider_id="claude_code",
+            config=_Config({"claude_cli.sandbox_profile": "strict"}))
+        assert checks == (
+            ("sandbox_claude_code", True,
+             "profile strict; warning, unenforced: "
+             "fs_scope (no tool sandbox: only the working directory is pinned); "
+             "net (no tool sandbox: only proxy variables point at a closed port); "
+             "allowed_binaries (binaries are not filtered by name); "
+             "tmp_quota_mb (no tool sandbox: /tmp is the host's)"),
+        )
+
+    def test_net_local_chosen_fails_naming_the_refusal(self):
+        checks = sandbox_doctor_checks(
+            ClaudeCliReferenceAdapter(), provider_id="claude_code",
+            config=_Config({"claude_cli.sandbox_profile": "net-local"}))
+        assert len(checks) == 1
+        name, ok, detail = checks[0]
+        assert (name, ok) == ("sandbox_claude_code", False)
+        assert "loosens the minimum 'claude-cli'" in detail
+
+    @pytest.mark.skipif(not sys.platform.startswith("linux"),
+                         reason="the enforced/unenforced split is pinned to linux")
+    def test_every_dimension_enforced_inside_an_available_tool_sandbox(self, monkeypatch):
+        monkeypatch.setattr(SP, "sandbox_runner_available", lambda: True)
+        checks = sandbox_doctor_checks(
+            _EveryDimensionEnforcedDouble(), provider_id="claude_code", config=_Config())
+        assert checks == (
+            ("sandbox_claude_code", True, "profile claude-cli; every dimension enforced"),)

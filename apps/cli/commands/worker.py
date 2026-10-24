@@ -257,6 +257,7 @@ def _cmd_worker_doctor(*, json_output: bool = False) -> None:
     """
     import shutil
 
+    from packages.orchestration.sandbox_profiles import sandbox_doctor_checks
     from packages.orchestration.worker_adapters import list_worker_specs
     from packages.orchestration.worker_isolation import isolation_doctor_checks
     from packages.providers.adapters.adapter_registry import resolve_worker_adapter
@@ -288,6 +289,11 @@ def _cmd_worker_doctor(*, json_output: bool = False) -> None:
                         adapter, provider_id=spec.provider_id,
                     ):
                         _check(iso_name, iso_ok, iso_detail)
+                    # DECISION F162 D6 (4): the sandbox check right after isolation's.
+                    for sbx_name, sbx_ok, sbx_detail in sandbox_doctor_checks(
+                        adapter, provider_id=spec.provider_id,
+                    ):
+                        _check(sbx_name, sbx_ok, sbx_detail)
         else:
             # An `available` spec this doctor has no probe for: say so rather
             # than silently reporting it as though it had passed one.

@@ -180,6 +180,54 @@ class TestWorkerDoctor:
         assert out["ready"] is False
         assert "isolation_claude_code_flags" in out["blockers"]
 
+    def test_worker_doctor_lists_a_passing_sandbox_check_after_isolation(self, monkeypatch, capsys):
+        """DECISION F162 D6 (4): `sandbox_claude_code` follows the four isolation checks and an
+        honest unenforced dimension never blocks readiness."""
+        import shutil as _shutil
+
+        import packages.orchestration.worker_isolation as worker_isolation
+        monkeypatch.setattr(
+            _shutil, "which",
+            lambda name: f"/usr/bin/{name}" if name in ("ollama", "claude", "pi") else None)
+        monkeypatch.setattr(worker_isolation, "read_tool_help",
+                             lambda executable, env: _ISOLATION_HELP_TEXT_WITH_FLAGS)
+        import packages.orchestration.pi_provider as pi_provider
+        monkeypatch.setattr(pi_provider, "default_chain_checks", lambda: [("pi_executable", True, "pi")])
+        from apps.cli.commands.worker import _cmd_worker_doctor
+        _cmd_worker_doctor(json_output=True)
+        out = json.loads(capsys.readouterr().out)
+        names = [c["check"] for c in out["checks"]]
+        assert names.index("sandbox_claude_code") == names.index("isolation_claude_code_flags") + 1
+        sandbox_check = next(c for c in out["checks"] if c["check"] == "sandbox_claude_code")
+        assert sandbox_check["ok"] is True
+        assert out["ready"] is True
+        assert out["blockers"] == []
+
+    def test_worker_doctor_fails_the_sandbox_check_on_a_refused_profile(self, monkeypatch, capsys):
+        """DECISION F162 D6 (4): a looser-than-default choice fails `sandbox_claude_code` and
+        blocks readiness, the only way this check ever does."""
+        import shutil as _shutil
+
+        import packages.orchestration.worker_isolation as worker_isolation
+        from packages.orchestration.config import reset_config
+        monkeypatch.setattr(
+            _shutil, "which",
+            lambda name: f"/usr/bin/{name}" if name in ("ollama", "claude", "pi") else None)
+        monkeypatch.setattr(worker_isolation, "read_tool_help",
+                             lambda executable, env: _ISOLATION_HELP_TEXT_WITH_FLAGS)
+        import packages.orchestration.pi_provider as pi_provider
+        monkeypatch.setattr(pi_provider, "default_chain_checks", lambda: [("pi_executable", True, "pi")])
+        monkeypatch.setenv("REMEDY_CLAUDE_CLI_SANDBOX_PROFILE", "net-local")
+        reset_config()
+        try:
+            from apps.cli.commands.worker import _cmd_worker_doctor
+            _cmd_worker_doctor(json_output=True)
+            out = json.loads(capsys.readouterr().out)
+            assert out["ready"] is False
+            assert "sandbox_claude_code" in out["blockers"]
+        finally:
+            reset_config()
+
 
 class TestAWorkerRefusalIsShapedLikeTheCaller:
     """F277 T003 — the `worker` group migrated onto the shared `fail()`."""
