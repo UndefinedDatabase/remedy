@@ -168,9 +168,11 @@ def run_isolation_ab(
     """Run ADAPTER's own declared command line twice against one throwaway home POISON_HOME
     wrote MARKER into: un-isolated, with ADAPTER's whole environment, no declared flags and the
     throwaway home as `HOME`; isolated, with the command line as built and the environment
-    `isolated_child_env` makes of that same environment. Raises `ValueError` for a declaration
-    that does not apply or a command line not ending with the declared `tool_args`, before any
-    home is created. The home is removed in every case, including when POISON_HOME raises."""
+    `isolated_child_env` makes of that same environment, or BASE_ENV itself when that answers
+    `None`, so an empty allowlist never lets the isolated run inherit the poisoned environment
+    (R-1458). Raises `ValueError` for a declaration that does not apply or a command line not
+    ending with the declared `tool_args`, before any home is created. The home is removed in
+    every case, including when POISON_HOME raises."""
     declaration = declared_isolation(adapter)
     if not declaration.applies:
         raise ValueError(f"adapter {adapter.adapter_id!r} declares isolation that does not apply")
@@ -196,9 +198,11 @@ def run_isolation_ab(
 
         unisolated = run_guarded(unisolated_argv, ExecGuardPolicy(
             wall_timeout_seconds=timeout_seconds, cwd=work, env=base_env, core_file_bytes=0))
+        isolated_env = isolated_child_env(declaration, base_env)
+        if isolated_env is None:
+            isolated_env = base_env
         isolated = run_guarded(argv, ExecGuardPolicy(
-            wall_timeout_seconds=timeout_seconds, cwd=work,
-            env=isolated_child_env(declaration, base_env), core_file_bytes=0))
+            wall_timeout_seconds=timeout_seconds, cwd=work, env=isolated_env, core_file_bytes=0))
     finally:
         remove_throwaway_home(home)
 

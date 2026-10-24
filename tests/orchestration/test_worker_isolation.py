@@ -278,6 +278,23 @@ class TestRunIsolationAb:
             poison_home=functools.partial(_poison_home, settings=False, mcp=True))
         assert result.marker_isolated is True
 
+    def test_an_adapter_with_no_allowlist_leaks_the_poison_into_its_own_isolated_run(self, tmp_path):
+        """Red control (R-1458): before the repair, `isolated_child_env` answered `None` for an
+        empty allowlist, `run_guarded` then read that as "inherit the real process environment",
+        and an adapter that cleans nothing could read `proves_isolation` true. The repair makes
+        the isolated run BASE_ENV itself in that case, so the poison surfaces instead of hiding."""
+
+        class _NoAllowlistAdapter(ClaudeCliReferenceAdapter):
+            def isolation(self):
+                declared = super().isolation()
+                return dataclasses.replace(declared, env_allowlist=())
+
+        adapter = self._adapter(tmp_path, _NoAllowlistAdapter)
+        result = run_isolation_ab(
+            adapter, marker="M-no-allowlist", parent=str(tmp_path),
+            poison_home=functools.partial(_poison_home, settings=False, mcp=False))
+        assert result.marker_isolated is True
+
     def test_a_declaration_that_does_not_apply_raises_and_leaves_no_home(self, tmp_path):
         adapter = self._adapter(tmp_path, customizations=True)
         with pytest.raises(ValueError, match="does not apply"):

@@ -318,15 +318,19 @@ def test_adapter_isolation_record_raises_for_an_adapter_without_isolation(monkey
 
 
 def _env_logging_claude(tmp_path: Path) -> tuple[Path, Path]:
-    """A `claude` on PATH that logs the NAMES, never the values, of its own environment."""
+    """A `claude` on PATH that appends one JSON line per run, holding its own argv and its
+    environment's sorted NAMES, never a value (R-1459): the provider's own `--version` probe and
+    a streamed build both run through this stand-in, and only a per-run log, read back by argv,
+    tells the two calls apart."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    log = tmp_path / "env_names.json"
+    log = tmp_path / "env_names.jsonl"
     payload = json.dumps({"type": "result", "is_error": False, "result": "ok"})
     script = bin_dir / "claude"
     script.write_text(
-        f"#!{sys.executable}\nimport json, os\n"
-        f"open({str(log)!r}, 'w').write(json.dumps(sorted(os.environ)))\n"
+        f"#!{sys.executable}\nimport json, os, sys\n"
+        "line = json.dumps({'argv': sys.argv[1:], 'names': sorted(os.environ)})\n"
+        f"open({str(log)!r}, 'a').write(line + '\\n')\n"
         f"print({payload!r})\n")
     script.chmod(script.stat().st_mode | stat.S_IEXEC)
     return bin_dir, log
@@ -340,6 +344,8 @@ def test_the_real_child_drops_the_planted_variable_and_keeps_path(monkeypatch, t
     stream_dir = str(tmp_path / "streams") if streaming else None
     provider = ClaudeCliProvider(stream_evidence=streaming, stream_evidence_dir=stream_dir)
     provider.build("build it")
-    names = json.loads(log.read_text())
-    assert "REMEDY_F152_LEAK_PROBE" not in names
-    assert "PATH" in names
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    build_call = next(call for call in calls if "-p" in call["argv"])
+    assert "REMEDY_F152_LEAK_PROBE" not in build_call["names"]
+    assert "PATH" in build_call["names"]
+    assert ("stream-json" in build_call["argv"]) is streaming
