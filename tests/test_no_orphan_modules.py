@@ -90,8 +90,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "F080's feature-to-mission adapter; its consumer is the self-build loop F248 registers"),
     ("packages/orchestration/hunk_apply.py",
      "F033's hunk apply seam, unwired by design (F033 D4); forbidden by name in the command-channel guard"),
-    ("packages/orchestration/sandbox_container.py",
-     "F162's container runner; its first consumer is F246's gate plugin run (R-1467, DECISION F162 D7)"),
     ("packages/orchestration/self_use_findings.py",
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T003)"),
     ("packages/orchestration/self_use_generator.py",
@@ -105,6 +103,9 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "answers\" (DECISION F313 D2)"),
     ("scripts/remedy_agent_tooling_doctor.py",
      "run by hand after tooling changes, per .claude/skills/remedy-agent-tooling/SKILL.md"),
+    ("scripts/render_sandbox_model.py",
+     "run by hand to regenerate docs/system/sandbox-model.md, its own test's import only "
+     "(DECISION F162 D8 (1))"),
     ("scripts/self_run_gauntlet.py",
      "the gauntlet campaign CLI, run by hand (docs/adr/0001, gauntlet_evaluator.py names it)"),
 )
