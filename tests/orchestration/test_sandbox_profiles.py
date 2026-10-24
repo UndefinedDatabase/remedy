@@ -9,8 +9,13 @@ order's table tests, the preorder properties and the refusal message.
 from __future__ import annotations
 
 import dataclasses
+import errno
 import itertools
+import os
 import signal
+import socket
+import sys
+import threading
 
 import pytest
 
@@ -37,7 +42,7 @@ from packages.orchestration.sandbox_profiles import (
     sandbox_runner_available,
     tighten_sandbox_profile,
 )
-from packages.orchestration.tool_sandbox import SandboxSpec, SandboxUnavailable
+from packages.orchestration.tool_sandbox import SandboxSpec, SandboxUnavailable, require_sandbox
 
 #: A profile that satisfies every rule of DECISION F162 D2 (3); every refusal case below is one
 #: line of this text dropped, replaced or added.
@@ -556,3 +561,145 @@ def test_sandbox_profile_enforcement_names_wider_than_declared_scope_for_a_sub_s
     assert record[0] == SandboxDimensionEnforcement(
         "fs_scope", "unenforced",
         "the tool sandbox keeps the whole workspace writable, wider than the declared scope")
+
+
+# ---------------------------------------------------------------------------
+# F162 round 3 C4: fixture processes prove each limit under the real sandbox.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def sandbox_ready():
+    try:
+        require_sandbox()
+    except SandboxUnavailable as exc:
+        pytest.skip(f"NOT VERIFIED: the tool sandbox cannot run here ({exc.state}: {exc.message}); "
+                    "a skipped isolation test is not a passed one")
+
+
+def _fixture_base(workspace: str) -> ExecGuardPolicy:
+    """The policy every fixture process runs under: a real interpreter, a bounded wall clock."""
+    path_dir = os.path.dirname(sys.executable)
+    return ExecGuardPolicy(wall_timeout_seconds=60, cwd=workspace,
+                            env={"PATH": f"{path_dir}:/usr/bin:/bin", "LANG": "C.UTF-8"})
+
+
+def _run_fixture_script(profile: SandboxProfile, script: str, workspace: str) -> ExecGuardResult:
+    """One real process, under *profile*, through the production runner."""
+    return run_guarded_with_sandbox_profile(
+        [sys.executable, "-I", "-c", script], profile, workspace=workspace,
+        base=_fixture_base(workspace))
+
+
+def test_a_deny_profile_cannot_reach_the_host_loopback_and_net_local_can(tmp_path, sandbox_ready):
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    port = listener.getsockname()[1]
+
+    def _accept_forever() -> None:
+        while True:
+            try:
+                conn, _addr = listener.accept()
+            except OSError:
+                return
+            conn.close()
+
+    threading.Thread(target=_accept_forever, daemon=True).start()
+    try:
+        script = (
+            "import socket\n"
+            "try:\n"
+            f"    socket.create_connection(('127.0.0.1', {port}), timeout=5).close()\n"
+            "    print('NET_REACHED')\n"
+            "except OSError:\n"
+            "    print('NET_REFUSED')\n"
+        )
+        deny_ws = tmp_path / "deny-ws"
+        deny_ws.mkdir()
+        deny_result = _run_fixture_script(get_sandbox_profile("strict"), script, str(deny_ws))
+        assert b"NET_REFUSED" in deny_result.stdout
+
+        allow_ws = tmp_path / "allow-ws"
+        allow_ws.mkdir()
+        allow_result = _run_fixture_script(get_sandbox_profile("net-local"), script, str(allow_ws))
+        assert b"NET_REACHED" in allow_result.stdout
+    finally:
+        listener.close()
+
+
+def test_strict_pins_the_workspace_as_the_one_writable_tree(tmp_path, sandbox_ready):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    outside = tmp_path / "outside.txt"
+    script = (
+        "with open('inside.txt', 'w') as f:\n"
+        "    f.write('x')\n"
+        "print('FS_INSIDE_DONE')\n"
+        "try:\n"
+        f"    open({str(outside)!r}, 'w').write('x')\n"
+        "    print('FS_OUTSIDE_DONE')\n"
+        "except OSError:\n"
+        "    print('FS_OUTSIDE_REFUSED')\n"
+    )
+    result = _run_fixture_script(get_sandbox_profile("strict"), script, str(ws))
+    assert b"FS_INSIDE_DONE" in result.stdout
+    assert (ws / "inside.txt").exists()
+    assert not outside.exists()
+
+
+def test_a_one_second_cpu_limit_ends_a_busy_loop_classified_resource_limit_cpu_seconds(
+        tmp_path, sandbox_ready):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    strict = get_sandbox_profile("strict")
+    profile = dataclasses.replace(strict, ulimits=dataclasses.replace(strict.ulimits, cpu_s=1))
+    script = (
+        "print('CPU_STARTED', flush=True)\n"
+        "x = 0\n"
+        "while True:\n"
+        "    x += 1\n"
+        "print('CPU_LOOP_DONE')\n"
+    )
+    result = _run_fixture_script(profile, script, str(ws))
+    assert b"CPU_STARTED" in result.stdout
+    assert b"CPU_LOOP_DONE" not in result.stdout
+    assert result.classification == "resource_limit"
+    assert result.tripped_limit == "cpu_seconds"
+
+
+def test_a_nofile_limit_of_16_refuses_the_64th_open_of_dev_null_with_errno_24(tmp_path, sandbox_ready):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    strict = get_sandbox_profile("strict")
+    profile = dataclasses.replace(strict, ulimits=dataclasses.replace(strict.ulimits, nofile=16))
+    script = (
+        "handles = []\n"
+        "err = None\n"
+        "try:\n"
+        "    for _ in range(64):\n"
+        "        handles.append(open('/dev/null'))\n"
+        "except OSError as exc:\n"
+        "    err = exc.errno\n"
+        "print('NOFILE_ERRNO', err)\n"
+    )
+    result = _run_fixture_script(profile, script, str(ws))
+    assert f"NOFILE_ERRNO {errno.EMFILE}".encode() in result.stdout
+
+
+def test_a_mem_limit_of_256_mib_refuses_1gib_and_allows_64mib(tmp_path, sandbox_ready):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    strict = get_sandbox_profile("strict")
+    profile = dataclasses.replace(strict, ulimits=dataclasses.replace(strict.ulimits, mem_mb=256))
+    script = (
+        "try:\n"
+        "    bytearray(1 << 30)\n"
+        "    print('MEM_BIG_ALLOCATED')\n"
+        "except MemoryError:\n"
+        "    print('MEM_BIG_REFUSED')\n"
+        "small = bytearray(1 << 26)\n"
+        "print('MEM_SMALL_ALLOCATED', len(small))\n"
+    )
+    result = _run_fixture_script(profile, script, str(ws))
+    assert b"MEM_BIG_REFUSED" in result.stdout
+    assert b"MEM_SMALL_ALLOCATED" in result.stdout
