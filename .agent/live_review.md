@@ -1,26 +1,27 @@
-# Live Review — F157 Capability matrix & honest degradation
+# Live Review — F152 Worker config isolation
 
-> Round-by-round review record, re-headed at the F157 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F314, whose STATUS
-> line went `[x]` on its own branch at `e75a46f7e`; this session's Open PR Gate merged pull request
-> 386 into `main` as `0f811a713`, whose tree equals `e75a46f7e`'s. F314's round 9, its closure
+> Round-by-round review record, re-headed at the F152 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F157, whose STATUS
+> line went `[x]` on its own branch at `4c9f561da`; this session's Open PR Gate merged pull request
+> 387 into `main` as `ef2b85f83`, whose tree equals `4c9f561da`'s. F157's round 11, its closure
 > round, ended with its own handback, so operator amendment amend0827-process-diet rule 1 books its
 > verdict here, in the first commit of the next round that is happening anyway; its gate entry is
 > appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
 > section below are rewritten; everything else from the Findings heading to the end of the file as
-> it stood at `0f811a713` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic
-> R-XXXX series across the re-head. The open set at `0f811a713`, computed with `open_finding_ids`
+> it stood at `ef2b85f83` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic
+> R-XXXX series across the re-head. The open set at `ef2b85f83`, computed with `open_finding_ids`
 > from `scripts/rotate_live_review.py`, holds 8 ids — R-1246, R-1281, R-1351, R-1353, R-1426,
-> R-1428, R-1448 and R-1450 — every one owned by F316, so F157 takes none of them.
+> R-1428, R-1448 and R-1450 — every one owned by F316, so F152 takes none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F157 D1's. The first round claims F157, re-heads this record, books
-F314's round 9 and lands T001, the findings pass, as a committed inventory that is reviewed before
-any code is authored. Then T002, the matrix module, its evidence field, its guard rules and their
-unit tests, with the register frozen from the reviewed inventory by DECISION F157 D2; then T003,
-one consolidation order per consumer, the report section, the badge and the end-to-end; then the
-closure.
+THE ORDER BELOW IS DECISION F152 D1's. The first round claims F152, re-heads this record, books
+F157's round 11 and lands a findings pass as a committed inventory that is reviewed before any code
+is authored. Then T001, the isolation declaration in the adapter contract, the per-call evidence
+field and the throwaway-home mechanics with their unit tests, with the shape frozen from the
+reviewed inventory by DECISION F152 D2; then T002, the reference adapter's research written as an
+ADR and reviewed before its enforcement, the enforcement and the poisoned-config A/B proof; then
+T003, the doctor check, the conformance-kit requirement and the docs; then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -207,3 +208,5 @@ Gate: F157 R8 — the F157 round 8 entry, the closure's integration-gate round, 
 Gate: F157 R9 — the F157 round 9 entry, the masked self-use record and the one full suite, over `bfaac3257`..`4fed10f19` (4 commits, each single-parent; insertions by `git diff --numstat` per commit: `cb89f6182` 171, `b9597df6b` 207, `b2c695c26` 27, `4fed10f19` 302). VERDICT PASS. The reviewer's `verify.py` read every line `True` and the last line `ALL True`: C1's six files equal the prepared snapshots, C2 holds exactly the queue and the ten files under `.agent/selfuse_f157/`, appends one queue entry, `SU-081` with an empty `consumed_by`, and its `job_diff.txt` is the masked copy, C3 is the transcript alone and C4 the handoff alone, with no machine path. Verified by dry run, bytes identical: the reviewer's simulated tree at `bfaac3257` ran the masking script to `lines refused before 12, matches masked 12, refused after 0`, the agent-state guard and the commit hook passed, and the committed `job_diff.txt` has the dry run's sha256 `faa60b77…4b86f`. The closure suite at `b9597df6b` read exit 0 and `23870 passed, 11 skipped, 1 warning in 366.16s`, no bad node and no leftover process, the reflog unchanged during the run; the cost script read exit 0, 1413.16 CPU seconds, 1.8 percent more than F314's, inside the 10 percent limit. The integrity check read `fail_count` 0 and the open set the eight ids R-1246, R-1281, R-1351, R-1353, R-1426, R-1428, R-1448 and R-1450, none owned by F157. The worker declared no deviation.
 
 Gate: F157 R10 — the F157 round 10 entry, the evidence job and the review package, over `4fed10f19`..`e10ad0dc7` (3 commits, each single-parent; insertions by `git diff --numstat` per commit: `6a2186efc` 130, `ce081c649` 313, `e10ad0dc7` 162). VERDICT PASS. The reviewer's `verify.py` read every line `True` and the last line `ALL True`: C1's three files and C2's evidence script equal the prepared snapshots and C3 is the handoff alone, with no machine path. The reviewer's collect-only precheck at `4fed10f19` read 394 test files, 12858 node ids selected and 253 deselected, none refused by the packaging scan; the evidence job `f157r10e1001` read the same counts at head `ce081c649`, both ancestry counts 36, `12852 passed, 6 skipped` and 0 failed with exit 0 over 1828.7 measured seconds, `validate_verification_tests` no problem, `is_valid_current_run True` and no validation error. The staging reclaim's preview listed no candidate, so no apply ran. The reviewer read the package itself: `remedy-review-20261024-070450-READY_FOR_REVIEW.zip`, SHA-256 `9486e587f096ea0811f1d4b65439c0b4ee1bbc648e623f4a037dd73adff72403` by the reviewer's own reading, `testzip()` None, its manifest's `package_status` `READY_FOR_REVIEW` and its review subject from the fork point `0f811a713` to `ce081c649`; the build log read `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. The integrity check read `fail_count` 0 and the open set eight ids, none owned by F157. The worker declared no deviation.
+
+Gate: F157 R11 — the F157 round 11 entry, the closing round, over `e10ad0dc7`..`4c9f561da` (3 commits, each single-parent; insertions by `git show --numstat` per commit: `2485351cb` 274, `d76967845` 38, `4c9f561da` 172). VERDICT PASS, verified by dry run, bytes identical (operator amendment amend0930-test-load rule 3). The reviewer of F152's first session re-ran its own prepared `.remedy-wt/f157-r11/prep/verify.py` over `4c9f561da`: every line `True` and the last line `ALL True` — each commit single-parent with a `F157 R11 Cn` subject, each commit's paths exactly the manifest's, every committed file equal to the prepared copy and its `+/-` counts equal to the prepared numstat, and C3 carrying the handoff. The round's selection and integrity readings are therefore the dry run's: `859 passed` with exit 0, integrity `fail_count` 0, and the open set the eight ids. The rotation moved 9 gate records and 4 finding pairs with the open count 8 before and after. This session's Open PR Gate merged pull request 387 as `ef2b85f83`, whose tree equals `4c9f561da`'s; no hosted run was dispatched for it (operator amendment amend1011-manual-hosted-ci). The open set at `4c9f561da` is `['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448', 'R-1450']`, every one owned by F316.
