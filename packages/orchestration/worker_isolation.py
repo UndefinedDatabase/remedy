@@ -67,19 +67,13 @@ def declared_isolation(adapter: object) -> WorkerIsolation:
     return declaration
 
 
-#: The repository root resolved from this module's own location, two directories up from here the
-#: same as the kit's own `_REPO_ROOT` (DECISION F152 D5 (2)). Deviation (declared in the handback):
-#: D5 (2) asks the doctor's record check to call "the same function the kit's record check uses",
-#: moved into this module with the kit importing it; this round's own C4 lists
-#: `packages/contracts/adapter_conformance_kit.py` as OUTSIDE its Paths, so the kit keeps the
-#: definition C3 already committed and this module carries its own copy of the same check instead.
+#: The repository root resolved from this module's own location, the one root the record check
+#: below and the kit's own import of it resolve a record path against (R-1461).
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-# WHY: the doctor's own reading of the record requirement, kept identical in shape to the kit's
-# `_has_isolation_status_line` so the two check the same property even though C4's Paths forbid
-# editing the kit module to share one definition (DECISION F152 D5 (1) and (2); see the `_REPO_ROOT`
-# deviation note above).
+# WHY: the one definition of the record requirement; the kit's own isolation check imports and
+# calls this instead of carrying a second copy (DECISION F152 D5 (1) and (2); R-1461).
 def has_isolation_record(adr_ref: str) -> bool:
     """True when ADR_REF, resolved under this repository's root, is a file holding a line
     beginning `> **Status:`."""
@@ -149,7 +143,10 @@ def isolation_doctor_checks(
         checks.append((
             f"isolation_{provider_id}_home",
             home_ok,
-            home_dir if home_ok else "the declared environment carries no directory named HOME",
+            # R-1462: a passing detail never prints a machine path; DECISION F152 D3 (4) names
+            # the home only as "operator" or "throwaway", never a path.
+            "HOME is a directory" if home_ok
+            else "the declared environment carries no directory named HOME",
         ))
 
     invocation = adapter.build_invocation(
@@ -159,7 +156,11 @@ def isolation_doctor_checks(
         if help_text is None:
             checks.append((f"isolation_{provider_id}_flags", False, "could not read --help"))
         else:
-            missing = [flag for flag in declaration.tool_args if flag not in help_text]
+            # R-1460: tool_args mixes flags with their own values (e.g. "project,local"), and a
+            # value's spelling need not occur verbatim in the help text that documents it; only
+            # the members that begin with "--" are themselves flags to look up.
+            flags = [flag for flag in declaration.tool_args if flag.startswith("--")]
+            missing = [flag for flag in flags if flag not in help_text]
             if missing:
                 checks.append(
                     (f"isolation_{provider_id}_flags", False, f"rejected flag: {missing[0]}"))

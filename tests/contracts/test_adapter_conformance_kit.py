@@ -6,7 +6,6 @@ import dataclasses
 
 import pytest
 
-from packages.contracts import adapter_conformance_kit as conformance_kit
 from packages.contracts.adapter_conformance_kit import (
     _FORBIDDEN_MODULE_ROOTS,
     _FORBIDDEN_NAME_SUBSTRINGS,
@@ -26,6 +25,7 @@ from packages.contracts.adapter_contract import (
     InvocationOptions,
     WorkerIsolation,
 )
+from packages.orchestration import worker_isolation
 from packages.orchestration.failure_postmortem import FailureClass
 from packages.orchestration.stream_evidence import EVENT_RESULT
 from packages.orchestration.token_actuals import UsageActuals
@@ -650,7 +650,9 @@ def test_isolation_fails_for_a_record_with_no_status_line(tmp_path, monkeypatch)
     adr_dir = tmp_path / "docs" / "adr"
     adr_dir.mkdir(parents=True)
     (adr_dir / "0003-no-status.md").write_text("# a record with no status line\n")
-    monkeypatch.setattr(conformance_kit, "_REPO_ROOT", tmp_path)
+    # R-1461: the kit's own record check now imports and calls `has_isolation_record`, so the
+    # one `_REPO_ROOT` it resolves a path against lives in `worker_isolation`, not the kit.
+    monkeypatch.setattr(worker_isolation, "_REPO_ROOT", tmp_path)
 
     class _NoStatusLineToy(_ConformingCliToy):
         def isolation(self):

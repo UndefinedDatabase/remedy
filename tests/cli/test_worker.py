@@ -25,12 +25,16 @@ class TestWorkerDoctorCatalog:
         assert entry.supports_json is True
 
 
-#: D5 (3): a help text listing the reference adapter's three declared flags, so a test that
-#: makes the doctor believe `claude` is on the path never reaches the real binary's own --help.
+#: R-1460: `.agent/f302_claude_help.txt` lines 228 to 233 verbatim, so a test that makes the
+#: doctor believe `claude` is on the path never reaches the real binary's own --help, and reads
+#: the real spelling the flags check must tolerate, including the non-flag value "project, local".
 _ISOLATION_HELP_TEXT_WITH_FLAGS = (
-    "Usage: claude [options]\n"
-    "  --setting-sources <sources>  comma-separated sources, e.g. project,local\n"
-    "  --strict-mcp-config          only the MCP servers named on the command line\n"
+    "  --setting-sources <sources>           Comma-separated list of setting sources\n"
+    "                                        to load (user, project, local).\n"
+    "  --settings <file-or-json>             Path to a settings JSON file or a JSON\n"
+    "                                        string to load additional settings from\n"
+    "  --strict-mcp-config                   Only use MCP servers from --mcp-config,\n"
+    "                                        ignoring all other MCP configurations\n"
 )
 
 

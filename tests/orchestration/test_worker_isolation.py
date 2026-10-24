@@ -31,11 +31,17 @@ from packages.providers.adapters.claude_cli_reference import ClaudeCliReferenceA
 
 _ADR_REF = "docs/adr/0002-claude-cli-worker-isolation.md"
 
-#: D5 (2): a help text listing the reference adapter's three declared flags.
+#: R-1460: `.agent/f302_claude_help.txt` lines 228 to 233 verbatim, so the flags check reads the
+#: real help text's own spelling — including the parenthesized value `(user, project, local)`
+#: that never matches the declared value `project,local` literally, which is why the check below
+#: only looks up the two `--`-prefixed flags, never the value between them.
 _HELP_TEXT_WITH_FLAGS = (
-    "Usage: claude [options]\n"
-    "  --setting-sources <sources>  comma-separated sources, e.g. project,local\n"
-    "  --strict-mcp-config          only the MCP servers named on the command line\n"
+    "  --setting-sources <sources>           Comma-separated list of setting sources\n"
+    "                                        to load (user, project, local).\n"
+    "  --settings <file-or-json>             Path to a settings JSON file or a JSON\n"
+    "                                        string to load additional settings from\n"
+    "  --strict-mcp-config                   Only use MCP servers from --mcp-config,\n"
+    "                                        ignoring all other MCP configurations\n"
 )
 
 _APPLIES = WorkerIsolation(
@@ -365,6 +371,8 @@ class TestIsolationDoctorChecks:
     """F152 T003, DECISION F152 D5 (2) and (3): `worker doctor`'s own four isolation checks."""
 
     def test_all_four_checks_pass_for_the_reference_adapter(self, monkeypatch):
+        # R-1460: the captured help text's own spelling, "(user, project, local)", proves the
+        # flags check never looks up the non-flag value "project,local" against it.
         _patched_help(monkeypatch, _HELP_TEXT_WITH_FLAGS)
         adapter = ClaudeCliReferenceAdapter(claude_path="claude")
         checks = {name: (ok, detail)
@@ -374,6 +382,8 @@ class TestIsolationDoctorChecks:
             "isolation_claude_code_home", "isolation_claude_code_flags",
         }
         assert all(ok for ok, _detail in checks.values()), checks
+        # R-1462: a passing home check's detail never prints the operator's own home path.
+        assert os.sep not in checks["isolation_claude_code_home"][1]
 
     def test_the_flags_check_fails_and_names_the_rejected_flag(self, monkeypatch):
         _patched_help(monkeypatch, "--setting-sources project,local\n")  # drops --strict-mcp-config

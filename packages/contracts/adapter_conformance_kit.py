@@ -15,7 +15,6 @@ import json
 import re
 import textwrap
 from dataclasses import dataclass
-from pathlib import Path
 
 from packages.contracts.adapter_contract import (
     ADAPTER_ERROR_CLASSES,
@@ -31,6 +30,7 @@ from packages.contracts.adapter_contract import (
 )
 from packages.orchestration.failure_postmortem import FailureClass
 from packages.orchestration.token_actuals import UsageActuals
+from packages.orchestration.worker_isolation import has_isolation_record
 
 #: The seven faces a worker adapter is checked against, in the order every run checks them.
 CONFORMANCE_DIMENSIONS = (
@@ -55,10 +55,6 @@ _FORBIDDEN_MODULE_ROOTS = frozenset({
     "subprocess", "socket", "urllib", "http", "requests", "httpx",
     "anthropic", "ollama", "asyncio", "time",
 })
-
-#: The repository root resolved from this module's own location, so the isolation record check
-#: works under any caller's cwd (DECISION F152 D5 (1)).
-_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @dataclass(frozen=True)
@@ -267,12 +263,6 @@ def _check_errors(adapter: WorkerAdapter, samples: AdapterSamples) -> list[Confo
     return failures
 
 
-def _has_isolation_status_line(path: Path) -> bool:
-    """True when PATH is a file holding a line beginning `> **Status:` (D5 (1))."""
-    return path.is_file() and any(
-        line.startswith("> **Status:") for line in path.read_text(encoding="utf-8").splitlines())
-
-
 def _check_isolation(adapter: WorkerAdapter, samples: AdapterSamples) -> list[ConformanceFailure]:
     # The protocol types isolation() as always returning a WorkerIsolation; this runtime check
     # exists precisely to catch a broken implementation that violates that promise.
@@ -281,8 +271,9 @@ def _check_isolation(adapter: WorkerAdapter, samples: AdapterSamples) -> list[Co
         return [ConformanceFailure(
             "isolation", f"isolation() must return a WorkerIsolation, got {result!r}")]
     failures: list[ConformanceFailure] = []
-    # No adapter certifies without the record the handshake F156's certificate reads (D5 (1)).
-    if not _has_isolation_status_line(_REPO_ROOT / result.adr_ref):
+    # No adapter certifies without the record the handshake F156's certificate reads (D5 (1));
+    # the record check itself is the doctor's own, the one definition (R-1461).
+    if not has_isolation_record(result.adr_ref):
         failures.append(ConformanceFailure(
             "isolation", f"isolation record {result.adr_ref} is missing or has no status line"))
     if result.applies and result.tool_args:
