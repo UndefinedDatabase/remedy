@@ -70,4 +70,20 @@ WORKER_COMMANDS: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("worker.list", "worker.resources"),
     ),
+    CommandEntry(
+        command_id="worker.pricing-update",
+        group_id="worker",
+        subcommand="pricing-update",
+        description="Import a maintained price catalog for the models a worker adapter runs: shows the difference to the current catalog first and writes it only with --yes.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("file", "The price catalog file to import (TOML)"),
+            ArgDef("--yes", "Write the catalog after showing the difference; without it nothing is written", required=False, is_option=True, is_flag=True),
+            ArgDef("--catalog-dir", "Write into this folder of catalogs instead of the one Remedy ships", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=True,
+        related=("worker.list",),
+    ),
 )

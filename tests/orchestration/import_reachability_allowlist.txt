@@ -86,6 +86,7 @@ apps.cli.commands.test_cmds
 apps.cli.commands.ui
 apps.cli.commands.worker
 apps.cli.commands.worker_facade_cmd
+apps.cli.commands.worker_pricing_cmd
 apps.cli.cost_preview_confirm
 apps.cli.exit_codes
 apps.cli.grouped
