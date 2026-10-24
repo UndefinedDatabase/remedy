@@ -52,6 +52,9 @@ def container_run_argv(
     argv: Sequence[str], env: Mapping[str, str], name: str,
 ) -> list[str]:
     """Compile *profile* onto one `<runtime> run` argv; `--pull never` always (DECISION F162 D7 (2))."""
+    # R-1468: the bind and the working directory both name the REAL path, so a symlinked
+    # workspace is bound and entered at the tree the runtime actually sees, not at an alias.
+    workspace = os.path.realpath(workspace)
     uid, gid = os.getuid(), os.getgid()
     network = "host" if profile.net.mode == "allowlist" else "none"
     tmp = (f"/tmp:rw,size={profile.tmp_quota_mb}m" if profile.tmp_quota_mb is not None

@@ -103,6 +103,24 @@ def test_container_run_argv_for_net_local_equals_the_literal(tmp_path):
     ]
 
 
+def test_a_symlinked_workspace_is_bound_and_entered_at_its_real_path(tmp_path):
+    # R-1468: container_run_argv resolves workspace with os.path.realpath for the bind and -w,
+    # so a symlink alias never reaches the runtime as the tree it binds or enters.
+    real = tmp_path / "real"
+    real.mkdir()
+    link = tmp_path / "link"
+    link.symlink_to(real)
+    real_str = str(real)
+    link_str = str(link)
+    argv = container_run_argv(
+        get_sandbox_profile("strict"), runtime="docker", image="python:3.12-slim",
+        workspace=link_str, argv=["python3", "-c", "pass"], env={"PATH": "/usr/bin"},
+        name="remedy-sbx-test")
+    assert argv[argv.index("-v") + 1] == f"{real_str}:{real_str}:rw"
+    assert argv[argv.index("-w") + 1] == real_str
+    assert link_str not in argv
+
+
 def test_container_runtime_path_answers_podman_before_docker(monkeypatch):
     assert CONTAINER_RUNTIME_NAMES == ("podman", "docker")
     monkeypatch.setattr(SC.shutil, "which",
@@ -213,6 +231,51 @@ def test_a_cancelled_result_also_makes_one_rm_f_call(tmp_path, monkeypatch):
         ["x"], get_sandbox_profile("strict"), workspace=str(tmp_path), image="python:3.12-slim")
     assert len(calls) == 2
     assert calls[1][1:3] == ["rm", "-f"]
+
+
+def test_the_runners_argv_carries_each_base_env_item_as_an_e_pair(tmp_path, monkeypatch):
+    # R-1468: run_guarded and the image check are replaced so nothing actually runs; this
+    # proves the base policy's env reaches container_run_argv and becomes one -e pair per item.
+    monkeypatch.setattr(SC, "container_runtime_path", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(SC, "container_image_present", lambda runtime, image: True)
+    calls: list[list[str]] = []
+    ok_result = _stub_result(0, classification="ok")
+
+    def _record(argv, policy):
+        calls.append(list(argv))
+        return ok_result
+
+    monkeypatch.setattr(SC, "run_guarded", _record)
+    base = ExecGuardPolicy(env={"FOO": "bar", "BAZ": "qux"})
+    run_in_container_with_sandbox_profile(
+        ["x"], get_sandbox_profile("strict"), workspace=str(tmp_path), image="python:3.12-slim",
+        base=base)
+    assert len(calls) == 1
+    argv = calls[0]
+    e_pairs = {argv[i + 1] for i, token in enumerate(argv) if token == "-e"}
+    for key, value in base.env.items():
+        assert f"{key}={value}" in e_pairs
+
+
+@pytest.mark.parametrize(
+    "classification,returncode,tripped_limit",
+    [("ok", 0, None), ("failed", 1, None), ("resource_limit", 137, "mem_mb")],
+)
+def test_an_ok_failed_or_resource_limit_result_makes_no_further_call(
+        tmp_path, monkeypatch, classification, returncode, tripped_limit):
+    monkeypatch.setattr(SC, "container_runtime_path", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(SC, "container_image_present", lambda runtime, image: True)
+    calls: list[list[str]] = []
+    stub_result = _stub_result(returncode, tripped_limit=tripped_limit, classification=classification)
+
+    def _record(argv, policy):
+        calls.append(list(argv))
+        return stub_result
+
+    monkeypatch.setattr(SC, "run_guarded", _record)
+    run_in_container_with_sandbox_profile(
+        ["x"], get_sandbox_profile("strict"), workspace=str(tmp_path), image="python:3.12-slim")
+    assert len(calls) == 1
 
 
 #: One (profile, runtime_available, expected states) row per built-in of DECISION F162 D7 (4).
