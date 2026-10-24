@@ -7,7 +7,7 @@
 
 | Keyword | File | Category |
 |---------|------|----------|
-| ADR / decision record | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md), [0002-claude-cli-worker-isolation.md](adr/0002-claude-cli-worker-isolation.md) | adr |
+| ADR / decision record | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md), [0002-claude-cli-worker-isolation.md](adr/0002-claude-cli-worker-isolation.md), [0003-sandbox-container-runner.md](adr/0003-sandbox-container-runner.md) | adr |
 | agent conventions | [worker_conventions.md](agents/worker_conventions.md), [reviewer_conventions.md](agents/reviewer_conventions.md), [teacher_conventions.md](agents/teacher_conventions.md) | agents |
 | handback template | [handback_template.md](agents/handback_template.md) | agents |
 | integration gate | [integration_gate.md](agents/integration_gate.md) | agents |
@@ -255,6 +255,7 @@ conformance kit requires every adapter to name its record.
 |------|-------------|--------|
 | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md) | Raise `CYCLE_SAFETY_CAP` 1 → 8 on the F075 10/10 gate evidence; the shipped default stays 1 | ACCEPTED & APPLIED 2026-08-07 |
 | [0002-claude-cli-worker-isolation.md](adr/0002-claude-cli-worker-isolation.md) | How the claude-cli worker keeps the operator's personal configuration out of a run: its flags, its environment and its login | RESEARCH RECORD, partly verified 2026-10-24 |
+| [0003-sandbox-container-runner.md](adr/0003-sandbox-container-runner.md) | The container sandbox runner against the process one, per dimension: the daemon, image provenance, measured costs, cleanup and why no worker uses it yet | RESEARCH RECORD, fully verified 2026-10-24 |
 
 ## Contract Templates (`docs/contracts/`)
 
