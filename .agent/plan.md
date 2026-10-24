@@ -3,21 +3,22 @@
 ## Goal
 A declarative register maps every capability-consuming feature to the capabilities it requires
 and to one registered degradation; one central `require_or_degrade` call sits at each usage site;
-a per-run `capability_degradations` evidence field, a report section and a badge show when a
-degradation ran; a guard fails a capability read outside the matrix
+the run's `capability_decisions.jsonl` evidence, a report section and a command-line line show
+when a degradation ran; a guard fails a capability read outside the matrix
 (`docs/roadmap/features/T8_F157.md`).
 
 ## Current Step
-Round 2, T002: book round 1's verdict, DECISION F157 D2 (the register frozen from the reviewed
-inventory), the module `packages/contracts/capability_matrix.py` with its unit tests and its two
-guards, and `remedy worker show` as its first consumer, with the contract page's new section.
+Round 3: book round 2's verdict and R-1451, DECISION F157 D3; retire the planner entry and repair
+R-1451; the route module `packages/orchestration/capability_routes.py` with its evidence file, and
+`stream_evidence_capture` routed inside `create_role_provider`.
 
 ## Next Steps
-1. T003: the badge's target by DECISION, then one consolidation order per register entry with its
-   existing tests unmodified, the run record's `capability_degradations` key behind the structure
-   ledger's boundary, the report section and the reduced-capability end-to-end.
-2. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
+1. Route `reviewer_schema_gate` and `parked_session_resume` inside the claude-cli provider by
+   line-for-line swaps, their decisions joining the evidence file (DECISION F157 D3 (2)).
+2. The report section, the run's `Degradations:` line and the reduced-capability end-to-end
+   (DECISION F157 D3 (5) and (6)).
+3. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
 
 ## Risks
-- `pingpong_loop.py` and `run_manifest.py` are structure-ledger rows; the evidence key's commit
-  draws their boundary first, in a commit of its own.
+- `pingpong_provider.py` and `pingpong_loop.py` are structure-ledger file rows; every edit there
+  keeps their length, and `create_role_provider` stays at or under 100 lines.
