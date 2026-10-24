@@ -14,6 +14,7 @@ reference is a worker still awaiting its adapter (DECISION F151 D5 (1)).
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
@@ -56,6 +57,14 @@ ADAPTER_ERROR_CLASSES = frozenset({
     FailureClass.PARSE,
     FailureClass.UNKNOWN,
 })
+
+#: The three ways a worker's call keeps the operator's own configuration and secrets out of it
+#: (DECISION F152 D3 (1)); any other string is a bug, not a config choice.
+ISOLATION_METHODS = ("tool_flag", "clean_env", "sandbox_reinforced")
+
+#: `WorkerIsolation.adr_ref` must fully match this: `docs/adr/`, four digits, `-`, lower-case
+#: words joined by `-`, `.md` — the one shape an isolation record's own research page may take.
+_ADR_REF_PATTERN = re.compile(r"^docs/adr/\d{4}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
 
 
 @dataclass(frozen=True)
@@ -114,6 +123,44 @@ class AdapterUsage:
 AdapterInvocation = CliInvocation | HttpInvocation
 
 
+# WHY: one declared shape for how far a worker's call keeps the operator's own configuration and
+# secrets out of it, so a route reads one typed answer instead of trusting an adapter's prose
+# (DECISION F152 D3 (1)).
+@dataclass(frozen=True)
+class WorkerIsolation:
+    """How one adapter isolates a worker's call: which of ISOLATION_METHODS, the record that
+    backs the choice, and what the method actually does to the call line or the environment.
+    `applies` lets a route turn isolation off for one call (e.g. the operator's own documented
+    customization switch) without a second declaration."""
+
+    method: str
+    adr_ref: str
+    tool_args: tuple[str, ...] = ()
+    env_allowlist: tuple[str, ...] = ()
+    throwaway_home: bool = False
+    applies: bool = True
+
+    def __post_init__(self) -> None:
+        if self.method not in ISOLATION_METHODS:
+            raise ValueError(f"unknown isolation method: {self.method!r}")
+        if not _ADR_REF_PATTERN.fullmatch(self.adr_ref):
+            raise ValueError(
+                f"adr_ref must match docs/adr/NNNN-slug.md: {self.adr_ref!r}")
+        for field_name in ("tool_args", "env_allowlist"):
+            value = getattr(self, field_name)
+            if not isinstance(value, tuple) or not all(
+                isinstance(member, str) and member for member in value
+            ):
+                raise ValueError(
+                    f"{field_name} must be a tuple of non-empty strings: {value!r}")
+        if self.method == "tool_flag" and not self.tool_args:
+            raise ValueError("tool_flag requires tool_args")
+        if self.method in ("clean_env", "sandbox_reinforced") and not self.env_allowlist:
+            raise ValueError(f"{self.method} requires env_allowlist")
+        if self.throwaway_home and self.method == "tool_flag":
+            raise ValueError("throwaway_home is not allowed with tool_flag")
+
+
 @runtime_checkable
 class WorkerAdapter(Protocol):
     """What every provider adapter promises the ping-pong loop (D2 (3))."""
@@ -145,6 +192,7 @@ class WorkerAdapter(Protocol):
         """Classify a failed call into one of ADAPTER_ERROR_CLASSES."""
         ...
 
-    def isolation(self) -> None:
-        """Reserved for F152; returns None until F152 shapes an isolation declaration."""
+    def isolation(self) -> WorkerIsolation:
+        """Declare how this adapter keeps the operator's own configuration and secrets out of a
+        worker's call (DECISION F152 D3 (1))."""
         ...

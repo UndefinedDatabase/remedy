@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import stat
 import subprocess
 import sys
@@ -15,14 +16,16 @@ from pathlib import Path
 
 import pytest
 
-from packages.contracts.adapter_contract import HttpInvocation, InvocationOptions
+from packages.contracts.adapter_contract import HttpInvocation, InvocationOptions, WorkerIsolation
 from packages.orchestration import worker_adapter_slot as slot
 from packages.orchestration.claude_cli_command import build_claude_cli_args
 from packages.orchestration.pingpong_loop import run_pingpong
 from packages.orchestration.pingpong_provider import ClaudeCliProvider
 from packages.orchestration.worker_adapter_slot import (
     WorkerAdapterNotInstalled,
+    adapter_child_env,
     adapter_cli_argv,
+    adapter_isolation_record,
     adapter_usage_actuals,
     install_worker_adapters,
     installed_worker_adapter,
@@ -140,7 +143,8 @@ def test_adapter_argv_equals_the_command_line_builder(
         claude_path="/bin/claude", write_mode=write_mode, streaming=streaming)
     assert argv == build_claude_cli_args(
         "/bin/claude", "the prompt", write_mode=expected_mode, model="claude-x",
-        stream_evidence=streaming, json_schema=json_schema, resume_session=resume)
+        stream_evidence=streaming, json_schema=json_schema, resume_session=resume,
+    ) + ["--setting-sources", "project,local", "--strict-mcp-config"]
     assert isinstance(argv, list)
 
 
@@ -260,3 +264,88 @@ def test_a_claude_cli_job_runs_its_calls_through_the_installed_adapter(
     assert "builder" in marking_adapter.roles and "reviewer" in marking_adapter.roles
     calls = _logged(log)
     assert calls and all(call[-1] == MARKER for call in calls)
+
+
+# -- adapter_child_env: DECISION F152 D3 (3), the declared, cleaned environment ----------------
+
+
+def test_adapter_child_env_drops_an_unlisted_variable_and_keeps_path(monkeypatch):
+    monkeypatch.setenv("REMEDY_F152_LEAK_PROBE", "leaked")
+    env = adapter_child_env("claude-cli", config={})
+    assert env is not None
+    assert "REMEDY_F152_LEAK_PROBE" not in env
+    assert env["PATH"] == os.environ["PATH"]
+
+
+def test_adapter_child_env_is_none_with_customizations_true():
+    assert adapter_child_env("claude-cli", config={"claude_cli.customizations": True}) is None
+
+
+def test_adapter_child_env_refuses_a_throwaway_home_declaration(monkeypatch):
+    class _ThrowawayAdapter(ClaudeCliReferenceAdapter):
+        def isolation(self):
+            return WorkerIsolation(
+                method="clean_env", adr_ref="docs/adr/0002-claude-cli-worker-isolation.md",
+                env_allowlist=("PATH",), throwaway_home=True)
+
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _ThrowawayAdapter)
+    with pytest.raises(ValueError, match="declares throwaway_home"):
+        adapter_child_env("claude-cli")
+
+
+class _NarrowAdapter:
+    """A real-world case: an installed adapter missing `isolation()` (and every other newer
+    member), the shape F157/F151's own reduced-capability test doubles used to use.
+    `adapter_child_env`/`adapter_isolation_record` must raise `TypeError` on it rather than run
+    such a worker call with no declared isolation at all (R-1456, DECISION F152 D4 (1))."""
+
+    adapter_id = "claude-cli"
+
+    def __init__(self, **settings):
+        pass
+
+
+def test_adapter_child_env_raises_for_an_adapter_without_isolation(monkeypatch):
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _NarrowAdapter)
+    with pytest.raises(TypeError, match="claude-cli"):
+        adapter_child_env("claude-cli")
+
+
+def test_adapter_isolation_record_raises_for_an_adapter_without_isolation(monkeypatch):
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _NarrowAdapter)
+    with pytest.raises(TypeError, match="claude-cli"):
+        adapter_isolation_record("claude-cli")
+
+
+def _env_logging_claude(tmp_path: Path) -> tuple[Path, Path]:
+    """A `claude` on PATH that appends one JSON line per run, holding its own argv and its
+    environment's sorted NAMES, never a value (R-1459): the provider's own `--version` probe and
+    a streamed build both run through this stand-in, and only a per-run log, read back by argv,
+    tells the two calls apart."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "env_names.jsonl"
+    payload = json.dumps({"type": "result", "is_error": False, "result": "ok"})
+    script = bin_dir / "claude"
+    script.write_text(
+        f"#!{sys.executable}\nimport json, os, sys\n"
+        "line = json.dumps({'argv': sys.argv[1:], 'names': sorted(os.environ)})\n"
+        f"open({str(log)!r}, 'a').write(line + '\\n')\n"
+        f"print({payload!r})\n")
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    return bin_dir, log
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+def test_the_real_child_drops_the_planted_variable_and_keeps_path(monkeypatch, tmp_path, streaming):
+    monkeypatch.setenv("REMEDY_F152_LEAK_PROBE", "leaked")
+    bin_dir, log = _env_logging_claude(tmp_path)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    stream_dir = str(tmp_path / "streams") if streaming else None
+    provider = ClaudeCliProvider(stream_evidence=streaming, stream_evidence_dir=stream_dir)
+    provider.build("build it")
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    build_call = next(call for call in calls if "-p" in call["argv"])
+    assert "REMEDY_F152_LEAK_PROBE" not in build_call["names"]
+    assert "PATH" in build_call["names"]
+    assert ("stream-json" in build_call["argv"]) is streaming

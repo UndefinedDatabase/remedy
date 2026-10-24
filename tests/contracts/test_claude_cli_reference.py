@@ -8,6 +8,7 @@ independently re-derived notion of what the claude-cli path does.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from packages.contracts.adapter_conformance_kit import (
     ErrorSample,
     run_adapter_conformance,
 )
-from packages.contracts.adapter_contract import AdapterCapabilities, InvocationOptions
+from packages.contracts.adapter_contract import AdapterCapabilities, InvocationOptions, WorkerIsolation
 from packages.orchestration.claude_cli_command import build_claude_cli_args
 from packages.orchestration.failure_postmortem import FailureClass, _classify_error_text
 from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
@@ -56,6 +57,30 @@ def _adapter(**kwargs) -> ClaudeCliReferenceAdapter:
 
 def test_adapter_id_is_a_role_provider_name():
     assert _adapter().adapter_id in ROLE_PROVIDER_NAMES
+
+
+# -- isolation(): DECISION F152 D3 (2)'s exact declaration, spelled here independently ---------
+
+
+def test_isolation_equals_decision_f152_d3_2_exactly():
+    assert _adapter().isolation() == WorkerIsolation(
+        method="tool_flag",
+        adr_ref="docs/adr/0002-claude-cli-worker-isolation.md",
+        tool_args=("--setting-sources", "project,local", "--strict-mcp-config"),
+        env_allowlist=(
+            "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "SHELL", "TERM", "TMPDIR",
+            "TZ", "USER", "ANTHROPIC_API_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+            "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+        ),
+        applies=True,
+    )
+
+
+def test_isolation_does_not_apply_with_customizations_but_is_otherwise_equal():
+    plain = _adapter().isolation()
+    customized = _adapter(config={"claude_cli.customizations": True}).isolation()
+    assert customized.applies is False
+    assert dataclasses.replace(customized, applies=True) == plain
 
 
 # -- the kit: run_adapter_conformance reads () for a streaming and a non-streaming adapter ----
@@ -123,7 +148,7 @@ def test_build_invocation_argv_matches_build_claude_cli_args(role, model, with_s
         "claude", _ONE_PART_PROMPT[0],
         write_mode=expected_write_mode, model=model, stream_evidence=True,
         json_schema=expected_json_schema, resume_session=expected_resume, config={},
-    ))
+    )) + ("--setting-sources", "project,local", "--strict-mcp-config")
     assert invocation.argv == expected_argv
     if with_schema:
         assert "--json-schema" in invocation.argv

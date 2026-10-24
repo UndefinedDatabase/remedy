@@ -38,7 +38,7 @@ and hyphens) and six methods:
 | `map_stream(raw_lines)` | events whose `event_type` is one of the stream vocabulary of `stream_evidence.py`; empty for an adapter that does not stream |
 | `map_usage(raw)` | `AdapterUsage`: the existing `UsageActuals` plus the provider's own usage counters unchanged, or `None` when the output holds no usage |
 | `classify_error(error_text, exit_code)` | a member of `FailureClass`: provider unavailable, provider timeout, provider non-zero exit, parse or unknown |
-| `isolation()` | reserved for the worker config isolation feature; `None` until that feature shapes it |
+| `isolation()` | a `WorkerIsolation` declaring how this adapter keeps the operator's own configuration and secrets out of a worker's call (DECISION F152 D3) |
 
 Flags are declared honestly: an adapter declares only what its tests prove.
 
@@ -111,6 +111,37 @@ are normalised by the evidence capture while the process runs, and a failed call
 the failure post-mortem from every signal it has, of every provider alike; both are per-call
 evidence the loop owns, and the adapter's `map_stream` and `classify_error` answer the same
 functions for the kit and for `remedy worker show`.
+
+## Worker isolation
+Every claude-cli adapter declares `isolation()` (DECISION F152 D3): method `tool_flag`,
+`--setting-sources project,local` and `--strict-mcp-config` appended to the call line, and a
+cleaned environment carrying the shell/process names a worker needs plus the model's own
+credential and proxy variables — no throwaway home, because the operator's login lives under the
+operator's own home. `adapter_child_env` builds that environment and both `_cli_exec_policy` and
+`_stream_exec_policy` in `pingpong_provider.py` set it as `env=`, leaving `env_allowlist` `None` so
+it reaches the child exactly as built. `create_role_provider` writes one line per claude-cli
+provider build to `worker_isolation.jsonl` beside the run's `capability_decisions.jsonl`, always,
+naming the method, whether it applied, the home kind, the environment digest, the names kept and
+the declaration's own ADR reference. `declared_isolation` refuses an installed adapter that
+carries no `isolation()` member at all, so an adapter never runs with the operator's whole
+environment by a quiet fallback (DECISION F152 D4 (1)). `run_isolation_ab`, also in
+`packages/orchestration/worker_isolation.py`, is the throwaway-home pair's first caller: it builds
+an adapter's own declared command line once, runs it twice against one poisoned throwaway home —
+un-isolated with the operator's whole environment, isolated with the declaration's own flags and
+environment — and reports whether the declared isolation actually hid the poison (DECISION F152 D4
+(2)). Its stand-in proof runs in every selection against a test double standing in for `claude`,
+together with two red controls that show the utility can fail when a declaration or a command line
+really does leak. The run against the real binary waits for the operator's permission to spend a
+paid call, the question DECISION F152 D4 (4) still holds open.
+
+The conformance kit's isolation dimension also refuses an adapter whose declared record is
+missing or carries no status line, and refuses a command line that drops its declared `tool_args`
+while the declaration applies, an HTTP invocation exempt from that second check (DECISION F152 D5
+(1)). An adapter failing either check does not certify, which is the handshake F156's certificate
+reads. `worker doctor` adds four `isolation_<provider_id>_*` checks — declaration, record, home
+and flags — right after a worker's own executable check and only once that executable is found,
+reading the worker's `--help` through the replaceable `read_tool_help` rather than any paid call
+(DECISION F152 D5 (2) and (3)).
 
 ## The capability matrix
 `packages/contracts/capability_matrix.py` holds a declarative register,

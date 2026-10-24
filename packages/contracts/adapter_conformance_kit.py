@@ -26,9 +26,11 @@ from packages.contracts.adapter_contract import (
     HttpInvocation,
     InvocationOptions,
     WorkerAdapter,
+    WorkerIsolation,
 )
 from packages.orchestration.failure_postmortem import FailureClass
 from packages.orchestration.token_actuals import UsageActuals
+from packages.orchestration.worker_isolation import has_isolation_record
 
 #: The seven faces a worker adapter is checked against, in the order every run checks them.
 CONFORMANCE_DIMENSIONS = (
@@ -262,12 +264,27 @@ def _check_errors(adapter: WorkerAdapter, samples: AdapterSamples) -> list[Confo
 
 
 def _check_isolation(adapter: WorkerAdapter, samples: AdapterSamples) -> list[ConformanceFailure]:
-    # The protocol types isolation() as always returning None; this runtime check exists
-    # precisely to catch a broken implementation that violates that statically-declared promise.
-    result = adapter.isolation()  # type: ignore[func-returns-value]
-    if result is not None:
-        return [ConformanceFailure("isolation", f"isolation() must return None, got {result!r}")]
-    return []
+    # The protocol types isolation() as always returning a WorkerIsolation; this runtime check
+    # exists precisely to catch a broken implementation that violates that promise.
+    result = adapter.isolation()
+    if not isinstance(result, WorkerIsolation):
+        return [ConformanceFailure(
+            "isolation", f"isolation() must return a WorkerIsolation, got {result!r}")]
+    failures: list[ConformanceFailure] = []
+    # No adapter certifies without the record the handshake F156's certificate reads (D5 (1));
+    # the record check itself is the doctor's own, the one definition (R-1461).
+    if not has_isolation_record(result.adr_ref):
+        failures.append(ConformanceFailure(
+            "isolation", f"isolation record {result.adr_ref} is missing or has no status line"))
+    if result.applies and result.tool_args:
+        invocation = adapter.build_invocation(
+            "builder", ("a one-line prompt",), InvocationOptions(model=samples.model))
+        if isinstance(invocation, CliInvocation):
+            tool_args = list(result.tool_args)
+            if list(invocation.argv[-len(tool_args):]) != tool_args:
+                failures.append(ConformanceFailure(
+                    "isolation", "the command line does not end with the declared tool_args"))
+    return failures
 
 
 def _lowered_contains_forbidden(text: str) -> bool:

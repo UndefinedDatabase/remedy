@@ -649,6 +649,14 @@
       "job_markdown": "# Job: Write the first tests for packages/common/public_text_redaction.py\n\n## Task 1\nNo file under `tests/` imports `packages.common.public_text_redaction`, so nothing tests `packages/common/public_text_redaction.py` directly. The names to test are `_scrub_public`, `_safe_path_label`.\n\nWrite its first tests, in a test file named after the module, `test_public_text_redaction.py`, beside the tests of its package — a new file, or the existing file of that name if there is one. The file imports `packages.common.public_text_redaction` and holds at least one meaningful test for each name above. Change no production code, and do not edit any file under `.agent/`.\n\nAcceptance:\n- A test file under `tests/` imports `packages.common.public_text_redaction`, and pytest passes on it.\n- Each of `_scrub_public`, `_safe_path_label` is exercised by at least one of the new tests.\n- No file under `.agent/` is changed by this task.\n",
       "consumed_by": "F157",
       "provenance": "generated (self-use-generator tier 5, untested module, packages/common/public_text_redaction.py)"
+    },
+    {
+      "id": "SU-082",
+      "title": "Write the first tests for packages/orchestration/client_scope.py",
+      "why": "No file under `tests/` imports `packages.orchestration.client_scope`.",
+      "job_markdown": "# Job: Write the first tests for packages/orchestration/client_scope.py\n\n## Task 1\nNo file under `tests/` imports `packages.orchestration.client_scope`, so nothing tests `packages/orchestration/client_scope.py` directly. The names to test are `client_project_ids`, `client_order_read_refusal`.\n\nWrite its first tests, in a test file named after the module, `test_client_scope.py`, beside the tests of its package — a new file, or the existing file of that name if there is one. The file imports `packages.orchestration.client_scope` and holds at least one meaningful test for each name above. Change no production code, and do not edit any file under `.agent/`.\n\nAcceptance:\n- A test file under `tests/` imports `packages.orchestration.client_scope`, and pytest passes on it.\n- Each of `client_project_ids`, `client_order_read_refusal` is exercised by at least one of the new tests.\n- No file under `.agent/` is changed by this task.\n",
+      "consumed_by": "F152",
+      "provenance": "generated (self-use-generator tier 5, untested module, packages/orchestration/client_scope.py)"
     }
   ]
 }

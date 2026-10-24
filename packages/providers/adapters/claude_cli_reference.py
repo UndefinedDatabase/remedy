@@ -23,11 +23,28 @@ from packages.contracts.adapter_contract import (
     AdapterUsage,
     CliInvocation,
     InvocationOptions,
+    WorkerIsolation,
 )
-from packages.orchestration.claude_cli_command import build_claude_cli_args
+from packages.orchestration.claude_cli_command import _claude_cli_flag, build_claude_cli_args
 from packages.orchestration.failure_postmortem import FailureClass, _classify_error_text
 from packages.orchestration.stream_evidence import normalize_stream_object, redact_stream_payload
 from packages.orchestration.token_actuals import parse_cli_result_detailed
+
+#: D3 (2)'s own ADR, spelled once: the one research page a claude-cli isolation record cites.
+_ISOLATION_ADR_REF = "docs/adr/0002-claude-cli-worker-isolation.md"
+
+#: The exact flags D3 (2) names — the captured help text's own lines 228-229 and 232-233 — kept
+#: out of `claude_cli_launch_switches` because that function is the lean-call default every
+#: caller already composes, and isolation is this adapter's own declared addition to it.
+_ISOLATION_TOOL_ARGS = ("--setting-sources", "project,local", "--strict-mcp-config")
+
+#: D3 (2)'s process names, in its own order: the shell/process names every worker needs plus
+#: the model credential and both spellings of the four proxy variables.
+_ISOLATION_ENV_ALLOWLIST = (
+    "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "SHELL", "TERM", "TMPDIR", "TZ",
+    "USER", "ANTHROPIC_API_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+    "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+)
 
 #: The three adapter-returnable classes `_classify_error_text` can itself produce (D4 (5)); its
 #: fourth possible answer, the I/O class, is not one an adapter may return (ADAPTER_ERROR_CLASSES)
@@ -87,7 +104,8 @@ class ClaudeCliReferenceAdapter:
             streaming=self._streaming, tool_use=True, max_context_tokens=0)
 
     # WHY: builds the exact argv `build_claude_cli_args` would, with the role's write mode and
-    # per-role default `role_provider_factory.py` reads today (D4 (2)).
+    # per-role default `role_provider_factory.py` reads today (D4 (2)), plus the declared
+    # isolation flags at the end while they apply (DECISION F152 D3 (3)).
     def build_invocation(
         self, role: str, prompt_parts: tuple[str, ...], options: InvocationOptions,
     ) -> AdapterInvocation:
@@ -105,6 +123,9 @@ class ClaudeCliReferenceAdapter:
             json_schema=json_schema, resume_session=options.resume_ref or "",
             config=self._config,
         ))
+        declaration = self.isolation()
+        if declaration.applies:
+            argv = argv + declaration.tool_args
         return CliInvocation(argv=argv)
 
     # WHY: redacts then normalizes through the existing stream_evidence functions unchanged
@@ -143,6 +164,14 @@ class ClaudeCliReferenceAdapter:
     def classify_error(self, error_text: str, exit_code: int | None) -> FailureClass:
         return classify_claude_cli_error(error_text, exit_code)
 
-    # WHY: reserved for F152 (D2 (3)) — every adapter answers None until that feature shapes it.
-    def isolation(self) -> None:
-        return None
+    # WHY: D3 (2)'s exact declaration — tool_flag, no throwaway home because the operator's own
+    # login lives under the operator's own home, off exactly when the operator's own
+    # `claude_cli.customizations` switch asks for the opposite.
+    def isolation(self) -> WorkerIsolation:
+        return WorkerIsolation(
+            method="tool_flag",
+            adr_ref=_ISOLATION_ADR_REF,
+            tool_args=_ISOLATION_TOOL_ARGS,
+            env_allowlist=_ISOLATION_ENV_ALLOWLIST,
+            applies=not _claude_cli_flag(self._config, "claude_cli.customizations"),
+        )

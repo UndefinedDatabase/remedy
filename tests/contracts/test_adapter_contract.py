@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import dataclasses
+import re
 
 import pytest
 
 from packages.contracts.adapter_contract import (
     ADAPTER_ERROR_CLASSES,
     ADAPTER_ROLES,
+    ISOLATION_METHODS,
     STREAM_EVENT_TYPES,
     AdapterCapabilities,
     AdapterUsage,
@@ -15,10 +17,13 @@ from packages.contracts.adapter_contract import (
     HttpInvocation,
     InvocationOptions,
     WorkerAdapter,
+    WorkerIsolation,
 )
 from packages.orchestration import stream_evidence
 from packages.orchestration.failure_postmortem import FailureClass
 from packages.orchestration.token_actuals import UsageActuals
+
+_VALID_ADR_REF = "docs/adr/0002-claude-cli-worker-isolation.md"
 
 _USAGE_ACTUALS = UsageActuals(
     input_tokens=1, output_tokens=1, cache_read=0, cache_creation=0,
@@ -33,6 +38,8 @@ _FROZEN_INSTANCES = {
     "CliInvocation": CliInvocation(argv=("x",)),
     "HttpInvocation": HttpInvocation(method="GET", url="http://x", body={}),
     "AdapterUsage": AdapterUsage(actuals=_USAGE_ACTUALS, raw_counters={}),
+    "WorkerIsolation": WorkerIsolation(
+        method="tool_flag", adr_ref=_VALID_ADR_REF, tool_args=("--flag",)),
 }
 
 
@@ -64,6 +71,51 @@ def test_adapter_error_classes_is_exactly_five_members():
 
 def test_adapter_roles_is_exactly_builder_and_reviewer():
     assert ADAPTER_ROLES == ("builder", "reviewer")
+
+
+def test_isolation_methods_is_exactly_the_three_f152_d3_1_names():
+    assert ISOLATION_METHODS == ("tool_flag", "clean_env", "sandbox_reinforced")
+
+
+#: One case per DECISION F152 D3 (1) refusal rule: kwargs that construct a WorkerIsolation
+#: starting from a valid base, each overriding exactly the field(s) its own rule refuses.
+_ISOLATION_REFUSAL_CASES = (
+    ({"method": "bogus", "adr_ref": _VALID_ADR_REF, "tool_args": ("--x",)},
+     "unknown isolation method"),
+    ({"method": "tool_flag", "adr_ref": "adr/0002-x.md", "tool_args": ("--x",)},
+     "adr_ref must match"),
+    ({"method": "tool_flag", "adr_ref": "docs/adr/002-x.md", "tool_args": ("--x",)},
+     "adr_ref must match"),
+    ({"method": "tool_flag", "adr_ref": "docs/adr/0002-X.md", "tool_args": ("--x",)},
+     "adr_ref must match"),
+    ({"method": "tool_flag", "adr_ref": "docs/adr/0002-x", "tool_args": ("--x",)},
+     "adr_ref must match"),
+    ({"method": "tool_flag", "adr_ref": _VALID_ADR_REF, "tool_args": "--x"},
+     "tool_args must be a tuple of non-empty strings"),
+    ({"method": "tool_flag", "adr_ref": _VALID_ADR_REF, "tool_args": ("",)},
+     "tool_args must be a tuple of non-empty strings"),
+    ({"method": "clean_env", "adr_ref": _VALID_ADR_REF, "env_allowlist": "HOME"},
+     "env_allowlist must be a tuple of non-empty strings"),
+    ({"method": "clean_env", "adr_ref": _VALID_ADR_REF, "env_allowlist": ("",)},
+     "env_allowlist must be a tuple of non-empty strings"),
+    ({"method": "tool_flag", "adr_ref": _VALID_ADR_REF},
+     "tool_flag requires tool_args"),
+    ({"method": "clean_env", "adr_ref": _VALID_ADR_REF},
+     "clean_env requires env_allowlist"),
+    ({"method": "sandbox_reinforced", "adr_ref": _VALID_ADR_REF},
+     "sandbox_reinforced requires env_allowlist"),
+    ({"method": "tool_flag", "adr_ref": _VALID_ADR_REF, "tool_args": ("--x",),
+      "throwaway_home": True},
+     "throwaway_home is not allowed with tool_flag"),
+)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "fragment"), _ISOLATION_REFUSAL_CASES,
+    ids=[f"{i}-{frag.split()[0]}" for i, (_k, frag) in enumerate(_ISOLATION_REFUSAL_CASES)])
+def test_worker_isolation_refuses_each_d3_1_violation(kwargs, fragment):
+    with pytest.raises(ValueError, match=re.escape(fragment)):
+        WorkerIsolation(**kwargs)
 
 
 class _ConformingToy:

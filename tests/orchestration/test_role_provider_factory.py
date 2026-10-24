@@ -4,6 +4,7 @@ walk wired at the seam where a run builds a role's provider (DECISION F058 D2).
 
 from __future__ import annotations
 
+import json
 import pathlib
 import time
 import warnings
@@ -12,6 +13,7 @@ from packages.orchestration.model_failover import FailoverLink, FailoverProvider
 from packages.orchestration.pingpong_provider import BuilderOutput, ClaudeCliProvider
 from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.role_provider_factory import create_role_provider
+from packages.orchestration.worker_isolation import WORKER_ISOLATION_FILENAME
 
 
 def _configure_chains_toml(monkeypatch, tmp_path, toml_body: str) -> None:
@@ -167,3 +169,35 @@ class TestPingpongLoopReachesReplacedCreateProvider:
             "fake", role="builder", staging_dir=None,
         )
         assert result is sentinel
+
+
+class TestWorkerIsolationEvidence:
+    """DECISION F152 D3 (4): one worker_isolation.jsonl line per claude-cli provider build."""
+
+    def test_a_build_with_an_evidence_directory_writes_exactly_one_line(self, monkeypatch, tmp_path):
+        _configure_chains_toml(monkeypatch, tmp_path, "")
+        create_role_provider(
+            "claude-cli", role="builder", staging_dir=str(tmp_path / "staging"),
+            model="claude-x", stream_evidence_dir=str(tmp_path / "evidence"),
+        )
+        lines = (tmp_path / "evidence" / WORKER_ISOLATION_FILENAME).read_text(
+            encoding="utf-8").splitlines()
+        assert len(lines) == 1
+        record = json.loads(lines[0])
+        assert record["role"] == "builder"
+        assert record["provider"] == "claude-cli"
+        assert record["model"] == "claude-x"
+        assert record["method"] == "tool_flag"
+        assert record["applied"] is True
+        assert record["home"] == "operator"
+        assert isinstance(record["env_digest"], str) and len(record["env_digest"]) == 64
+        assert record["adr_ref"] == "docs/adr/0002-claude-cli-worker-isolation.md"
+
+    def test_a_build_without_a_directory_writes_nothing(self, monkeypatch, tmp_path):
+        _configure_chains_toml(monkeypatch, tmp_path, "")
+        create_role_provider(
+            "claude-cli", role="builder", staging_dir=str(tmp_path / "staging"),
+            model="claude-x", stream_evidence_dir=None,
+        )
+        assert not (tmp_path / "evidence").exists()
+        assert not any(tmp_path.rglob(WORKER_ISOLATION_FILENAME))

@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-163 of 316 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+164 of 316 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -44,7 +44,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 4 | 17 |
-| 8 | Worker Ecosystem & Neutrality | 3 | 13 |
+| 8 | Worker Ecosystem & Neutrality | 4 | 13 |
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
@@ -927,6 +927,13 @@ on what a model can do, the capabilities it needs and the one fallback it uses w
 such choice is made through one call, and a guard fails any other place that reads a capability; a
 claude-cli run records every fallback its model pair uses beside its evidence, and `remedy run show`,
 the job report and `remedy worker show` print a `Degradations:` line naming it; the page
+`docs/system/worker-adapter-contract-v2.md` describes it),
+F152 worker config isolation (every worker adapter declares how a run keeps the operator's personal
+configuration out, backed by a research record the conformance kit requires; the claude-cli worker
+starts with the operator's user settings and MCP servers switched off and with a cleaned
+environment, while its login under the operator's home keeps working; each build writes a
+`worker_isolation.jsonl` line naming the method and a digest of the environment that prints no
+value; `remedy worker doctor` checks each worker's isolation; the page
 `docs/system/worker-adapter-contract-v2.md` describes it).
 
 Accepted in Tier 12 so far:

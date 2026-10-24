@@ -1,0 +1,281 @@
+$ git diff HEAD...remedy/job-6f6d2e16e6114f58  (exit 0)
+diff --git a/tests/orchestration/test_client_scope.py b/tests/orchestration/test_client_scope.py
+new file mode 100644
+index 000000000..e25cfad39
+--- /dev/null
++++ b/tests/orchestration/test_client_scope.py
+@@ -0,0 +1,274 @@
++"""Tests for packages.orchestration.client_scope (amend1015c D2)."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from typing import Any
++from unittest.mock import patch
++from uuid import UUID
++
++from packages.orchestration.client_scope import (
++    client_order_read_refusal,
++    client_project_ids,
++)
++
++
++# ---------------------------------------------------------------------------
++# Helpers
++
++
++def _client(name: str, projects: tuple[str, ...]) -> Any:
++    """Minimal stand-in for ApiClient."""
++
++    @dataclass
++    class _Client:
++        name: str
++        projects: tuple[str, ...]
++
++    return _Client(name=name, projects=projects)
++
++
++def _project(id_: str, slug: str | None = None) -> Any:
++    """Minimal stand-in for RemyProject."""
++
++    @dataclass
++    class _Project:
++        id: UUID
++        slug: str | None
++
++    return _Project(id=UUID(id_), slug=slug)
++
++
++_UUID_A = "00000000-0000-0000-0000-000000000001"
++_UUID_B = "00000000-0000-0000-0000-000000000002"
++
++
++# ---------------------------------------------------------------------------
++# client_project_ids
++
++
++class TestClientProjectIds:
++    def test_returns_project_id_when_client_lists_it_by_id(self) -> None:
++        client = _client("bot", (_UUID_A,))
++        project = _project(_UUID_A, slug=None)
++        with (
++            patch(
++                "packages.orchestration.project_registry.list_projects_readonly",
++                return_value=[project],
++            ),
++            patch(
++                "packages.orchestration.api_clients.client_lists_project",
++                side_effect=lambda c, keys: any(k in c.projects for k in keys),
++            ),
++        ):
++            result = client_project_ids(client)
++        assert result == frozenset({_UUID_A})
++
++    def test_returns_project_id_when_client_lists_it_by_slug(self) -> None:
++        client = _client("bot", ("my-project",))
++        project = _project(_UUID_A, slug="my-project")
++        with (
++            patch(
++                "packages.orchestration.project_registry.list_projects_readonly",
++                return_value=[project],
++            ),
++            patch(
++                "packages.orchestration.api_clients.client_lists_project",
++                side_effect=lambda c, keys: any(k in c.projects for k in keys),
++            ),
++        ):
++            result = client_project_ids(client)
++        assert result == frozenset({_UUID_A})
++
++    def test_returns_empty_when_client_does_not_list_project(self) -> None:
++        client = _client("bot", ("other-project",))
++        project = _project(_UUID_A, slug="my-project")
++        with (
++            patch(
++                "packages.orchestration.project_registry.list_projects_readonly",
++                return_value=[project],
++            ),
++            patch(
++                "packages.orchestration.api_clients.client_lists_project",
++                return_value=False,
++            ),
++        ):
++            result = client_project_ids(client)
++        assert result == frozenset()
++
++    def test_returns_empty_when_no_projects_registered(self) -> None:
++        client = _client("bot", ("anything",))
++        with patch(
++            "packages.orchestration.project_registry.list_projects_readonly",
++            return_value=[],
++        ):
++            result = client_project_ids(client)
++        assert result == frozenset()
++
++    def test_returns_multiple_project_ids(self) -> None:
++        client = _client("bot", (_UUID_A, _UUID_B))
++        projects = [_project(_UUID_A), _project(_UUID_B)]
++        with (
++            patch(
++                "packages.orchestration.project_registry.list_projects_readonly",
++                return_value=projects,
++            ),
++            patch(
++                "packages.orchestration.api_clients.client_lists_project",
++                side_effect=lambda c, keys: any(k in c.projects for k in keys),
++            ),
++        ):
++            result = client_project_ids(client)
++        assert result == frozenset({_UUID_A, _UUID_B})
++
++
++# ---------------------------------------------------------------------------
++# client_order_read_refusal
++
++
++class TestClientOrderReadRefusal:
++    def test_returns_none_when_order_record_not_found(self) -> None:
++        client = _client("bot", (_UUID_A,))
++        with (
++            patch("packages.orchestration.serve_paths.serve_paths"),
++            patch(
++                "packages.orchestration.serve_runs.read_order_record",
++                return_value=None,
++            ),
++        ):
++            result = client_order_read_refusal(client, "ord-unknown")
++        assert result is None
++
++    def test_returns_none_when_client_lists_order_project(self, tmp_path) -> None:
++        order_file = tmp_path / "order.md"
++        order_file.write_text(
++            f"---\nproject: {_UUID_A}\n---\nDo something.\n", encoding="utf-8"
++        )
++
++        from packages.orchestration.serve_runs import OrderRecord
++
++        record = OrderRecord(
++            order_id="ord-abc",
++            pid=1,
++            started_at="2026-01-01T00:00:00Z",
++            order_file=str(order_file),
++            out_log="",
++            err_log="",
++        )
++
++        from packages.orchestration.project_registry import RemyProject
++
++        project = RemyProject(id=UUID(_UUID_A), name="alpha", slug="alpha")
++        client = _client("bot", (_UUID_A,))
++
++        with (
++            patch("packages.orchestration.serve_paths.serve_paths"),
++            patch(
++                "packages.orchestration.serve_runs.read_order_record",
++                return_value=record,
++            ),
++            patch(
++                "packages.orchestration.project_registry.select_project",
++                return_value=(project, "registry"),
++            ),
++            patch(
++                "packages.orchestration.api_clients.client_lists_project",
++                side_effect=lambda c, keys: any(k in c.projects for k in keys),
++            ),
++        ):
++            result = client_order_read_refusal(client, "ord-abc")
++        assert result is None
++
++    def test_returns_refusal_when_order_file_unreadable(self, tmp_path) -> None:
++        from packages.orchestration.serve_runs import OrderRecord
++
++        record = OrderRecord(
++            order_id="ord-abc",
++            pid=1,
++            started_at="2026-01-01T00:00:00Z",
++            order_file=str(tmp_path / "missing.md"),
++            out_log="",
++            err_log="",
++        )
++        client = _client("bot", (_UUID_A,))
++        with (
++            patch("packages.orchestration.serve_paths.serve_paths"),
++            patch(
++                "packages.orchestration.serve_runs.read_order_record",
++                return_value=record,
++            ),
++        ):
++            result = client_order_read_refusal(client, "ord-abc")
++        assert result is not None
++        assert "may not read order" in result
++
++    def test_returns_refusal_when_order_file_names_no_project(self, tmp_path) -> None:
++        order_file = tmp_path / "order.md"
++        order_file.write_text("Do something.\n", encoding="utf-8")
++
++        from packages.orchestration.serve_runs import OrderRecord
++
++        record = OrderRecord(
++            order_id="ord-abc",
++            pid=1,
++            started_at="2026-01-01T00:00:00Z",
++            order_file=str(order_file),
++            out_log="",
++            err_log="",
++        )
++        client = _client("bot", (_UUID_A,))
++        with (
++            patch("packages.orchestration.serve_paths.serve_paths"),
++            patch(
++                "packages.orchestration.serve_runs.read_order_record",
++                return_value=record,
++            ),
++        ):
++            result = client_order_read_refusal(client, "ord-abc")
++        assert result is not None
++        assert "may not read order" in result
++
++    def test_returns_refusal_when_client_does_not_list_order_project(
++        self, tmp_path
++    ) -> None:
++        order_file = tmp_path / "order.md"
++        order_file.write_text(
++            f"---\nproject: {_UUID_B}\n---\nDo something.\n", encoding="utf-8"
++        )
++
++        from packages.orchestration.serve_runs import OrderRecord
++
++        record = OrderRecord(
++            order_id="ord-abc",
++            pid=1,
++            started_at="2026-01-01T00:00:00Z",
++            order_file=str(order_file),
++            out_log="",
++            err_log="",
++        )
++
++        from packages.orchestration.project_registry import RemyProject
++
++        project = RemyProject(id=UUID(_UUID_B), name="beta", slug="beta")
++
++        # client only lists A, not B
++        client = _client("bot", (_UUID_A,))
++
++        with (
++            patch("packages.orchestration.serve_paths.serve_paths"),
++            patch(
++                "packages.orchestration.serve_runs.read_order_record",
++                return_value=record,
++            ),
++            patch(
++                "packages.orchestration.project_registry.select_project",
++                return_value=(project, "registry"),
++            ),
++            patch(
++                "packages.orchestration.api_clients.client_lists_project",
++                side_effect=lambda c, keys: any(k in c.projects for k in keys),
++            ),
++        ):
++            result = client_order_read_refusal(client, "ord-abc")
++        assert result is not None
++        assert "may not read order" in result
