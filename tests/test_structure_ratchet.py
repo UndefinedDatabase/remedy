@@ -44,7 +44,10 @@ MAX_FILE_ROWS = 31
 #: The summed `Lines` column of "Files above 1,000 lines" when the ledger was built.
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FILE_LINES = 62923
+#: Raised by four by operator amendment amend1024-one-real-order (F4): three lines of
+#: `packages/orchestration/pingpong_provider.py` and one of `apps/cli/commands/job.py`; each row's
+#: sentence on the ledger page says why.
+MAX_FILE_LINES = 62924
 
 _FUNCTION_ROW = re.compile(r"^\| (\d+) \| `([^`]+)` \| `([^`]+)` \|$")
 _FILE_ROW = re.compile(r"^\| (\d+) \| `([^`]+)` \|$")

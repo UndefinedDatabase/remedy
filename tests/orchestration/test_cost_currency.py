@@ -18,6 +18,7 @@ from packages.orchestration.cost_currency import (
     COST_CURRENCY_KEY,
     COST_CURRENCY_USD,
     COST_SHOW_USD_KEY,
+    COST_USD_HIDDEN_LABEL,
     CostCurrencyError,
     cost_currency_problems,
     foreign_currency_markers,
@@ -25,6 +26,7 @@ from packages.orchestration.cost_currency import (
     is_cost_usd_field,
     resolve_cost_currency,
     show_cost_usd,
+    visible_cost_text,
     visible_cost_usd,
 )
 
@@ -123,6 +125,14 @@ class TestDollarsAreHiddenByDefault:
         monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
         reset_config()
         assert visible_cost_usd(document) is document
+
+    def test_a_text_naming_dollars_reads_not_shown_and_any_other_stays(self, monkeypatch) -> None:
+        monkeypatch.delenv("REMEDY_COST_SHOW_USD", raising=False)
+        assert visible_cost_text(">= $0.5000 (2 provider calls unpriced)") == COST_USD_HIDDEN_LABEL
+        assert visible_cost_text("not-measured") == "not-measured"
+        monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+        reset_config()
+        assert visible_cost_text("$1.2500") == "$1.2500"
 
 
 class TestConfigValidateReadsTheKey:

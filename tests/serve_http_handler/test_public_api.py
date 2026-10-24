@@ -1080,6 +1080,26 @@ def test_a_query_key_given_empty_or_as_a_bad_flag_is_refused_with_its_own_senten
     assert body["message"] == "'until' is not a valid query key for '/api/v1/changes'; it accepts 'since'"
 
 
+def test_a_get_answer_nulls_its_dollar_fields_unless_cost_show_usd_is_true(monkeypatch):
+    """Operator amendment amend1024 Part E: the API answers tokens and provider calls; a dollar
+    field keeps its key and reads null unless `cost.show_usd` is true."""
+    from packages.orchestration.config import reset_config
+
+    body = build_ok(jobs=[{"cost": {"value_usd": 1.25, "basis": "actual"},
+                           "harness_invocations": 3, "tokens": {"input": 5}}])
+    monkeypatch.setitem(public_api._TWIN_ANSWERS, "status.run", lambda **_kw: body)
+    monkeypatch.delenv("REMEDY_COST_SHOW_USD", raising=False)
+
+    status, hidden, _headers = public_api.answer_public_api_get("/api/v1/digest")
+
+    assert status == 200
+    assert hidden["jobs"] == [{"cost": {"value_usd": None, "basis": "actual"},
+                               "harness_invocations": 3, "tokens": {"input": 5}}]
+    monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+    reset_config()
+    assert public_api.answer_public_api_get("/api/v1/digest")[1] == body
+
+
 def test_a_get_refuses_a_path_value_that_leaves_its_place(tcp_server):
     status, body, _headers = _tcp_request(
         tcp_server, "GET", "/api/v1/jobs/..%2F..%2Fetc/story", headers=_bearer(SERVER_TOKEN))

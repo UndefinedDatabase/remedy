@@ -26,6 +26,7 @@ import apps.cli.commands.job as job_commands
 from apps.cli.grouped import build_parser, main
 from packages.core.models import RunState
 from packages.orchestration import data_paths
+from packages.orchestration.config import reset_config
 from packages.orchestration.job_burn import job_burn_sentence
 from packages.orchestration.pingpong_job import (
     TASK_APPLIED,
@@ -541,3 +542,38 @@ class TestBurnAlarm:
         job = self._job(None)
 
         assert "Burn alarm" not in _show(capsys, str(job.job_id)).err
+
+
+class TestDollarsAreHiddenByDefault:
+    """amend1024 Part E: `job show` carries no dollar figure unless `cost.show_usd` is true."""
+
+    _ACTUALS = {"schema_version": "2.0.0", "measured_cost_usd": 1.25,
+                "priced_call_count": 3, "unpriced_call_count": 0, "provider_call_count": 3}
+    _PREDICTION = {"expected_cost_usd": 0.08, "expected_tokens": 8000}
+
+    def _job(self) -> JobPlan:
+        job = JobPlan(job_title="priced", state=RunState.PENDING,
+                      budget_actuals=dict(self._ACTUALS), budget_prediction=dict(self._PREDICTION),
+                      budgets={"max_cost_usd": 2.0})
+        save_job_plan(job)
+        return job
+
+    def test_the_default_nulls_every_measured_dollar_field_and_keeps_the_limit(
+            self, data_root, capsys) -> None:
+        job = self._job()
+
+        data = json.loads(_show(capsys, str(job.job_id)).out)
+
+        assert data["budget_actuals"] == {**self._ACTUALS, "measured_cost_usd": None}
+        assert data["budget_prediction"] == {**self._PREDICTION, "expected_cost_usd": None}
+        assert data["budgets"] == {"max_cost_usd": 2.0}
+
+    def test_the_key_true_shows_the_dollars_as_before(self, data_root, capsys, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+        reset_config()
+        job = self._job()
+
+        data = json.loads(_show(capsys, str(job.job_id)).out)
+
+        assert data["budget_actuals"] == self._ACTUALS
+        assert data["budget_prediction"] == self._PREDICTION

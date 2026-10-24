@@ -169,12 +169,11 @@ def _cost_section(counters: Any | None) -> dict[str, str]:
     With ``cost.show_usd`` false (amend1024 Part E) a measured figure reads
     ``COST_USD_HIDDEN_LABEL`` and keeps its basis; an unmeasured one still reads as unmeasured.
     """
-    from packages.orchestration.cost_currency import COST_USD_HIDDEN_LABEL, show_cost_usd
+    from packages.orchestration.cost_currency import visible_cost_text
 
     if counters is None:
         return {"value": COST_NOT_MEASURED, "basis": COST_BASIS_ABSENT}
-    shown = counters.measured_cost_usd is None or show_cost_usd()
-    value = str(counters.cost_description()) if shown else COST_USD_HIDDEN_LABEL
+    value = visible_cost_text(str(counters.cost_description()))
     return {"value": value, "basis": cost_exactness_basis(
         counters.measured_cost_usd, counters.unpriced_call_count)}
 

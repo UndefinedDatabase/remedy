@@ -250,7 +250,9 @@ with the code that calls it.
 - `packages/orchestration/job_apply.py`: the result model, the history, commit and push policy,
   and the export and summary, each to a module of its own.
 - `apps/cli/commands/job.py`: the budget commands, then the sections of `remedy job show`, each to
-  a module of its own.
+  a module of its own. Operator amendment amend1024-one-real-order Part E raised its row from 2483
+  to 2484, the one import line of `cost_currency`'s dollar rule that `job show` and its report
+  section apply, which no boundary step of this file could carry without moving a section.
 - `packages/orchestration/orchestrator_loop.py`: the protocol, context and milestones, the ledger,
   and the evaluation of a move, each to a module of its own, the shared constants first.
 - `scripts/remedy_smoke.sh`: the long block of surface checks and the patch lifecycle, each to a
@@ -475,7 +477,7 @@ with the code that calls it.
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2199 | `apps/cli/command_catalog.py` |
 | 2541 | `packages/orchestration/job_apply.py` |
-| 2483 | `apps/cli/commands/job.py` |
+| 2484 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 1898 | `scripts/remedy_smoke.sh` |
 | 1983 | `packages/runtimes/dev_server.py` |

@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.orchestration.budget_guard import BudgetCounterError, decode_persisted_budget_actuals
+from packages.orchestration.cost_currency import visible_cost_usd
 from packages.orchestration.data_paths import job_dir, job_evidence_dir, resolve_data_root
 from packages.orchestration.decision_queue import HumanDecision, list_decisions
 from packages.orchestration.dirty_baseline import job_dirty_start
@@ -97,15 +98,16 @@ def _job_cost(plan: JobPlan) -> dict[str, Any]:
 
     Read from the job's persisted budget actuals; raises ``BudgetCounterError``
     on a damaged record. A job with no actuals reads ``value_usd`` null and
-    ``basis`` ``absent``.
+    ``basis`` ``absent``; with ``cost.show_usd`` false ``value_usd`` reads null and
+    ``basis`` still says what was measured (amend1024 Part E).
     """
     if plan.budget_actuals is None:
         return {"value_usd": None, "basis": cost_exactness_basis(None, 0)}
     decoded = decode_persisted_budget_actuals(
         plan.budget_actuals, first_running_at=plan.first_running_at or None)
     value_usd = decoded["measured_cost_usd"]
-    return {"value_usd": value_usd,
-            "basis": cost_exactness_basis(value_usd, decoded["unpriced_call_count"])}
+    return visible_cost_usd({"value_usd": value_usd,
+                             "basis": cost_exactness_basis(value_usd, decoded["unpriced_call_count"])})
 
 
 def _tokens_by_kind(row: CostRow | None) -> dict[str, int | None]:
@@ -422,7 +424,7 @@ def _read_projects(projects: list[Any], day_moment: datetime,
         reads.skipped_files.extend(mission_skipped)
         try:
             cost_today: dict[str, Any] | None = {
-                **project_cost_of_day(project.id, day_moment),
+                **visible_cost_usd(project_cost_of_day(project.id, day_moment)),
                 "tokens": _day_tokens(project.id, day_moment),
             }
         except _LEDGER_READ_ERRORS:

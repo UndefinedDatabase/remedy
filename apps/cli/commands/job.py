@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, NoReturn
 from apps.cli.job_id_arg import resolve_job_id_or_fail
 from apps.cli.json_envelope import emit_ok, fail
 from packages.core.models import RunState
+from packages.orchestration.cost_currency import visible_cost_usd, visible_report_sources
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.pingpong_job import (
@@ -219,7 +220,7 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False, tour: bool = False,
     elif tour:
         # `--tour` alone: the `tour` section, built and printed the way `--full` does.
         shown["sections"], section_text = _build_show_sections(job, names=("tour",))
-    emit_ok(**shown)
+    emit_ok(**visible_cost_usd(shown))
     if job.intake:
         _print_intake_block(job.intake)
     _print_blocked_task_findings(str(job.job_id), shown["blocked_task_findings"])
@@ -598,7 +599,7 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
     # The F053 run report, built from ONE read of its sources.
     terminal = str((job.metadata or {}).get("cycle_terminal_status", "") or "")
     mode = MODE_FINAL if terminal in REPORTED_TERMINALS else MODE_INTERIM
-    sources = build_report_sources(job)
+    sources = visible_report_sources(build_report_sources(job))
     markdown = render_report(job, mode, sources=sources)
     report["run_report"] = {
         "mode": mode,

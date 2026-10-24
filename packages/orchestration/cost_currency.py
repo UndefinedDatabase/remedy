@@ -132,6 +132,18 @@ def visible_cost_usd(document: Any) -> Any:
     return document if show_cost_usd() else hide_cost_usd_fields(document)
 
 
+def visible_cost_text(text: str) -> str:
+    """`text` itself, unless it states a dollar figure (`$`) while `show_cost_usd()` is false."""
+    return COST_USD_HIDDEN_LABEL if "$" in text and not show_cost_usd() else text
+
+
+def visible_report_sources(sources: Any) -> Any:
+    """A run report's sources (`run_report.ReportSources`) whose money line obeys `cost.show_usd`."""
+    from dataclasses import replace
+
+    return replace(sources, cost_description=visible_cost_text(sources.cost_description))
+
+
 def foreign_currency_markers(source: str) -> list[tuple[int, str]]:
     """Every foreign currency symbol or code in `source`'s string literals, as (line, marker).
 
