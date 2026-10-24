@@ -54,7 +54,7 @@ from packages.orchestration.token_actuals import _usage_from_payload
 from packages.orchestration.token_actuals import (
     parse_cli_envelope as _parse_cli_envelope,
 )
-from packages.orchestration.worker_adapter_slot import adapter_child_env, adapter_cli_argv, adapter_usage_actuals
+from packages.orchestration.worker_adapter_slot import adapter_cli_argv, adapter_exec_policy, adapter_usage_actuals
 
 # ---------------------------------------------------------------------------
 # Provider output contracts
@@ -813,14 +813,15 @@ def _cli_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:
 
     `output_cap_bytes` stays None on purpose: this seam parses the CLI's WHOLE JSON
     envelope, so a byte cap would cut a valid one mid-token and turn a working call
-    into a parse failure — a stage-1 gap, owed to T003's limitations document. `env`
-    is the declared, cleaned environment `adapter_child_env` builds (DECISION F152
-    D3); `env_allowlist` stays None so that dict reaches the child unchanged.
+    into a parse failure — a stage-1 gap, owed to T003's limitations document.
+    `adapter_exec_policy` compiles the installed adapter's declared default sandbox
+    profile onto this policy, outside the tool sandbox (DECISION F162 D5); for the
+    claude-cli default that adds an open-files limit of 1024 and nothing else.
     Enforced and real: the wall deadline, the cwd pin, a zero core, a planner call's cancel.
     """
-    return ExecGuardPolicy(wall_timeout_seconds=float(timeout_sec), cwd=cwd, core_file_bytes=0,
-                           env=adapter_child_env("claude-cli"),
-                           cancel_check=planner_cancel_check())   # a cancelled order's planner child (R-1346)
+    return adapter_exec_policy("claude-cli", ExecGuardPolicy(
+        wall_timeout_seconds=float(timeout_sec), cwd=cwd, core_file_bytes=0,
+        cancel_check=planner_cancel_check()))   # a cancelled order's planner child (R-1346)
 
 
 def _stream_exec_policy(cwd: str | None) -> ExecGuardPolicy:
@@ -831,12 +832,11 @@ def _stream_exec_policy(cwd: str | None) -> ExecGuardPolicy:
     `wall_timeout_seconds` stays None because that seam's watchdog is already the
     deadline for this call and a second one would fight it. `output_cap_bytes`
     stays None because that seam caps through `max_bytes` and `on_cap`, which stop
-    the process tree instead of merely capping what is stored. `env` carries the
-    same declared, cleaned environment `_cli_exec_policy` builds through
-    `adapter_child_env` (DECISION F152 D3); `env_allowlist` stays None so that dict
-    reaches the child unchanged. Enforced and real: the cwd pin and a zero core.
+    the process tree instead of merely capping what is stored. `adapter_exec_policy`
+    compiles the same declared default profile `_cli_exec_policy` does, outside the
+    tool sandbox (DECISION F162 D5). Enforced and real: the cwd pin and a zero core.
     """
-    return ExecGuardPolicy(cwd=cwd, core_file_bytes=0, env=adapter_child_env("claude-cli"))
+    return adapter_exec_policy("claude-cli", ExecGuardPolicy(cwd=cwd, core_file_bytes=0))
 
 
 def _decode_cli_stream(raw: bytes) -> str:

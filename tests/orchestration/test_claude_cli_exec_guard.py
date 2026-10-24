@@ -96,6 +96,18 @@ class TestStageOnePolicyAndShape:
         assert policy.output_cap_bytes is None
         assert policy.env == adapter_child_env("claude-cli") and policy.env_allowlist is None
         assert policy.cpu_seconds is None and policy.address_space_bytes is None
+        # DECISION F162 D5 (3): the declared default profile is compiled on outside the tool
+        # sandbox, which for the claude-cli default adds only an open-files limit of 1024.
+        assert policy.open_files == 1024
+        assert policy.deny_network is False
+        assert policy.sandbox is None
+
+    def test_the_stream_policy_compiles_the_same_declared_default(self):
+        policy = pp._stream_exec_policy("/somewhere")
+        assert policy.env == adapter_child_env("claude-cli")
+        assert policy.open_files == 1024
+        assert policy.deny_network is False
+        assert policy.sandbox is None
 
     def test_the_probe_and_the_runner_hold_no_subprocess_spawn(self):
         def spawns(func):

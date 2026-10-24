@@ -13,6 +13,7 @@ from packages.orchestration.model_failover import FailoverLink, FailoverProvider
 from packages.orchestration.pingpong_provider import BuilderOutput, ClaudeCliProvider
 from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.role_provider_factory import create_role_provider
+from packages.orchestration.sandbox_profiles import WORKER_SANDBOX_FILENAME
 from packages.orchestration.worker_isolation import WORKER_ISOLATION_FILENAME
 
 
@@ -201,3 +202,31 @@ class TestWorkerIsolationEvidence:
         )
         assert not (tmp_path / "evidence").exists()
         assert not any(tmp_path.rglob(WORKER_ISOLATION_FILENAME))
+
+
+class TestWorkerSandboxEvidence:
+    """DECISION F162 D5 (4): one worker_sandbox.jsonl line per claude-cli provider build."""
+
+    def test_a_claude_cli_build_writes_exactly_one_sandbox_line(self, monkeypatch, tmp_path):
+        _configure_chains_toml(monkeypatch, tmp_path, "")
+        create_role_provider(
+            "claude-cli", role="builder", staging_dir=str(tmp_path / "staging"),
+            model="claude-x", stream_evidence_dir=str(tmp_path / "evidence"),
+        )
+        lines = (tmp_path / "evidence" / WORKER_SANDBOX_FILENAME).read_text(
+            encoding="utf-8").splitlines()
+        assert len(lines) == 1
+        record = json.loads(lines[0])
+        assert record["role"] == "builder"
+        assert record["provider"] == "claude-cli"
+        assert record["model"] == "claude-x"
+        assert record["profile"] == "claude-cli"
+        assert record["runner"] == "process"
+        assert record["tool_sandbox"] is False
+
+    def test_a_non_claude_cli_build_writes_none(self, monkeypatch, tmp_path):
+        _configure_chains_toml(monkeypatch, tmp_path, "")
+        create_role_provider(
+            "fake", role="builder", staging_dir=None, stream_evidence_dir=str(tmp_path / "evidence"),
+        )
+        assert not any(tmp_path.rglob(WORKER_SANDBOX_FILENAME))

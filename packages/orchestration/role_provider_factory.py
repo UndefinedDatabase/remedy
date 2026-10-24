@@ -20,8 +20,20 @@ from packages.orchestration.model_failover import (
     resolve_failover_cooldown_s,
 )
 from packages.orchestration.pingpong_provider import ClaudeCliProvider, PingPongProvider, create_provider
-from packages.orchestration.worker_adapter_slot import adapter_isolation_record
+from packages.orchestration.sandbox_profiles import record_worker_sandbox
+from packages.orchestration.worker_adapter_slot import adapter_isolation_record, adapter_sandbox_record
 from packages.orchestration.worker_isolation import record_worker_isolation
+
+
+# WHY: one claude-cli build writes both evidence lines together, so create_role_provider's own
+# body stays one call shorter than the structure ratchet's 100-line row-free limit.
+def _record_claude_cli_evidence(evidence_dir: str | None, *, role: str, model: str) -> None:
+    """One `worker_isolation.jsonl` line (DECISION F152 D3 (4)) and one `worker_sandbox.jsonl`
+    line (DECISION F162 D5 (4)) for a claude-cli provider build."""
+    record_worker_isolation(evidence_dir, role=role, provider="claude-cli", model=model,
+                             record=adapter_isolation_record("claude-cli"))
+    record_worker_sandbox(evidence_dir, role=role, provider="claude-cli", model=model,
+                           record=adapter_sandbox_record("claude-cli"))
 
 
 # WHY: the seam where a run builds a role's provider, so DECISION F058 D2's failover walk can wrap it.
@@ -85,8 +97,7 @@ def create_role_provider(
             provider: PingPongProvider = ClaudeCliProvider(write_mode=write_mode, **common)
         else:
             provider = ClaudeCliProvider(**common)
-        record_worker_isolation(stream_evidence_dir, role=role, provider="claude-cli",
-            model=model, record=adapter_isolation_record("claude-cli"))
+        _record_claude_cli_evidence(stream_evidence_dir, role=role, model=model)
     elif name == "pi":
         # WHY here: Pi must run in the job workspace with the role's own tool allowlist.
         from packages.orchestration.pi_provider import make_pi_provider
