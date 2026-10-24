@@ -46,13 +46,3 @@ say otherwise: the two problems are carried to the next clean-up, which asks aga
 **My recommendation.** Allow these sessions to run the Codex tool for its version and its help texts, to read its installed files, and to make a handful of very small paid example runs so that real recorded output can be saved as test material. Reading the public Codex documentation on the web would help too. Alternatively, run those few commands once yourself and save their output in the repository, and a session will work from that copy.
 
 **What happens if you say nothing.** The recommendation is already executed and stands until you say otherwise: the Codex worker has been moved behind the next clean-up of open problems, the work on comparing costs across vendors is being done now instead, and when its turn comes again a session that still cannot read the tool moves it back once more and asks again, rather than building it from guesses.
-
-### Q28 — Park the rest of the list too? (2026-10-24, amend1024-one-real-order, Part F2)
-
-**What needs deciding.** Your order asked to park 55 open features until F317 has worked three times in a row on Luna: the second-worker adapters, the post-mortem miner, the idea engine and every open feature of Tiers 4, 6 and 7. Twenty-two of them are parked now. The other thirty-three stay in the active list, because a feature that stays there names them in its own "Depends on" line, and your order said to write such a case down instead of improvising. The whole of Tier 4 stays because F250 depends on F117 to F128; F073, F063, F064 and F066 stay because F230 and F250 depend on them; F129, F131, F134, F135, F138, F139 and F140 of Tier 7 and F087, F089, F090, F094, F096 and F098 of Tier 6 stay because F164, F187, F192 to F196, F224 to F232 and F244 depend on them, directly or through each other.
-
-**Why it matters.** Until this is decided, the active list still holds those thirty-three features after F316, so a later session could start one of them before F317 has proved itself three times.
-
-**My recommendation.** Park the dependents too: F164, F187, F192, F193, F194, F195, F196, F224, F225, F226, F227, F228, F229, F230, F231, F232, F244 and F250, and with them the thirty-three. None of them serves the one goal of a real order landing, and parking them keeps every dependency whole.
-
-**What happens if you say nothing.** Nothing more moves. The thirty-three stay active behind F316, the twenty-two stay parked, and no dependency is torn.
