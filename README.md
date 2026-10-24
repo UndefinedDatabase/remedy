@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-162 of 316 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+163 of 316 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -44,7 +44,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 4 | 17 |
-| 8 | Worker Ecosystem & Neutrality | 2 | 13 |
+| 8 | Worker Ecosystem & Neutrality | 3 | 13 |
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
@@ -921,6 +921,12 @@ line from the installed claude-cli adapter, and a call that is not streamed take
 too, through a slot the command line fills before any command runs, so orchestration still imports
 only the contract; the stream's events and a failed call's class stay with Remedy's own evidence;
 no existing claude-cli test changed what it checks; the page
+`docs/system/worker-adapter-contract-v2.md` describes it),
+F157 capability matrix and honest degradation (one register names, for every feature that depends
+on what a model can do, the capabilities it needs and the one fallback it uses without them; each
+such choice is made through one call, and a guard fails any other place that reads a capability; a
+claude-cli run records every fallback its model pair uses beside its evidence, and `remedy run show`,
+the job report and `remedy worker show` print a `Degradations:` line naming it; the page
 `docs/system/worker-adapter-contract-v2.md` describes it).
 
 Accepted in Tier 12 so far:

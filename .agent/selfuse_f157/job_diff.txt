@@ -1,0 +1,107 @@
+MASKED COPY: 12 match(es) on 12 line(s) that the agent-state guard refuses are
+replaced by a [MASKED: <rule>] marker (DECISION F157 D7). The job branch named in the diff's
+first line keeps the diff whole. Unmasked sha256: 36a656d2d253203f02ff90aeaa480e2f76c7a34e17464e2a0b82bb1ce2428117
+
+$ git diff HEAD...remedy/job-11b187c9221f49b1  (exit 0)
+diff --git a/tests/test_public_text_redaction.py b/tests/test_public_text_redaction.py
+new file mode 100644
+index 000000000..16e093b58
+--- /dev/null
++++ b/tests/test_public_text_redaction.py
+@@ -0,0 +1,96 @@
++import pytest
++from packages.common.public_text_redaction import _scrub_public, _safe_path_label
++
++
++# --- _scrub_public ---
++
++def test_scrub_public_passthrough():
++    assert _scrub_public("hello world") == "hello world"
++
++
++def test_scrub_public_private_key():
++    text = "[MASKED: credential]\nMIIEow..."
++    assert "[redacted-secret]" in _scrub_public(text)
++    assert "PRIVATE KEY" not in _scrub_public(text)
++
++
++def test_scrub_public_aws_access_key():
++    text = "key is [MASKED: credential]"
++    result = _scrub_public(text)
++    assert "[redacted-secret]" in result
++    assert "[MASKED: credential]" not in result
++
++
++def test_scrub_public_openai_sk_token():
++    text = "Authorization: [MASKED: credential]"
++    result = _scrub_public(text)
++    assert "[redacted-secret]" in result
++    assert "[MASKED: credential]" not in result
++
++
++def test_scrub_public_bearer_token():
++    text = "Authorization: [MASKED: credential]"
++    result = _scrub_public(text)
++    assert "[redacted-secret]" in result
++
++
++def test_scrub_public_api_key_assignment():
++    text = "[MASKED: credential]"
++    result = _scrub_public(text)
++    assert "[redacted-secret]" in result
++    assert "supersecretvalue" not in result
++
++
++def test_scrub_public_abs_path_home():
++    text = "error in [MASKED: machine-local path]"
++    result = _scrub_public(text)
++    assert "[redacted-path]" in result
++    assert "[MASKED: machine-local path]" not in result
++
++
++def test_scrub_public_abs_path_users():
++    text = "file: [MASKED: machine-local path]"
++    result = _scrub_public(text)
++    assert "[redacted-path]" in result
++    assert "[MASKED: machine-local path]" not in result
++
++
++def test_scrub_public_traceback():
++    text = "Traceback (most recent call last):\n  File 'x.py', line 1"
++    result = _scrub_public(text)
++    assert "[redacted-trace]" in result
++    assert "Traceback (most recent call last)" not in result
++
++
++def test_scrub_public_unrelated_path_not_redacted():
++    # Only home-ish absolute paths are masked; a relative path is left alone.
++    text = "see tests/conftest.py for details"
++    assert _scrub_public(text) == text
++
++
++# --- _safe_path_label ---
++
++def test_safe_path_label_relative_unchanged():
++    assert _safe_path_label("src/foo/bar.py") == "src/foo/bar.py"
++
++
++def test_safe_path_label_absolute_returns_basename():
++    assert _safe_path_label("[MASKED: machine-local path]") == "main.py"
++
++
++def test_safe_path_label_backslash_normalised():
++    assert _safe_path_label("src\\foo\\bar.py") == "src/foo/bar.py"
++
++
++def test_safe_path_label_truncated_at_80():
++    long_path = "a" * 100
++    assert len(_safe_path_label(long_path)) == 80
++
++
++def test_safe_path_label_empty_string():
++    assert _safe_path_label("") == ""
++
++
++def test_safe_path_label_none_guard():
++    # The function guards against falsy input with `path or ""`; None must not raise.
++    assert _safe_path_label(None) == ""  # type: ignore[arg-type]

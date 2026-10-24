@@ -23,6 +23,7 @@ from packages.orchestration.call_identity import (
     canonical_call_number,
     prepare_call_input,
 )
+from packages.orchestration.capability_routes import routed_parked_resume, routed_reviewer_schema
 
 # DECISION F315 D2: the installed adapter builds every call's command line (`claude_cli_command.py`).
 from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL
@@ -1009,9 +1010,8 @@ class ClaudeCliProvider:
 
     @property
     def supports_resume(self) -> bool:
-        # WHY: DECISION F287 D4 — the checked session reference and the refused-resume
-        # fallback (D2, D3) are proven; F106's repair-round resume and F109's dedupe now go live.
-        return True
+        # WHY: DECISION F157 D4 — routed through `parked_resume_route`, with F287 D4's checked session reference and refused-resume fallback (D2, D3) still proven beneath it.
+        return routed_parked_resume(self._model)
 
     @property
     def write_mode(self) -> str:
@@ -1426,7 +1426,7 @@ class ClaudeCliProvider:
         max_output_chars: int = 50000,
         resume: str | None = None,
     ) -> ReviewerOutput:
-        structured = _reviewer_structured_enabled()
+        structured = routed_reviewer_schema(self._model)
         options: dict[str, Any] = {"write_mode": self._write_mode}
         if resume:
             options["resume"] = resume
@@ -1454,7 +1454,7 @@ class ClaudeCliProvider:
         max_output_chars: int = 50000,
         resume: str = "",
     ) -> ReviewerOutput:
-        structured = _reviewer_structured_enabled()
+        structured = routed_reviewer_schema(self._model)
         schema_v = _schema_v_of(_ReviewVerdictSchema)
         try:
             if structured:

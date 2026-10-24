@@ -1,0 +1,5 @@
+Entry ID: SU-081
+Entry Title: Write the first tests for packages/common/public_text_redaction.py
+Entry Provenance: generated (self-use-generator tier 5, untested module, packages/common/public_text_redaction.py)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f157-r8-selfuse/SU-081.md

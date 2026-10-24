@@ -848,6 +848,17 @@ end the response with:
   promising a refusal earlier than the code makes it, is item 8's reading of the code that produces
   what a sentence asserts. The seventh, R-1448, is the planner's half of a finding, carried to the
   next findings paydown. The list stays at 34 items.
+  Consolidated again at F157's closure on 2026-10-24: nothing joined and no two items were merged,
+  because F157's three lines in `.agent/prose_slips.md` name no lesson the list lacks: a worker's
+  inventory that missed a test file and a length the block gave one line too long are item 34's
+  reading of every file a block orders a change against, and two workers of one session executing
+  one block at once is a session's slip, not a block's. Its four findings were raised against its
+  own rounds and repaired inside the feature: R-1451, R-1452 and R-1453, a printed form, an evidence
+  line's shape and a routed schema choice that no ordered test held, are item 18's reading of an
+  ordered list of tests against the property it must establish, each found by the reviewer's
+  mutations; and R-1454, a decision that ordered a resume decision recorded for every build while
+  an earlier sentence said a route decides only what a run asks for, is item 8's reading of the code
+  that produces what a sentence asserts. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

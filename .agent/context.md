@@ -1,19 +1,21 @@
-# Context — F314 Findings paydown v10
+# Context — F157 Capability matrix & honest degradation
 
 ## Active Branch
-`feature/f314-findings-paydown-v10`, from `main` at `47cdb1b06` (the merge of pull request 385).
+`feature/f157-capability-matrix`, from `main` at `0f811a713` (the merge of pull request 386).
 
 ## Scope
-F314 as `docs/roadmap/features/T2_F314.md` states it: the twelve open findings it owns, one slice
-per module or concern in the order of DECISION F314 D1. The finding text is the spec. R-1246,
-R-1351 and R-1353 are carried by name at the closure.
+F157 as `docs/roadmap/features/T8_F157.md` states it, in the order of DECISION F157 D1: T001 the
+inventory, T002 the matrix module and its guards, T003 the consolidation per consumer, the report
+section, the badge and the end-to-end. The open findings are all F316's; F157 takes none.
 
 ## Do not touch
-The resolutions F307 landed; the record is append-only (the feature file's Do-not-touch).
+The fallback implementations (referenced, not moved), the adapters' capability declarations and
+the per-feature semantics (the feature file's Do-not-touch).
 
 ## Active assumptions
-- No builder can reach the network: the tool sandbox unshares it (DECISION F314 D2).
-- A slice that edits a structure-ledger row draws its boundary first, in a commit of its own.
+- Consumers ask the matrix, never an adapter's capabilities directly; the call takes the resolved
+  model and provider pair.
+- Every consolidated consumer's existing tests stay unmodified.
 
 ## Constraints
 - Under 500 insertions per commit; commit subjects carry no leading-slash tokens.

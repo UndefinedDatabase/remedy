@@ -16,6 +16,7 @@ from typing import Any
 
 from packages.core.models import RunState
 from packages.orchestration.execution_config import _export_execution_config
+from packages.orchestration.job_report_task_lines import task_report_detail_lines
 from packages.orchestration.pingpong_job import (
     _PREVIOUS_SUMMARY_LIMIT,
     JOB_BLOCKED,
@@ -315,10 +316,7 @@ def format_job_report_text(job: JobPlan) -> str:
             )
         if t.error:
             lines.append(f"      Error: {t.error}")
-        for note in steering_map.get(t.task_id, []):
-            lines.append(
-                "      Steering not consumed: “" + note["text"].replace("\n", "\n        ") + "”"
-            )
+        lines.extend(task_report_detail_lines(job, t, steering_map))
 
     lines.append("")
 

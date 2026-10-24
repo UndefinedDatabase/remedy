@@ -111,3 +111,73 @@ are normalised by the evidence capture while the process runs, and a failed call
 the failure post-mortem from every signal it has, of every provider alike; both are per-call
 evidence the loop owns, and the adapter's `map_stream` and `classify_error` answer the same
 functions for the kit and for `remedy worker show`.
+
+## The capability matrix
+`packages/contracts/capability_matrix.py` holds a declarative register,
+`CAPABILITY_REQUIREMENTS`, mapping each capability-consuming feature to the adapter capability it
+needs and to one registered degradation. A feature asks the register through `require_or_degrade`
+or `capability_matrix_for`, never an adapter's `capabilities()` directly: both functions take the
+resolved `(adapter, model)` pair and call `capabilities(model)` themselves, so a mid-job failover
+that changes the pair changes what the next read sees. The resulting `CapabilityDecision` is one of
+three modes: `native`, every required capability present; `degraded`, at least one absent and the
+entry's registered fallback runs instead, named by its `strategy` token; or `unavailable`, at least
+one absent and the entry has no fallback, which is legal only for a feature that may refuse
+outright.
+
+The three entries the register holds since DECISION F157 D3 (4): `reviewer_schema_gate` requires
+`json_schema` and degrades to `schema_in_prompt`; `parked_session_resume` requires
+`session_resume` and degrades to `full_context_resend`; `stream_evidence_capture` requires
+`streaming` and degrades to `buffered_output`. No planner is an entry, because neither the Ollama
+planner nor `ClaudeCliPlanner` builds its call through an installed adapter today. Three declared
+capabilities have no consumer yet — `vision`, `tool_use` and `max_context_tokens` — and
+`CAPABILITY_NO_CONSUMER_NOTES` records why for each.
+
+Two guards in `tests/contracts/test_capability_matrix.py` keep the register honest: the read guard
+sweeps every file under `packages/` and `apps/` and fails on a `.capabilities(` call outside
+`packages/contracts/capability_matrix.py`, `packages/contracts/adapter_conformance_kit.py` and
+`apps/cli/commands/worker.py`, so a consumer cannot bypass the register by reading an adapter
+directly; the consumer guard fails any `require_or_degrade(` call whose first argument is not a
+string literal naming a registered key, so an unregistered or dynamically built key cannot reach
+the lookup silently.
+
+A later round has the run's report and `remedy run show` print the evidence
+`capability_degradation_entries` produces under the name `CAPABILITY_DEGRADATIONS_FIELD`
+(`"capability_degradations"`) (DECISION F157 D3 (3)).
+
+`remedy worker show` is the register's first consumer: its text answer prints a `Degradations:`
+line directly after `Capabilities:`, reading `none` when every decision for that adapter is
+native, or else every non-native decision joined by `, `, each `<feature_key> as <strategy>` when
+degraded or `<feature_key> unavailable` when unavailable; a worker with no adapter carries neither
+line. Its JSON answer carries `capability_matrix`, the list of the register's decisions in
+register order, or `null` without an adapter.
+
+`packages/orchestration/capability_routes.py` is the second consumer, and the first routed one. It
+holds three routes — `stream_capture_route`, `reviewer_schema_route` and `parked_resume_route` —
+each calling `require_or_degrade` with its register key as a string literal on the role's installed
+adapter and model; a stream is the one registered feature a run opts into, decided only when the
+run requested stream evidence, while every claude-cli build is asked about resuming whether or not
+it offers a parked session to resume (DECISION F157 D6 (1) and (3)). `routed_claude_cli_build` is
+`create_role_provider`'s one call for a claude-cli build's whole set of decisions: it reads the
+resume route for every role, the reviewer-schema route for the reviewer, and the stream route when
+the run requested one, and it records every decision it read in a single line, but only when at
+least one of them is not native — an all-native build writes nothing. The recorded line carries
+`role`, `provider`, `model` and `decisions`, written beside the run as `capability_decisions.jsonl`
+in the evidence directory `create_role_provider` receives; a failover link built mid-run writes its
+own line, so the evidence follows the pair. `ClaudeCliProvider` reads `routed_reviewer_schema` and
+`routed_parked_resume` on every call that needs them, with the operator switch
+`REMEDY_REVIEWER_FREETEXT` that `structured_outputs.py` owns still kept in force beside the route.
+`read_capability_degradations(evidence_dir)` reads the evidence file back into the run's
+degradations, `capability_degradation_entries` over every decision across every line. A run's
+degradations name what its provider pair runs in its fallback whenever that feature is used: for
+`parked_session_resume`, that the provider resumes no session, so every call of that provider sends
+its full context (DECISION F157 D6 (2)).
+
+`packages/orchestration/capability_evidence.py` reads a run's or a job task's degradations back
+across every directory a build may have written to (DECISION F157 D5 (2)); what it reads back
+names what the provider pair runs in its fallback whenever that feature is used, and for
+`parked_session_resume` that the provider resumes no session, so every call of that provider sends
+its full context (DECISION F157 D6 (2)). `remedy run show`'s JSON answer always carries the list
+under `capability_degradations`, and its text prints a `Degradations:` line, worded through
+`format_capability_degradations`, only when that list is not empty. The job report prints the same
+wording under a task whose own evidence names a degradation, right after that task's steering
+lines, and prints nothing for a task or a job with none.

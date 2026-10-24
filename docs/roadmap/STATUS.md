@@ -327,7 +327,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane, continued)
 
-- [ ] F157 — Capability matrix & honest degradation
+- [x] F157 — Capability matrix & honest degradation (T001–T003 complete; accepted 2026-10-24 · live review PASS — ACCEPTED · Evidence job f157r10e1001 · package remedy-review-20261024-070450-READY_FOR_REVIEW.zip · SHA-256 9486e587f096ea0811f1d4b65439c0b4ee1bbc648e623f4a037dd73adff72403 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD ce081c649130009560b1cfc9c3ccd26b16641cfb)
 - [ ] F152 — Worker config isolation
 - [ ] F162 — Sandbox profiles per adapter
 - [ ] F153 — Codex CLI adapter

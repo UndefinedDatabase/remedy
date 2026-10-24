@@ -99,6 +99,7 @@ packages.common.public_text_redaction
 packages.common.secure_fs
 packages.common.strict_json
 packages.contracts.adapter_contract
+packages.contracts.capability_matrix
 packages.core.models
 packages.memory.context_summary
 packages.memory.local_gateway
@@ -134,6 +135,8 @@ packages.orchestration.burn_detector
 packages.orchestration.call_identity
 packages.orchestration.call_tokens
 packages.orchestration.capability_bench
+packages.orchestration.capability_evidence
+packages.orchestration.capability_routes
 packages.orchestration.change_provenance_gate
 packages.orchestration.change_set
 packages.orchestration.chat_answer
@@ -250,6 +253,7 @@ packages.orchestration.job_certificate_verify
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
 packages.orchestration.job_report
+packages.orchestration.job_report_task_lines
 packages.orchestration.job_retry
 packages.orchestration.job_input_definition
 packages.orchestration.job_insight
