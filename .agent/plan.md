@@ -6,14 +6,13 @@ that discharged it, in the slice order of DECISION F314 D1; carry the rest by na
 findings paydown at the closure.
 
 ## Current Step
-Round 7, the closure's integration-gate round: book round 6's verdict and register R-1449; repair
-R-1449; the checklist's consolidation pass; the closure's self-use item run to its approval gate;
-the feature's one full suite and its cost.
+Round 8, the closure's evidence round: book round 7's verdict, resolve R-1449, register R-1450;
+save the evidence script; the staging reclaim, the evidence job and the review package.
 
 ## Next Steps
-1. The evidence bundle and the review package.
-2. The closing round: the Built State, the ledger rotation, the next findings paydown registered
-   with the carried findings, the STATUS line, the README and the pull request.
+1. The closing round: the Built State, the ledger rotation, the next findings paydown registered
+   with the carried findings, SU-080's consumed_by, the STATUS line, the README and the pull
+   request, left unmerged.
 
 ## Risks
-- Carried at the closure: R-1246, R-1281, R-1351, R-1353, R-1426, R-1428 and R-1448.
+- Carried at the closure: R-1246, R-1281, R-1351, R-1353, R-1426, R-1428, R-1448 and R-1450.
