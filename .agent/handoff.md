@@ -1,219 +1,170 @@
-# Handoff — F157 round 11 (the closing round: book round 10, accept F157, open the pull request)
+# Handoff — F152 round 1 (claim F152, book F157 R11, re-head the ledger, the findings pass)
 
 ## Session
 
-SESSION 3 of feature F157 · round 11 · rounds so far 11. This closing round carried every gate and
-commit of its block using only the verified prep bundle, and context stayed comfortably within
-budget throughout. The session ends here because F157 is closed and the next feature starts in a
-fresh session.
+SESSION 1 of feature F152 · round 1 · rounds so far 1. This round carried every commit and gate of
+its block using only the verified prep bundle for C1 and the worker's own code reading for C2; one
+deviation, read-only and non-blocking, is recorded below.
 
-Fortschritt: 100 % (F157 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung.
+Fortschritt: ~10 % (findings pass landed · T001 to T003 open) — Schätzung.
 
 ## Range
 
-Review of `e10ad0dc7`..`d76967845` (C1 and C2; C3 — the three files below plus this handoff — is
-the commit that carries this file, per the handback template's self-reference exception).
+Review of `ef2b85f83`..`498bd4286` (C1 and C2; C3 — this file alone — is the commit that carries
+it, per the handback template's self-reference exception).
 
 ## Commits
 
-### 2485351cb F157 R11 C1: book round 10, the Built State, save the round 11 block and the PR body
+### 473445be8 F152 R1 C1: claim F152, book F157 R11, re-head the ledger, DECISION F152 D1
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f157-r11.md` | +140/-0 | NEW FILE — this round's block, the authored-text proof |
-| `.agent/authored/f157-r11-pr_body.md` | +77/-0 | NEW FILE — the pull request's body, the authored-text proof |
-| `.agent/live_review.md` | +2/-0 | books round 10's PASS verdict (Gate: F157 R10) |
-| `docs/roadmap/features/T8_F157.md` | +51/-0 | the feature file's Built State |
-| `.agent/plan.md` | +4/-7 | rewritten: Current Step → round 11's closing sequence, Next Steps → the next session's merge and Rule A5 |
+| `.agent/authored/f152-r1.md` | +136/-0 | NEW FILE — this round's block, the authored-text proof |
+| `.agent/context.md` | +10/-10 | rewritten: branch/scope/assumptions re-headed to F152 |
+| `.agent/decisions.md` | +10/-0 | DECISION F152 D1 appended |
+| `.agent/live_review.md` | +17/-14 | re-headed to F152; F157 R11's PASS verdict booked at the end |
+| `.agent/plan.md` | +20/-10 | rewritten: Goal/Current Step/Next Steps to F152 round 1 |
+| `docs/roadmap/STATUS.md` | +1/-1 | F152's line `[ ]` becomes `[~]` |
 
-### d76967845 F157 R11 C2: rotate the finding ledger into its archive
+### 498bd4286 F152 R1 C2: the findings pass, every place a worker's environment and configuration reach a run
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +0/-38 | rotated out: resolved records and old gate entries moved to the archive |
-| `.agent/live_review_archive.md` | +38/-0 | rotated in: the same 38 records, now archived |
+| `.agent/f152_inventory.md` | +359/-0 | NEW FILE — the read-only findings pass, reviewed before T001 |
 
-### (this commit) F157 R11 C3: accept F157 in STATUS with its README sync and the self-use queue
+### (this commit) F152 R1 C3: handback
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | F157's `[~]` line becomes `[x]`, accepted with its evidence job and package |
-| `README.md` | +8/-2 | `163 of 316`, Tier 8 row `3 \| 13`, Tier 8 list gains F157's entry after F315's |
-| `scripts/self_use_queue.json` | +1/-1 | SU-081's `consumed_by` becomes `F157` |
-| `.agent/handoff.md` | rewritten | this file — carried in the same commit as C3's three files, per the handback template's self-reference exception (R-0149): a handoff cannot table the commit that writes it |
+| `.agent/handoff.md` | rewritten | this file — carried alone, per the handback template's self-reference exception (R-0149) |
 
 ## External actions
 
 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` (precondition check,
-before any write) → `[]`. No push and no pull-request action yet this round: `git push origin
-feature/f157-capability-matrix` runs once, immediately after this commit, per the block's THEN
-step; `gh pr create` follows it, and names no pull request number here because none exists yet.
-`gh pr list` runs once more after that, expected to hold exactly the one new pull request. No
-worktree created or removed; no stash entry touched; no provider call.
+before any write) → `[]`. `git checkout -b feature/f152-worker-config-isolation` from a clean
+`main` at `ef2b85f83`, confirmed by `git rev-parse HEAD` before any write. No push and no
+pull-request action yet this round: `git push -u origin feature/f152-worker-config-isolation` runs
+once, immediately after this commit, per the block's push-after-C3 rule; the block orders no PR.
+No worktree created or removed; no stash entry touched; no provider call; the real `claude` binary
+was never invoked with a prompt or model argument — only `--version`/`--help` were in scope for C2,
+and this session's own sandbox refused even those (see Deviations).
 
 ## Verification
 
-**Gate 1.** `git status --porcelain` (after placing C3's three files, before staging) → only the
-three C3 files modified, exit 0. Then `python3 .remedy-wt/f157-r11/prep/verify.py .` → every check
-line `True` except `absent	C3 committed` (expected — C3 had not been committed yet when the gate
-ran), last line `ALL True`. Full output:
+**Gate 1.** `git status --porcelain` → empty. Then `python3 .remedy-wt/f152-r1/prep/verify.py .` →
+every line `True` except `absent	C3` (expected — C3 had not been committed yet when the gate ran),
+last line `ALL True`. Full output:
 
 ```
-True	2485351cb single parent equal to the commit before it
-True	d76967845 single parent equal to the commit before it
-True	every commit carries a F157 R11 Cn subject: 2 of 2
-True	on feature/f157-capability-matrix
-True	C1 paths exactly the manifest's: ['.agent/authored/f157-r11-pr_body.md', '.agent/authored/f157-r11.md', '.agent/live_review.md', '.agent/plan.md', 'docs/roadmap/features/T8_F157.md']
-True	C1 .agent/authored/f157-r11-pr_body.md numstat 77 0 equals 77 0
-True	C1 .agent/authored/f157-r11-pr_body.md equals c1-.agent__authored__f157-r11-pr_body.md
-True	C1 .agent/authored/f157-r11.md numstat 140 0 equals 140 0
-True	C1 .agent/authored/f157-r11.md equals c1-.agent__authored__f157-r11.md
-True	C1 .agent/live_review.md numstat 2 0 equals 2 0
+True	473445be8 single parent equal to the commit before it
+True	473445be8 insertions 194 under 500
+True	498bd4286 single parent equal to the commit before it
+True	498bd4286 insertions 359 under 500
+True	every commit carries a F152 R1 Cn subject: 2 of 2
+True	on feature/f152-worker-config-isolation
+True	C1 paths exactly ['.agent/authored/f152-r1.md', '.agent/context.md', '.agent/decisions.md', '.agent/live_review.md', '.agent/plan.md', 'docs/roadmap/STATUS.md']: [same six, same order]
+True	C1 .agent/authored/f152-r1.md equals c1-.agent__authored__f152-r1.md
+True	C1 .agent/context.md equals c1-.agent__context.md
+True	C1 .agent/decisions.md equals c1-.agent__decisions.md
 True	C1 .agent/live_review.md equals c1-.agent__live_review.md
-True	C1 .agent/plan.md numstat 4 7 equals 4 7
 True	C1 .agent/plan.md equals c1-.agent__plan.md
-True	C1 docs/roadmap/features/T8_F157.md numstat 51 0 equals 51 0
-True	C1 docs/roadmap/features/T8_F157.md equals c1-docs__roadmap__features__T8_F157.md
-True	C2 paths exactly the manifest's: ['.agent/live_review.md', '.agent/live_review_archive.md']
-True	C2 .agent/live_review.md numstat 0 38 equals 0 38
-True	C2 .agent/live_review.md equals c2-.agent__live_review.md
-True	C2 .agent/live_review_archive.md numstat 38 0 equals 38 0
-True	C2 .agent/live_review_archive.md equals c2-.agent__live_review_archive.md
-absent	C3 committed
-True	C3 working tree README.md equals c3-README.md
-True	C3 working tree docs/roadmap/STATUS.md equals c3-docs__roadmap__STATUS.md
-True	C3 working tree scripts/self_use_queue.json equals c3-scripts__self_use_queue.json
+True	C1 docs/roadmap/STATUS.md equals c1-docs__roadmap__STATUS.md
+True	C2 paths exactly ['.agent/f152_inventory.md']: ['.agent/f152_inventory.md']
+True	C2 .agent/f152_inventory.md holds no machine path
+True	C2 .agent/f152_inventory.md has 359 lines, under 400
+absent	C3
+True	the saved block equals block.md
 ALL True
 ```
 
-**Gate 2.** A script read the prep folder's `status_line.txt`, stripped its one trailing newline,
-and counted the result inside `docs/roadmap/STATUS.md`:
+**Gate 2.** `python3 .remedy-wt/f152-r1/prep/run_selection.py . .remedy-wt/f152-r1-worker/selection-output.txt`,
+run once:
 
 ```
-content repr (first 120 chars): '- [x] F157 — Capability matrix & honest degradation (T001–T003 complete; accepted 2026-10-24 · live review PASS — ACCEPT'
-content length: 400
-occurrences of content in STATUS.md: 1
-number of lines in content: 1
-lines beginning with '- [~]': []
-GATE2_OK
-```
-
-Exit 0; the line occurs exactly once, and no line of it begins `- [~]`.
-
-**Gate 3.** `python3 .remedy-wt/f157-r11/prep/gate3.py .`, run once:
-
-```
+paths 82
 exit 0
-859 passed in 85.28s (0:01:25)
-NOTICE ...................................................................      [100%]R-1411: 3 entries of the configured data root ~/Repos/remedy/.data changed in the folders a supervisor this run did not start and its clients write; not counted: ['api/calls.jsonl', 'projects/901d6b75-c848-48
-integrity exit 0 6 pass; ['{"check_count": 6, "checks": [{"message": "handlers=201", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}']
+3765 passed, 2 skipped in 28.77s
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
+SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
 ```
 
-Exit 0, `859 passed` — the same passed count as `sim-gate3.txt`'s second line (seconds differ, as
-the block allows); no `FAILED`, `ERROR` or `SKIPPED` line. The `NOTICE` line (truncated at 300
-characters by `gate3.py`'s own print statement, and with this machine's home folder written as `~`
-here) names a foreign process that wrote into the shared data root during the run, in the
-conftest's own words (F151 D6). Gate 3 exited 0, not 1, so the one documented re-run exception for
-a red gate 3 does not apply.
+Exit 0; no `FAILED`, no `ERROR`, no "process(es) behind" line; both `SKIPPED` lines are
+pre-existing, documented skips unrelated to this round.
 
-**Gate 4.** Bundled in gate 3's own output above: `integrity exit 0` and `"fail_count": 0`,
-matching `sim-gate3.txt` exactly.
-
-**Gate 5.**
-`python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
-→ `['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448', 'R-1450']`, exit 0 —
-exactly the eight ids the block names.
-
-## Rotation
-
-`python3 scripts/rotate_live_review.py`, run once from the primary checkout, exit 0:
+**Gate 3.** `python3 -m apps.cli.main integrity check --json`, run once:
 
 ```
-gate records moved: 9
-finding pairs moved: 4 (8 records)
-resolved-text records moved: 0
-old ledger size: 168403 bytes
-new ledger size: 143283 bytes
-old archive size: 7320328 bytes
-new archive size: 7345448 bytes
-open findings before: 8
-open findings after: 8
-gate headers matching neither known form (left in place): 1
-written: ~/Repos/remedy/.agent/live_review.md and ~/Repos/remedy/.agent/live_review_archive.md
+{"check_count": 6, "checks": [{"message": "handlers=201", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
 
-Matches `sim-rotation.txt`'s lines 1–10 exactly (its own `written:` line differs only in the
-sim worktree's path, as expected). Ledger size before: 168403 bytes; after: 143283 bytes. Archive
-size before: 7320328 bytes; after: 7345448 bytes. Both resulting files were then proved byte-equal
-to the prepared `c2-.agent__live_review.md` and `c2-.agent__live_review_archive.md`.
+`fail_count` 0, all six checks `pass`, `"ok": true`.
+
+**Gate 4.** `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"` →
+`8`, exit 0 — exactly the count the block names.
 
 ## Authored-text proofs
 
-C1's byte copy (`.remedy-wt/f157-r11-worker/copy_c1.py`, proved by `prove_c1.py`) read
-`bytes_equal` for all five targets immediately after copying: `.agent/authored/f157-r11.md`,
-`.agent/authored/f157-r11-pr_body.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`docs/roadmap/features/T8_F157.md`. Gate 1's `verify.py` run independently re-confirmed every
-`C1 ... equals c1-...` line `True`.
+C1's byte copy (`.remedy-wt/f152-r1-worker/copy_c1.py`) read `bytes_equal` for all six targets
+immediately after copying: `.agent/authored/f152-r1.md`, `docs/roadmap/STATUS.md`,
+`.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`, `.agent/context.md`.
+`.agent/authored/f152-r1.md`'s own `wc -l`/`sha256sum` — `136` lines,
+`6cfbcd2714c3ee4371c6d4e349acfb6022fcf23ec8ad3f97ff7a5168771f3d16` — was independently confirmed
+equal to `block.md`'s own count and digest. Gate 1's `verify.py` run independently re-confirmed
+every `C1 ... equals c1-...` line `True` and the saved block equals `block.md`.
 
-C2's rotation output and both resulting ledger files were proved byte-equal to the prepared
-`c2-.agent__live_review.md` and `c2-.agent__live_review_archive.md` disk-to-disk
-(`.remedy-wt/f157-r11-worker/prove_c2.py`), independently re-confirmed by gate 1's `verify.py`.
-
-C3's byte copy (`.remedy-wt/f157-r11-worker/copy_c3.py`, proved by `prove_c3.py`) read
-`bytes_equal` for all three targets: `docs/roadmap/STATUS.md`, `README.md`,
-`scripts/self_use_queue.json`, independently re-confirmed by gate 1's `verify.py` (the `C3 working
-tree ... equals c3-...` lines).
-
-The STATUS line: `docs/roadmap/STATUS.md` now reads, byte-identical to the prep folder's
-`status_line.txt` without its trailing newline —
-`- [x] F157 — Capability matrix & honest degradation (T001–T003 complete; accepted 2026-10-24 ·
-live review PASS — ACCEPTED · Evidence job f157r10e1001 · package
-remedy-review-20261024-070450-READY_FOR_REVIEW.zip · SHA-256
-9486e587f096ea0811f1d4b65439c0b4ee1bbc648e623f4a037dd73adff72403 · package path
-~/Repos/remedy-history/zips · accepted HEAD ce081c649130009560b1cfc9c3ccd26b16641cfb)` —
-occurring exactly once in the file, confirmed by gate 2.
+C2 is the worker's own authored text (the findings pass itself), not a reviewer-prepared snapshot,
+so there is no `c2-...` file to compare it against. `verify.py`'s C2 checks instead confirmed the
+committed text holds no machine path and stays under the 400-line cap (359 lines) — both read
+`True` at gate 1.
 
 ## Deviations & assumptions
 
-None. C1, C2 and C3 ran exactly as the block orders, in the order it gives; all five gates read
-green on the first and only run of each; gate 3's `NOTICE` line is informational under DECISION
-F151 D6 and did not trigger its re-run exception because gate 3 exited 0, not 1.
+One deviation, declared in C2's own text as well as here: this session's sandbox refused every
+attempt to run the `claude` binary locally, including `claude --version`, `claude --help`, and
+even non-invoking probes (`command -v claude`, listing its config directory by name) — each
+answered "requires approval" or "blocked" with no channel this worker could use to grant it.
+§4 of the findings pass is therefore built entirely from the previously captured
+`.agent/f302_claude_help.txt` (itself real captured output from an earlier session, not invented)
+plus the installed code's own text, and from filesystem-existence checks only (`os.path.exists`/
+`os.listdir`, never opening or printing a file's content) — never a fresh `claude --version`/
+`claude --help` run this round, which the block asked for literally. This is read-only and
+reviewed before any T001 code, so nothing on disk depends on it being wrong; T002's own
+per-adapter research round, not this one, is where the real binary must be probed again, with
+whatever channel that session has. No other departure from the block's ordered C0–C3 sequence:
+C0, C1 and C2 ran exactly as ordered, both gates groups ran once each, no commit was reordered,
+added or dropped relative to the block.
 
 ## For the operator, in plain sentences
 
-Remedy now keeps one list of what each feature needs a model to be able to do, and what it does
-instead when the model cannot do it. Every such choice goes through that one place, and a test
-fails if any other code asks a model about its abilities anywhere else. A run now writes down
-every fallback it used, and the run's report, the job's report and the worker description each
-show a line naming it. Earlier, the paid run on this project itself wrote the first tests for the
-part of Remedy that hides secrets in public text; its reviewer passed that work, but it is kept
-unapplied, and the fake test secrets inside the copy kept in the records are blanked out. The
-whole test collection passed on the code that ships, and it used a little more computer time than
-the last time it was measured. The review package is named
-`remedy-review-20261024-070450-READY_FOR_REVIEW.zip` and lives in the zips folder under this
-machine's home directory. A pull request is now open for this work and will be merged at the start
-of the next session unless the operator merges it earlier.
+This round only read code and wrote records; nothing that runs a worker changed. It claimed the
+next piece of work, which is about making sure a coding tool's own personal settings on this
+machine never leak into a run Remedy starts with it — right now every environment variable in the
+operator's own shell reaches that tool unchanged, and nothing strips or replaces its home
+directory, which this round traced precisely and wrote down with exact file and line references
+for the next session to build against. One thing could not be checked fresh this time: asking the
+installed coding tool for its own version and help text was refused by this session's permission
+settings, so that part of the writeup relies on a copy of that text saved earlier instead of a new
+run — a minor gap, not a wrong result, and the next research round should retry it. Every existing
+test still passes, and the one check this project runs on its own health and findings stayed
+green. Nothing is pushed yet; that happens right after this note is saved.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | block, PR body, Built State, round-10 booking, plan rewrite |
-| C2 | done | rotation exit 0, both ledgers byte-equal to the prepared files |
-| C3 | done | STATUS, README, self-use queue all byte-equal to the prepared files |
+| C0 | done | branch created at `ef2b85f83`, confirmed by `git rev-parse HEAD` before any write |
+| C1 | done | six files byte-equal to the prepared snapshots |
+| C2 | done | the findings pass, 359 lines, no machine path, reviewed before T001 |
 | Gate 1 | done | `verify.py` `ALL True` (C3 `absent` at gate time, expected) |
-| Gate 2 | done | STATUS line occurs exactly once, no `- [~]` line |
-| Gate 3 | done | exit 0, 859 passed, no FAILED/ERROR/SKIPPED |
-| Gate 4 | done | integrity exit 0, `fail_count` 0 |
-| Gate 5 | done | the eight open ids match exactly |
+| Gate 2 | done | exit 0, 3765 passed, 2 pre-existing skips, no FAILED/ERROR/leftover process |
+| Gate 3 | done | `fail_count` 0, all six checks pass |
+| Gate 4 | done | open-id count 8, matches the block exactly |
+| C3 | done | this handback |
 | Push | pending | runs once immediately after this commit |
-| Pull request | pending | created immediately after the push; no number exists yet |
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` before any new work.
-2. The Open PR Gate, which merges F157's pull request in the NEXT session — never in this one.
-3. The booking of round 11's verdict in the next feature's first commit.
-4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`, currently F152 — Worker config
-   isolation.
+2. Phase 1 rule 2: the Open PR Gate, before any new branch.
+3. Book round 1's verdict in the next round's first commit.
+4. T001: the isolation declaration, the evidence field and the throwaway home, DECISION F152 D2.
 
 Operator questions open: 2.
-Open findings: 8 (R-1246, R-1281, R-1351, R-1353, R-1426, R-1428, R-1448 and R-1450, owned by
-F316).
+Open findings: 8 (owned by F316).
