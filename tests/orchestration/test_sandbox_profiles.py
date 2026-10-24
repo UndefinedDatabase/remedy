@@ -10,11 +10,16 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
+import signal
 
 import pytest
 
+import packages.orchestration.sandbox_profiles as SP
+from packages.orchestration.exec_guard import ExecGuardPolicy, ExecGuardResult
 from packages.orchestration.sandbox_profiles import (
     BUILTIN_SANDBOX_PROFILE_NAMES,
+    SANDBOX_ENFORCEMENT_KEYS,
+    SandboxDimensionEnforcement,
     SandboxLoosening,
     SandboxNet,
     SandboxProfile,
@@ -26,8 +31,13 @@ from packages.orchestration.sandbox_profiles import (
     parse_sandbox_profile,
     profile_loosenings,
     profile_within,
+    run_guarded_with_sandbox_profile,
+    sandbox_profile_enforcement,
+    sandbox_profile_guard_policy,
+    sandbox_runner_available,
     tighten_sandbox_profile,
 )
+from packages.orchestration.tool_sandbox import SandboxSpec, SandboxUnavailable
 
 #: A profile that satisfies every rule of DECISION F162 D2 (3); every refusal case below is one
 #: line of this text dropped, replaced or added.
@@ -333,3 +343,216 @@ def test_tighten_sandbox_profile_refuses_a_loosening_naming_the_minimum_and_ever
         SandboxLoosening("allowed_binaries", '["git", "python3", "sh"]', "any"),
         SandboxLoosening("tmp_quota_mb", "64", "512"),
     )
+
+
+# ---------------------------------------------------------------------------
+# F162 round 3 C3: the compiler, the runner, the per-platform enforcement record.
+# ---------------------------------------------------------------------------
+
+def test_compiler_strict_on_a_default_base_gives_the_tight_limits_and_no_shared_network(tmp_path):
+    policy = sandbox_profile_guard_policy(get_sandbox_profile("strict"), workspace=str(tmp_path))
+    assert policy.cpu_seconds == 600
+    assert policy.address_space_bytes == 2048 * 1048576
+    assert policy.open_files == 256
+    assert policy.deny_network is True
+    assert policy.sandbox.workspace == str(tmp_path)
+    assert policy.sandbox.share_network is False
+
+
+def test_compiler_net_local_shares_the_network_and_does_not_deny_it(tmp_path):
+    policy = sandbox_profile_guard_policy(get_sandbox_profile("net-local"), workspace=str(tmp_path))
+    assert policy.sandbox.share_network is True
+    assert policy.deny_network is False
+
+
+def test_compiler_never_loosens_a_base_cpu_seconds_tighter_than_the_profile(tmp_path):
+    base = ExecGuardPolicy(cpu_seconds=5)
+    policy = sandbox_profile_guard_policy(get_sandbox_profile("strict"), workspace=str(tmp_path),
+                                           base=base)
+    assert policy.cpu_seconds == 5
+
+
+def test_compiler_never_loosens_a_base_that_already_denies_the_network(tmp_path):
+    base = ExecGuardPolicy(deny_network=True)
+    policy = sandbox_profile_guard_policy(get_sandbox_profile("net-local"), workspace=str(tmp_path),
+                                           base=base)
+    assert policy.deny_network is True
+
+
+def test_compiler_keeps_a_bases_mount_and_leaves_share_network_false_under_net_local(tmp_path):
+    mount = (str(tmp_path / "extra"), "/run/remedy/extra", False)
+    base = ExecGuardPolicy(sandbox=SandboxSpec(workspace=str(tmp_path), mounts=(mount,)))
+    policy = sandbox_profile_guard_policy(get_sandbox_profile("net-local"), workspace=str(tmp_path),
+                                           base=base)
+    assert policy.sandbox.mounts == (mount,)
+    assert policy.sandbox.share_network is False
+
+
+def test_compiler_standard_leaves_address_space_bytes_none(tmp_path):
+    policy = sandbox_profile_guard_policy(get_sandbox_profile("standard"), workspace=str(tmp_path))
+    assert policy.address_space_bytes is None
+
+
+def _stub_exec_guard_result(returncode: int, tripped_limit: str | None = None,
+                             classification: str = "failed") -> ExecGuardResult:
+    return ExecGuardResult(
+        returncode=returncode, term_signal=None, stdout=b"", stderr=b"", stdout_truncated=False,
+        stderr_truncated=False, stdout_bytes_seen=0, stderr_bytes_seen=0, streams_complete=True,
+        wall_seconds=0.0, cpu_seconds_used=0.0, classification=classification,
+        tripped_limit=tripped_limit, limits_enforced=(), limits_unsupported=())
+
+
+def test_the_runner_attributes_a_sandboxed_cpu_trip_with_no_tripped_limit_and_152(tmp_path, monkeypatch):
+    profile = get_sandbox_profile("strict")
+    cpu_result = _stub_exec_guard_result(128 + signal.SIGXCPU)
+    monkeypatch.setattr(SP, "run_guarded", lambda argv, policy: cpu_result)
+    attributed = run_guarded_with_sandbox_profile(["x"], profile, workspace=str(tmp_path))
+    assert attributed is not cpu_result
+    assert attributed.classification == "resource_limit"
+    assert attributed.tripped_limit == "cpu_seconds"
+
+
+def test_the_runner_leaves_a_result_unchanged_without_a_cpu_limit(tmp_path, monkeypatch):
+    no_cpu_profile = dataclasses.replace(
+        get_sandbox_profile("strict"), ulimits=dataclasses.replace(
+            get_sandbox_profile("strict").ulimits, cpu_s=None))
+    cpu_result = _stub_exec_guard_result(128 + signal.SIGXCPU)
+    monkeypatch.setattr(SP, "run_guarded", lambda argv, policy: cpu_result)
+    unchanged = run_guarded_with_sandbox_profile(["x"], no_cpu_profile, workspace=str(tmp_path))
+    assert unchanged is cpu_result
+
+
+def test_the_runner_leaves_a_result_unchanged_with_a_plain_returncode_1(tmp_path, monkeypatch):
+    profile = get_sandbox_profile("strict")
+    failed_result = _stub_exec_guard_result(1)
+    monkeypatch.setattr(SP, "run_guarded", lambda argv, policy: failed_result)
+    unchanged = run_guarded_with_sandbox_profile(["x"], profile, workspace=str(tmp_path))
+    assert unchanged is failed_result
+
+
+def test_the_runner_leaves_a_result_unchanged_when_a_tripped_limit_is_already_set(tmp_path, monkeypatch):
+    profile = get_sandbox_profile("strict")
+    already_tripped = _stub_exec_guard_result(128 + signal.SIGXCPU, tripped_limit="wall_timeout")
+    monkeypatch.setattr(SP, "run_guarded", lambda argv, policy: already_tripped)
+    unchanged = run_guarded_with_sandbox_profile(["x"], profile, workspace=str(tmp_path))
+    assert unchanged is already_tripped
+
+
+def test_sandbox_runner_available_answers_false_on_unavailable_and_true_on_a_path(monkeypatch):
+    def _raise() -> str:
+        raise SandboxUnavailable("missing_prerequisite", "no bwrap", "install it")
+
+    monkeypatch.setattr(SP, "require_sandbox", _raise)
+    assert sandbox_runner_available() is False
+    monkeypatch.setattr(SP, "require_sandbox", lambda: "/usr/bin/bwrap")
+    assert sandbox_runner_available() is True
+
+
+#: One (key, state) row per built-in and platform combination of DECISION F162 D3 (4).
+_ENFORCEMENT_TABLE_CASES = (
+    ("strict", "linux", True, (
+        ("fs_scope", "enforced"), ("net", "enforced"), ("ulimits.cpu_s", "enforced"),
+        ("ulimits.mem_mb", "enforced"), ("ulimits.nofile", "enforced"),
+        ("allowed_binaries", "unenforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+    ("strict", "linux", False, (
+        ("fs_scope", "unenforced"), ("net", "unenforced"), ("ulimits.cpu_s", "enforced"),
+        ("ulimits.mem_mb", "enforced"), ("ulimits.nofile", "enforced"),
+        ("allowed_binaries", "unenforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+    ("strict", "darwin", False, (
+        ("fs_scope", "unenforced"), ("net", "unenforced"), ("ulimits.cpu_s", "unenforced"),
+        ("ulimits.mem_mb", "unenforced"), ("ulimits.nofile", "unenforced"),
+        ("allowed_binaries", "unenforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+    ("strict", "win32", False, (
+        ("fs_scope", "unenforced"), ("net", "unenforced"), ("ulimits.cpu_s", "unenforced"),
+        ("ulimits.mem_mb", "unenforced"), ("ulimits.nofile", "unenforced"),
+        ("allowed_binaries", "unenforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+    ("standard", "linux", True, (
+        ("fs_scope", "enforced"), ("net", "enforced"), ("ulimits.cpu_s", "enforced"),
+        ("ulimits.mem_mb", "enforced"), ("ulimits.nofile", "enforced"),
+        ("allowed_binaries", "enforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+    ("standard", "linux", False, (
+        ("fs_scope", "unenforced"), ("net", "unenforced"), ("ulimits.cpu_s", "enforced"),
+        ("ulimits.mem_mb", "enforced"), ("ulimits.nofile", "enforced"),
+        ("allowed_binaries", "enforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+    ("standard", "darwin", False, (
+        ("fs_scope", "unenforced"), ("net", "unenforced"), ("ulimits.cpu_s", "unenforced"),
+        ("ulimits.mem_mb", "enforced"), ("ulimits.nofile", "unenforced"),
+        ("allowed_binaries", "enforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+    ("net-local", "linux", True, (
+        ("fs_scope", "enforced"), ("net", "unenforced"), ("ulimits.cpu_s", "enforced"),
+        ("ulimits.mem_mb", "enforced"), ("ulimits.nofile", "enforced"),
+        ("allowed_binaries", "enforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+    ("net-local", "linux", False, (
+        ("fs_scope", "unenforced"), ("net", "unenforced"), ("ulimits.cpu_s", "enforced"),
+        ("ulimits.mem_mb", "enforced"), ("ulimits.nofile", "enforced"),
+        ("allowed_binaries", "enforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+    ("net-local", "darwin", False, (
+        ("fs_scope", "unenforced"), ("net", "unenforced"), ("ulimits.cpu_s", "unenforced"),
+        ("ulimits.mem_mb", "enforced"), ("ulimits.nofile", "unenforced"),
+        ("allowed_binaries", "enforced"), ("tmp_quota_mb", "unenforced"),
+    )),
+)
+
+
+@pytest.mark.parametrize(
+    "profile_name,platform,sandbox_available,expected", _ENFORCEMENT_TABLE_CASES,
+    ids=[f"{c[0]}-{c[1]}-{c[2]}" for c in _ENFORCEMENT_TABLE_CASES])
+def test_sandbox_profile_enforcement_key_state_table(profile_name, platform, sandbox_available,
+                                                       expected):
+    profile = get_sandbox_profile(profile_name)
+    record = sandbox_profile_enforcement(profile, platform=platform,
+                                          sandbox_available=sandbox_available)
+    assert tuple(e.key for e in record) == SANDBOX_ENFORCEMENT_KEYS
+    assert tuple((e.key, e.state) for e in record) == expected
+
+
+def test_sandbox_profile_enforcement_full_tuple_for_strict_sandboxed_linux():
+    record = sandbox_profile_enforcement(get_sandbox_profile("strict"), platform="linux",
+                                          sandbox_available=True)
+    assert record == (
+        SandboxDimensionEnforcement(
+            "fs_scope", "enforced", "the tool sandbox makes the workspace the one writable tree"),
+        SandboxDimensionEnforcement(
+            "net", "enforced", "a private network namespace with its own loopback only"),
+        SandboxDimensionEnforcement("ulimits.cpu_s", "enforced", "RLIMIT_CPU on the process tree"),
+        SandboxDimensionEnforcement("ulimits.mem_mb", "enforced", "RLIMIT_AS on the process tree"),
+        SandboxDimensionEnforcement("ulimits.nofile", "enforced", "RLIMIT_NOFILE on the process tree"),
+        SandboxDimensionEnforcement(
+            "allowed_binaries", "unenforced", "binaries are not filtered by name"),
+        SandboxDimensionEnforcement(
+            "tmp_quota_mb", "unenforced", "the private /tmp has no size limit"),
+    )
+
+
+def test_sandbox_profile_enforcement_full_tuple_for_net_local_unsandboxed_linux():
+    record = sandbox_profile_enforcement(get_sandbox_profile("net-local"), platform="linux",
+                                          sandbox_available=False)
+    assert record == (
+        SandboxDimensionEnforcement(
+            "fs_scope", "unenforced", "no tool sandbox: only the working directory is pinned"),
+        SandboxDimensionEnforcement(
+            "net", "unenforced", "the host network is shared and hosts are not filtered"),
+        SandboxDimensionEnforcement("ulimits.cpu_s", "enforced", "RLIMIT_CPU on the process tree"),
+        SandboxDimensionEnforcement("ulimits.mem_mb", "enforced", "nothing to limit"),
+        SandboxDimensionEnforcement("ulimits.nofile", "enforced", "RLIMIT_NOFILE on the process tree"),
+        SandboxDimensionEnforcement("allowed_binaries", "enforced", "nothing to limit"),
+        SandboxDimensionEnforcement(
+            "tmp_quota_mb", "unenforced", "no tool sandbox: /tmp is the host's"),
+    )
+
+
+def test_sandbox_profile_enforcement_names_wider_than_declared_scope_for_a_sub_scope():
+    profile = dataclasses.replace(get_sandbox_profile("strict"), fs_scope=("{workspace}/sub",))
+    record = sandbox_profile_enforcement(profile, platform="linux", sandbox_available=True)
+    assert record[0] == SandboxDimensionEnforcement(
+        "fs_scope", "unenforced",
+        "the tool sandbox keeps the whole workspace writable, wider than the declared scope")

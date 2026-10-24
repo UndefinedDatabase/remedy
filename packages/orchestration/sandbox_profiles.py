@@ -5,10 +5,11 @@ touch, its network reach (deny or a host allowlist), its resource ulimits, which
 run, and its tmp quota. Three built-ins ship as TOML files beside this module (DECISION F162 D2).
 
 T001 is the policy math only: parsing, the built-ins, and the tighten-only comparator that refuses
-a looser profile and names the minimum it would loosen. Nothing in this module is read by a spawn
-path yet — no adapter, no config key, no exec guard call, no tool sandbox call. T002 wires it into
-those seams; until then `tests/test_no_orphan_modules.py` carries this module as deliberately
-unwired.
+a looser profile and names the minimum it would loosen. T002 compiles a profile onto the exec
+guard and the tool sandbox and records, per dimension and platform, whether each is enforced. No
+worker spawn path reads a profile yet — no adapter, no config key — so
+`tests/test_no_orphan_modules.py` still carries this module as deliberately unwired, its reason now
+naming T003.
 
 The comparator (`profile_within`, `profile_loosenings`) orders profiles with a PREORDER, not a
 total order: reflexive and transitive, but not antisymmetric — two differently named profiles
@@ -18,11 +19,17 @@ never above it.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
+import signal
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NoReturn
+
+from packages.orchestration.exec_guard import ExecGuardPolicy, ExecGuardResult, run_guarded
+from packages.orchestration.tool_sandbox import SandboxSpec, SandboxUnavailable, require_sandbox
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -328,3 +335,175 @@ def tighten_sandbox_profile(minimum: SandboxProfile, requested: SandboxProfile) 
     if loosenings:
         raise SandboxProfileLoosened(minimum.name, loosenings, requested.name)
     return requested
+
+
+# ---------------------------------------------------------------------------
+# T002: enforcement onto the exec guard and the tool sandbox (DECISION F162 D3)
+# ---------------------------------------------------------------------------
+
+
+def _tighter_optional_int(base_value: int | None, profile_value: int | None) -> int | None:
+    """The smaller of two optional limits; None is unlimited and always loses to a real int."""
+    if base_value is None:
+        return profile_value
+    if profile_value is None:
+        return base_value
+    return min(base_value, profile_value)
+
+
+# WHY: a profile never loosens what the base already set (D3 (2)) — every field below is the
+# TIGHTER of the base's own value and the profile's, never a plain override.
+def sandbox_profile_guard_policy(
+    profile: SandboxProfile, *, workspace: str, base: ExecGuardPolicy = ExecGuardPolicy(),
+) -> ExecGuardPolicy:
+    """Compile *profile* onto *base* for a run at *workspace*.
+
+    `fs_scope`, `allowed_binaries` and `tmp_quota_mb` compile to nothing beyond the sandbox
+    itself — exactly what `sandbox_profile_enforcement` reports for those three dimensions.
+    """
+    mem_bytes = None if profile.ulimits.mem_mb is None else profile.ulimits.mem_mb * 1048576
+    allowlist = profile.net.mode == "allowlist"
+    if base.sandbox is None:
+        sandbox = SandboxSpec(workspace=workspace, share_network=allowlist)
+    else:
+        sandbox = dataclasses.replace(
+            base.sandbox, share_network=base.sandbox.share_network and allowlist)
+    return dataclasses.replace(
+        base,
+        cpu_seconds=_tighter_optional_int(base.cpu_seconds, profile.ulimits.cpu_s),
+        address_space_bytes=_tighter_optional_int(base.address_space_bytes, mem_bytes),
+        open_files=_tighter_optional_int(base.open_files, profile.ulimits.nofile),
+        deny_network=base.deny_network or profile.net.mode == "deny",
+        sandbox=sandbox,
+    )
+
+
+# WHY: run_guarded can never classify a sandboxed CPU death as resource_limit/cpu_seconds, because
+# the sandbox's own init reaps the signal and exits a plain 128+SIGXCPU — this is the one caller
+# that both sandboxes a process and limits its CPU, so the attribution lives here (D3 (3)).
+def run_guarded_with_sandbox_profile(
+    argv: Sequence[str], profile: SandboxProfile, *, workspace: str,
+    base: ExecGuardPolicy = ExecGuardPolicy(),
+) -> ExecGuardResult:
+    """Run *argv* under *profile* compiled onto *base*, attributing a sandboxed CPU trip."""
+    policy = sandbox_profile_guard_policy(profile, workspace=workspace, base=base)
+    result = run_guarded(argv, policy)
+    if (policy.sandbox is not None and policy.cpu_seconds is not None
+            and result.tripped_limit is None and result.returncode == 128 + signal.SIGXCPU):
+        return dataclasses.replace(result, classification="resource_limit",
+                                    tripped_limit="cpu_seconds")
+    return result
+
+
+#: The enforcement record's keys, in report order — the per-dimension, per-platform honesty
+#: table DECISION F162 D3 (4) asks for, so a reader never has to infer the order.
+SANDBOX_ENFORCEMENT_KEYS = (
+    "fs_scope", "net", "ulimits.cpu_s", "ulimits.mem_mb", "ulimits.nofile",
+    "allowed_binaries", "tmp_quota_mb",
+)
+
+
+@dataclass(frozen=True)
+class SandboxDimensionEnforcement:
+    """One dimension's honesty record: never claim enforced where nothing here can check it."""
+
+    key: str
+    state: str
+    reason: str
+
+
+def _enforcement_for_fs_scope(profile: SandboxProfile, platform: str,
+                               sandbox_available: bool) -> SandboxDimensionEnforcement:
+    """fs_scope is enforced only by the sandbox pinning {workspace} as the one writable tree."""
+    if not platform.startswith("linux"):
+        return SandboxDimensionEnforcement("fs_scope", "unenforced", f"not verified on {platform}")
+    if not sandbox_available:
+        return SandboxDimensionEnforcement(
+            "fs_scope", "unenforced", "no tool sandbox: only the working directory is pinned")
+    if "{workspace}" in profile.fs_scope:
+        return SandboxDimensionEnforcement(
+            "fs_scope", "enforced", "the tool sandbox makes the workspace the one writable tree")
+    return SandboxDimensionEnforcement(
+        "fs_scope", "unenforced",
+        "the tool sandbox keeps the whole workspace writable, wider than the declared scope")
+
+
+def _enforcement_for_net(profile: SandboxProfile, platform: str,
+                          sandbox_available: bool) -> SandboxDimensionEnforcement:
+    """deny is enforced by the sandbox's private namespace; an allowlist never filters hosts."""
+    if not platform.startswith("linux"):
+        return SandboxDimensionEnforcement("net", "unenforced", f"not verified on {platform}")
+    if profile.net.mode == "allowlist":
+        return SandboxDimensionEnforcement(
+            "net", "unenforced", "the host network is shared and hosts are not filtered")
+    if sandbox_available:
+        return SandboxDimensionEnforcement(
+            "net", "enforced", "a private network namespace with its own loopback only")
+    return SandboxDimensionEnforcement(
+        "net", "unenforced", "no tool sandbox: only proxy variables point at a closed port")
+
+
+def _enforcement_for_ulimit(key: str, value: int | None, platform: str,
+                             reason: str) -> SandboxDimensionEnforcement:
+    """A ulimits key is enforced by the exec guard's own rlimit, independent of the sandbox."""
+    dimension = f"ulimits.{key}"
+    if value is None:
+        return SandboxDimensionEnforcement(dimension, "enforced", "nothing to limit")
+    if not platform.startswith("linux"):
+        return SandboxDimensionEnforcement(dimension, "unenforced", f"not verified on {platform}")
+    return SandboxDimensionEnforcement(dimension, "enforced", reason)
+
+
+def _enforcement_for_allowed_binaries(value: tuple[str, ...] | None,
+                                       platform: str) -> SandboxDimensionEnforcement:
+    """No mechanism filters binaries by name; the read-only system dirs expose every one."""
+    if value is None:
+        return SandboxDimensionEnforcement("allowed_binaries", "enforced", "nothing to limit")
+    if not platform.startswith("linux"):
+        return SandboxDimensionEnforcement(
+            "allowed_binaries", "unenforced", f"not verified on {platform}")
+    return SandboxDimensionEnforcement(
+        "allowed_binaries", "unenforced", "binaries are not filtered by name")
+
+
+def _enforcement_for_tmp_quota(value: int | None, platform: str,
+                                sandbox_available: bool) -> SandboxDimensionEnforcement:
+    """Neither the sandbox nor the host sizes /tmp; a quota is never more than unenforced."""
+    if value is None:
+        return SandboxDimensionEnforcement("tmp_quota_mb", "enforced", "nothing to limit")
+    if not platform.startswith("linux"):
+        return SandboxDimensionEnforcement("tmp_quota_mb", "unenforced", f"not verified on {platform}")
+    if sandbox_available:
+        return SandboxDimensionEnforcement(
+            "tmp_quota_mb", "unenforced", "the private /tmp has no size limit")
+    return SandboxDimensionEnforcement(
+        "tmp_quota_mb", "unenforced", "no tool sandbox: /tmp is the host's")
+
+
+def sandbox_profile_enforcement(
+    profile: SandboxProfile, *, platform: str, sandbox_available: bool,
+) -> tuple[SandboxDimensionEnforcement, ...]:
+    """The per-dimension, per-platform honesty record for *profile* (DECISION F162 D3 (4))."""
+    return (
+        _enforcement_for_fs_scope(profile, platform, sandbox_available),
+        _enforcement_for_net(profile, platform, sandbox_available),
+        _enforcement_for_ulimit("cpu_s", profile.ulimits.cpu_s, platform,
+                                 "RLIMIT_CPU on the process tree"),
+        _enforcement_for_ulimit("mem_mb", profile.ulimits.mem_mb, platform,
+                                 "RLIMIT_AS on the process tree"),
+        _enforcement_for_ulimit("nofile", profile.ulimits.nofile, platform,
+                                 "RLIMIT_NOFILE on the process tree"),
+        _enforcement_for_allowed_binaries(profile.allowed_binaries, platform),
+        _enforcement_for_tmp_quota(profile.tmp_quota_mb, platform, sandbox_available),
+    )
+
+
+# WHY: callers that only need to know whether to describe a dimension as enforced never start a
+# real sandboxed process to find out; only SandboxUnavailable means no (D3 (4)).
+def sandbox_runner_available() -> bool:
+    """Whether the real sandbox can run here, without starting any sandboxed process."""
+    try:
+        require_sandbox()
+    except SandboxUnavailable:
+        return False
+    return True
