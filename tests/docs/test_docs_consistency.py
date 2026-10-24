@@ -172,7 +172,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F315 (the loop runs through the adapter), was registered on
 #: 2026-10-23 by operator amendment amend1023-universe-trust (DECISION
 #: amend1023 D4) directly after F151, under F151's Tier 8 heading; see T8_F315.md.
-TOTAL_FEATURES = 315
+#: One more, F316 (findings paydown v11), was registered on 2026-10-24 by
+#: F314's closure under operator amendment amend0911-feedback rule B and
+#: placed after F158, the fifth unaccepted line below F314, under its own
+#: Tier 2 heading with the Tier 8 list re-opened after it; see T2_F316.md.
+TOTAL_FEATURES = 316
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

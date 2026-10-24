@@ -332,6 +332,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [ ] F162 — Sandbox profiles per adapter
 - [ ] F153 — Codex CLI adapter
 - [ ] F158 — Cost normalization & price catalog
+
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F316 — Findings paydown v11
+
+## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane, continued)
+
 - [ ] F155 — Local full builder
 - [ ] F154 — Gemini CLI adapter
 - [ ] F161 — MCP passthrough with policy
