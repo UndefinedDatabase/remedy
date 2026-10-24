@@ -30,7 +30,10 @@ walk reports what is now uncommitted. Add `--commit-auto` to commit.
   only. Each role is chosen, highest first, by its option (`--planner-provider`,
   `--builder-provider`, `--reviewer-provider`), a continued job's own record, the project's
   `[roles]` table in `.remedy/config.toml` (`planner`, `builder`, `reviewer`) and then the
-  default; the planner also reads `planner.provider` of `remedy.toml` below the table.
+  default; the planner also reads `planner.provider` of `remedy.toml` below the table. A claude-cli
+  builder streams its call by default (`raw_stream.jsonl` and `run_events.jsonl` in the task's
+  evidence), so every command it ran, its own test run among them, is evidence;
+  `--no-stream-evidence` turns that off.
 - **Pi with the local Ollama model `muse-glimmer:latest` stays a choice** (`--builder-provider pi`,
   or `builder = "pi"` under `[roles]`). Pi supplies the agent loop and the file tools; Ollama is
   the model server and by itself is not a coding harness (a raw Ollama call returns text, so

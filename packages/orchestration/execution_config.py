@@ -240,7 +240,10 @@ def _resolve_invocation_controls(
     _tp, _tp_src = _resolve_inv(timeout_profile, "", ec.timeout_profile if ec else None)
     _moc, _moc_src = _resolve_inv(max_output_chars, 50000,
                                   ec.max_output_chars if ec else None)
-    _se, _se_src = _resolve_inv(stream_evidence, False, ec.stream_evidence if ec else None)
+    # amend1024 G: a claude-cli builder streams by DEFAULT, so the commands it ran (its own test
+    # run among them) are in the run's evidence; an explicit or persisted value still wins.
+    _se, _se_src = _resolve_inv(stream_evidence, providers[:1] == ("claude-cli",),
+                                ec.stream_evidence if ec else None)
     _mt, _mt_src = _resolve_inv(max_tasks, 0, ec.max_tasks if ec else None)
     return {
         "timeout_sec": _ts, "timeout_sec_source": _ts_src,
