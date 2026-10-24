@@ -8,13 +8,12 @@ when a degradation ran; a guard fails a capability read outside the matrix
 (`docs/roadmap/features/T8_F157.md`).
 
 ## Current Step
-Round 9: book round 8 and DECISION F157 D7, commit the self-use record of `SU-081` with its job
-diff masked, and run the feature's one full suite.
+Round 10, the closure's evidence round: book round 9, the staging reclaim, the evidence job
+`f157r10e1001` and the review package.
 
 ## Next Steps
-1. The evidence bundle and the review package (closure algorithm steps 1 and 2).
-2. The closing round: the Built State, the ledger rotation, the STATUS line, the README and the
-   pull request.
+1. The closing round: the Built State, the ledger rotation, SU-081's `consumed_by`, the STATUS
+   line with the README sync, and the pull request, left unmerged.
 
 ## Risks
-- A red full suite turns the next round into a repair round first.
+- A package that does not read `READY_FOR_REVIEW` blocks the closure until it is repaired.
