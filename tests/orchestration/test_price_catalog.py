@@ -18,6 +18,7 @@ from packages.orchestration.price_catalog import (
     parse_price_catalog,
     price_catalog_warnings,
     registered_adapter_refs,
+    stale_model_prices,
 )
 
 KNOWN_MODEL = builtin_model_ids()[0]
@@ -186,3 +187,13 @@ class TestTheShippedCatalogs:
     def test_a_catalog_directory_is_read_whole(self, tmp_path: Path) -> None:
         (tmp_path / "claude-cli.toml").write_text(VALID, encoding="utf-8")
         assert load_price_catalogs(tmp_path)["claude-cli"].pricing_version == 3
+
+
+class TestStaleness:
+    def test_a_price_older_than_the_window_is_stale_and_the_boundary_is_not(self) -> None:
+        catalog = parse_price_catalog(VALID, adapter="claude-cli")
+        assert stale_model_prices(catalog, today=datetime.date(2026, 10, 31), window_days=60) == ()
+        stale = stale_model_prices(catalog, today=datetime.date(2026, 10, 31), window_days=59)
+        assert [p.model for p in stale] == [KNOWN_MODEL]
+        assert [p.model for p in stale_model_prices(
+            catalog, today=datetime.date(2026, 12, 1), window_days=60)] == sorted([KNOWN_MODEL, "zz-model"])
