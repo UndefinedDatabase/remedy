@@ -8,12 +8,9 @@ when a degradation ran; a guard fails a capability read outside the matrix
 (`docs/roadmap/features/T8_F157.md`).
 
 ## Current Step
-Round 10, the closure's evidence round: book round 9, the staging reclaim, the evidence job
-`f157r10e1001` and the review package.
+Round 11, the closing round: book round 10, the Built State, the ledger rotation, F157 accepted in
+STATUS with the README sync and SU-081's `consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The closing round: the Built State, the ledger rotation, SU-081's `consumed_by`, the STATUS
-   line with the README sync, and the pull request, left unmerged.
-
-## Risks
-- A package that does not read `READY_FOR_REVIEW` blocks the closure until it is repaired.
+1. The next session merges F157's pull request at the Open PR Gate, books round 11's verdict in the
+   next feature's first commit, and claims the next feature by Rule A5.
