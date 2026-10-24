@@ -40,11 +40,18 @@ _ISOLATION_ADR_REF = "docs/adr/0002-claude-cli-worker-isolation.md"
 _ISOLATION_TOOL_ARGS = ("--setting-sources", "project,local", "--strict-mcp-config")
 
 #: D3 (2)'s process names, in its own order: the shell/process names every worker needs plus
-#: the model credential and both spellings of the four proxy variables.
+#: the model credential and both spellings of the four proxy variables. Operator amendment
+#: amend1024-one-real-order (D1) adds what the real `claude` program reads to find its login, its
+#: model and its certificates: the config folder an operator's profile selects, the two token
+#: spellings, the API endpoint and model, the XDG folders, the TLS certificate paths and Node's
+#: own options (docs/adr/0002-claude-cli-worker-isolation.md records the real call).
 _ISOLATION_ENV_ALLOWLIST = (
     "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "SHELL", "TERM", "TMPDIR", "TZ",
     "USER", "ANTHROPIC_API_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
     "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+    "CLAUDE_CONFIG_DIR", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+    "ANTHROPIC_MODEL", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "SSL_CERT_FILE",
+    "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "NODE_OPTIONS",
 )
 
 #: D4 (2)'s exact default profile, TOML text parsed by `parse_sandbox_profile` elsewhere (this
