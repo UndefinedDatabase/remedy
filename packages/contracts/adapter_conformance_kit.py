@@ -26,6 +26,7 @@ from packages.contracts.adapter_contract import (
     HttpInvocation,
     InvocationOptions,
     WorkerAdapter,
+    WorkerIsolation,
 )
 from packages.orchestration.failure_postmortem import FailureClass
 from packages.orchestration.token_actuals import UsageActuals
@@ -262,11 +263,12 @@ def _check_errors(adapter: WorkerAdapter, samples: AdapterSamples) -> list[Confo
 
 
 def _check_isolation(adapter: WorkerAdapter, samples: AdapterSamples) -> list[ConformanceFailure]:
-    # The protocol types isolation() as always returning None; this runtime check exists
-    # precisely to catch a broken implementation that violates that statically-declared promise.
-    result = adapter.isolation()  # type: ignore[func-returns-value]
-    if result is not None:
-        return [ConformanceFailure("isolation", f"isolation() must return None, got {result!r}")]
+    # The protocol types isolation() as always returning a WorkerIsolation; this runtime check
+    # exists precisely to catch a broken implementation that violates that promise.
+    result = adapter.isolation()
+    if not isinstance(result, WorkerIsolation):
+        return [ConformanceFailure(
+            "isolation", f"isolation() must return a WorkerIsolation, got {result!r}")]
     return []
 
 

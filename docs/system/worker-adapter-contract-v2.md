@@ -38,7 +38,7 @@ and hyphens) and six methods:
 | `map_stream(raw_lines)` | events whose `event_type` is one of the stream vocabulary of `stream_evidence.py`; empty for an adapter that does not stream |
 | `map_usage(raw)` | `AdapterUsage`: the existing `UsageActuals` plus the provider's own usage counters unchanged, or `None` when the output holds no usage |
 | `classify_error(error_text, exit_code)` | a member of `FailureClass`: provider unavailable, provider timeout, provider non-zero exit, parse or unknown |
-| `isolation()` | reserved for the worker config isolation feature; `None` until that feature shapes it |
+| `isolation()` | a `WorkerIsolation` declaring how this adapter keeps the operator's own configuration and secrets out of a worker's call (DECISION F152 D3) |
 
 Flags are declared honestly: an adapter declares only what its tests prove.
 

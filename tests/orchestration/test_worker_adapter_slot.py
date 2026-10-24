@@ -140,7 +140,8 @@ def test_adapter_argv_equals_the_command_line_builder(
         claude_path="/bin/claude", write_mode=write_mode, streaming=streaming)
     assert argv == build_claude_cli_args(
         "/bin/claude", "the prompt", write_mode=expected_mode, model="claude-x",
-        stream_evidence=streaming, json_schema=json_schema, resume_session=resume)
+        stream_evidence=streaming, json_schema=json_schema, resume_session=resume,
+    ) + ["--setting-sources", "project,local", "--strict-mcp-config"]
     assert isinstance(argv, list)
 
 

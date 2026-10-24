@@ -22,10 +22,16 @@ from packages.contracts.adapter_contract import (
     AdapterUsage,
     CliInvocation,
     HttpInvocation,
+    WorkerIsolation,
 )
 from packages.orchestration.failure_postmortem import FailureClass
 from packages.orchestration.stream_evidence import EVENT_RESULT
 from packages.orchestration.token_actuals import UsageActuals
+
+#: A valid WorkerIsolation every conforming toy below answers from isolation().
+_TOY_ISOLATION = WorkerIsolation(
+    method="tool_flag", adr_ref="docs/adr/0002-claude-cli-worker-isolation.md",
+    tool_args=("--toy-isolated",))
 
 #: Literal pin of the kit's forbidden name substrings (R-1437's last two survivors): a word
 #: dropped from the kit's own list must turn this comparison red instead of silently dropping
@@ -80,7 +86,7 @@ class _ConformingCliToy:
         return FailureClass.UNKNOWN
 
     def isolation(self):
-        return None
+        return _TOY_ISOLATION
 
 
 class _ConformingHttpToy:
@@ -122,7 +128,7 @@ class _ConformingHttpToy:
         return FailureClass.UNKNOWN
 
     def isolation(self):
-        return None
+        return _TOY_ISOLATION
 
 
 _CLI_USAGE = AdapterUsage(
@@ -468,7 +474,7 @@ class _BrokenErrorsClassOutsideToy(_ConformingCliToy):
 
 
 class _BrokenIsolationNotNoneToy(_ConformingCliToy):
-    """isolation: a non-None declaration."""
+    """isolation: a declaration that is not a WorkerIsolation."""
 
     def isolation(self):
         return {"sandbox": "none"}
@@ -558,7 +564,8 @@ _BROKEN_CASES = (
      "has no expected PROVIDER_UNAVAILABLE sample"),
     ("errors", _BrokenErrorsClassOutsideToy(), _ERROR_SAMPLES_WITH_CONFIG,
      "outside ADAPTER_ERROR_CLASSES"),
-    ("isolation", _BrokenIsolationNotNoneToy(), _CLI_SAMPLES, "isolation() must return None"),
+    ("isolation", _BrokenIsolationNotNoneToy(), _CLI_SAMPLES,
+     "isolation() must return a WorkerIsolation"),
     ("transport", _BrokenTransportBaseClassRetriesToy(), _CLI_SAMPLES, "_RetryingBaseToy:"),
     ("transport", _BrokenTransportModuleFunctionToy(), _CLI_SAMPLES,
      "_BrokenTransportModuleFunctionToy calls _toy_fetch_helper: import of 'time'"),
