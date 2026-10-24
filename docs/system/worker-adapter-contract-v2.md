@@ -111,3 +111,41 @@ are normalised by the evidence capture while the process runs, and a failed call
 the failure post-mortem from every signal it has, of every provider alike; both are per-call
 evidence the loop owns, and the adapter's `map_stream` and `classify_error` answer the same
 functions for the kit and for `remedy worker show`.
+
+## The capability matrix
+`packages/contracts/capability_matrix.py` holds a declarative register,
+`CAPABILITY_REQUIREMENTS`, mapping each capability-consuming feature to the adapter capability it
+needs and to one registered degradation. A feature asks the register through `require_or_degrade`
+or `capability_matrix_for`, never an adapter's `capabilities()` directly: both functions take the
+resolved `(adapter, model)` pair and call `capabilities(model)` themselves, so a mid-job failover
+that changes the pair changes what the next read sees. The resulting `CapabilityDecision` is one of
+three modes: `native`, every required capability present; `degraded`, at least one absent and the
+entry's registered fallback runs instead, named by its `strategy` token; or `unavailable`, at least
+one absent and the entry has no fallback, which is legal only for a feature that may refuse
+outright.
+
+The four entries frozen by DECISION F157 D2: `reviewer_schema_gate` and `planner_schema_gate` each
+require `json_schema` and degrade to `schema_in_prompt`; `parked_session_resume` requires
+`session_resume` and degrades to `full_context_resend`; `stream_evidence_capture` requires
+`streaming` and degrades to `buffered_output`. Three declared capabilities have no consumer yet —
+`vision`, `tool_use` and `max_context_tokens` — and `CAPABILITY_NO_CONSUMER_NOTES` records why for
+each.
+
+Two guards in `tests/contracts/test_capability_matrix.py` keep the register honest: the read guard
+sweeps every file under `packages/` and `apps/` and fails on a `.capabilities(` call outside
+`packages/contracts/capability_matrix.py`, `packages/contracts/adapter_conformance_kit.py` and
+`apps/cli/commands/worker.py`, so a consumer cannot bypass the register by reading an adapter
+directly; the consumer guard fails any `require_or_degrade(` call whose first argument is not a
+string literal naming a registered key, so an unregistered or dynamically built key cannot reach
+the lookup silently.
+
+A later round writes `CAPABILITY_DEGRADATIONS_FIELD` (`"capability_degradations"`) into the run
+record as the evidence of every decision a run made that was not native, through
+`capability_degradation_entries`.
+
+`remedy worker show` is the register's first consumer: its text answer prints a `Degradations:`
+line directly after `Capabilities:`, reading `none` when every decision for that adapter is
+native, or else every non-native decision joined by `, `, each `<feature_key> as <strategy>` when
+degraded or `<feature_key> unavailable` when unavailable; a worker with no adapter carries neither
+line. Its JSON answer carries `capability_matrix`, the list of the register's decisions in
+register order, or `null` without an adapter.

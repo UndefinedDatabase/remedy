@@ -54,6 +54,12 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     # registry is the one product path that reaches a WorkerAdapter at all.
     import dataclasses
 
+    from packages.contracts.capability_matrix import (
+        CAPABILITY_MODE_DEGRADED,
+        CAPABILITY_MODE_NATIVE,
+        capability_decision_record,
+        capability_matrix_for,
+    )
     from packages.orchestration.worker_adapters import (
         export_worker_specs_json,
         list_worker_specs,
@@ -67,11 +73,15 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
              json_output=json_output)
     adapter = resolve_worker_adapter(match.adapter_ref) if match.adapter_ref else None
     capabilities = adapter.capabilities("") if adapter is not None else None
+    # DECISION F157 D2 (8): the register's decisions for this adapter, `None` without one.
+    decisions = capability_matrix_for(adapter, "") if adapter is not None else None
     if json_output:
         # amend1023 D4: the JSON carries the capabilities the text prints, `null` without an adapter.
         answer = export_worker_specs_json((match,))
         answer["providers"][0]["capabilities"] = (
             dataclasses.asdict(capabilities) if capabilities is not None else None)
+        answer["providers"][0]["capability_matrix"] = (
+            [capability_decision_record(d) for d in decisions] if decisions is not None else None)
         emit_ok(**answer)
         return
     print(f"Worker: {match.display_name} ({match.provider_id})")
@@ -87,6 +97,12 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
         ]
         print(f"  Adapter: {match.adapter_ref}")
         print(f"  Capabilities: {', '.join(flags) if flags else 'none'}")
+        degradations = [
+            f"{d.feature_key} as {d.strategy}" if d.mode == CAPABILITY_MODE_DEGRADED
+            else f"{d.feature_key} unavailable"
+            for d in decisions if d.mode != CAPABILITY_MODE_NATIVE
+        ]
+        print(f"  Degradations: {', '.join(degradations) if degradations else 'none'}")
 
 
 def _cmd_worker_resources(*, json_output: bool = False) -> None:

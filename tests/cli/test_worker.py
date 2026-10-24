@@ -180,6 +180,8 @@ class TestWorkerShowAdapterLinkage:
         out = capsys.readouterr().out
         assert "Adapter: claude-cli" in out
         assert "Capabilities: json_schema, session_resume, streaming, tool_use" in out
+        # DECISION F157 D2 (8): every register entry is native for this adapter.
+        assert "  Degradations: none" in out
 
     def test_ollama_text_output_carries_neither_line(self, capsys):
         from apps.cli.commands.worker import _cmd_worker_show
@@ -187,6 +189,8 @@ class TestWorkerShowAdapterLinkage:
         out = capsys.readouterr().out
         assert "Adapter:" not in out
         assert "Capabilities:" not in out
+        # DECISION F157 D2 (8): no adapter, no Degradations line either.
+        assert "Degradations:" not in out
 
     def test_claude_code_json_answer_carries_adapter_ref(self, capsys):
         from apps.cli.commands.worker import _cmd_worker_show
@@ -205,6 +209,20 @@ class TestWorkerShowAdapterLinkage:
             "tool_use": True, "max_context_tokens": 0}
         _cmd_worker_show("ollama", json_output=True)
         assert json.loads(capsys.readouterr().out)["providers"][0]["capabilities"] is None
+
+    def test_the_json_answer_carries_the_register_decisions(self, capsys):
+        """DECISION F157 D2 (8): claude-cli is native on every entry; ollama has no adapter at all."""
+        from apps.cli.commands.worker import _cmd_worker_show
+        _cmd_worker_show("claude_code", json_output=True)
+        entry = json.loads(capsys.readouterr().out)["providers"][0]
+        assert entry["capability_matrix"] == [
+            {"feature_key": "reviewer_schema_gate", "mode": "native", "strategy": None, "missing": []},
+            {"feature_key": "planner_schema_gate", "mode": "native", "strategy": None, "missing": []},
+            {"feature_key": "parked_session_resume", "mode": "native", "strategy": None, "missing": []},
+            {"feature_key": "stream_evidence_capture", "mode": "native", "strategy": None, "missing": []},
+        ]
+        _cmd_worker_show("ollama", json_output=True)
+        assert json.loads(capsys.readouterr().out)["providers"][0]["capability_matrix"] is None
 
     def test_claude_code_text_output_shows_none_for_an_adapter_with_no_capability(self, monkeypatch, capsys):
         # R-1440 — the `none` line is held by no test; an adapter declaring no flag at all
@@ -229,3 +247,10 @@ class TestWorkerShowAdapterLinkage:
         _cmd_worker_show("claude_code", json_output=False)
         out = capsys.readouterr().out
         assert "  Capabilities: none" in out
+        # DECISION F157 D2 (8): every entry degrades when the adapter declares no capability.
+        assert (
+            "  Degradations: reviewer_schema_gate as schema_in_prompt, "
+            "planner_schema_gate as schema_in_prompt, "
+            "parked_session_resume as full_context_resend, "
+            "stream_evidence_capture as buffered_output"
+        ) in out

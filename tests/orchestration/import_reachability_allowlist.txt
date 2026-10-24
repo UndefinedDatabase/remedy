@@ -99,6 +99,7 @@ packages.common.public_text_redaction
 packages.common.secure_fs
 packages.common.strict_json
 packages.contracts.adapter_contract
+packages.contracts.capability_matrix
 packages.core.models
 packages.memory.context_summary
 packages.memory.local_gateway
