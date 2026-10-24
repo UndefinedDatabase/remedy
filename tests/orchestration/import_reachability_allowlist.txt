@@ -79,6 +79,7 @@ apps.cli.commands.stats_calibration_cmd
 apps.cli.commands.stats_calls_cmd
 apps.cli.commands.stats_ledger_cmd
 apps.cli.commands.stats_trust_cmd
+apps.cli.commands.stats_valuation_cmd
 apps.cli.commands.status_cmd
 apps.cli.commands.study_cmd
 apps.cli.commands.teacher_cmd

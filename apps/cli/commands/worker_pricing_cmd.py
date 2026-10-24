@@ -54,7 +54,7 @@ def _cmd_worker_pricing_update(*, file: str, yes: bool, catalog_dir: str | None,
     for warning in update.warnings:
         print(f"warning: {warning}")
     if written:
-        print(f"Wrote {update.target}.")
+        print(f"Wrote {update.target}. Run `remedy stats recompute-costs` to value the calls already in a project's ledger with it.")
     else:
         print("Nothing was written. Run the same command again with --yes to write this catalog.")
 
