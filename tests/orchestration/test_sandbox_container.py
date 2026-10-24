@@ -31,8 +31,10 @@ from packages.orchestration.sandbox_profiles import (
     SandboxDimensionEnforcement,
     SandboxProfile,
     get_sandbox_profile,
+    parse_sandbox_profile,
 )
 from packages.orchestration.tool_sandbox import SANDBOX_MISSING, SandboxUnavailable
+from packages.providers.adapters.claude_cli_reference import ClaudeCliReferenceAdapter
 from tests.orchestration.test_sandbox_profiles import (
     CPU_FIXTURE_SCRIPT,
     CPU_LOOP_DONE_MARKER,
@@ -340,6 +342,31 @@ def test_container_sandbox_enforcement_full_tuple_for_strict_with_a_runtime():
             "allowed_binaries", "unenforced", "binaries are not filtered by name"),
         SandboxDimensionEnforcement(
             "tmp_quota_mb", "enforced", "a size-limited /tmp inside the container"),
+    )
+
+
+def test_container_sandbox_enforcement_full_tuple_for_claude_cli_default_with_a_runtime():
+    # DECISION F162 D9: the claude-cli adapter's own declared default leaves four dimensions
+    # unlimited — cpu_s, mem_mb, allowed_binaries and tmp_quota_mb all parse to None — so the
+    # container record reads "nothing to limit" for each, word for word, the Proof the honesty
+    # document names for every such row.
+    adapter = ClaudeCliReferenceAdapter()
+    declaration = adapter.sandbox_default()
+    profile = parse_sandbox_profile(adapter.adapter_id, declaration.profile_toml)
+    record = container_sandbox_enforcement(profile, runtime_available=True)
+    assert record == (
+        SandboxDimensionEnforcement(
+            "fs_scope", "enforced",
+            "the container's root is read-only and the workspace is its one writable mount"),
+        SandboxDimensionEnforcement(
+            "net", "unenforced",
+            "the container shares the host network and hosts are not filtered"),
+        SandboxDimensionEnforcement("ulimits.cpu_s", "enforced", "nothing to limit"),
+        SandboxDimensionEnforcement("ulimits.mem_mb", "enforced", "nothing to limit"),
+        SandboxDimensionEnforcement(
+            "ulimits.nofile", "enforced", "--ulimit nofile inside the container"),
+        SandboxDimensionEnforcement("allowed_binaries", "enforced", "nothing to limit"),
+        SandboxDimensionEnforcement("tmp_quota_mb", "enforced", "nothing to limit"),
     )
 
 

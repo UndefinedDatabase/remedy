@@ -119,6 +119,13 @@ def test_a_document_naming_a_nonexistent_node_id_fails_the_resolution_check(tmp_
     assert unresolved == ["tests/orchestration/test_sandbox_profiles.py::test_does_not_exist"]
 
 
+def test_no_row_reads_prevents_nothing_to_limit():
+    # DECISION F162 D9: a run cannot go beyond a value the profile never declares, so no cell may
+    # tell a reader the runner "prevents" that; such a cell reads "no limit declared" instead.
+    doc_text = render_sandbox_model()
+    assert "prevents — nothing to limit" not in doc_text
+
+
 def test_a_fixture_test_no_row_names_fails_the_coverage_check(tmp_path):
     test_dir = tmp_path / "tests" / "orchestration"
     test_dir.mkdir(parents=True)

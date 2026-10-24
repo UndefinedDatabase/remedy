@@ -55,6 +55,20 @@ _PROCESS_PROOF: dict[str, str] = {
         "::test_sandbox_profile_enforcement_full_tuple_for_strict_sandboxed_linux"),
 }
 
+#: DECISION F162 D9: a row's PROCESS proof when its reason is `nothing to limit` — the existing
+#: test that pins the claude-cli default's `adapter_sandbox_record` dict, which holds that reason
+#: for `ulimits.cpu_s`, `ulimits.mem_mb`, `allowed_binaries` and `tmp_quota_mb`.
+_NOTHING_TO_LIMIT_PROCESS_PROOF = (
+    "tests/orchestration/test_worker_adapter_slot.py"
+    "::test_adapter_sandbox_record_claude_cli_on_linux_matches_the_dict_literal")
+
+#: The same, for the CONTAINER runner: the test pinning `container_sandbox_enforcement`'s full
+#: value tuple for the claude-cli default with a runtime, which holds the same reason for the
+#: same four keys.
+_NOTHING_TO_LIMIT_CONTAINER_PROOF = (
+    "tests/orchestration/test_sandbox_container.py"
+    "::test_container_sandbox_enforcement_full_tuple_for_claude_cli_default_with_a_runtime")
+
 #: The same, for the CONTAINER runner (DECISION F162 D7 (5) for the fixtures it has of its own).
 _CONTAINER_PROOF: dict[str, str] = {
     "fs_scope": (
@@ -96,8 +110,12 @@ def _declared(profile: SandboxProfile, key: str) -> str:
 
 
 def _runner_cell(state: str, reason: str) -> str:
-    """`prevents` for an enforced state, `does not prevent` for an unenforced one (DECISION F162
-    D8 (2))."""
+    """`prevents` for an enforced state, `does not prevent` for an unenforced one, and `no limit
+    declared` for the reason `nothing to limit` — a run cannot go beyond a value the profile never
+    declares, so it is never honest to say the runner "prevents" anything there (DECISION F162
+    D8 (2), D9)."""
+    if reason == "nothing to limit":
+        return "no limit declared"
     verb = "prevents" if state == "enforced" else "does not prevent"
     return f"{verb} — {reason}"
 
@@ -122,7 +140,13 @@ def _profile_table(name: str, profile: SandboxProfile, *, process_sandboxed: boo
         declared = _declared(profile, key)
         process_cell = _runner_cell(process_item.state, process_item.reason)
         container_cell = _runner_cell(container_item.state, container_item.reason)
-        proof = f"process: {_PROCESS_PROOF[key]}; container: {_CONTAINER_PROOF[key]}"
+        process_proof = (
+            _NOTHING_TO_LIMIT_PROCESS_PROOF if process_item.reason == "nothing to limit"
+            else _PROCESS_PROOF[key])
+        container_proof = (
+            _NOTHING_TO_LIMIT_CONTAINER_PROOF if container_item.reason == "nothing to limit"
+            else _CONTAINER_PROOF[key])
+        proof = f"process: {process_proof}; container: {container_proof}"
         lines.append(f"| `{key}` | `{declared}` | {process_cell} | {container_cell} | {proof} |")
     lines.append("")
     return lines
