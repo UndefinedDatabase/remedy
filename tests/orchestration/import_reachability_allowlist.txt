@@ -135,6 +135,7 @@ packages.orchestration.burn_detector
 packages.orchestration.call_identity
 packages.orchestration.call_tokens
 packages.orchestration.capability_bench
+packages.orchestration.capability_routes
 packages.orchestration.change_provenance_gate
 packages.orchestration.change_set
 packages.orchestration.chat_answer

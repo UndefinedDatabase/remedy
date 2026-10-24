@@ -140,9 +140,9 @@ directly; the consumer guard fails any `require_or_degrade(` call whose first ar
 string literal naming a registered key, so an unregistered or dynamically built key cannot reach
 the lookup silently.
 
-A later round writes `CAPABILITY_DEGRADATIONS_FIELD` (`"capability_degradations"`) into the run
-record as the evidence of every decision a run made that was not native, through
-`capability_degradation_entries`.
+A later round has the run's report and `remedy run show` print the evidence
+`capability_degradation_entries` produces under the name `CAPABILITY_DEGRADATIONS_FIELD`
+(`"capability_degradations"`) (DECISION F157 D3 (3)).
 
 `remedy worker show` is the register's first consumer: its text answer prints a `Degradations:`
 line directly after `Capabilities:`, reading `none` when every decision for that adapter is
@@ -150,3 +150,14 @@ native, or else every non-native decision joined by `, `, each `<feature_key> as
 degraded or `<feature_key> unavailable` when unavailable; a worker with no adapter carries neither
 line. Its JSON answer carries `capability_matrix`, the list of the register's decisions in
 register order, or `null` without an adapter.
+
+`packages/orchestration/capability_routes.py` is the second consumer, and the first routed one: a
+route function calls `require_or_degrade` with its register key as a string literal on the role's
+installed adapter and model, and decides only a feature the run actually asked for — a stream is
+decided only when the run requested stream evidence. Round 3 routes `stream_evidence_capture`
+inside `create_role_provider`'s `"stream_evidence"` setting. The run's decisions are written beside
+the run, as `capability_decisions.jsonl` in the evidence directory `create_role_provider` receives:
+one JSON line per provider build that decided anything, carrying `role`, `provider`, `model` and
+`decisions`; a failover link built mid-run writes its own line, so the evidence follows the pair.
+`read_capability_degradations(evidence_dir)` reads that file back into the run's degradations,
+`capability_degradation_entries` over every decision across every line.
