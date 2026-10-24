@@ -1,20 +1,27 @@
-# Plan — F158 Cost normalization & price catalog
+# Plan — operator amendment amend1024-one-real-order
 
 ## Goal
-Cross-vendor money becomes comparable, honestly: one configured currency (`cost.currency`, default
-usd) shared by budgets, previews, the ledger and the catalog; a versioned price catalog per adapter
-with sources; each ledger call valued with a normalized cost, the pricing version and a basis; and
-`remedy worker pricing-update` imports catalogs behind a shown diff
-(`docs/roadmap/features/T8_F158.md`, amendments A1 to A3). F153 waits behind F316 (D1).
+An everyday order with no header and no file path is read by a strong model, built as ONE job
+by default, tried out by its builder, and lands as an applicable change. Nothing that does not
+serve this is touched (operator amendment amend1024-one-real-order, 2026-10-24).
 
 ## Current Step
-Round 9 (session 2), the closing round: book round 8; the Built State; the ledger rotation; the
-STATUS acceptance with its README sync and SU-084's `consumed_by`; the pull request, left unmerged.
-F158 is then closed PASS_WITH_RISKS for R-1472, owned by F316.
+Parts A to F on `feature/amend1024-one-real-order`; E and F2/F5 delegated to two isolated
+workers whose branches are merged into this one.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F158's pull
-   request, then round 9's verdict is booked in the next feature's first commit, then Rule A5.
+1. A: claude-cli is the product default for planner, builder, reviewer, repair; the planner
+   reads `[roles]` (R-1448); host_tools HTTP clients default to claude-cli, others stay as before.
+2. B: the scope decision (one job unless the planner says otherwise with a reason), evidence
+   `scope_decision.json`, regex lanes only as fallback; the probe test proves the new behaviour.
+3. C: the claude-cli builder's Bash allowlist, documented, refusal tested and logged.
+4. D: the isolation allowlist widened; a real claude call through the adapter, evidence, ADR.
+5. E (worker): USD hidden unless `cost.show_usd`; advanced commands hidden; max-cost-usd discouraged.
+6. F: register and close F317; park the named features (worker: dependency check, F5 apps/ui);
+   F316 trimmed; ratchet rows raised with a sentence each.
+7. G: the real run over the public API with a host_tools client; evidence under `evidence/current`.
+8. One full suite at the end, review and repair loop until green; ruff green; merge to main.
 
 ## Risks
-- None open for F158; R-1472 (self-use runs reach no token ledger) is owned by F316.
+- The real run (G) needs the real `claude` binary and the operator's login through the adapter.
+- The running serve supervisor (pid 740108, started 2026-10-20) runs old code; G needs its own server.
