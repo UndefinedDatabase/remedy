@@ -11,6 +11,7 @@ from __future__ import annotations
 import dataclasses
 import errno
 import itertools
+import json
 import os
 import signal
 import socket
@@ -24,6 +25,7 @@ from packages.orchestration.exec_guard import ExecGuardPolicy, ExecGuardResult
 from packages.orchestration.sandbox_profiles import (
     BUILTIN_SANDBOX_PROFILE_NAMES,
     SANDBOX_ENFORCEMENT_KEYS,
+    WORKER_SANDBOX_FILENAME,
     SandboxDimensionEnforcement,
     SandboxLoosening,
     SandboxNet,
@@ -36,11 +38,13 @@ from packages.orchestration.sandbox_profiles import (
     parse_sandbox_profile,
     profile_loosenings,
     profile_within,
+    record_worker_sandbox,
     run_guarded_with_sandbox_profile,
     sandbox_profile_enforcement,
     sandbox_profile_guard_policy,
     sandbox_runner_available,
     tighten_sandbox_profile,
+    worker_sandbox_record,
 )
 from packages.orchestration.tool_sandbox import SandboxSpec, SandboxUnavailable, require_sandbox
 
@@ -398,6 +402,30 @@ def test_compiler_standard_leaves_address_space_bytes_none(tmp_path):
     assert policy.address_space_bytes is None
 
 
+# ---------------------------------------------------------------------------
+# F162 round 5 C3: the compiler's tool_sandbox keyword (DECISION F162 D5 (1)).
+# ---------------------------------------------------------------------------
+
+def test_compiler_tool_sandbox_false_keeps_a_base_without_a_sandbox_without_one(tmp_path):
+    policy = sandbox_profile_guard_policy(
+        get_sandbox_profile("strict"), workspace=str(tmp_path), tool_sandbox=False)
+    assert policy.sandbox is None
+
+
+def test_compiler_tool_sandbox_false_keeps_a_bases_own_sandbox_unchanged(tmp_path):
+    spec = SandboxSpec(workspace=str(tmp_path), share_network=True)
+    base = ExecGuardPolicy(sandbox=spec)
+    policy = sandbox_profile_guard_policy(
+        get_sandbox_profile("strict"), workspace=str(tmp_path), base=base, tool_sandbox=False)
+    assert policy.sandbox is spec
+
+
+def test_compiler_tool_sandbox_false_still_sets_deny_network_for_a_deny_profile(tmp_path):
+    policy = sandbox_profile_guard_policy(
+        get_sandbox_profile("strict"), workspace=str(tmp_path), tool_sandbox=False)
+    assert policy.deny_network is True
+
+
 def _stub_exec_guard_result(returncode: int, tripped_limit: str | None = None,
                              classification: str = "failed") -> ExecGuardResult:
     return ExecGuardResult(
@@ -703,3 +731,57 @@ def test_a_mem_limit_of_256_mib_refuses_1gib_and_allows_64mib(tmp_path, sandbox_
     result = _run_fixture_script(profile, script, str(ws))
     assert b"MEM_BIG_REFUSED" in result.stdout
     assert b"MEM_SMALL_ALLOCATED" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# F162 round 5 C3: the sandbox evidence, beside worker_isolation.jsonl (DECISION F162 D5 (4)).
+# ---------------------------------------------------------------------------
+
+def test_worker_sandbox_record_net_local_sandboxed_linux_matches_the_dict_literal():
+    record = worker_sandbox_record(
+        get_sandbox_profile("net-local"), tool_sandbox=True, platform="linux",
+        sandbox_available=True)
+    assert record == {
+        "profile": "net-local",
+        "runner": "process",
+        "tool_sandbox": True,
+        "dimensions": {
+            "fs_scope": "enforced", "net": "unenforced", "ulimits.cpu_s": "enforced",
+            "ulimits.mem_mb": "enforced", "ulimits.nofile": "enforced",
+            "allowed_binaries": "enforced", "tmp_quota_mb": "unenforced",
+        },
+        "reasons": {
+            "fs_scope": "the tool sandbox makes the workspace the one writable tree",
+            "net": "the host network is shared and hosts are not filtered",
+            "ulimits.cpu_s": "RLIMIT_CPU on the process tree",
+            "ulimits.mem_mb": "nothing to limit",
+            "ulimits.nofile": "RLIMIT_NOFILE on the process tree",
+            "allowed_binaries": "nothing to limit",
+            "tmp_quota_mb": "the private /tmp has no size limit",
+        },
+    }
+
+
+class TestRecordWorkerSandbox:
+    def test_writes_nothing_for_a_falsy_directory(self, tmp_path):
+        record = worker_sandbox_record(
+            get_sandbox_profile("net-local"), tool_sandbox=True, platform="linux",
+            sandbox_available=True)
+        record_worker_sandbox(None, role="builder", provider="claude-cli", model="m", record=record)
+        record_worker_sandbox("", role="builder", provider="claude-cli", model="m", record=record)
+        assert list(tmp_path.iterdir()) == []
+
+    def test_appends_one_sorted_key_line_per_call(self, tmp_path):
+        record = worker_sandbox_record(
+            get_sandbox_profile("net-local"), tool_sandbox=True, platform="linux",
+            sandbox_available=True)
+        record_worker_sandbox(
+            str(tmp_path), role="builder", provider="claude-cli", model="m", record=record)
+        record_worker_sandbox(
+            str(tmp_path), role="reviewer", provider="claude-cli", model="m", record=record)
+        lines = (tmp_path / WORKER_SANDBOX_FILENAME).read_text(encoding="utf-8").splitlines()
+        assert len(lines) == 2
+        assert all(line == json.dumps(json.loads(line), sort_keys=True) for line in lines)
+        parsed = [json.loads(line) for line in lines]
+        assert [p["role"] for p in parsed] == ["builder", "reviewer"]
+        assert all(p["provider"] == "claude-cli" and p["model"] == "m" for p in parsed)

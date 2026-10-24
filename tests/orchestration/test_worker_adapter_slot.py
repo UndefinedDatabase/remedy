@@ -16,16 +16,24 @@ from pathlib import Path
 
 import pytest
 
-from packages.contracts.adapter_contract import HttpInvocation, InvocationOptions, WorkerIsolation
+from packages.contracts.adapter_contract import (
+    HttpInvocation,
+    InvocationOptions,
+    WorkerIsolation,
+    WorkerSandboxDefault,
+)
 from packages.orchestration import worker_adapter_slot as slot
 from packages.orchestration.claude_cli_command import build_claude_cli_args
+from packages.orchestration.exec_guard import ExecGuardPolicy
 from packages.orchestration.pingpong_loop import run_pingpong
 from packages.orchestration.pingpong_provider import ClaudeCliProvider
 from packages.orchestration.worker_adapter_slot import (
     WorkerAdapterNotInstalled,
     adapter_child_env,
     adapter_cli_argv,
+    adapter_exec_policy,
     adapter_isolation_record,
+    adapter_sandbox_record,
     adapter_usage_actuals,
     install_worker_adapters,
     installed_worker_adapter,
@@ -315,6 +323,78 @@ def test_adapter_isolation_record_raises_for_an_adapter_without_isolation(monkey
     monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _NarrowAdapter)
     with pytest.raises(TypeError, match="claude-cli"):
         adapter_isolation_record("claude-cli")
+
+
+# -- adapter_exec_policy / adapter_sandbox_record: DECISION F162 D5 (2), the declared default --
+
+
+def test_adapter_exec_policy_claude_cli_env_open_files_and_unset_fields(tmp_path):
+    base = ExecGuardPolicy(cwd=str(tmp_path), core_file_bytes=0)
+    policy = adapter_exec_policy("claude-cli", base)
+    assert policy.env == adapter_child_env("claude-cli")
+    assert policy.open_files == 1024
+    assert policy.cpu_seconds is None
+    assert policy.address_space_bytes is None
+    assert policy.deny_network is False
+    assert policy.sandbox is None
+
+
+class _SandboxedDouble(ClaudeCliReferenceAdapter):
+    """An installed double declaring `tool_sandbox` True with a `deny` profile, for the
+    base-cwd requirement and the `SandboxSpec` it must produce (DECISION F162 D5 (2))."""
+
+    def sandbox_default(self):
+        return WorkerSandboxDefault(
+            profile_toml=(
+                'fs_scope = ["{workspace}"]\n'
+                'net = "deny"\n'
+                'allowed_binaries = "any"\n'
+                'tmp_quota_mb = "unlimited"\n'
+                "[ulimits]\n"
+                'cpu_s = "unlimited"\n'
+                'mem_mb = "unlimited"\n'
+                'nofile = "unlimited"\n'
+            ),
+            tool_sandbox=True,
+        )
+
+
+def test_adapter_exec_policy_tool_sandbox_true_sandboxes_at_the_bases_cwd(monkeypatch, tmp_path):
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _SandboxedDouble)
+    base = ExecGuardPolicy(cwd=str(tmp_path), core_file_bytes=0)
+    policy = adapter_exec_policy("claude-cli", base)
+    assert policy.sandbox.workspace == str(tmp_path)
+    assert policy.deny_network is True
+
+
+def test_adapter_exec_policy_tool_sandbox_true_without_a_cwd_raises_naming_the_adapter(monkeypatch):
+    monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _SandboxedDouble)
+    with pytest.raises(ValueError, match="claude-cli"):
+        adapter_exec_policy("claude-cli", ExecGuardPolicy(core_file_bytes=0))
+
+
+def test_adapter_sandbox_record_claude_cli_on_linux_matches_the_dict_literal():
+    assert sys.platform.startswith("linux")
+    record = adapter_sandbox_record("claude-cli")
+    assert record == {
+        "profile": "claude-cli",
+        "runner": "process",
+        "tool_sandbox": False,
+        "dimensions": {
+            "fs_scope": "unenforced", "net": "unenforced", "ulimits.cpu_s": "enforced",
+            "ulimits.mem_mb": "enforced", "ulimits.nofile": "enforced",
+            "allowed_binaries": "enforced", "tmp_quota_mb": "enforced",
+        },
+        "reasons": {
+            "fs_scope": "no tool sandbox: only the working directory is pinned",
+            "net": "the host network is shared and hosts are not filtered",
+            "ulimits.cpu_s": "nothing to limit",
+            "ulimits.mem_mb": "nothing to limit",
+            "ulimits.nofile": "RLIMIT_NOFILE on the process tree",
+            "allowed_binaries": "nothing to limit",
+            "tmp_quota_mb": "nothing to limit",
+        },
+    }
 
 
 def _env_logging_claude(tmp_path: Path) -> tuple[Path, Path]:

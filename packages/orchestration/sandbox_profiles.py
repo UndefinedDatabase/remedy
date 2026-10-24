@@ -26,7 +26,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NoReturn
+from typing import Any, NoReturn
 
 from packages.orchestration.exec_guard import ExecGuardPolicy, ExecGuardResult, run_guarded
 from packages.orchestration.tool_sandbox import SandboxSpec, SandboxUnavailable, require_sandbox
@@ -352,9 +352,12 @@ def _tighter_optional_int(base_value: int | None, profile_value: int | None) -> 
 
 
 # WHY: a profile never loosens what the base already set (D3 (2)) — every field below is the
-# TIGHTER of the base's own value and the profile's, never a plain override.
+# TIGHTER of the base's own value and the profile's, never a plain override; `tool_sandbox` False
+# (DECISION F162 D5 (1)) leaves *base*'s own sandbox untouched, for a process that cannot run
+# inside the tool sandbox at all, while every other field still compiles as D3 (2) states.
 def sandbox_profile_guard_policy(
     profile: SandboxProfile, *, workspace: str, base: ExecGuardPolicy = ExecGuardPolicy(),
+    tool_sandbox: bool = True,
 ) -> ExecGuardPolicy:
     """Compile *profile* onto *base* for a run at *workspace*.
 
@@ -363,7 +366,9 @@ def sandbox_profile_guard_policy(
     """
     mem_bytes = None if profile.ulimits.mem_mb is None else profile.ulimits.mem_mb * 1048576
     allowlist = profile.net.mode == "allowlist"
-    if base.sandbox is None:
+    if not tool_sandbox:
+        sandbox = base.sandbox
+    elif base.sandbox is None:
         sandbox = SandboxSpec(workspace=workspace, share_network=allowlist)
     else:
         sandbox = dataclasses.replace(
@@ -507,3 +512,46 @@ def sandbox_runner_available() -> bool:
     except SandboxUnavailable:
         return False
     return True
+
+
+# ---------------------------------------------------------------------------
+# T003: the sandbox evidence, beside worker_isolation.jsonl (DECISION F162 D5 (4))
+# ---------------------------------------------------------------------------
+
+#: The one file name every claude-cli build's sandbox line is written to, beside
+#: worker_isolation.jsonl (DECISION F162 D5 (4)).
+WORKER_SANDBOX_FILENAME = "worker_sandbox.jsonl"
+
+
+# WHY: the one typed shape record_worker_sandbox writes, built once so a test and the factory
+# read the same fields back, mirroring worker_isolation_record (DECISION F162 D5 (4)).
+def worker_sandbox_record(
+    profile: SandboxProfile, *, tool_sandbox: bool, platform: str, sandbox_available: bool,
+) -> dict[str, Any]:
+    """D5 (4)'s evidence fields, except `role`, `provider` and `model`, which
+    `record_worker_sandbox` adds."""
+    enforcement = sandbox_profile_enforcement(
+        profile, platform=platform, sandbox_available=sandbox_available)
+    return {
+        "profile": profile.name,
+        "runner": "process",
+        "tool_sandbox": tool_sandbox,
+        "dimensions": {item.key: item.state for item in enforcement},
+        "reasons": {item.key: item.reason for item in enforcement},
+    }
+
+
+# WHY: the run's sandbox evidence lives beside its isolation evidence, one line per claude-cli
+# provider build, mirroring record_worker_isolation exactly (DECISION F162 D5 (4)).
+def record_worker_sandbox(
+    evidence_dir: str | None, *, role: str, provider: str, model: str, record: dict[str, Any],
+) -> None:
+    """Append one `worker_sandbox.jsonl` line; nothing written for a falsy EVIDENCE_DIR."""
+    if not evidence_dir:
+        return
+    directory = Path(evidence_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(
+        {"role": role, "provider": provider, "model": model, **record}, sort_keys=True)
+    with open(directory / WORKER_SANDBOX_FILENAME, "a", encoding="utf-8") as handle:
+        handle.write(line + "\n")

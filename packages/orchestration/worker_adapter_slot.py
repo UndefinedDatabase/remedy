@@ -9,12 +9,21 @@ empty slot is an error and never a fallback (AGENTS.md, "Replacing is deleting")
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
+import sys
 from collections.abc import Callable, Mapping
 from typing import Any
 
 from packages.contracts.adapter_contract import CliInvocation, InvocationOptions, WorkerAdapter
+from packages.orchestration.exec_guard import ExecGuardPolicy
+from packages.orchestration.sandbox_profiles import (
+    parse_sandbox_profile,
+    sandbox_profile_guard_policy,
+    sandbox_runner_available,
+    worker_sandbox_record,
+)
 from packages.orchestration.token_actuals import UsageActuals, parse_cli_result_detailed
 from packages.orchestration.worker_isolation import (
     declared_isolation,
@@ -98,3 +107,34 @@ def adapter_isolation_record(adapter_ref: str, **settings: Any) -> dict[str, Any
     declaration = declared_isolation(adapter)
     env = isolated_child_env(declaration, os.environ)
     return worker_isolation_record(declaration, env)
+
+
+# WHY: the one place a call policy compiles the installed adapter's own declared default sandbox
+# profile onto its `ExecGuardPolicy`, outside the tool sandbox when the adapter says so
+# (DECISION F162 D5 (2)).
+def adapter_exec_policy(
+    adapter_ref: str, base: ExecGuardPolicy = ExecGuardPolicy(), **settings: Any,
+) -> ExecGuardPolicy:
+    """Compile the installed adapter's declared default sandbox profile onto `base`."""
+    adapter = installed_worker_adapter(adapter_ref, **settings)
+    declaration = adapter.sandbox_default()
+    if declaration.tool_sandbox and base.cwd is None:
+        raise ValueError(
+            f"adapter {adapter_ref!r} declares tool_sandbox True but the base policy has no cwd")
+    profile = parse_sandbox_profile(adapter.adapter_id, declaration.profile_toml)
+    base_with_env = dataclasses.replace(base, env=adapter_child_env(adapter_ref, **settings))
+    return sandbox_profile_guard_policy(
+        profile, workspace=base.cwd or "", base=base_with_env, tool_sandbox=declaration.tool_sandbox)
+
+
+# WHY: the evidence twin of `adapter_exec_policy` — the same declared profile, shaped for
+# `record_worker_sandbox` instead of an `ExecGuardPolicy` (DECISION F162 D5 (2)).
+def adapter_sandbox_record(adapter_ref: str, **settings: Any) -> dict[str, Any]:
+    """`worker_sandbox_record` for the installed adapter's own declared default profile."""
+    adapter = installed_worker_adapter(adapter_ref, **settings)
+    declaration = adapter.sandbox_default()
+    profile = parse_sandbox_profile(adapter.adapter_id, declaration.profile_toml)
+    sandbox_available = sandbox_runner_available() if declaration.tool_sandbox else False
+    return worker_sandbox_record(
+        profile, tool_sandbox=declaration.tool_sandbox, platform=sys.platform,
+        sandbox_available=sandbox_available)
