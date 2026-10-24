@@ -49,3 +49,13 @@ reads the result and closes both problems when it is green.
 
 **What happens if you say nothing.** The recommendation is already executed and stands until you
 say otherwise: the two problems are carried to the next clean-up, which asks again.
+
+### Q26 — Let sessions run the claude command (2026-10-24, F152, round 2)
+
+**What needs deciding.** The current work makes sure that a worker run by Remedy never picks up your own personal settings for the Claude command line, such as your instructions file, your extra tool servers or your plugins. To prove this properly, Remedy has to run the real command line twice: once with a planted marker in a fake personal settings folder, and once isolated, and show that the marker only appears the first time. The permission settings of these sessions refuse every run of the command line, even just asking it for its version or its help text, and they also refuse reading the public documentation on the web. So the research is written from a saved copy of the help text, and some points stay marked as unverified.
+
+**Why it matters.** Without one real run, Remedy can prove that it hides your settings from the worker, but not that the command line itself honours the switches it is given. One real run costs one very small paid call.
+
+**My recommendation.** Allow sessions to run the claude command for version and help, allow one small paid call for the proof, and allow reading the public Claude documentation. Until then, the proof runs against a stand-in program and the real run sits behind a switch that is off by default.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you say otherwise: everything is built and tested with the stand-in, the real run stays switched off, and the work closes with that one point named as an open risk for a later clean-up.
