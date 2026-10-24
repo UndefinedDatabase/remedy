@@ -483,6 +483,81 @@ def _no_live_pi_reach(request):
         job_insight.fetch_ollama_json = original_fetch
 
 
+def _real_claude_paths() -> frozenset[str]:
+    """The resolved paths of every `claude` executable this machine's PATH holds, read once."""
+    import os
+    import shutil
+
+    found = set()
+    for directory in os.environ.get("PATH", "").split(os.pathsep):
+        hit = shutil.which("claude", path=directory) if directory else None
+        if hit:
+            found.add(os.path.realpath(hit))
+    return frozenset(found)
+
+
+def _refusing_claude_dir() -> str:
+    """A private folder holding a `claude` that refuses at once, removed when the process ends."""
+    import atexit
+    import os
+    import shutil
+    import tempfile
+
+    folder = tempfile.mkdtemp(prefix="remedy-test-claude-")
+    stub = os.path.join(folder, "claude")
+    with open(stub, "w", encoding="utf-8") as handle:
+        handle.write("#!/bin/sh\necho 'the real claude binary is refused in tests "
+                     "(tests/conftest.py::_no_live_claude_reach)' >&2\nexit 97\n")
+    os.chmod(stub, 0o755)
+    atexit.register(shutil.rmtree, folder, True)
+    return folder
+
+
+_REAL_CLAUDE_PATHS = _real_claude_paths()
+_REFUSING_CLAUDE_DIR = _refusing_claude_dir() if _REAL_CLAUDE_PATHS else ""
+
+
+@pytest.fixture(autouse=True)
+def _no_live_claude_reach(request):
+    """Keep this machine's real `claude` binary out of every test, so no test runs a real model.
+
+    Since operator amendment amend1024-one-real-order the planner, the builder, the reviewer and
+    the repair role default to claude-cli, and every claude-cli path asks `shutil.which("claude")`
+    before it spawns anything. On a developer box that answer is a real, logged-in Claude Code:
+    a test with no provider flag would start a paid agent. So, for an unmarked test, `which`
+    answers None for the real binaries (the hosted runner has none), and a `claude` that exits
+    97 at once stands first on PATH, for the child processes a test starts. A test that installs
+    its own fake `claude` ahead on PATH still finds it; the `real_claude` marker opts out.
+    Hand-saved, no ``monkeypatch``, for the ordering reason ``_no_live_ollama_reach`` states.
+    """
+    if request.node.get_closest_marker("real_claude") or not _REAL_CLAUDE_PATHS:
+        yield
+        return
+    import os
+    import shutil
+
+    hidden = _REAL_CLAUDE_PATHS | {os.path.realpath(os.path.join(_REFUSING_CLAUDE_DIR, "claude"))}
+    original = shutil.which
+    original_path = os.environ.get("PATH")
+
+    def _which(cmd, mode=os.F_OK | os.X_OK, path=None):
+        found = original(cmd, mode=mode, path=path)
+        if found and os.path.basename(str(cmd)) == "claude" and os.path.realpath(found) in hidden:
+            return None
+        return found
+
+    shutil.which = _which
+    os.environ["PATH"] = os.pathsep.join(filter(None, (_REFUSING_CLAUDE_DIR, original_path)))
+    try:
+        yield
+    finally:
+        shutil.which = original
+        if original_path is None:
+            os.environ.pop("PATH", None)
+        else:
+            os.environ["PATH"] = original_path
+
+
 @pytest.fixture(autouse=True)
 def _restore_cwd():
     """Undo a working-directory change that a test forgot to reverse.
