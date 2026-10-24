@@ -31771,3 +31771,13 @@ THE DECISION: (1) The evidence keeps its rule: a build's line records the decisi
 ALTERNATIVES CONSIDERED: (a) recording the resume decision only when a round offers a session, REJECTED because the only reader of that moment is `run_pingpong`, whose file and function are rows; (b) dropping the resume decision from the evidence, REJECTED because a pair that cannot resume does send every call's full context, which is the degradation the register names.
 
 HOW TO REVERSE: restore the three texts from `8d02e33ab`, reopen R-1454, and delete this entry.
+
+## DECISION F157 D7 — the self-use record masks what the agent-state guard refuses, and the job branch keeps the diff whole (2026-10-24, round 9)
+
+THE PROBLEM: the closure's self-use item `SU-081` asked the job to write the first tests of `packages/common/public_text_redaction.py`. Those tests are made of fake credentials and fake home-folder paths, because that is what a redaction test feeds its scrubber, and the self-use script copies the job's diff verbatim into `.agent/selfuse_f157/job_diff.txt`. The commit hook's agent-state guard, `scripts/check_agent_hygiene.py`, refuses such lines under `.agent/` and cannot tell a fixture from a leak, so precondition 6's record could not be committed.
+
+THE DECISION: (1) `.agent/authored/f157-r9-mask-job-diff.py` replaces every match of the guard's own rules in that one file with a `[MASKED: <rule>]` marker, puts a header above the diff that states how many matches it masked and the sha256 of the unmasked file, and writes nothing unless the guard then finds nothing. (2) The job's branch `remedy/job-11b187c9221f49b1` keeps the diff whole, and the job is never applied. (3) The next closure's self-use script carries the same step after it writes `job_diff.txt`, copied from this one, so a later item that targets a redaction module does not stop its closure.
+
+ALTERNATIVES CONSIDERED: (a) committing with the hook skipped, REJECTED because the guard is the safety rule for agent state and a bypass is never a closure step; (b) dropping `job_diff.txt` from the record, REJECTED because the reviewer reads the job's change from it; (c) teaching the guard to accept fixture lines, REJECTED as a product change to a safety guard made inside another feature's closure.
+
+HOW TO REVERSE: delete the masking script and this entry, and record the job diff by its branch name alone.
