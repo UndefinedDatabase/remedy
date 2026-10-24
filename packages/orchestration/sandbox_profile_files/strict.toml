@@ -1,0 +1,8 @@
+fs_scope = ["{workspace}"]
+net = "deny"
+allowed_binaries = ["git", "python3", "sh"]
+tmp_quota_mb = 64
+[ulimits]
+cpu_s = 600
+mem_mb = 2048
+nofile = 256
