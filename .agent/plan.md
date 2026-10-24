@@ -9,15 +9,15 @@ what each profile does and does not prevent, every row linked to a test
 (`docs/roadmap/features/T8_F162.md`).
 
 ## Current Step
-Round 6: repair R-1466, then T003 under DECISION F162 D6 — the `claude_cli.sandbox_profile` key,
-the tighten-only resolver the calls, the evidence and the doctor share, and `worker doctor`'s
-sandbox check with its warnings.
+Round 7, T003 under DECISION F162 D7: the container runner (`sandbox_container.py`), its flags,
+gating and record, the fixtures shared with the process runner, and ADR 0003; R-1467, the runner's
+configuration key, is registered for F246.
 
 ## Next Steps
-1. T003: the optional container stage with its ADR.
-2. T003: the honesty document with its row-to-test walk, and the end-to-end.
-3. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
+1. T003: the honesty document `docs/system/sandbox-model.md`, generated from the profiles and both
+   runners' records, with its row-to-test walk, and the end-to-end.
+2. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
 
 ## Risks
-- An allowlist profile shares the host's network: the record must say so wherever it is shown.
-- A project that names strict or standard for claude-cli denies its network; the key says so.
+- An allowlist profile shares the host's network under both runners; the records say so.
+- The container fixtures need a local `python:3.12-slim`; where it is absent they skip, NOT VERIFIED.
