@@ -425,8 +425,7 @@ def _cmd_do(
 
     # DECISION F304 D2: an order that names a project runs in that project's repository.
     repo = _order_repo(project, repo, json_output=json_output)
-    # amend1024 A2 (R-1448): the option, then the project's `[roles]` planner, then `planner.provider`.
-    planner_provider = planner_provider or project_roles_planner(repo, json_output=json_output)
+    planner_provider = planner_provider or project_roles_planner(repo, json_output=json_output)  # amend1024 A2
     # DECISION F270 D4 (1): the commit and push flags are refused before any step.
     mode, push_source = _resolve_do_commit_flags(
         repo, commit=commit, commit_auto=commit_auto,
