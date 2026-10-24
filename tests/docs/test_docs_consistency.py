@@ -176,7 +176,10 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: F314's closure under operator amendment amend0911-feedback rule B and
 #: placed after F158, the fifth unaccepted line below F314, under its own
 #: Tier 2 heading with the Tier 8 list re-opened after it; see T2_F316.md.
-TOTAL_FEATURES = 316
+#: One more, F317 (one real order lands), was registered on 2026-10-24 by
+#: operator amendment amend1024-one-real-order (Part F1) directly after the
+#: last accepted line, under its own Tier 2 heading; see T2_F317.md.
+TOTAL_FEATURES = 317
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

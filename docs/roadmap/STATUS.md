@@ -332,6 +332,10 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F162 — Sandbox profiles per adapter (T001–T003 complete; accepted 2026-10-24 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f162r11e1001 · package remedy-review-20261024-161429-READY_FOR_REVIEW.zip · SHA-256 3aeabf2ebddca081b88766a65fa5431b19675ddedfa025062fff2ef159397d01 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 09b67feb1b39ee23e91abdefb8d77e5e61c15204)
 - [x] F158 — Cost normalization & price catalog (T001–T003 complete; accepted 2026-10-24 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f158r8e1001 · package remedy-review-20261024-192309-READY_FOR_REVIEW.zip · SHA-256 f095df6c9db88fc7ac379572cf9a0d783f4eb187cdfa68b5123917814fa6451a · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 18af758dbe3e6b569083215ead8ceb5f25fed4cb)
 
+## Tier 2 — One real order lands (operator amendment amend1024-one-real-order)
+
+- [ ] F317 — One real order lands
+
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
 - [ ] F316 — Findings paydown v11
