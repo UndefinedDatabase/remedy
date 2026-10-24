@@ -598,7 +598,72 @@ def test_sandbox_profile_enforcement_names_wider_than_declared_scope_for_a_sub_s
 
 # ---------------------------------------------------------------------------
 # F162 round 3 C4: fixture processes prove each limit under the real sandbox.
+# F162 round 7 C3: these scripts and markers are the ones test_sandbox_container.py shares.
 # ---------------------------------------------------------------------------
+
+#: The net fixture's script (one `{port}` placeholder) and its two markers.
+NET_FIXTURE_SCRIPT = (
+    "import socket\n"
+    "try:\n"
+    "    socket.create_connection(('127.0.0.1', {port}), timeout=5).close()\n"
+    "    print('NET_REACHED')\n"
+    "except OSError:\n"
+    "    print('NET_REFUSED')\n"
+)
+NET_REACHED_MARKER = b"NET_REACHED"
+NET_REFUSED_MARKER = b"NET_REFUSED"
+
+#: The fs-scope fixture's script (one `{outside}` placeholder) and its marker.
+FS_SCOPE_FIXTURE_SCRIPT = (
+    "with open('inside.txt', 'w') as f:\n"
+    "    f.write('x')\n"
+    "print('FS_INSIDE_DONE')\n"
+    "try:\n"
+    "    open({outside!r}, 'w').write('x')\n"
+    "    print('FS_OUTSIDE_DONE')\n"
+    "except OSError:\n"
+    "    print('FS_OUTSIDE_REFUSED')\n"
+)
+FS_INSIDE_DONE_MARKER = b"FS_INSIDE_DONE"
+
+#: The CPU fixture's script (no placeholder) and its markers.
+CPU_FIXTURE_SCRIPT = (
+    "print('CPU_STARTED', flush=True)\n"
+    "x = 0\n"
+    "while True:\n"
+    "    x += 1\n"
+    "print('CPU_LOOP_DONE')\n"
+)
+CPU_STARTED_MARKER = b"CPU_STARTED"
+CPU_LOOP_DONE_MARKER = b"CPU_LOOP_DONE"
+
+#: The nofile fixture's script (no placeholder) and its marker's text prefix.
+NOFILE_FIXTURE_SCRIPT = (
+    "handles = []\n"
+    "err = None\n"
+    "try:\n"
+    "    for _ in range(64):\n"
+    "        handles.append(open('/dev/null'))\n"
+    "except OSError as exc:\n"
+    "    err = exc.errno\n"
+    "print('NOFILE_ERRNO', err)\n"
+)
+NOFILE_ERRNO_PREFIX = "NOFILE_ERRNO"
+
+#: The memory fixture's process-runner script (no placeholder) and its markers; the container
+#: runner's own memory fixture uses a DIFFERENT script (DECISION F162 D7 (5)), defined beside it.
+MEM_FIXTURE_SCRIPT = (
+    "try:\n"
+    "    bytearray(1 << 30)\n"
+    "    print('MEM_BIG_ALLOCATED')\n"
+    "except MemoryError:\n"
+    "    print('MEM_BIG_REFUSED')\n"
+    "small = bytearray(1 << 26)\n"
+    "print('MEM_SMALL_ALLOCATED', len(small))\n"
+)
+MEM_BIG_REFUSED_MARKER = b"MEM_BIG_REFUSED"
+MEM_SMALL_ALLOCATED_MARKER = b"MEM_SMALL_ALLOCATED"
+
 
 @pytest.fixture
 def sandbox_ready():
@@ -639,23 +704,16 @@ def test_a_deny_profile_cannot_reach_the_host_loopback_and_net_local_can(tmp_pat
 
     threading.Thread(target=_accept_forever, daemon=True).start()
     try:
-        script = (
-            "import socket\n"
-            "try:\n"
-            f"    socket.create_connection(('127.0.0.1', {port}), timeout=5).close()\n"
-            "    print('NET_REACHED')\n"
-            "except OSError:\n"
-            "    print('NET_REFUSED')\n"
-        )
+        script = NET_FIXTURE_SCRIPT.format(port=port)
         deny_ws = tmp_path / "deny-ws"
         deny_ws.mkdir()
         deny_result = _run_fixture_script(get_sandbox_profile("strict"), script, str(deny_ws))
-        assert b"NET_REFUSED" in deny_result.stdout
+        assert NET_REFUSED_MARKER in deny_result.stdout
 
         allow_ws = tmp_path / "allow-ws"
         allow_ws.mkdir()
         allow_result = _run_fixture_script(get_sandbox_profile("net-local"), script, str(allow_ws))
-        assert b"NET_REACHED" in allow_result.stdout
+        assert NET_REACHED_MARKER in allow_result.stdout
     finally:
         listener.close()
 
@@ -664,18 +722,9 @@ def test_strict_pins_the_workspace_as_the_one_writable_tree(tmp_path, sandbox_re
     ws = tmp_path / "ws"
     ws.mkdir()
     outside = tmp_path / "outside.txt"
-    script = (
-        "with open('inside.txt', 'w') as f:\n"
-        "    f.write('x')\n"
-        "print('FS_INSIDE_DONE')\n"
-        "try:\n"
-        f"    open({str(outside)!r}, 'w').write('x')\n"
-        "    print('FS_OUTSIDE_DONE')\n"
-        "except OSError:\n"
-        "    print('FS_OUTSIDE_REFUSED')\n"
-    )
+    script = FS_SCOPE_FIXTURE_SCRIPT.format(outside=str(outside))
     result = _run_fixture_script(get_sandbox_profile("strict"), script, str(ws))
-    assert b"FS_INSIDE_DONE" in result.stdout
+    assert FS_INSIDE_DONE_MARKER in result.stdout
     assert (ws / "inside.txt").exists()
     assert not outside.exists()
 
@@ -686,16 +735,9 @@ def test_a_one_second_cpu_limit_ends_a_busy_loop_classified_resource_limit_cpu_s
     ws.mkdir()
     strict = get_sandbox_profile("strict")
     profile = dataclasses.replace(strict, ulimits=dataclasses.replace(strict.ulimits, cpu_s=1))
-    script = (
-        "print('CPU_STARTED', flush=True)\n"
-        "x = 0\n"
-        "while True:\n"
-        "    x += 1\n"
-        "print('CPU_LOOP_DONE')\n"
-    )
-    result = _run_fixture_script(profile, script, str(ws))
-    assert b"CPU_STARTED" in result.stdout
-    assert b"CPU_LOOP_DONE" not in result.stdout
+    result = _run_fixture_script(profile, CPU_FIXTURE_SCRIPT, str(ws))
+    assert CPU_STARTED_MARKER in result.stdout
+    assert CPU_LOOP_DONE_MARKER not in result.stdout
     assert result.classification == "resource_limit"
     assert result.tripped_limit == "cpu_seconds"
 
@@ -705,18 +747,8 @@ def test_a_nofile_limit_of_16_refuses_the_64th_open_of_dev_null_with_errno_24(tm
     ws.mkdir()
     strict = get_sandbox_profile("strict")
     profile = dataclasses.replace(strict, ulimits=dataclasses.replace(strict.ulimits, nofile=16))
-    script = (
-        "handles = []\n"
-        "err = None\n"
-        "try:\n"
-        "    for _ in range(64):\n"
-        "        handles.append(open('/dev/null'))\n"
-        "except OSError as exc:\n"
-        "    err = exc.errno\n"
-        "print('NOFILE_ERRNO', err)\n"
-    )
-    result = _run_fixture_script(profile, script, str(ws))
-    assert f"NOFILE_ERRNO {errno.EMFILE}".encode() in result.stdout
+    result = _run_fixture_script(profile, NOFILE_FIXTURE_SCRIPT, str(ws))
+    assert f"{NOFILE_ERRNO_PREFIX} {errno.EMFILE}".encode() in result.stdout
 
 
 def test_a_mem_limit_of_256_mib_refuses_1gib_and_allows_64mib(tmp_path, sandbox_ready):
@@ -724,18 +756,9 @@ def test_a_mem_limit_of_256_mib_refuses_1gib_and_allows_64mib(tmp_path, sandbox_
     ws.mkdir()
     strict = get_sandbox_profile("strict")
     profile = dataclasses.replace(strict, ulimits=dataclasses.replace(strict.ulimits, mem_mb=256))
-    script = (
-        "try:\n"
-        "    bytearray(1 << 30)\n"
-        "    print('MEM_BIG_ALLOCATED')\n"
-        "except MemoryError:\n"
-        "    print('MEM_BIG_REFUSED')\n"
-        "small = bytearray(1 << 26)\n"
-        "print('MEM_SMALL_ALLOCATED', len(small))\n"
-    )
-    result = _run_fixture_script(profile, script, str(ws))
-    assert b"MEM_BIG_REFUSED" in result.stdout
-    assert b"MEM_SMALL_ALLOCATED" in result.stdout
+    result = _run_fixture_script(profile, MEM_FIXTURE_SCRIPT, str(ws))
+    assert MEM_BIG_REFUSED_MARKER in result.stdout
+    assert MEM_SMALL_ALLOCATED_MARKER in result.stdout
 
 
 # ---------------------------------------------------------------------------

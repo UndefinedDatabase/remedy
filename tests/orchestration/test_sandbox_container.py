@@ -7,25 +7,44 @@ the fixture processes D3 (5) shares with the process runner, run for real agains
 """
 from __future__ import annotations
 
+import dataclasses
+import errno
 import os
 import signal
+import socket
+import threading
 
 import pytest
 
 import packages.orchestration.sandbox_container as SC
-from packages.orchestration.exec_guard import ExecGuardResult
+from packages.orchestration.exec_guard import ExecGuardPolicy, ExecGuardResult
 from packages.orchestration.sandbox_container import (
     CONTAINER_RUNTIME_NAMES,
+    container_image_present,
     container_run_argv,
+    container_runtime_path,
     container_sandbox_enforcement,
     run_in_container_with_sandbox_profile,
 )
 from packages.orchestration.sandbox_profiles import (
     SANDBOX_ENFORCEMENT_KEYS,
     SandboxDimensionEnforcement,
+    SandboxProfile,
     get_sandbox_profile,
 )
 from packages.orchestration.tool_sandbox import SANDBOX_MISSING, SandboxUnavailable
+from tests.orchestration.test_sandbox_profiles import (
+    CPU_FIXTURE_SCRIPT,
+    CPU_LOOP_DONE_MARKER,
+    CPU_STARTED_MARKER,
+    FS_INSIDE_DONE_MARKER,
+    FS_SCOPE_FIXTURE_SCRIPT,
+    NET_FIXTURE_SCRIPT,
+    NET_REACHED_MARKER,
+    NET_REFUSED_MARKER,
+    NOFILE_ERRNO_PREFIX,
+    NOFILE_FIXTURE_SCRIPT,
+)
 
 # ---------------------------------------------------------------------------
 # F162 round 7 C2: the compiler, the runtime lookup, the refusal and the record.
@@ -259,3 +278,138 @@ def test_container_sandbox_enforcement_full_tuple_for_strict_with_a_runtime():
         SandboxDimensionEnforcement(
             "tmp_quota_mb", "enforced", "a size-limited /tmp inside the container"),
     )
+
+
+# ---------------------------------------------------------------------------
+# F162 round 7 C3: the D3 (5) fixture processes, run for real under the container runner.
+# ---------------------------------------------------------------------------
+
+#: The local image every fixture here runs against; Remedy never pulls it.
+CONTAINER_TEST_IMAGE = "python:3.12-slim"
+
+#: The container memory fixture's own scripts (DECISION F162 D7 (5)): unlike the process
+#: runner's `MEM_FIXTURE_SCRIPT`, each writes every byte (`b"\x01" * n`), because a cgroup kill
+#: answers resident memory, not merely mapped memory, and a bare `bytearray(n)` never commits a
+#: page. The big and small cases run as separate containers: an OOM kill ends the process, so one
+#: script cannot try both in sequence the way the process fixture does.
+MEM_CONTAINER_BIG_SCRIPT = "data = b'\\x01' * (1 << 30)\nprint('MEM_BIG_DONE', len(data))\n"
+MEM_CONTAINER_SMALL_SCRIPT = "data = b'\\x01' * (1 << 26)\nprint('MEM_SMALL_DONE', len(data))\n"
+
+#: The tmp quota fixture's script: strict's 64 MiB `/tmp`, refusing a 100 MiB write (DECISION
+#: F162 D7 (5)); no process-runner equivalent exists, since the process runner never sizes /tmp.
+TMP_QUOTA_FIXTURE_SCRIPT = (
+    "err = None\n"
+    "try:\n"
+    "    with open('/tmp/big', 'wb') as f:\n"
+    "        f.write(b'\\x00' * (100 * 1024 * 1024))\n"
+    "except OSError as exc:\n"
+    "    err = exc.errno\n"
+    "print('TMP_QUOTA_ERRNO', err)\n"
+)
+
+
+@pytest.fixture
+def container_ready() -> None:
+    runtime = container_runtime_path()
+    if runtime is None or not container_image_present(runtime, CONTAINER_TEST_IMAGE):
+        pytest.skip(f"NOT VERIFIED: no container runtime or no local {CONTAINER_TEST_IMAGE}; "
+                    "a skipped isolation test is not a passed one")
+
+
+def _run_container_fixture_script(
+        profile: SandboxProfile, script: str, workspace: str) -> ExecGuardResult:
+    """One real container, under *profile*, through the production runner."""
+    return run_in_container_with_sandbox_profile(
+        ["python3", "-I", "-c", script], profile, workspace=workspace, image=CONTAINER_TEST_IMAGE,
+        base=ExecGuardPolicy(wall_timeout_seconds=120, cwd=workspace))
+
+
+def test_container_a_deny_profile_cannot_reach_the_host_loopback_and_net_local_can(
+        tmp_path, container_ready):
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    port = listener.getsockname()[1]
+
+    def _accept_forever() -> None:
+        while True:
+            try:
+                conn, _addr = listener.accept()
+            except OSError:
+                return
+            conn.close()
+
+    threading.Thread(target=_accept_forever, daemon=True).start()
+    try:
+        script = NET_FIXTURE_SCRIPT.format(port=port)
+        deny_ws = tmp_path / "deny-ws"
+        deny_ws.mkdir()
+        deny_result = _run_container_fixture_script(
+            get_sandbox_profile("strict"), script, str(deny_ws))
+        assert NET_REFUSED_MARKER in deny_result.stdout
+
+        allow_ws = tmp_path / "allow-ws"
+        allow_ws.mkdir()
+        allow_result = _run_container_fixture_script(
+            get_sandbox_profile("net-local"), script, str(allow_ws))
+        assert NET_REACHED_MARKER in allow_result.stdout
+    finally:
+        listener.close()
+
+
+def test_container_strict_pins_the_workspace_as_the_one_writable_tree(tmp_path, container_ready):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    outside = tmp_path / "outside.txt"
+    script = FS_SCOPE_FIXTURE_SCRIPT.format(outside=str(outside))
+    result = _run_container_fixture_script(get_sandbox_profile("strict"), script, str(ws))
+    assert FS_INSIDE_DONE_MARKER in result.stdout
+    assert (ws / "inside.txt").exists()
+    assert not outside.exists()
+
+
+def test_container_a_one_second_cpu_limit_ends_a_busy_loop_classified_resource_limit_cpu_seconds(
+        tmp_path, container_ready):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    strict = get_sandbox_profile("strict")
+    profile = dataclasses.replace(strict, ulimits=dataclasses.replace(strict.ulimits, cpu_s=1))
+    result = _run_container_fixture_script(profile, CPU_FIXTURE_SCRIPT, str(ws))
+    assert CPU_STARTED_MARKER in result.stdout
+    assert CPU_LOOP_DONE_MARKER not in result.stdout
+    assert result.classification == "resource_limit"
+    assert result.tripped_limit == "cpu_seconds"
+
+
+def test_container_a_nofile_limit_of_16_refuses_the_64th_open_of_dev_null_with_errno_24(
+        tmp_path, container_ready):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    strict = get_sandbox_profile("strict")
+    profile = dataclasses.replace(strict, ulimits=dataclasses.replace(strict.ulimits, nofile=16))
+    result = _run_container_fixture_script(profile, NOFILE_FIXTURE_SCRIPT, str(ws))
+    assert f"{NOFILE_ERRNO_PREFIX} {errno.EMFILE}".encode() in result.stdout
+
+
+def test_container_a_mem_limit_of_256_mib_refuses_1gib_and_allows_64mib(tmp_path, container_ready):
+    strict = get_sandbox_profile("strict")
+    profile = dataclasses.replace(strict, ulimits=dataclasses.replace(strict.ulimits, mem_mb=256))
+    big_ws = tmp_path / "big-ws"
+    big_ws.mkdir()
+    big_result = _run_container_fixture_script(profile, MEM_CONTAINER_BIG_SCRIPT, str(big_ws))
+    assert big_result.returncode == 137
+
+    small_ws = tmp_path / "small-ws"
+    small_ws.mkdir()
+    small_result = _run_container_fixture_script(profile, MEM_CONTAINER_SMALL_SCRIPT, str(small_ws))
+    assert small_result.returncode == 0
+    assert b"MEM_SMALL_DONE" in small_result.stdout
+
+
+def test_container_tmp_quota_of_64_mib_refuses_a_100_mib_write_with_errno_28(
+        tmp_path, container_ready):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    result = _run_container_fixture_script(
+        get_sandbox_profile("strict"), TMP_QUOTA_FIXTURE_SCRIPT, str(ws))
+    assert f"TMP_QUOTA_ERRNO {errno.ENOSPC}".encode() in result.stdout
