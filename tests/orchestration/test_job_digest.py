@@ -33,6 +33,7 @@ from packages.orchestration.budget_guard import (
     counters_from_persisted,
     decode_persisted_budget_actuals,
 )
+from packages.orchestration.config import reset_config
 from packages.orchestration.decision_inbox import (
     build_decision_inbox,
     decision_urgency,
@@ -408,6 +409,12 @@ def test_a_non_jobplan_keeps_ownership_empty():
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture
+def usd_shown(monkeypatch):
+    """`cost.show_usd = true` (amend1024 Part E): the digest may show the dollars it measured."""
+    monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+
+
 def _persist_actuals(job: JobPlan, record: dict | None = None) -> None:
     """Give *job* a real persisted plan carrying *record* (version 1 by default)."""
     save_job_plan(JobPlan(
@@ -461,7 +468,7 @@ def test_cost_basis_is_absent_when_the_persisted_run_was_never_priced():
     assert cost == {"value": "not-measured", "basis": COST_BASIS_ABSENT}
 
 
-def test_cost_basis_is_lower_bound_when_calls_are_unpriced():
+def test_cost_basis_is_lower_bound_when_calls_are_unpriced(usd_shown):
     job, events = SHAPE_FIXTURES[GREEN]()
     _persist_actuals(job, _priced_actuals(cost=0.5, priced=1, unpriced=2))
 
@@ -475,7 +482,7 @@ def test_cost_basis_is_lower_bound_when_calls_are_unpriced():
     assert cost["value"].startswith(">= $")
 
 
-def test_cost_basis_is_actual_when_every_call_is_priced():
+def test_cost_basis_is_actual_when_every_call_is_priced(usd_shown):
     job, events = SHAPE_FIXTURES[GREEN]()
     _persist_actuals(job, _priced_actuals(cost=1.25, priced=3, unpriced=0))
 
@@ -485,6 +492,17 @@ def test_cost_basis_is_actual_when_every_call_is_priced():
     assert cost["basis"] == COST_BASIS_ACTUAL
     assert cost["value"] == expected
     assert cost["value"] == "$1.2500"
+
+
+def test_a_measured_cost_reads_not_shown_while_the_key_is_false():
+    """amend1024 Part E: with `cost.show_usd` false the value names no dollar figure, and the
+    basis still says the cost was measured."""
+    job, events = SHAPE_FIXTURES[GREEN]()
+    _persist_actuals(job, _priced_actuals(cost=1.25, priced=3, unpriced=0))
+
+    cost = build_job_digest(job, events)["cost"]
+    assert cost == {"value": "not-shown", "basis": COST_BASIS_ACTUAL}
+    assert "$" not in cost["value"]
 
 
 def test_the_report_renders_the_same_persisted_money():
@@ -559,7 +577,7 @@ def _ledger_triple(job):
 
 
 def test_a_measured_run_prices_the_digest_through_the_persisted_route(
-        tmp_path, monkeypatch):
+        tmp_path, monkeypatch, usd_shown):
     from packages.orchestration.project_registry import register_project_repo
     from tests.orchestration.test_token_ledger import _git_repo, _MeasuredStubProvider
 
@@ -586,7 +604,7 @@ def test_a_measured_run_prices_the_digest_through_the_persisted_route(
 @pytest.mark.parametrize("budgets", [None, {"max_total_tokens": 10_000_000},
                                      {"max_cost_usd": 100.0}])
 def test_a_first_priced_run_persists_its_own_money_before_any_mirror(
-        tmp_path, monkeypatch, budgets):
+        tmp_path, monkeypatch, budgets, usd_shown):
     """R-0986: no cost limit, or a first run the ledger has not seen, still prices.
 
     No mirror runs, so the ledger holds nothing for the job: the money can only
@@ -871,8 +889,22 @@ def test_the_tokens_section_is_the_do_token_reading(tmp_path, monkeypatch):
     assert tokens["show_cost_usd"] is False
 
 
-def test_dollars_only_when_the_project_asks(tmp_path, monkeypatch):
+def test_dollars_only_when_the_operator_asks(tmp_path, monkeypatch):
+    """amend1024 Part E: `cost.show_usd` in remedy.toml replaced `[cockpit] show_cost_usd`."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr("packages.orchestration.job_tokens.job_token_roles",
+                        lambda project_id, job_id, run_ids: [dict(r) for r in _LEDGER_ROLES])
+    monkeypatch.chdir(tmp_path)
     (tmp_path / ".remedy").mkdir()
+    # The replaced per-project switch is read by nothing any more.
     (tmp_path / ".remedy" / "config.toml").write_text("[cockpit]\nshow_cost_usd = true\n")
-    assert build_job_digest(_do_job(tmp_path))["tokens"]["show_cost_usd"] is True
+    hidden = build_job_digest(_do_job(tmp_path))["tokens"]
+    assert hidden["show_cost_usd"] is False
+    assert hidden["cost_usd"] is None
+    assert all(role["cost_usd"] is None for role in hidden["roles"])
+
+    (tmp_path / "remedy.toml").write_text("[remedy.cost]\nshow_usd = true\n")
+    reset_config()
+    shown = build_job_digest(_do_job(tmp_path))["tokens"]
+    assert shown["show_cost_usd"] is True
+    assert shown["roles"] == [dict(r) for r in _LEDGER_ROLES]

@@ -20,6 +20,28 @@ under `packages/` and `apps/` and fails on any foreign currency symbol (such as 
 sign) or upper-case ISO code (such as EUR or GBP). The one exempt file is `cost_currency.py`
 itself, whose table of those markers is what the guard searches for.
 
+## Dollars are hidden by default
+
+Since operator amendment amend1024-one-real-order Part E Remedy shows tokens and provider calls,
+not dollars. Every output of `remedy stats`, `remedy job show`, `remedy do` and the public HTTP API
+shows a dollar figure only when `cost.show_usd = true` is set in `remedy.toml` (or
+`REMEDY_COST_SHOW_USD=true`); the key defaults to `false`. The dollar calculation itself is
+unchanged: the ledger, the price catalog and the valuations still record every figure, and setting
+the key brings back exactly the output Remedy printed before.
+
+One rule applies to every JSON answer while the key is false, through
+`cost_currency.visible_cost_usd`: every field whose name ends in `_usd` keeps its key and reads
+`null`, so a client's key sets and the machine contract do not change. A limit the operator set,
+such as `max_cost_usd`, `cap_usd` or `confirm_above_usd`, is not a measured cost and stays, and so
+does the `show_cost_usd` flag that `remedy do`'s `cost` object and the job digest's `tokens` carry,
+which says which reading the answer holds. A `basis` beside a nulled figure still says whether the
+cost was measured. The few money fields not named `*_usd` follow the same rule by hand: the job
+digest's `cost.value` reads `not-shown`, a money `cost_per_pass` of `remedy stats trust` and the
+`normalized_cost` and `catalog_cost` of `remedy stats valuations` read `null`. A text output leaves
+its dollar column out, or prints `not-shown` where the figure would stand, and says how to show it.
+The key replaced the per-project `[cockpit] show_cost_usd` switch of `.remedy/config.toml`
+(amend1015 D7), which nothing reads any more.
+
 ## The audit (2026-10-24, at `407536a9b`)
 
 Every place a money figure lives or is shown, the currency it is in, and how it stands against the
@@ -36,6 +58,7 @@ that each one was checked. Source: the reviewed findings pass `.agent/f158_inven
 | `budget.price_basis_usd_per_1k_tokens` | USD | aligned: the provisional prediction price, unset by default |
 | `cost_preview.confirm_above_usd` | USD | aligned: the confirmation threshold of a cost preview |
 | `autonomy.idea_usd_per_day` | USD | aligned: the daily estimated-cost limit of idea drafts autonomy starts on its own |
+| `cost.show_usd` | none: a switch | whether dollar figures are shown at all; default `false` (amend1024 Part E, above) |
 
 `tests/orchestration/test_cost_currency.py` fails when a registered key with `_usd` in its name is
 missing from this table, or when a row names a key the registry does not hold.

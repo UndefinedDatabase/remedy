@@ -323,17 +323,20 @@ worker program) and the model turns (how many times the model answered inside on
 A figure no call reported says "not reported", never 0.
 
 The `Cost:` line shows no dollar figure by default. It reads `Cost: not shown — tokens only (…)`
-when a cost was measured, and `Cost: not reported by the provider` when none was. A project that
-wants dollars sets this in its `.remedy/config.toml`:
+when a cost was measured, and `Cost: not reported by the provider` when none was. An operator who
+wants dollars sets this in `remedy.toml` (or `REMEDY_COST_SHOW_USD=true`):
 
 ```toml
-[cockpit]
-show_cost_usd = true
+[remedy.cost]
+show_usd = true
 ```
 
-The key defaults to `false`. With it set, the `Cost:` line shows the measured
-dollar figure. The `--json` output always carries it as the `cost_usd` field of its `cost` object,
-because it is for programs, not people (operator amendment amend1015).
+The key defaults to `false`. With it set, the `Cost:` line shows the measured dollar figure. The
+`--json` output keeps the `cost_usd` fields of its `cost` object and of each role, and every other
+dollar field, such as `order_budget`'s spend; they read `null` while the key is false, and the
+`cost` object's `show_cost_usd` says which reading the answer holds (operator amendment
+amend1024-one-real-order Part E, `docs/system/cost-currency-v1.md`). The key replaced the
+per-project `[cockpit] show_cost_usd` switch of `.remedy/config.toml`, which nothing reads any more.
 
 ## --plan-only and --step-by-step
 
