@@ -6,14 +6,14 @@ that discharged it, in the slice order of DECISION F314 D1; carry the rest by na
 findings paydown at the closure.
 
 ## Current Step
-Round 6: book round 5's verdict, resolve R-1427 and R-1421 (DECISION F314 D8), record that the
-hosted run was refused (R-1426, R-1428, operator question Q25); then T008, the closing structural
-step — `run_job`'s veto terminal moves to `task_veto.py` (DECISION F314 D9).
+Round 7, the closure's integration-gate round: book round 6's verdict and register R-1449; repair
+R-1449; the checklist's consolidation pass; the closure's self-use item run to its approval gate;
+the feature's one full suite and its cost.
 
 ## Next Steps
-1. The closure sequence: the integration gate with the one full suite, the self-use item, the
-   evidence package, the ledger rotation, the next findings paydown registered with the carried
-   findings, the STATUS line and the pull request.
+1. The evidence bundle and the review package.
+2. The closing round: the Built State, the ledger rotation, the next findings paydown registered
+   with the carried findings, the STATUS line, the README and the pull request.
 
 ## Risks
 - Carried at the closure: R-1246, R-1281, R-1351, R-1353, R-1426, R-1428 and R-1448.
