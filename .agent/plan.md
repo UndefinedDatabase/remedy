@@ -8,19 +8,16 @@ sandbox as reinforcement) with a required ADR, the call builder applies it and r
 adapter without its ADR (`docs/roadmap/features/T8_F152.md`).
 
 ## Current Step
-Round 3, T001 under DECISION F152 D3: the `WorkerIsolation` declaration and its validation, the
-claude-cli declaration and its flags, the kit's isolation check, the `worker_isolation` module
-(child environment, digest, evidence line, throwaway home), the spawn policies' environment, the
-evidence line per provider build, and the record's mechanism section rewritten to D3.
+Round 4: book round 3's FAIL and R-1455 to R-1457; repair them (the capability-route test states
+its property, an adapter without a declaration is refused, the record's Consequences follow D3);
+and T002 under DECISION F152 D4, the A/B proof utility with its stand-in proof and red controls.
 
 ## Next Steps
-1. T002: the A/B proof utility over a throwaway home with a poisoned configuration, run against a
-   stub executable in every selection, and the real-binary run behind a switch that is off by
-   default.
-2. T003: the per-adapter doctor check, the conformance-kit requirement that the record exists and
+1. T003: the per-adapter doctor check, the conformance-kit requirement that the record exists and
    that the command line carries the declared flags, and the docs.
-3. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
+2. The closure sequence: the integration gate, the evidence package, the STATUS acceptance, with
+   the real-binary A/B named as the open risk while operator question Q26 is unanswered.
 
 ## Risks
 - A worker that reached its model through variables outside the allowlist loses them; the
-  allowlist keeps the API key and the proxies, and the handoff names the rest.
+  allowlist keeps the API key and the proxies.
