@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-161 of 315 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+162 of 316 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -38,7 +38,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 48 | 49 |
+| 2 | Minimal Self-Build Runtime | 49 | 50 |
 | 3 | Full Token Economy & Autonomy | 16 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
@@ -351,7 +351,18 @@ refusal instead of a crash report; and a backup model that takes over a call boo
 that call to itself. Several large pieces of code were split into smaller modules on
 the way, and the part that answers programs over the network got a name that says
 so. Remedy then ran one more repair on itself that stopped, as it should, at its
-approval gate).
+approval gate),
+F314 findings paydown v10 (twelve written-down problems were repaired, each with
+its evidence: Remedy's practice queue no longer offers a job that needs the
+internet to a model that has none, nor an error handler whose own note says that
+catching everything is deliberate; a project can name its builder and reviewer
+once, in a `[roles]` table of its `.remedy/config.toml`; the test gauntlet opens
+its orders the way a person's order is opened; the type checker finds no error
+left in the two modules whose count had grown; and two tests that failed only on
+GitHub's machines now carry what those machines lack. The largest function of the
+code shrank by one more step. Remedy's paid practice run then repaired, on its
+own branch and never applied, the planner's half of the `[roles]` table, which
+the next clean-up reads).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

@@ -836,6 +836,18 @@ end the response with:
   and a streamed call built without streaming, and the test was tightened before the block was
   emitted, which is item 18's reading of an ordered list of tests against the property it must
   establish. The list stays at 34 items.
+  Consolidated again at F314's closure on 2026-10-24: nothing joined and no two items were merged,
+  because F314's one line in `.agent/prose_slips.md` names no lesson the list lacks: a block that
+  ordered one file left unchanged while its own rule turned a fixture of that file red is item 34's
+  reading of the tests that already reach the code an order changes. Six of its seven findings were
+  raised against its own rounds and repaired inside the feature: R-1443, a test whose code word could
+  not match the rule it guarded, and R-1445 and R-1446, calls no ordered test could see, are item
+  18's reading of an ordered list of tests against the property it must establish, each found by the
+  reviewer's mutations; R-1444, prose left describing a deleted tier, and R-1449, a comment ordered
+  kept as half a sentence, are item 18's reading of an ordered wording; and R-1447, a guide sentence
+  promising a refusal earlier than the code makes it, is item 8's reading of the code that produces
+  what a sentence asserts. The seventh, R-1448, is the planner's half of a finding, carried to the
+  next findings paydown. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

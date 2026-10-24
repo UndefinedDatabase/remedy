@@ -2,9 +2,11 @@
 
 Remedy's continuous integration installs an exact, hash-checked set of tools from
 `constraints.txt`. Pinning stops a tool from changing under the test suite without warning, and
-this order is how the pins move on purpose. Remedy's self-use track may turn this file into a
-job no more than once every fourteen days. The job ends with a pull request for a person to
-review. Nothing in it merges anything.
+this order is how the pins move on purpose. This order reads the network — the package index, a
+manifest address and release notes — and every builder tool runs inside a sandbox that cannot
+reach it, so the self-use track does not queue it. A person runs this order from a session that
+can reach the network. The job ends with a pull request for a person to review. Nothing in it
+merges anything.
 
 Budget: max_tasks=5, max_provider_calls=40, max_cost_usd=28.00, timeout_sec=900
 

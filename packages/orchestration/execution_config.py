@@ -192,6 +192,28 @@ def _resolve_cfg(cli_val: Any, persisted_val: Any, default: Any) -> tuple[Any, s
     return default, "default"
 
 
+# DECISION F314 D4 (2): the builder's and the reviewer's provider widens past
+# ``default_role_provider_name``'s two rungs by one more, between them — a
+# project's own ``[roles]`` table of ``.remedy/config.toml`` sits ABOVE
+# ``role_config``'s product default and BELOW an injected provider object,
+# because that object is what will really run.
+def _resolve_role_provider(
+    cli_val: str | None, persisted_val: str | None, injected_provider: Any,
+    role: str, project_roles: dict[str, str],
+) -> tuple[str, str]:
+    """Resolve one role's provider: explicit > persisted > injected object > project table > default."""
+    if cli_val is not None:
+        return cli_val, "cli"
+    if persisted_val is not None:
+        return persisted_val, "persisted"
+    if injected_provider is not None:
+        return default_role_provider_name(role, injected_provider), "default"
+    table_val = project_roles.get(role)
+    if table_val:
+        return table_val, "roles"
+    return default_role_provider_name(role, None), "default"
+
+
 def _resolve_invocation_controls(
     ec: ExecutionConfig | None, *, timeout_sec: int | None, timeout_profile: str | None,
     max_output_chars: int | None, stream_evidence: bool | None, max_tasks: int | None,
@@ -270,22 +292,27 @@ def resolve_job_execution_config(
     test_command: str | None = None, timeout_sec: int | None = None,
     timeout_profile: str | None = None, max_output_chars: int | None = None,
     claude_cli_write_mode: str | None = None, stream_evidence: bool | None = None,
-    max_tasks: int | None = None, config: Any = None,
+    max_tasks: int | None = None, config: Any = None, repo_path: str | None = None,
 ) -> ExecutionConfig:
     """Answer ``explicit > persisted > product default`` per execution-config field.
 
     ``run_job`` records exactly the answer this returns. The two claude-cli launch keys,
     ``claude_cli_customizations`` and ``claude_cli_all_tools``, are the one exception to that
     precedence chain: they are read fresh from ``config`` (R-1235), never from ``persisted``.
+    The builder's and the reviewer's provider widen that chain by one more rung (DECISION
+    F314 D4): ``repo_path``'s ``[roles]`` table of ``.remedy/config.toml``, read by
+    ``read_project_roles``, sits above the product default and below an injected provider
+    object, recorded with the source ``roles`` when it is the one that answers.
     """
     ec = persisted
+    from packages.orchestration.project_roles import read_project_roles
 
-    builder_name, builder_src = _resolve_cfg(
-        builder_name, ec.builder if ec else None,
-        default_role_provider_name("builder", builder_provider))
-    reviewer_name, reviewer_src = _resolve_cfg(
-        reviewer_name, ec.reviewer if ec else None,
-        default_role_provider_name("reviewer", reviewer_provider))
+    project_roles = read_project_roles(repo_path)
+
+    builder_name, builder_src = _resolve_role_provider(
+        builder_name, ec.builder if ec else None, builder_provider, "builder", project_roles)
+    reviewer_name, reviewer_src = _resolve_role_provider(
+        reviewer_name, ec.reviewer if ec else None, reviewer_provider, "reviewer", project_roles)
     max_rounds, max_rounds_src = _resolve_cfg(
         max_rounds, ec.max_rounds if ec else None, 3)
     test_command, test_cmd_src = _resolve_cfg(

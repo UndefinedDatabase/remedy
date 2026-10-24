@@ -115,11 +115,21 @@ def test_nothing_outside_the_workspace_is_writable(world, tmp_path):
 
 
 def test_a_recursive_search_of_the_whole_disk_finds_only_what_is_inside(world):
-    """The incident's own command, accidental or not: `grep -r` from the root. The system
-    directories are skipped only to keep the test fast; they are read-only and hold no secret."""
+    """The incident's own command, accidental or not: a recursive search from the root.
+
+    R-1428, DECISION F314 D7: the read-only trees the sandbox binds for programs to run — `/proc`,
+    `/dev`, the system directories and the toolchain of this run's `PATH`, which on a hosted
+    runner is a whole Python installation — are pruned by their full path, only to keep the walk
+    within its time limit; they hold no secret, and every other directory of the sandbox's disk,
+    one a leak could sit in, is still read."""
+    import shlex
+
     ws, _secret, _other = world
     (ws / "control.txt").write_text(SECRET)
-    done = sh(ws, f"grep -rls {SECRET} / --exclude-dir=usr --exclude-dir=proc --exclude-dir=dev; true")
+    pruned = ["/proc", "/dev", *TS._SYSTEM_DIRS,
+              *TS._toolchain_dirs(os.environ.get("PATH", "/usr/bin:/bin"), str(ws))]
+    prune = " -o ".join(f"-path {shlex.quote(path)}" for path in pruned)
+    done = sh(ws, f"find / \\( {prune} \\) -prune -o -type f -exec grep -ls {SECRET} {{}} +; true")
     found = done.stdout.decode().split()
     assert found == [str(ws / "control.txt")]
 

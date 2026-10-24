@@ -35,11 +35,15 @@ from packages.orchestration import safe_points as _sp
 from packages.orchestration.dag_schedule import blocked_downstream
 from packages.orchestration.failure_postmortem import safe_text
 from packages.orchestration.pingpong_job import (
+    JOB_BLOCKED,
+    TASK_APPLIED,
     TASK_BLOCKED,
     TASK_FAILED,
+    TASK_PASSED,
     TASK_PENDING,
     TASK_RUNNING,
     TASK_SKIPPED,
+    TASK_SPLIT,
     TASK_VETOED,
 )
 from packages.orchestration.stream_evidence import redact_text
@@ -64,6 +68,7 @@ __all__ = [
     "veto_task_command",
     "record_veto_answer",
     "veto_answers",
+    "settle_veto_terminal",
 ]
 
 VETOED_TASKS_DIRNAME = "vetoed_tasks"
@@ -560,6 +565,82 @@ def veto_answers(job_id: str, *,
         if answers_fd is not None:
             os.close(answers_fd)
         os.close(job_fd)
+
+
+# DECISION F314 D9: `run_job`'s veto terminal, moved here verbatim (DECISION F027 D2 (5),
+# DECISION F027 D4 (5)) — this module already held the readers it calls and the job module's
+# task states it needs.
+def settle_veto_terminal(job: Any, *, control_root_path: Path | None) -> bool:
+    # F027 D2 (5): THE TERMINAL — before the ordinary all_done reading, when at least
+    # one task is vetoed and every other task is applied, passed, skipped, split,
+    # vetoed or unreachable behind a veto, the run checks whether every veto has been
+    # ANSWERED (DECISION F027 D4 (5)). A runnable pending task (one outside the
+    # unreachable set) fails this readiness check on its own, so the task cap's
+    # `paused` reading below keeps precedence exactly when such a task remains —
+    # nothing further is needed to arbitrate it.
+    vetoed_ids = [t.task_id for t in job.tasks if t.status == TASK_VETOED]
+    if vetoed_ids:
+        unreachable = list(veto_unreachable(job.tasks, vetoed_ids))
+        unreachable_set = set(unreachable)
+        ready = all(
+            t.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED, TASK_SPLIT, TASK_VETOED)
+            or t.task_id in unreachable_set
+            for t in job.tasks
+        )
+        if ready:
+            # DECISION F027 D4 (5): SETTLED COMPLETION — every vetoed task's own
+            # request id, read from `job.metadata["task_vetoes"]` (the fold's own
+            # record), answered means the operator has already spoken for the whole
+            # reduced scope, so the job completes instead of blocking forever.
+            try:
+                answers = veto_answers(job.job_id, control_root_path=control_root_path)
+            except TaskVetoError as exc:
+                job.state = JOB_BLOCKED
+                job.error = f"task_veto_control_error: {exc}"
+                return True
+
+            task_vetoes = job.metadata.get("task_vetoes") or {}
+            answered_options: dict[str, str] = {}
+            settled = True
+            for _vid in vetoed_ids:
+                _vid_entry = task_vetoes.get(_vid) or {}
+                _vid_request_id = str(_vid_entry.get("request_id", ""))
+                _vid_answer = (
+                    answers.get(_vid_request_id)
+                    if _vid_request_id else None
+                )
+                if _vid_answer is None:
+                    settled = False
+                    continue
+                answered_options[_vid] = _vid_answer.option
+
+            for t in job.tasks:
+                if t.status == TASK_PENDING and t.task_id in unreachable_set:
+                    t.status = TASK_SKIPPED
+
+            if settled:
+                job.metadata["veto_terminal"] = {
+                    "vetoed": list(vetoed_ids),
+                    "unreachable": list(unreachable),
+                    "settled": True,
+                    "answers": answered_options,
+                }
+                # NOT a `return` here: the job falls through to the ordinary
+                # completion path below, whose `all_done` reading counts
+                # `TASK_VETOED` beside applied, skipped and split.
+            else:
+                job.metadata["veto_terminal"] = {
+                    "vetoed": list(vetoed_ids),
+                    "unreachable": list(unreachable),
+                    "settled": False,
+                }
+                job.state = JOB_BLOCKED
+                job.error = (
+                    "all_remaining_work_vetoed: "
+                    f"vetoed {', '.join(vetoed_ids) or 'none'}; "
+                    f"unreachable {', '.join(unreachable) or 'none'}")
+                return True
+    return False
 
 
 # ---------------------------------------------------------------------------

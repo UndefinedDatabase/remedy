@@ -69,7 +69,7 @@ import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from packages.orchestration.pingpong_job import JobPlan, TaskEntry
@@ -417,14 +417,14 @@ def _first_pass_task_plan(
             fp_result, tasks = second_pass_task_plan(
                 refusal, scope_order, plan_intake_dict, plan_call_fn, plan_composed, on_call,
                 mission, job_file_sha256, project, target_repo_path, intake_result, prompt_traces)
-        fp_dict = fp_result.plan.model_dump()
+        fp_dict = cast(Any, fp_result.plan).model_dump()  # R-1425: proved non-None by the branches above
         fp_dict["_approval"] = "pending"
         fp_dict["_normalization"] = fp_result.transformations
         from packages.orchestration.budget_resolution import resolve_job_budgets
         config_budgets = resolve_job_budgets(project_root=repo)
         config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
         # DECISION F310 D2: the plan's suggested budgets are its estimate, never a limit.
-        merged_fences = apply_plan_fences(None, fp_result.plan.fences)
+        merged_fences = apply_plan_fences(None, cast(Any, fp_result.plan).fences)
         job_budgets, job_fences = order_job_limits(config_budgets_dict, merged_fences)
         job = JobPlan(
             job_title=mission[:80], mission=mission, user_prompt=mission,
@@ -441,7 +441,7 @@ def _first_pass_task_plan(
         save_job_plan(job)
         from packages.orchestration.data_paths import job_evidence_export_dir
         write_plan_md(
-            fp_result.plan, job_evidence_export_dir(str(job.job_id)),
+            cast(Any, fp_result.plan), job_evidence_export_dir(str(job.job_id)),
             transformations=fp_result.transformations)
         if run_unattended:
             # F034: --run-unattended covers approval AND clarifications: every open question
@@ -458,11 +458,11 @@ def _first_pass_task_plan(
             save_job_plan(job)
             announce_plan_approval(job, mode=AUTO_APPROVAL_MODE)
             plan_label = (
-                f"task plan {fp_result.plan.schema_v} (approved via --run-unattended)"
+                f"task plan {cast(Any, fp_result.plan).schema_v} (approved via --run-unattended)"
             )
         else:
             plan_label = (
-                f"task plan {fp_result.plan.schema_v} (awaiting approval)"
+                f"task plan {cast(Any, fp_result.plan).schema_v} (awaiting approval)"
             )
     else:
         job = JobPlan(
@@ -676,12 +676,12 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.mission_state import MissionError, MissionOrder
     from packages.orchestration.repo_mission import accept_order_in_each
 
-    project_id = str(ctx.project.id)
+    project_id = str(cast("RemyProject", ctx.project).id)  # R-1425: init sets it before any step
     order = MissionOrder(text=ctx.order, source_path=ctx.order_source_path,
                          source_sha256=ctx.order_source_sha256)
     # DECISION amend1011b D4: the order becomes a batch in the ONE mission of each repository it
     # touches, and in none unless every one can take it (R-1250).
-    targets = ctx.projects or [ctx.project]
+    targets = ctx.projects or [cast("RemyProject", ctx.project)]
     try:
         ctx.project_missions.update(accept_order_in_each(
             [(target, ctx.project_repos.get(str(target.id), ctx.repo_root)) for target in targets],
@@ -862,7 +862,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         # DECISION amend1011b D4: the job joins the mission of ITS repository, under this order.
         target_mission, target_order = ctx.project_missions[str(target.project.id)]
         mission = link_order_job(str(target.project.id), target_mission, target_order, job_id)
-        if milestone_id is not None and str(target.project.id) == str(ctx.project.id):
+        if milestone_id is not None and str(target.project.id) == str(cast("RemyProject", ctx.project).id):  # R-1425
             record_job_milestone(job_id, milestone_id)
         merge_contract_slice_into_dod(mission, milestone_id, job_id, hold_on_milestone=False)
         require_order_tests(job_id, ctx.order)     # exec-1017 D2: a test run the order asks for blocks

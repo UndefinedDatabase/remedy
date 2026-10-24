@@ -54,7 +54,8 @@ commit with no alias left behind, and changes the tests in their import lines on
   module of their own, holding the accumulators. Outside those steps, F308 moved the split of a
   task whose context exceeds its class cap to `split_task_over_class_cap` in
   `packages/orchestration/run_task_list.py`. Step (3), begun by F307: the final job review,
-  `_write_final_job_review` in the same file; the veto's terminal reading and the end state follow.
+  `_write_final_job_review` in the same file; the veto's terminal reading, done by F314, is
+  `settle_veto_terminal` in `packages/orchestration/task_veto.py`; the end state follows.
 - `run_pingpong` (`packages/orchestration/pingpong_loop.py`). Boundary: the builder, test and
   reviewer phases its own banners name, and the target snapshot check written out four times.
   Steps: (1) the snapshot check becomes one function each place calls, each keeping its own exit
@@ -179,6 +180,13 @@ commit with no alias left behind, and changes the tests in their import lines on
   carry them. Steps: (1) done by F310, the start instant's checks are
   `decode_persisted_started_at` in `packages/orchestration/budget_clock.py`; (2) the counts and the
   sources become a function of their own.
+- `run_order` (`packages/orchestration/gauntlet_runner.py`). Boundary: the order's isolated
+  environment, the workspace and project it makes, the mission it opens for the order and the
+  planner call, the loop with its injected seams, and the evidence body it writes on every exit.
+  Steps: (1) the setup — the workspace, the project, the mission and the planner call — becomes a
+  function of its own that answers the project, the mission and the planner's model; (2) the
+  evidence body on the crash path becomes a function of its own. Until a step is taken, a
+  feature's edits of this function are line-neutral (DECISION F314 D3).
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -296,7 +304,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1381 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1310 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1230 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 887 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -453,7 +461,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 4939 | `packages/orchestration/pingpong_job.py` |
+| 4868 | `packages/orchestration/pingpong_job.py` |
 | 4909 | `packages/orchestration/pingpong_loop.py` |
 | 1824 | `packages/orchestration/serve_http_handler.py` |
 | 3495 | `scripts/build_review_manifest.py` |

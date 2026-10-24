@@ -1,0 +1,27 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 453.5s (the launcher's reading); pytest's own reported wall time: 452.72s (0:07:32)
+summary line: 23783 passed, 11 skipped, 1 warning in 452.72s (0:07:32)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 277c8184c (F314 R7 C4: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C4 changed only .agent/ files, one comment line of pingpong_job.py, the checklist page and the self-use queue
+reflog before: 277c8184c HEAD@{2026-10-24 02:17:16 +0200}: commit: F314 R7 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: 277c8184c HEAD@{2026-10-24 02:17:16 +0200}: commit: F314 R7 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F314 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 1
+Test load: 1387.98 CPU seconds, 452.74 wall seconds, 23794 tests collected, exit status 0, recorded 2026-10-24T00:24:54Z
+This closure's suite used 1387.98 CPU seconds, 10.6 percent more than F315's 1255.17; that is above the 10 percent limit, so this closure registers a finding owned by the rolling findings paydown.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F315's closure run:
+  +12.20 s  tests/cli/test_do_scale_matrix.py (31.97 -> 44.17)
+  +7.51 s  tests/cli/test_do_sequence_cli.py (26.66 -> 34.17)
+  +5.73 s  tests/orchestration/test_subtree_rerun_prepare.py (9.68 -> 15.41)
+  +5.57 s  tests/orchestration/test_persisted_call_ownership.py (8.43 -> 14.00)
+  +5.23 s  tests/orchestration/test_serve_daemon.py (19.74 -> 24.97)
+  +4.95 s  tests/orchestration/test_self_use_runner.py (4.02 -> 8.97)
+  +4.72 s  tests/orchestration/test_job_worktree_integration.py (6.24 -> 10.96)
+  +4.11 s  tests/cli/test_status_cmd.py (5.60 -> 9.71)
+  +4.07 s  tests/orchestration/test_token_ledger.py (7.94 -> 12.01)
+  +4.03 s  tests/orchestration/test_run_manifest_task_lifecycle_binding.py (2.73 -> 6.76)

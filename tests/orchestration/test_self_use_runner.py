@@ -315,10 +315,7 @@ class TestGenerateThenRunEndToEnd:
             "described here.\n",
             encoding="utf-8",
         )
-        # The standing order (DECISION F279 D7) is pointed at a missing file: this test is the
-        # ledger tier's generate-to-run cycle, and the order tier would answer first.
-        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path,
-                                                 order_path=tmp_path / "no-order.md")
+        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path)
         assert generated is not None
         assert generated.provenance.startswith("generated (self-use-generator tier 1")
 
@@ -572,10 +569,10 @@ def _order_item(markdown: str, item_id: str = "SU-099") -> dict:
     return {
         "id": item_id,
         "title": "A standing order",
-        "why": "Because an order tier hands the runner more than one task.",
+        "why": "Because a multi-task order hands the runner more than one task.",
         "job_markdown": markdown,
         "consumed_by": "",
-        "provenance": "generated (fixture, order tier)",
+        "provenance": "generated (fixture, multi-task order)",
     }
 
 
@@ -752,11 +749,9 @@ class TestThreeConsecutiveItemsOnAnEmptyLedger:
         monkeypatch.setattr(dead_model_list, "load_dead_models", _fake_load_dead_models)
         monkeypatch.setattr(dead_model_list, "dead_model_ids", _fake_dead_model_ids)
 
-        # An empty ledger (Tier 1 offers nothing) and an order path pointing
-        # at a missing file (Tier 0 offers nothing), on every generator call.
+        # An empty ledger (Tier 1 offers nothing), on every generator call.
         ledger_path = tmp_path / "live_review.md"
         ledger_path.write_text("", encoding="utf-8")
-        order_path = tmp_path / "no-order.md"
         queue_path = _write_queue(tmp_path, [])
 
         # THE RUN: run_job wrapped by a pass-through recorder, never stubbed
@@ -774,7 +769,7 @@ class TestThreeConsecutiveItemsOnAnEmptyLedger:
         run_entry = run_result = None
         for i in range(3):
             entry = generate_and_append_if_empty(
-                queue_path=queue_path, ledger_path=ledger_path, order_path=order_path,
+                queue_path=queue_path, ledger_path=ledger_path,
             )
             assert entry is not None, f"closure {i}: the generator offered nothing"
             entries.append(entry)
@@ -836,8 +831,7 @@ class TestASelfUseRunRepairsCodeNeverBookkeeping:
             "described here.\n",
             encoding="utf-8",
         )
-        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path,
-                                                 order_path=tmp_path / "no-order.md")
+        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path)
         assert generated is not None
         return queue_path
 
@@ -893,11 +887,11 @@ class TestASelfUseRunRepairsCodeNeverBookkeeping:
 
 
 class TestAnExcusedHandlerItemRunsToTheApprovalGate:
-    """T5_F291.md T003: on a queue dry for tiers 0 to 3, three consecutive requests give three
+    """T5_F291.md T003: on a queue dry for tiers 1 to 3, three consecutive requests give three
     different items, and the first, a Tier 4 item, runs to the approval gate within the default
     budget. Tiers 2 and 3 are dried the way the generator's own tests dry them, Tier 1 by an empty
-    ledger and Tier 0 by a missing order, and the source root is a fixture tree, so no item
-    depends on the real repository's marks.
+    ledger, and the source root is a fixture tree, so no item depends on the real repository's
+    marks.
     """
 
     def test_three_requests_the_first_run_to_the_approval_gate(
@@ -917,24 +911,26 @@ class TestAnExcusedHandlerItemRunsToTheApprovalGate:
         source_root = tmp_path / "src"
         module = source_root / "packages" / "alpha.py"
         module.parent.mkdir(parents=True)
+        # R-1442, DECISION F314 D2: each excuse names its catch-all a debt, or Tier 4
+        # would never offer it and this fixture would no longer prove "the first, a
+        # Tier 4 item" (the class docstring's own premise).
         module.write_text(
             "def run():\n"
             "    try:\n"
             "        return 1\n"
-            "    except Exception:  # noqa: BLE001 — the first reason\n"
+            "    except Exception:  # noqa: BLE001 — debt: the first reason\n"
             "        return 0\n"
             "\n"
             "\n"
             "def walk():\n"
             "    try:\n"
             "        return 2\n"
-            "    except Exception:  # noqa: BLE001 — the second reason\n"
+            "    except Exception:  # noqa: BLE001 — debt: the second reason\n"
             "        return 0\n",
             encoding="utf-8",
         )
         ledger_path = tmp_path / "live_review.md"
         ledger_path.write_text("", encoding="utf-8")
-        order_path = tmp_path / "no-order.md"
         queue_path = _write_queue(tmp_path, [])
 
         # THE RUN: run_job wrapped by a pass-through recorder, never stubbed out.
@@ -951,7 +947,7 @@ class TestAnExcusedHandlerItemRunsToTheApprovalGate:
         run_entry = run_result = None
         for i in range(3):
             entry = generate_and_append_if_empty(
-                queue_path=queue_path, ledger_path=ledger_path, order_path=order_path,
+                queue_path=queue_path, ledger_path=ledger_path,
                 source_root=source_root,
             )
             assert entry is not None, f"request {i}: the generator offered nothing"

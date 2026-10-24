@@ -43,12 +43,8 @@ _EMPTY_DOCTOR_REPORT = DoctorCoreReport(
 
 
 @pytest.fixture(autouse=True)
-def _no_standing_order(monkeypatch, tmp_path):
-    """The order tier reads the repository's real order file by default (DECISION F279 D7).
-
-    These tests exercise the other tiers against a fixture queue, so the order is pointed at
-    a file that does not exist; a test of the order tier names its own order file. Tier 2 is
-    pointed at an empty claim tuple and Tier 3 at an empty report for the same reason:
+def _no_real_sources(monkeypatch, tmp_path):
+    """Tier 2 is pointed at an empty claim tuple and Tier 3 at an empty report:
     `run_staleness_checks()` and `doctor_core_report()` each read the machine's real repository
     tree and configuration, and a test not ABOUT that tier must not depend on either
     (DECISION F289 D1, D2). Tiers 4 and 5 read source and test files under a root, so the
@@ -58,7 +54,6 @@ def _no_standing_order(monkeypatch, tmp_path):
     from apps.cli.commands import worker_facade_cmd
     from packages.orchestration import doc_staleness, self_use_generator
 
-    monkeypatch.setattr(self_use_generator, "default_order_path", lambda: tmp_path / "no-order.md")
     monkeypatch.setattr(doc_staleness, "run_staleness_checks", lambda *a, **k: ())
     monkeypatch.setattr(worker_facade_cmd, "doctor_core_report", lambda: _EMPTY_DOCTOR_REPORT)
     monkeypatch.setattr(self_use_generator, "default_source_root", lambda: tmp_path / "no-source")
@@ -563,73 +558,33 @@ class TestOnlyARepairableFindingIsOffered:
         assert "R-0030" in entry.title
 
 
-class TestOrderTier:
-    """T2_F279 T004: the toolchain refresh order, queued verbatim, once every fourteen days."""
+class TestTheToolchainOrderIsNeverQueued:
+    """R-1418, DECISION F314 D2: the order tier is deleted, and nothing else produces its item.
 
-    DAY = __import__("datetime").date(2026, 9, 23)
+    `docs/orders/toolchain-refresh.md` reads the network, which every builder's tool sandbox
+    goes without, so the self-use track never offers it: a person runs it instead.
+    """
 
-    def _order(self, tmp_path: Path) -> Path:
-        from packages.orchestration.self_use_generator import default_order_path
+    def test_ledger_tier_answers_and_no_drained_item_is_the_order(self, tmp_path: Path):
+        order_path = Path(__file__).resolve().parents[2] / "docs" / "orders" / "toolchain-refresh.md"
+        order_title_line = next(
+            line for line in order_path.read_text(encoding="utf-8").splitlines()
+            if line.startswith("# Job:")
+        )
 
-        order = tmp_path / "order.md"
-        order.write_text(
-            "# Job: Refresh the pinned toolchain\n\nWhy it runs.\n\n## Task 1 — Look\nLook.\n\n"
-            "Acceptance:\n- looked\n", encoding="utf-8")
-        assert default_order_path() != order
-        return order
-
-    def _order_item(self, day: str) -> dict:
-        return _queue_item(id="SU-001", consumed_by="F999", provenance=(
-            f"generated (self-use-generator order tier, docs/orders/toolchain-refresh.md, {day})"))
-
-    def test_the_real_order_file_is_a_job_the_tier_accepts(self, tmp_path):
-        from packages.orchestration.self_use_generator import ORDER_RELATIVE_PATH
-
-        real = Path(__file__).resolve().parents[2] / ORDER_RELATIVE_PATH
-        queue_path = _write_queue(tmp_path, [])
-        entry = generate_self_use_item(queue_path=queue_path, ledger_path=tmp_path / "none.md",
-                                       order_path=real, today=self.DAY)
-        assert entry is not None and entry.job_markdown == real.read_text(encoding="utf-8")
-        assert entry.title == "Refresh the pinned toolchain"
-
-    def test_an_order_never_queued_comes_before_the_ledger(self, tmp_path):
-        queue_path = _write_queue(tmp_path, [])
-        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
-        order = self._order(tmp_path)
-        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger, order_path=order,
-                                       today=self.DAY)
-        assert entry.job_markdown == order.read_text(encoding="utf-8")
-        assert entry.why == "Why it runs."
-        assert entry.provenance == ("generated (self-use-generator order tier, "
-                                    "docs/orders/toolchain-refresh.md, 2026-09-23)")
-
-    def test_within_fourteen_days_the_ledger_tier_answers_instead(self, tmp_path):
-        queue_path = _write_queue(tmp_path, [self._order_item("2026-09-10")])
-        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
-        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger,
-                                       order_path=self._order(tmp_path), today=self.DAY)
+        ledger = _write_ledger(tmp_path, [_finding("R-0010", "Low")])
+        entry = generate_self_use_item(
+            queue_path=_write_queue(tmp_path, []), ledger_path=ledger,
+        )
+        assert entry is not None
         assert entry.provenance.startswith("generated (self-use-generator tier 1")
 
-    def test_after_fourteen_days_the_order_is_due_again(self, tmp_path):
-        queue_path = _write_queue(tmp_path, [self._order_item("2026-09-09")])
-        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
-        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger,
-                                       order_path=self._order(tmp_path), today=self.DAY)
-        assert entry.id == "SU-002" and "order tier" in entry.provenance
-
-    def test_an_absent_order_file_leaves_the_ledger_tier_in_charge(self, tmp_path):
-        queue_path = _write_queue(tmp_path, [])
-        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
-        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger,
-                                       order_path=tmp_path / "absent.md", today=self.DAY)
-        assert entry.provenance.startswith("generated (self-use-generator tier 1")
-
-    def test_an_order_file_that_is_not_a_job_is_refused(self, tmp_path):
-        order = tmp_path / "order.md"
-        order.write_text("Just prose, no job title.\n", encoding="utf-8")
-        with pytest.raises(SelfUseGenerationError, match="not a job file"):
-            generate_self_use_item(queue_path=_write_queue(tmp_path, []), ledger_path=tmp_path / "none.md",
-                                   order_path=order, today=self.DAY)
+        root = tmp_path / "src"
+        _write_source(root, "packages/alpha.py", "def run():\n    return 1\n")
+        drained = _drain(tmp_path, root)
+        assert drained, "the fixture tree must offer at least one item, or this proves nothing"
+        assert all(order_title_line not in entry.job_markdown for entry in drained)
+        assert all(order_title_line not in entry.title for entry in drained)
 
 
 class TestTheAcceptanceAsksForTheRepairAlone:
@@ -1130,15 +1085,17 @@ def _handler_module(*reasons: str, lead: int = 0) -> str:
     """One `try` block per reason, each ending in an excused handler, after `lead` blank lines.
 
     With no lead the first handler sits on line 3 and each next one four lines further down.
+    Each excuse names its catch-all a debt (R-1442, DECISION F314 D2), so these fixtures keep
+    the meaning the existing Tier 4 tests pin: a mark with no "debt" word is never offered.
     """
     body = "\n" * lead
     for reason in reasons:
-        body += f"try:\n    pass\nexcept Exception:  # noqa: BLE001 — {reason}\n    pass\n"
+        body += f"try:\n    pass\nexcept Exception:  # noqa: BLE001 — debt: {reason}\n    pass\n"
     return body
 
 
 def _mark(reason: str) -> str:
-    return f"except Exception:  # noqa: BLE001 — {reason}"
+    return f"except Exception:  # noqa: BLE001 — debt: {reason}"
 
 
 def _consume(queue_path: Path, entry) -> None:
@@ -1291,6 +1248,36 @@ class TestExcusedHandlerTier:
         )
         assert entry.provenance.startswith("generated (self-use-generator tier 4")
 
+    def test_a_mark_whose_excuse_lacks_the_word_is_walked_past(self, tmp_path: Path):
+        """R-1442, DECISION F314 D2: a deliberate-boundary excuse is never offered."""
+        root = tmp_path / "src"
+        _write_source(root, "packages/alpha.py",
+                      "try:\n    pass\nexcept Exception:  # noqa: BLE001 — never a crash\n    pass\n")
+        entries = _drain(tmp_path, root)
+        assert all(not e.provenance.startswith("generated (self-use-generator tier 4")
+                   for e in entries)
+
+    def test_a_mark_whose_excuse_reads_debt_in_capitals_is_offered(self, tmp_path: Path):
+        """`EXCUSE_DEBT_WORD` matches case-insensitively."""
+        root = tmp_path / "src"
+        _write_source(root, "packages/alpha.py",
+                      "try:\n    pass\nexcept Exception:  # noqa: BLE001 — DEBT: pay it down\n    pass\n")
+        entry = generate_self_use_item(
+            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
+            source_root=root,
+        )
+        assert entry is not None
+        assert entry.provenance.startswith("generated (self-use-generator tier 4")
+
+    def test_the_word_in_the_handlers_code_before_the_mark_does_not_count(self, tmp_path: Path):
+        """Only the excuse AFTER the mark — the `rest` group — is read, never the whole line."""
+        root = tmp_path / "src"
+        _write_source(root, "packages/alpha.py",
+                      "try:\n    pass\nexcept Exception as debt:  # noqa: BLE001 — never a crash\n    pass\n")
+        entries = _drain(tmp_path, root)
+        assert all(not e.provenance.startswith("generated (self-use-generator tier 4")
+                   for e in entries)
+
 
 class TestExcusedHandlerTierReadsWhatTheRatchetCounts:
     """The item a tier 4 job clears is always one `MAX_EXCUSED` counted (DECISION F291 D1)."""
@@ -1329,7 +1316,10 @@ class TestExcusedHandlerTierReadsWhatTheRatchetCounts:
         assert MARK.search(f"# {EXCUSE_MARK_WORDS} — a reason")
 
     def test_the_real_tree_offers_the_ratchets_first_mark(self, tmp_path: Path, monkeypatch):
+        """R-1442, DECISION F314 D2: Tier 4's item is the first mark whose excuse matches
+        `EXCUSE_DEBT_WORD`, or, when none does, the generator's item is not a Tier 4 item."""
         from packages.orchestration import self_use_generator
+        from packages.orchestration.self_use_generator import EXCUSE_DEBT_WORD
         from tests.test_ble001_ratchet import _marks
 
         # Undo the autouse fixture's missing root: this test is ABOUT the real tree.
@@ -1339,9 +1329,14 @@ class TestExcusedHandlerTierReadsWhatTheRatchetCounts:
         entry = generate_self_use_item(
             queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
         )
-        path, number, _rest = min(_marks(), key=lambda mark: (mark[0], mark[1]))
         assert entry is not None
-        assert entry.title == f"Narrow the excused handler at {path}:{number}"
+        debt_marks = [mark for mark in _marks() if EXCUSE_DEBT_WORD.search(mark[2])]
+        if debt_marks:
+            path, number, _rest = min(debt_marks, key=lambda mark: (mark[0], mark[1]))
+            assert entry.provenance.startswith("generated (self-use-generator tier 4")
+            assert entry.title == f"Narrow the excused handler at {path}:{number}"
+        else:
+            assert not entry.provenance.startswith("generated (self-use-generator tier 4")
 
 
 # ---------------------------------------------------------------------------
@@ -1506,8 +1501,8 @@ class TestUntestedModuleTierRealChain:
 # ---------------------------------------------------------------------------
 
 
-class TestThreeRequestsOnAQueueExhaustedForTiersZeroToThree:
-    """T5_F291.md T003: with tiers 0 to 3 dry, three requests give three different items."""
+class TestThreeRequestsOnAQueueExhaustedForTiersOneToThree:
+    """T5_F291.md T003: with tiers 1 to 3 dry, three requests give three different items."""
 
     def test_three_requests_three_items_then_none(self, tmp_path: Path):
         root = tmp_path / "src"

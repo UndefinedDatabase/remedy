@@ -122,7 +122,7 @@ class ModelRecorder:
     def deps(self) -> RunnerDeps:
         return RunnerDeps(
             make_project=lambda name, slug, repo_path=None: "p-1",
-            create_mission=lambda project_id, goal: FakeMission(),
+            accept_order=lambda project_id, workspace, goal: FakeMission(),
             plan_mission=lambda *a, **k: None,
             run_mission=self._run_mission,
             load_mission=lambda project_id, mission_id: FakeMission(id=mission_id),

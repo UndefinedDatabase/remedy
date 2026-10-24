@@ -301,8 +301,8 @@ def create_mission(project_id: str, goal: str, *,
                    root: Path | None = None) -> Mission:
     """Create and persist a mission of ONE project.  This is the ONLY way one comes into being.
 
-    Called through ``repo_mission`` when a repository gets its one mission, and by
-    the gauntlet.  A mission spanning several projects is, since DECISION F307 D12,
+    Called through ``repo_mission`` when a repository gets its one mission.  A
+    mission spanning several projects is, since DECISION F307 D12,
     never created here — it is only ever a legacy record read back
     (DECISION amend1011b D4), through ``Mission.from_json``.
     """

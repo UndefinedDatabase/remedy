@@ -328,6 +328,7 @@ packages.orchestration.project_cockpit
 packages.orchestration.project_constitution
 packages.orchestration.project_context_coverage
 packages.orchestration.project_registry
+packages.orchestration.project_roles
 packages.orchestration.project_scope
 packages.orchestration.project_summary
 packages.orchestration.project_tests
