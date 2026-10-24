@@ -175,6 +175,7 @@ packages.orchestration.context_inspector
 packages.orchestration.continue_from_node
 packages.orchestration.contract_hygiene
 packages.orchestration.contract_templates
+packages.orchestration.cost_currency
 packages.orchestration.cost_preview
 packages.orchestration.cost_report
 packages.orchestration.crash_report

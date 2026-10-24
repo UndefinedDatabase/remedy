@@ -195,9 +195,11 @@ def _cmd_config_set(args: argparse.Namespace) -> None:
 
 def _cmd_config_validate(args: argparse.Namespace) -> None:
     from packages.orchestration.config import get_config, validate_config
+    from packages.orchestration.cost_currency import cost_currency_problems
 
     config = get_config()
-    warnings = validate_config(config)
+    # The type checks are the registry's; the currency's accepted set is cost_currency's (F158 D3).
+    warnings = [*validate_config(config), *cost_currency_problems(config)]
     use_json = getattr(args, "json", False)
 
     if use_json:

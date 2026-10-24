@@ -138,6 +138,19 @@ BUDGET_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=float,
         default=0.5,
     ),
+    # F158 T001 (DECISION F158 D3): the one currency budgets, previews, the ledger and the price
+    # catalog share; `packages/orchestration/cost_currency.py` accepts only usd while every budget
+    # field above is a USD field.
+    ConfigKeySpec(
+        key="cost.currency",
+        env_var="REMEDY_COST_CURRENCY",
+        description=(
+            "Currency every cost figure is stated and normalized in; usd is the only accepted "
+            "value while every budget field is a USD field (F158)"
+        ),
+        value_type=str,
+        default="usd",
+    ),
     ConfigKeySpec(
         key="budget.deadline",
         env_var="REMEDY_BUDGET_DEADLINE",
