@@ -859,6 +859,20 @@ end the response with:
   mutations; and R-1454, a decision that ordered a resume decision recorded for every build while
   an earlier sentence said a route decides only what a run asks for, is item 8's reading of the code
   that produces what a sentence asserts. The list stays at 34 items.
+  Consolidated again at F152's closure on 2026-10-24: nothing joined and no two items were merged,
+  because neither of F152's two lines in `.agent/prose_slips.md` names a lesson the list lacks: a
+  reviewer script that read text a file held before the round as the round's own is item 12's
+  reading of what a dry run's command measures, and a block whose prose ordered a function moved
+  while its path list left out the file the function moved from is item 35's reading of a
+  description against the enumeration beside it. Its eight findings were raised against its own
+  rounds and repaired inside the feature: R-1455, a test that read the evidence directory the
+  round's factory change began to write, is item 34's reading of the tests that already guard a
+  path; R-1459, a streamed test whose log a later probe overwrote, and R-1460, three arguments a
+  block called flags while one is a value, are item 18's reading of an ordered recipe against the
+  property it must establish, both found by the reviewer's mutations and reading; R-1461, the
+  duplicate the slip above left, is item 35's; R-1457, a section the block's own rewrite rule kept
+  stale, is item 34's reading of a file for what it already holds; and R-1456, R-1458 and R-1462 were
+  defects of the product that the reviewer's reading of the diff found. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
