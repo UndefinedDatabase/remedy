@@ -1,9 +1,11 @@
 """The capability routes: where a run decides a registered feature's capability for the pair it
 actually built, and where that decision's evidence is written and read back (DECISION F157 D3).
 
-A route decides only a feature the run asked for — a stream is decided only when the run requested
-stream evidence — and calls `require_or_degrade` with its register key as a string literal, so the
-consumer guard of `tests/contracts/test_capability_matrix.py` reads every key this module names.
+A route decides a feature the run's build is asked about: a stream is the one registered feature a
+run opts into, decided only when the run requested stream evidence, while every claude-cli build is
+asked about resuming whether or not it offers a parked session to resume (DECISION F157 D6 (1) and
+(3)) — and calls `require_or_degrade` with its register key as a string literal, so the consumer
+guard of `tests/contracts/test_capability_matrix.py` reads every key this module names.
 """
 from __future__ import annotations
 
@@ -92,6 +94,9 @@ def record_capability_decisions(
 # WHY: `create_role_provider`'s one call for the claude-cli build's whole set of decisions
 # (DECISION F157 D4 (3)): resume on every role, the reviewer's schema for the reviewer, the
 # stream setting when requested, recorded in one line only when something degraded (D4 (4)).
+# A degradation names what the pair runs in its fallback whenever the feature is used (D6 (2)): a
+# degraded `parked_session_resume` means the provider resumes no session, so every call of that
+# provider sends its full context.
 def routed_claude_cli_build(
     role: str, model: str, requested_stream: bool, evidence_dir: str | None,
 ) -> bool:

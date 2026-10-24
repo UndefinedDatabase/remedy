@@ -154,8 +154,9 @@ register order, or `null` without an adapter.
 `packages/orchestration/capability_routes.py` is the second consumer, and the first routed one. It
 holds three routes — `stream_capture_route`, `reviewer_schema_route` and `parked_resume_route` —
 each calling `require_or_degrade` with its register key as a string literal on the role's installed
-adapter and model; a route decides only a feature the run actually asked for, so a stream is
-decided only when the run requested stream evidence. `routed_claude_cli_build` is
+adapter and model; a stream is the one registered feature a run opts into, decided only when the
+run requested stream evidence, while every claude-cli build is asked about resuming whether or not
+it offers a parked session to resume (DECISION F157 D6 (1) and (3)). `routed_claude_cli_build` is
 `create_role_provider`'s one call for a claude-cli build's whole set of decisions: it reads the
 resume route for every role, the reviewer-schema route for the reviewer, and the stream route when
 the run requested one, and it records every decision it read in a single line, but only when at
@@ -166,12 +167,17 @@ own line, so the evidence follows the pair. `ClaudeCliProvider` reads `routed_re
 `routed_parked_resume` on every call that needs them, with the operator switch
 `REMEDY_REVIEWER_FREETEXT` that `structured_outputs.py` owns still kept in force beside the route.
 `read_capability_degradations(evidence_dir)` reads the evidence file back into the run's
-degradations, `capability_degradation_entries` over every decision across every line.
+degradations, `capability_degradation_entries` over every decision across every line. A run's
+degradations name what its provider pair runs in its fallback whenever that feature is used: for
+`parked_session_resume`, that the provider resumes no session, so every call of that provider sends
+its full context (DECISION F157 D6 (2)).
 
 `packages/orchestration/capability_evidence.py` reads a run's or a job task's degradations back
-across every directory a build may have written to (DECISION F157 D5 (2)). `remedy run show`'s
-JSON answer always carries the list under `capability_degradations`, and its text prints a
-`Degradations:` line, worded through `format_capability_degradations`, only when that list is not
-empty. The job report prints the same wording under a task whose own evidence names a
-degradation, right after that task's steering lines, and prints nothing for a task or a job with
-none.
+across every directory a build may have written to (DECISION F157 D5 (2)); what it reads back
+names what the provider pair runs in its fallback whenever that feature is used, and for
+`parked_session_resume` that the provider resumes no session, so every call of that provider sends
+its full context (DECISION F157 D6 (2)). `remedy run show`'s JSON answer always carries the list
+under `capability_degradations`, and its text prints a `Degradations:` line, worded through
+`format_capability_degradations`, only when that list is not empty. The job report prints the same
+wording under a task whose own evidence names a degradation, right after that task's steering
+lines, and prints nothing for a task or a job with none.
