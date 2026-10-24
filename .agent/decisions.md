@@ -31959,3 +31959,13 @@ THE DECISION:
 ALTERNATIVES CONSIDERED: (a) a hand-written document, REJECTED because the feature file asks for generation and a hand-kept table drifts from the records; (b) running every proving test inside the walk, REJECTED because the suite already runs them and a second run on the same bytes is what operator amendment amend0930-test-load rule 3 forbids; (c) the generator inside `packages/`, REJECTED because nothing in the product reads it and it would sit on the orphan list for good.
 
 HOW TO REVERSE: delete this entry, the generator, the document, the walk, the end-to-end and the two index rows.
+
+## DECISION F162 D9 — the honesty document says "no limit declared" for a dimension a profile leaves unlimited, and proves it with a record test that pins it (2026-10-24, R-1469)
+
+THE PROBLEM: DECISION F162 D8 (2) ordered each runner cell of `docs/system/sandbox-model.md` to read `prevents — <reason>` for an enforced state. D3 (4) and D7 (4) record a dimension with no declared limit as `enforced` with the reason `nothing to limit`, because the run cannot go beyond a value that is unlimited. Rendered literally, the document then tells a reader that a profile "prevents" something it does not limit at all, and D8 (3)'s proof map points those rows at the fixture process of a limited value (R-1469).
+
+THE DECISION: D8 (2) is amended for that one state. A runner cell whose record reason is `nothing to limit` reads `no limit declared`; every other enforced cell still reads `prevents — <reason>` and every unenforced one `does not prevent — <reason>`. Such a row's Proof names, for each runner, a test that pins the reason `nothing to limit` for that same key: for the process runner, the existing test that pins the claude-cli default's `adapter_sandbox_record` dict, which holds that reason for `ulimits.cpu_s`, `ulimits.mem_mb`, `allowed_binaries` and `tmp_quota_mb`; for the container runner, a new test pinning the full value tuple of `container_sandbox_enforcement` for the claude-cli default with a runtime, reasons included, which holds it for the same four keys. The walk gains one test: no cell of the document reads `prevents — nothing to limit`.
+
+ALTERNATIVES CONSIDERED: (a) recording a no-limit dimension as a third state, REJECTED because D3 (4)'s two states are what the evidence line, the doctor and both records already carry; (b) dropping unlimited rows from the document, REJECTED because a reader must see that a profile declares no limit there.
+
+HOW TO REVERSE: delete this entry and restore the generator, the document and the tests from `2474214d2`.
