@@ -334,7 +334,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — One real order lands (operator amendment amend1024-one-real-order)
 
-- [ ] F317 — One real order lands
+- [x] F317 — One real order lands (built and accepted 2026-10-24 by operator amendment amend1024-one-real-order, Parts A to G · evidence: evidence/current/f317_real_order/README.md · order e4eaaaa9cebd3304 · job 24270f620da248bc · real claude-cli calls, no manual operator repair)
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 

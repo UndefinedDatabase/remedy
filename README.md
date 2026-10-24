@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-166 of 317 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+167 of 317 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -38,7 +38,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 49 | 51 |
+| 2 | Minimal Self-Build Runtime | 50 | 51 |
 | 3 | Full Token Economy & Autonomy | 16 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
@@ -362,7 +362,15 @@ left in the two modules whose count had grown; and two tests that failed only on
 GitHub's machines now carry what those machines lack. The largest function of the
 code shrank by one more step. Remedy's paid practice run then repaired, on its
 own branch and never applied, the planner's half of the `[roles]` table, which
-the next clean-up reads).
+the next clean-up reads),
+F317 one real order lands (an order in everyday words, with no file name and no
+shape, was sent over the public HTTP API by a client the operator granted the
+host's tools, and landed: the Claude Code CLI, now the default planner, builder and
+reviewer, decided it was one job, planned it, built it, ran the project's tests
+itself, accepted it, and `remedy job apply` brought the change into the project.
+The planner now decides how many jobs an order is, one by default, and reads the
+project's `[roles]` table; the builder may run the project's tests and a short list
+of reading commands, and every command refused is kept as evidence).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
