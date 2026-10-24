@@ -1,0 +1,36 @@
+{
+  "changes": [],
+  "generated_at": "2026-10-24T20:05:53.308379+00:00",
+  "goal": "Die Funktion, die den Gruß baut, soll den Namen auch dann groß schreiben, wenn er klein getippt wurde. Die README bekommt einen Satz dazu.",
+  "job_applies": [
+    {
+      "approved": true,
+      "commit_sha": "",
+      "dry_run": false,
+      "files_applied": [
+        "greet/core.py",
+        "tests/test_greet.py",
+        "README.md"
+      ],
+      "finished_at": "2026-10-24T20:05:46.589093+00:00",
+      "job_apply_id": "31f21be24b024455",
+      "post_test_passed": null,
+      "pushed": false,
+      "status": "applied"
+    }
+  ],
+  "job_id": "24270f620da248bc",
+  "missing_links": [],
+  "next_safe_action": "The job's apply is listed under job applies; it has no patch intent to verify.",
+  "next_safe_action_obj": {
+    "available": true,
+    "command": "",
+    "label": "The job's apply is listed under job applies; it has no patch intent to verify.",
+    "reason": "remedy job apply records no patch intent."
+  },
+  "ok": true,
+  "overall_status": "not_applicable",
+  "path_filter": "",
+  "schema_version": 1,
+  "version": 2
+}
