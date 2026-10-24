@@ -24,6 +24,7 @@ from packages.contracts.adapter_contract import (
     CliInvocation,
     InvocationOptions,
     WorkerIsolation,
+    WorkerSandboxDefault,
 )
 from packages.orchestration.claude_cli_command import _claude_cli_flag, build_claude_cli_args
 from packages.orchestration.failure_postmortem import FailureClass, _classify_error_text
@@ -44,6 +45,26 @@ _ISOLATION_ENV_ALLOWLIST = (
     "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "SHELL", "TERM", "TMPDIR", "TZ",
     "USER", "ANTHROPIC_API_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
     "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+)
+
+#: D4 (2)'s exact default profile, TOML text parsed by `parse_sandbox_profile` elsewhere (this
+#: module does not import `sandbox_profiles`); the same layout as `sandbox_profile_files/strict.toml`,
+#: one key per line, `[ulimits]` last.
+_SANDBOX_PROFILE_TOML = (
+    'fs_scope = ["{workspace}"]\n'
+    'net = { allow = ["api.anthropic.com"] }\n'
+    'allowed_binaries = "any"\n'
+    'tmp_quota_mb = "unlimited"\n'
+    "[ulimits]\n"
+    'cpu_s = "unlimited"\n'
+    'mem_mb = "unlimited"\n'
+    "nofile = 1024\n"
+)
+
+#: D4 (2)'s exact reason the claude-cli process cannot run inside the tool sandbox.
+_SANDBOX_DEFAULT_REASON = (
+    "the claude command line keeps its login in the operator's home, which the tool sandbox "
+    "hides (DECISION F152 D3)"
 )
 
 #: The three adapter-returnable classes `_classify_error_text` can itself produce (D4 (5)); its
@@ -174,4 +195,14 @@ class ClaudeCliReferenceAdapter:
             tool_args=_ISOLATION_TOOL_ARGS,
             env_allowlist=_ISOLATION_ENV_ALLOWLIST,
             applies=not _claude_cli_flag(self._config, "claude_cli.customizations"),
+        )
+
+    # WHY: D4 (2)'s exact declaration — an API allowlist naming the one endpoint this adapter's
+    # calls are for, declarative because D3 (4) already records an allowlist as unenforced;
+    # outside the tool sandbox because the operator's login lives in the home the sandbox hides
+    # (DECISION F152 D3).
+    def sandbox_default(self) -> WorkerSandboxDefault:
+        return WorkerSandboxDefault(
+            profile_toml=_SANDBOX_PROFILE_TOML, tool_sandbox=False,
+            reason=_SANDBOX_DEFAULT_REASON,
         )

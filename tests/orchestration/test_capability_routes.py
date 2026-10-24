@@ -7,7 +7,11 @@ from __future__ import annotations
 
 import json
 
-from packages.contracts.adapter_contract import AdapterCapabilities, WorkerIsolation
+from packages.contracts.adapter_contract import (
+    AdapterCapabilities,
+    WorkerIsolation,
+    WorkerSandboxDefault,
+)
 from packages.orchestration import worker_adapter_slot
 from packages.orchestration.capability_routes import (
     CAPABILITY_DECISIONS_FILENAME,
@@ -43,6 +47,11 @@ class _ReducedClaudeCliAdapter:
     def isolation(self) -> WorkerIsolation:
         return ClaudeCliReferenceAdapter().isolation()
 
+    # WHY: a conforming adapter must declare a sandbox default too (DECISION F162 D4 (1)); this
+    # fixture has no sandbox policy of its own to test, so it borrows the registry adapter's.
+    def sandbox_default(self) -> WorkerSandboxDefault:
+        return ClaudeCliReferenceAdapter().sandbox_default()
+
 
 class _ResumeAndSchemaReducedAdapter:
     """A small claude-cli adapter, taking `**settings`, whose capabilities declare
@@ -65,6 +74,11 @@ class _ResumeAndSchemaReducedAdapter:
     # no isolation policy of its own to test, so it borrows the registry adapter's declaration.
     def isolation(self) -> WorkerIsolation:
         return ClaudeCliReferenceAdapter().isolation()
+
+    # WHY: a conforming adapter must declare a sandbox default too (DECISION F162 D4 (1)); this
+    # fixture has no sandbox policy of its own to test, so it borrows the registry adapter's.
+    def sandbox_default(self) -> WorkerSandboxDefault:
+        return ClaudeCliReferenceAdapter().sandbox_default()
 
 
 class TestRoutedClaudeCliBuild:

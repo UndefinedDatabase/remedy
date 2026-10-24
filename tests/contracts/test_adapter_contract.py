@@ -18,12 +18,26 @@ from packages.contracts.adapter_contract import (
     InvocationOptions,
     WorkerAdapter,
     WorkerIsolation,
+    WorkerSandboxDefault,
 )
 from packages.orchestration import stream_evidence
 from packages.orchestration.failure_postmortem import FailureClass
 from packages.orchestration.token_actuals import UsageActuals
 
 _VALID_ADR_REF = "docs/adr/0002-claude-cli-worker-isolation.md"
+
+#: A valid profile's TOML text, shared by every WorkerSandboxDefault this file builds; parsing it
+#: is not this file's job (DECISION F162 D4 (1): the contract itself never imports sandbox_profiles).
+_VALID_SANDBOX_PROFILE_TOML = (
+    'fs_scope = ["{workspace}"]\n'
+    'net = "deny"\n'
+    'allowed_binaries = "any"\n'
+    'tmp_quota_mb = "unlimited"\n'
+    "[ulimits]\n"
+    'cpu_s = "unlimited"\n'
+    'mem_mb = "unlimited"\n'
+    'nofile = "unlimited"\n'
+)
 
 _USAGE_ACTUALS = UsageActuals(
     input_tokens=1, output_tokens=1, cache_read=0, cache_creation=0,
@@ -40,6 +54,8 @@ _FROZEN_INSTANCES = {
     "AdapterUsage": AdapterUsage(actuals=_USAGE_ACTUALS, raw_counters={}),
     "WorkerIsolation": WorkerIsolation(
         method="tool_flag", adr_ref=_VALID_ADR_REF, tool_args=("--flag",)),
+    "WorkerSandboxDefault": WorkerSandboxDefault(
+        profile_toml=_VALID_SANDBOX_PROFILE_TOML, tool_sandbox=True),
 }
 
 
@@ -118,8 +134,32 @@ def test_worker_isolation_refuses_each_d3_1_violation(kwargs, fragment):
         WorkerIsolation(**kwargs)
 
 
+#: One case per DECISION F162 D4 (1) refusal rule: kwargs that construct a WorkerSandboxDefault
+#: starting from a valid base, each overriding exactly the field(s) its own rule refuses.
+_SANDBOX_DEFAULT_REFUSAL_CASES = (
+    ({"profile_toml": "", "tool_sandbox": True}, "profile_toml must be a non-empty string"),
+    ({"profile_toml": 1, "tool_sandbox": True}, "profile_toml must be a non-empty string"),
+    ({"profile_toml": _VALID_SANDBOX_PROFILE_TOML, "tool_sandbox": "yes"},
+     "tool_sandbox must be a bool"),
+    ({"profile_toml": _VALID_SANDBOX_PROFILE_TOML, "tool_sandbox": True, "reason": 1},
+     "reason must be a string"),
+    ({"profile_toml": _VALID_SANDBOX_PROFILE_TOML, "tool_sandbox": False},
+     "tool_sandbox False requires a non-empty reason"),
+    ({"profile_toml": _VALID_SANDBOX_PROFILE_TOML, "tool_sandbox": False, "reason": ""},
+     "tool_sandbox False requires a non-empty reason"),
+)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "fragment"), _SANDBOX_DEFAULT_REFUSAL_CASES,
+    ids=[f"{i}-{frag.split()[0]}" for i, (_k, frag) in enumerate(_SANDBOX_DEFAULT_REFUSAL_CASES)])
+def test_worker_sandbox_default_refuses_each_d4_1_violation(kwargs, fragment):
+    with pytest.raises(ValueError, match=re.escape(fragment)):
+        WorkerSandboxDefault(**kwargs)
+
+
 class _ConformingToy:
-    """A minimal class with all seven WorkerAdapter members."""
+    """A minimal class with all eight WorkerAdapter members."""
 
     @property
     def adapter_id(self) -> str:
@@ -146,6 +186,9 @@ class _ConformingToy:
 
     def isolation(self):
         return None
+
+    def sandbox_default(self):
+        return WorkerSandboxDefault(profile_toml=_VALID_SANDBOX_PROFILE_TOML, tool_sandbox=True)
 
 
 class _MissingMapUsage:
@@ -174,8 +217,11 @@ class _MissingMapUsage:
     def isolation(self):
         return None
 
+    def sandbox_default(self):
+        return WorkerSandboxDefault(profile_toml=_VALID_SANDBOX_PROFILE_TOML, tool_sandbox=True)
 
-def test_class_with_all_seven_members_is_a_worker_adapter():
+
+def test_class_with_all_eight_members_is_a_worker_adapter():
     assert isinstance(_ConformingToy(), WorkerAdapter)
 
 

@@ -24,6 +24,7 @@ from packages.contracts.adapter_contract import (
     HttpInvocation,
     InvocationOptions,
     WorkerIsolation,
+    WorkerSandboxDefault,
 )
 from packages.orchestration import worker_isolation
 from packages.orchestration.failure_postmortem import FailureClass
@@ -41,6 +42,22 @@ _TOY_ISOLATION = WorkerIsolation(
 _TOY_ISOLATION_NO_FLAGS = WorkerIsolation(
     method="clean_env", adr_ref="docs/adr/0002-claude-cli-worker-isolation.md",
     env_allowlist=("PATH",))
+
+#: A valid WorkerSandboxDefault every conforming toy below answers from sandbox_default()
+#: (DECISION F162 D4 (1)); its TOML text is not this file's job to parse (the kit's own tests do).
+_TOY_SANDBOX_DEFAULT = WorkerSandboxDefault(
+    profile_toml=(
+        'fs_scope = ["{workspace}"]\n'
+        'net = "deny"\n'
+        'allowed_binaries = "any"\n'
+        'tmp_quota_mb = "unlimited"\n'
+        "[ulimits]\n"
+        'cpu_s = "unlimited"\n'
+        'mem_mb = "unlimited"\n'
+        'nofile = "unlimited"\n'
+    ),
+    tool_sandbox=True,
+)
 
 #: Literal pin of the kit's forbidden name substrings (R-1437's last two survivors): a word
 #: dropped from the kit's own list must turn this comparison red instead of silently dropping
@@ -97,6 +114,9 @@ class _ConformingCliToy:
     def isolation(self):
         return _TOY_ISOLATION
 
+    def sandbox_default(self):
+        return _TOY_SANDBOX_DEFAULT
+
 
 class _ConformingHttpToy:
     """An HTTP-shaped adapter conforming on every dimension; declares no streaming."""
@@ -138,6 +158,9 @@ class _ConformingHttpToy:
 
     def isolation(self):
         return _TOY_ISOLATION
+
+    def sandbox_default(self):
+        return _TOY_SANDBOX_DEFAULT
 
 
 _CLI_USAGE = AdapterUsage(
