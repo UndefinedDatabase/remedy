@@ -9,17 +9,16 @@ and never blocks); and `remedy worker pricing-update` imports catalogs behind a 
 (`docs/roadmap/features/T8_F158.md`, amendments A1 to A3). F153 waits behind F316 (D1).
 
 ## Current Step
-Round 7 (session 2), the closure's integration-gate round: book round 6 and register R-1471;
-repair R-1471 in `docs/guides/do-run-v1.md`; the checklist's consolidation pass; the closure's
-self-use item run to its approval gate, never applied; the one full suite and its CPU cost.
+Round 8 (session 2), the closure's evidence round: book round 7 with R-1471 resolved and R-1472
+registered for F316; the evidence script; the staging reclaim, the evidence job `f158r8e1001` and
+the review package.
 
 ## Next Steps
-1. Round 8: book round 7 with R-1471 resolved and any self-use run defect registered; the evidence
-   script, the evidence bundle and the review package.
-2. Round 9: the Built State, the ledger rotation, the STATUS acceptance with its README sync and
-   the self-use queue's `consumed_by`, and the pull request, left unmerged for the next session.
+1. Round 9, the closing round: book round 8; the Built State; the ledger rotation; SU-084's
+   `consumed_by` with the STATUS acceptance and its README sync; the pull request, left unmerged
+   for the next session's Open PR Gate.
 
 ## Risks
 - Catalog prices may cite only sources already on disk (DECISION F158 D2 (3)); the shipped
   catalog is empty, so a priced valuation needs an imported catalog.
-- A red full suite turns round 8 into a repair round (amend0917-throughput rule 2).
+- A package that builds BLOCKED_EVIDENCE turns round 9 into a repair round.
