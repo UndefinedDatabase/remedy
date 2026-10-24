@@ -1,102 +1,121 @@
-# Handoff — F158 round 1
+# Handoff — F158 round 2
 
 ## Session
 
-SESSION 1 of feature F158 · round 1 · rounds so far 1. This session verified the prepared digest
-and every manifest entry before touching a file, applied the seven byte copies exactly, wrote the
-findings-pass inventory itself from reading the code at the base commit, found all four gates
-green, and avoided every forbidden shell shape from the first command rather than discovering the
-constraint mid-round.
+SESSION 1 of feature F158 · round 2 · rounds so far 2. This session verified the prepared digest
+and every manifest entry before touching a file, applied the three byte-copy commits exactly as
+ordered, confirmed the regenerated environment guide equals the registry's own render, and found
+all five gates green on the first and only run of each.
 
-Fortschritt: ~8 % (findings pass landed · T001 to T003 open) — Schätzung.
+Fortschritt: ~30 % (T001 landed · T002 and T003 open) — Schätzung.
 
 ## Range
 
-Review of `407536a9b`..`a58a814b7` (C1 to C2; C3 — this file — is the commit that carries it, per
+Review of `95edb7549`..`d3667bba5` (C1 to C3; C4 — this file — is the commit that carries it, per
 the handback template's self-reference exception).
 
 ## Commits
 
-### 69463eac3 F158 R1 C1: claim F158, move F153 behind F316, book F162 R12, re-head the ledger, DECISIONs F158 D1 and D2, Q27
+### 40d2a5fd3 F158 R2 C1: book round 1, DECISION F158 D3, the plan
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f158-r1.md` | +138/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
-| `.agent/context.md` | +9/-9 | rewritten: scope to F158 round 1, byte-copied from the prepared `c1-` file |
-| `.agent/decisions.md` | +20/-0 | DECISIONs F158 D1 (F153 moved behind F316) and D2 (task order), byte-copied |
-| `.agent/live_review.md` | +23/-19 | re-headed and F162 round 12's verdict booked at its end, byte-copied |
-| `.agent/operator_questions.md` | +10/-0 | Q27 (Codex tool research blocked) added, byte-copied |
-| `.agent/plan.md` | +19/-13 | rewritten: Goal/Current Step/Next Steps to F158 round 1, byte-copied |
-| `docs/roadmap/STATUS.md` | +2/-2 | F158 claimed (`[ ]` to `[~]`); F153's line moved behind F316, byte-copied |
+| `.agent/authored/f158-r2.md` | +90/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
+| `.agent/decisions.md` | +10/-0 | DECISION F158 D3 (the `cost.currency` key, its reader, the guard and the audit) appended, byte-copied |
+| `.agent/live_review.md` | +2/-0 | the F158 round 1 Gate entry booked at its end, byte-copied |
+| `.agent/plan.md` | +8/-8 | rewritten: Current Step/Next Steps to round 2, T001 per DECISION F158 D3, byte-copied |
 
-### a58a814b7 F158 R1 C2: the findings pass, every place money, prices and currency live today
+### dc5ff96b0 F158 R2 C2: the one-currency page with its audit, and its index rows
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/f158_inventory.md` | +336/-0 | NEW FILE — the read-only findings pass, authored by this session from reading `packages`/`apps`/`tests`/`docs` at `407536a9b` |
+| `docs/system/cost-currency-v1.md` | +56/-0 | NEW FILE — the one-currency rule and the money key/field/column/display audit table, byte-copied |
+| `docs/README.md` | +2/-0 | index rows added for the new audit page, byte-copied |
 
-### (this commit) F158 R1 C3: handback
+### d3667bba5 F158 R2 C3: the cost.currency key, its refusal in config validate, and the mixed-currency guard
+| Path | +/- | Reason |
+|---|---|---|
+| `packages/orchestration/cost_currency.py` | +94/-0 | NEW FILE — `COST_CURRENCY_KEY`, `COST_CURRENCY_USD`, `COST_CURRENCIES`, `CostCurrencyError`, `resolve_cost_currency`, `cost_currency_problems`, byte-copied |
+| `packages/orchestration/config_keys_budget.py` | +13/-0 | registers `cost.currency` / `REMEDY_COST_CURRENCY`, default `usd`, byte-copied |
+| `apps/cli/commands/config_cmd.py` | +3/-1 | `remedy config validate` joins `cost_currency_problems` into its warnings, byte-copied |
+| `tests/orchestration/test_cost_currency.py` | +140/-0 | NEW FILE — the mixed-currency guard over `packages/`/`apps/`, the audit-page completeness check, a violation fixture and a comment/identifier fixture, byte-copied |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | the new module's reachability entry, byte-copied |
+| `docs/guides/environment.md` | +1/-0 | regenerated with the new key's row, byte-copied |
+
+### (this commit) F158 R2 C4: handback
 | Path | +/- | Reason |
 |---|---|---|
 | `.agent/handoff.md` | rewritten | this file — carried alone, per the handback template's self-reference exception (R-0149) |
 
 ## External actions
 
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`, checked before the
-branch was created. No pull request exists or is created by this round — the block orders none. No
+No `gh` command run this round — the block defers the Open PR Gate check to the next session. No
 `git worktree` command run by me. No stash entry touched. No `claude` or `codex` binary invoked by
-me; no provider call this round; no web fetch. `git push -u origin feature/f158-cost-normalization`
+me; no provider call this round; no web fetch. `git push origin feature/f158-cost-normalization`
 runs once, immediately after this commit, per the block's push instruction; its real outcome is
 reported in the session reply, not in this file.
 
 ## Verification
 
 **Gate 1.** `git -C <repo> status --porcelain` → empty (exit 0). Then
-`python3 .remedy-wt/f158-r1/prep/verify.py .`, run from the primary checkout through a `cwd`-set
+`python3 .remedy-wt/f158-r2/prep/verify.py .`, run from the primary checkout through a `cwd`-set
 Python wrapper (no shell `cd`):
 ```
-True	69463eac3 single parent equal to the commit before it
-True	69463eac3 insertions 221 under 500 (or the handoff alone)
-True	a58a814b7 single parent equal to the commit before it
-True	a58a814b7 insertions 336 under 500 (or the handoff alone)
-True	every commit carries a F158 R1 Cn subject: 2 of 2
+True	40d2a5fd3 single parent equal to the commit before it
+True	40d2a5fd3 insertions 110 under 500 (or the handoff alone)
+True	dc5ff96b0 single parent equal to the commit before it
+True	dc5ff96b0 insertions 58 under 500 (or the handoff alone)
+True	d3667bba5 single parent equal to the commit before it
+True	d3667bba5 insertions 252 under 500 (or the handoff alone)
+True	every commit carries a F158 R2 Cn subject: 3 of 3
 True	on feature/f158-cost-normalization
-True	C1 paths exactly [...the seven paths...]: [...the same seven paths...]
-True	C1 .agent/authored/f158-r1.md equals c1-.agent__authored__f158-r1.md
-True	C1 .agent/context.md equals c1-.agent__context.md
+True	C1 paths exactly [the four paths]: [the same four paths]
+True	C1 .agent/authored/f158-r2.md equals c1-.agent__authored__f158-r2.md
 True	C1 .agent/decisions.md equals c1-.agent__decisions.md
 True	C1 .agent/live_review.md equals c1-.agent__live_review.md
-True	C1 .agent/operator_questions.md equals c1-.agent__operator_questions.md
 True	C1 .agent/plan.md equals c1-.agent__plan.md
-True	C1 docs/roadmap/STATUS.md equals c1-docs__roadmap__STATUS.md
-True	C2 paths exactly ['.agent/f158_inventory.md']: ['.agent/f158_inventory.md']
-True	C2 .agent/f158_inventory.md holds no machine path
-True	C2 .agent/f158_inventory.md has 336 lines, under 400
-absent	C3
+True	C2 paths exactly [the two paths]: [the same two paths]
+True	C2 docs/README.md equals c2-docs__README.md
+True	C2 docs/system/cost-currency-v1.md equals c2-docs__system__cost-currency-v1.md
+True	C3 paths exactly [the six paths]: [the same six paths]
+True	C3 apps/cli/commands/config_cmd.py equals c3-apps__cli__commands__config_cmd.py
+True	C3 docs/guides/environment.md equals c3-docs__guides__environment.md
+True	C3 packages/orchestration/config_keys_budget.py equals c3-packages__orchestration__config_keys_budget.py
+True	C3 packages/orchestration/cost_currency.py equals c3-packages__orchestration__cost_currency.py
+True	C3 tests/orchestration/import_reachability_allowlist.txt equals c3-tests__orchestration__import_reachability_allowlist.txt
+True	C3 tests/orchestration/test_cost_currency.py equals c3-tests__orchestration__test_cost_currency.py
+absent	C4
 True	the saved block equals block.md
 ALL True
 ```
-Exit 0. Every line `True` (C3 correctly `absent`, since C3 had not committed yet when this gate
+Exit 0. Every line `True` (C4 correctly `absent`, since C4 had not committed yet when this gate
 ran); last line `ALL True`.
 
-**Gate 2.** `python3 .remedy-wt/f158-r1/prep/run_selection.py . .remedy-wt/f158-r1-worker/selection-output.txt`,
+**Gate 2.** `python3 .remedy-wt/f158-r2/prep/run_selection.py . .remedy-wt/f158-r2-worker/selection-output.txt`,
 run once from the primary checkout through the same kind of wrapper:
 ```
-paths 82
+paths 83
 exit 0
-3771 passed, 2 skipped in 31.27s
+3695 passed, 2 skipped in 51.57s
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
 SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
 ```
-Exit 0, `3771 passed, 2 skipped`, no `FAILED`, `ERROR` or `process(es) behind` line. Both skips are
+Exit 0, `3695 passed, 2 skipped`, no `FAILED`, `ERROR` or `process(es) behind` line. Both skips are
 pre-existing and unrelated to this round (a deliberately quarantined test and an opt-in network
 smoke test).
 
-**Gate 3.** `python3 -m apps.cli.main integrity check --json`, run once from the primary checkout:
+**Gate 3.** `python3 -m ruff check packages/orchestration/cost_currency.py packages/orchestration/config_keys_budget.py apps/cli/commands/config_cmd.py tests/orchestration/test_cost_currency.py`,
+run once from the primary checkout:
+```
+All checks passed!
+```
+Exit 0.
+
+**Gate 4.** `python3 -m apps.cli.main integrity check --json`, run once from the primary checkout:
 ```
 {"check_count": 6, "checks": [{"message": "handlers=201", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
 Exit 0, `fail_count` 0, all six checks `pass`.
 
-**Gate 4.** `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`,
+**Gate 5.** `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`,
 run once from the primary checkout:
 ```
 10
@@ -105,72 +124,68 @@ Exit 0, matching the block's required `10` exactly.
 
 ## Authored-text proofs
 
-C1's byte copy (`.remedy-wt/f158-r1-worker/c1_copy.py`) and its proof
-(`.remedy-wt/f158-r1-worker/c1_proof.py`) read `EQUAL`/`ALL_EQUAL` for all seven targets
-immediately after copying, before staging. The mandated proof, `.agent/authored/f158-r1.md`
-against `block.md`: byte-identical (`block.md == authored/f158-r1.md: True`), `wc -l` 138,
-sha256 `28f88a1d68b32af92763b044f5d395765200b458803ccc59172fa0397a2b272b` for both files — the exact
-digest the delivering prompt stated for `block.md`. Gate 1's independent `verify.py` run re-confirmed
-every `C1 ... equals c1-...` line `True`. `None applied` for C2 — it is this session's own
-read-only authorship, not a reviewer-authored text.
+C1's byte copy and its disk-to-disk proof read `True` for all four targets immediately after
+copying, before staging. The mandated proof, `.agent/authored/f158-r2.md` against `block.md`:
+byte-identical (`block.md == authored/f158-r2.md: True`), `wc -l` 90, sha256
+`8d4b8c681b19659da4d5d183901c4e7f823a9a89a84175d75d203d46995321e9` for both files — the exact
+digest `digests.txt` stated for `block.md`. Gate 1's independent `verify.py` run re-confirmed every
+`C1 ... equals c1-...`, `C2 ... equals c2-...` and `C3 ... equals c3-...` line `True`. `None
+applied` beyond C1 — C2's and C3's files are prepared docs/code byte copies proved the same way,
+not reviewer-authored findings or verdict prose under the fidelity protocol.
 
 ## Deviations & assumptions
 
-1. One early command was written as `cd <path> && python3 -I -c "..."` to compute a quick digest
-   check; the sandbox refused it outright ("Newline followed by # inside a quoted argument can hide
-   arguments from path validation") before anything ran. No `cd` executed and no file was touched
-   by that attempt — the digest check was then redone as a Python script under
-   `.remedy-wt/f158-r1-worker/`, read with an absolute path, exactly as the block requires. I report
-   the attempt because the block's own example (a prior round's handback) reports every non-compliant
-   shape rather than only a landed one, even when, as here, it never actually ran.
+1. The prepared folder also held `build.py`, `d3.md`, `gate.md` and `plan.md`, none named in
+   `digests.txt`; none of the three change-set commits or the five gates names them either, so
+   they were left unread and unused — only the sixteen digested files that `digests.txt` and the
+   block actually name were touched.
 
 No other departure from the block's ordered commit sequence: no split, no correction commit, no
 file touched outside the paths named per commit, no second test command beyond Gate 2's one scoped
 pytest run, no `REMEDY_TEST_MAX_WORKERS`, no `-n` of my own beyond what `run_selection.py` itself
 passes, no `claude` or `codex` binary invoked, no web fetch, no mutation red-proof, no full suite,
 no worktree of my own, no agent/fork/helper of any kind started, and no `gh pr create/merge`,
-`git checkout`/`git switch`, branch creation/move/deletion or force-push beyond the one ordered
-`git checkout -b` in C0.
+`git checkout`/`git switch`, branch creation/move/deletion or force-push, and no `--no-verify`.
 
 ## For the operator, in plain sentences
 
-This session claimed the next piece of work, which teaches Remedy to compare money honestly across
-the different AI services it can call, so that a price measured in one place can be trusted next to
-a price measured in another. Before writing any new code, the session spent its whole time reading
-the existing program closely and wrote down, in one document, exactly where every number that
-represents money already lives today, how it is labelled, and which pieces the plan for the new
-work assumes exist but do not. That document found a few real mismatches between the plan and the
-program as it stands today: one planned consumer of the new work does not exist because an older
-part of the program it depended on was removed last week, another concept the plan names under a
-new word already exists in the program under a different word, and one planned data location does
-not match how the program already stores similar data. None of this blocks the work; it only means
-the next session's design should correct those few points before writing code rather than after.
-Also carried into this round's records: the plan to teach Remedy a second command-line AI tool
-still cannot begin, for the same reason as before — the permission settings of these sessions will
-not let a session find out anything about that tool, so nothing about it can be built honestly, and
-it stays set aside until that permission changes or someone supplies real recorded output by hand.
+This session continued the work that teaches Remedy to compare money honestly across the
+different AI services it calls. It first recorded last round's approved decision and plan update,
+then built the actual pieces that decision described: a single setting that states which currency
+the program's budgets and costs are measured in, defaulting to US dollars; a check built into the
+configuration-checking command that refuses any other currency and says so in plain terms; an
+automatic guard that scans the whole program's source code and fails if any other currency symbol
+or code sneaks into a display; and a new page of documentation that lists every place money
+appears in the program today, alongside a matching test that keeps that list honest as the program
+grows. Every file this session wrote was an exact copy of text the reviewing session had already
+prepared and approved, checked byte for byte both before and after copying. All required checks
+passed: a full test run, a style check, a health check of the whole repository, and a count of how
+many known problems remain open, which held steady. Three questions from earlier work still await
+your decision and are unchanged by this round. The next piece of work is the shape and storage of
+a price list for each AI provider, which needs one more approved decision before it can be built.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0 | done | branch created from `main` at the required base commit |
-| C1 | done | seven files byte-equal to the prepared snapshots; numstat matched |
-| C2 | done | the findings-pass inventory, 336 lines, every claim path:line-cited |
-| C3 | done | this handoff, committed alone per the self-reference exception |
-| Gate 1 | done | every line `True`, last line `ALL True` |
-| Gate 2 | done | exit 0, 3771 passed, 2 pre-existing skips, no FAILED/ERROR/process(es)-behind |
-| Gate 3 | done | exit 0, `fail_count` 0, all six checks pass |
-| Gate 4 | done | open ids count exactly 10, matching the block |
+| C1 | done | four files byte-equal to prepared copies; DECISION F158 D3 and the plan booked |
+| C2 | done | two files byte-equal; the audit page and its README index rows landed |
+| C3 | done | six files byte-equal; the registry render check printed `True` |
+| C4 | done | this handoff, committed alone per the self-reference exception |
+| Gate 1 | done | every line `True`, last line `ALL True` (C4 correctly `absent`) |
+| Gate 2 | done | exit 0, 3695 passed, 2 pre-existing skips, no FAILED/ERROR/process(es)-behind |
+| Gate 3 | done | `All checks passed!` |
+| Gate 4 | done | exit 0, `fail_count` 0, all six checks pass |
+| Gate 5 | done | open ids count exactly 10, matching the block |
 | Push | pending | runs immediately after this commit; outcome reported in the reply |
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` before any new work.
-2. The Open PR Gate — this round opens no pull request, so the next session checks for open PRs
-   before starting anything new.
-3. Book round 1's verdict in the next round's first commit.
-4. T001: the currency consolidation and its audit list.
+2. Phase 1 rule 2 — the Open PR Gate: this round opens no pull request, so the next session checks
+   for open pull requests before starting anything new.
+3. Book round 2's verdict in the next round's first commit.
+4. T002 part 1: the catalog format, its home and validation, DECISION F158 D4.
 
 Operator questions open: 3.
 Open findings: 10 (unchanged this round; none owned by F158).
