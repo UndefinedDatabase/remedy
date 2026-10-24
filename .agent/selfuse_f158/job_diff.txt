@@ -1,0 +1,145 @@
+$ git diff HEAD...remedy/job-e796fd1de2eb4516  (exit 0)
+diff --git a/tests/orchestration/test_do_study.py b/tests/orchestration/test_do_study.py
+new file mode 100644
+index 000000000..e959c8278
+--- /dev/null
++++ b/tests/orchestration/test_do_study.py
+@@ -0,0 +1,138 @@
++"""Tests for packages/orchestration/do_study.py — repo_has_committed_file and do_step_study."""
++from __future__ import annotations
++
++from unittest.mock import MagicMock, patch
++
++import packages.orchestration.do_study  # noqa: F401 — ensures the module is importable
++from packages.orchestration.do_context import (
++    DO_STEP_DONE,
++    DO_STEP_SKIPPED,
++    DO_STEP_STOPPED,
++    DoContext,
++)
++from packages.orchestration.do_study import do_step_study, repo_has_committed_file
++
++
++# ---------------------------------------------------------------------------
++# repo_has_committed_file
++# ---------------------------------------------------------------------------
++
++
++def test_repo_has_committed_file_returns_true_when_git_lists_files():
++    result = MagicMock()
++    result.returncode = 0
++    result.stdout = "README.md\nsrc/main.py\n"
++    with patch("subprocess.run", return_value=result) as mock_run:
++        assert repo_has_committed_file("/fake/repo") is True
++    mock_run.assert_called_once_with(
++        ["git", "ls-tree", "-r", "--name-only", "HEAD"],
++        cwd="/fake/repo",
++        capture_output=True,
++        text=True,
++        timeout=30,
++    )
++
++
++def test_repo_has_committed_file_returns_false_when_git_fails():
++    result = MagicMock()
++    result.returncode = 128
++    result.stdout = ""
++    with patch("subprocess.run", return_value=result):
++        assert repo_has_committed_file("/empty/repo") is False
++
++
++def test_repo_has_committed_file_returns_false_when_stdout_is_blank():
++    result = MagicMock()
++    result.returncode = 0
++    result.stdout = "   \n"
++    with patch("subprocess.run", return_value=result):
++        assert repo_has_committed_file("/empty/repo") is False
++
++
++# ---------------------------------------------------------------------------
++# do_step_study
++# ---------------------------------------------------------------------------
++
++
++def _make_ctx(**kwargs) -> DoContext:
++    project = MagicMock()
++    project.metadata = {}
++    project.id = "proj-id-1"
++    project.slug = "test-project"
++    ctx = DoContext(order="Add a README.", repo_root="/repo", project=project)
++    for k, v in kwargs.items():
++        setattr(ctx, k, v)
++    return ctx
++
++
++def _no_op_lane(hold: bool = False) -> MagicMock:
++    lane = MagicMock()
++    lane.hold = hold
++    lane.bounded = True
++    lane.reason = "test lane"
++    return lane
++
++
++def test_do_step_study_stops_when_lane_is_on_hold():
++    ctx = _make_ctx()
++    with patch("packages.orchestration.do_study.settle_do_lane", return_value=_no_op_lane(hold=True)):
++        status, detail = do_step_study(ctx)
++    assert status == DO_STEP_STOPPED
++    assert "nothing was planned or run" in detail
++
++
++def test_do_step_study_skips_when_already_studied_and_not_stale():
++    ctx = _make_ctx()
++    ctx.project.metadata = {"studied_at": "2026-01-01T00:00:00Z", "studied_head": "abc123"}
++    import packages.orchestration.study as study_mod
++    with (
++        patch("packages.orchestration.do_study.settle_do_lane", return_value=_no_op_lane()),
++        patch("packages.orchestration.do_study.repo_has_committed_file", return_value=True),
++        patch.object(study_mod, "study_stale_reason", return_value=""),
++    ):
++        status, detail = do_step_study(ctx)
++    assert status == DO_STEP_SKIPPED
++    assert "already studied" in detail
++
++
++def test_do_step_study_skips_when_repo_has_no_committed_file():
++    ctx = _make_ctx()
++    ctx.project.metadata = {}
++    with (
++        patch("packages.orchestration.do_study.settle_do_lane", return_value=_no_op_lane()),
++        patch("packages.orchestration.do_study.repo_has_committed_file", return_value=False),
++    ):
++        status, detail = do_step_study(ctx)
++    assert status == DO_STEP_SKIPPED
++    assert "no commit" in detail or "nothing to study" in detail
++
++
++def test_do_step_study_returns_done_after_a_successful_study():
++    ctx = _make_ctx()
++    ctx.project.metadata = {}
++    ctx.no_llm = True
++
++    study_result = MagicMock()
++    study_result.cards_written = ["card1", "card2"]
++    study_result.partial = False
++
++    updated_project = MagicMock()
++    updated_project.metadata = {}
++    updated_project.id = "proj-id-1"
++    updated_project.slug = "test-project"
++
++    with (
++        patch("packages.orchestration.do_study.settle_do_lane", return_value=_no_op_lane()),
++        patch("packages.orchestration.do_study.repo_has_committed_file", return_value=True),
++    ):
++        import packages.orchestration.study as study_mod
++        with (
++            patch.object(study_mod, "study_stale_reason", return_value=""),
++            patch.object(study_mod, "run_study", return_value=study_result),
++            patch.object(study_mod, "record_study_pass", return_value=updated_project),
++            patch.object(study_mod, "study_call_fn", return_value=None),
++        ):
++            status, detail = do_step_study(ctx)
++
++    assert status == DO_STEP_DONE
++    assert "2" in detail or "memory card" in detail
