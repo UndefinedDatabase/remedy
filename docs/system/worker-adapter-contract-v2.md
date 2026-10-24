@@ -134,6 +134,12 @@ together with two red controls that show the utility can fail when a declaration
 really does leak. The run against the real binary waits for the operator's permission to spend a
 paid call, the question DECISION F152 D4 (4) still holds open.
 
+The conformance kit's isolation dimension also refuses an adapter whose declared record is
+missing or carries no status line, and refuses a command line that drops its declared `tool_args`
+while the declaration applies, an HTTP invocation exempt from that second check (DECISION F152 D5
+(1)). An adapter failing either check does not certify, which is the handshake F156's certificate
+reads.
+
 ## The capability matrix
 `packages/contracts/capability_matrix.py` holds a declarative register,
 `CAPABILITY_REQUIREMENTS`, mapping each capability-consuming feature to the adapter capability it

@@ -6,6 +6,7 @@ import dataclasses
 
 import pytest
 
+from packages.contracts import adapter_conformance_kit as conformance_kit
 from packages.contracts.adapter_conformance_kit import (
     _FORBIDDEN_MODULE_ROOTS,
     _FORBIDDEN_NAME_SUBSTRINGS,
@@ -22,6 +23,7 @@ from packages.contracts.adapter_contract import (
     AdapterUsage,
     CliInvocation,
     HttpInvocation,
+    InvocationOptions,
     WorkerIsolation,
 )
 from packages.orchestration.failure_postmortem import FailureClass
@@ -32,6 +34,13 @@ from packages.orchestration.token_actuals import UsageActuals
 _TOY_ISOLATION = WorkerIsolation(
     method="tool_flag", adr_ref="docs/adr/0002-claude-cli-worker-isolation.md",
     tool_args=("--toy-isolated",))
+
+#: Declares no `tool_args` at all, so the kit's new flag check (D5 (1)) has nothing to check —
+#: used only by toys whose own brokenness (an empty or malformed argv) cannot also end with a
+#: flag, so each broken case still fails exactly its own dimension.
+_TOY_ISOLATION_NO_FLAGS = WorkerIsolation(
+    method="clean_env", adr_ref="docs/adr/0002-claude-cli-worker-isolation.md",
+    env_allowlist=("PATH",))
 
 #: Literal pin of the kit's forbidden name substrings (R-1437's last two survivors): a word
 #: dropped from the kit's own list must turn this comparison red instead of silently dropping
@@ -60,7 +69,7 @@ class _ConformingCliToy:
     def build_invocation(self, role, prompt_parts, options):
         if role not in ADAPTER_ROLES:
             raise ValueError(role)
-        argv = ("toy-cli", "--model", options.model, *prompt_parts)
+        argv = ("toy-cli", "--model", options.model, *prompt_parts, *self.isolation().tool_args)
         return CliInvocation(argv=argv)
 
     def map_stream(self, raw_lines):
@@ -277,7 +286,7 @@ class _BrokenInvocationDropsPartToy(_ConformingCliToy):
     def build_invocation(self, role, prompt_parts, options):
         if role not in ADAPTER_ROLES:
             raise ValueError(role)
-        argv = ("toy-cli", "--model", options.model, *prompt_parts[:-1])
+        argv = ("toy-cli", "--model", options.model, *prompt_parts[:-1], *self.isolation().tool_args)
         return CliInvocation(argv=argv)
 
 
@@ -285,7 +294,7 @@ class _BrokenInvocationAcceptsPlannerToy(_ConformingCliToy):
     """invocation: a role accepted that should raise."""
 
     def build_invocation(self, role, prompt_parts, options):
-        argv = ("toy-cli", "--model", options.model, *prompt_parts)
+        argv = ("toy-cli", "--model", options.model, *prompt_parts, *self.isolation().tool_args)
         return CliInvocation(argv=argv)
 
 
@@ -300,12 +309,15 @@ class _BrokenInvocationUnequalToy(_ConformingCliToy):
             raise ValueError(role)
         self._calls += 1
         extra = ("even",) if self._calls % 2 == 0 else ()
-        argv = ("toy-cli", "--model", options.model, *prompt_parts, *extra)
+        argv = ("toy-cli", "--model", options.model, *prompt_parts, *extra, *self.isolation().tool_args)
         return CliInvocation(argv=argv)
 
 
 class _BrokenInvocationEmptyArgvToy(_ConformingCliToy):
     """invocation: an empty argv."""
+
+    def isolation(self):
+        return _TOY_ISOLATION_NO_FLAGS
 
     def build_invocation(self, role, prompt_parts, options):
         if role not in ADAPTER_ROLES:
@@ -315,6 +327,9 @@ class _BrokenInvocationEmptyArgvToy(_ConformingCliToy):
 
 class _BrokenInvocationEmptyFirstToy(_ConformingCliToy):
     """invocation: an argv whose first element is empty."""
+
+    def isolation(self):
+        return _TOY_ISOLATION_NO_FLAGS
 
     def build_invocation(self, role, prompt_parts, options):
         if role not in ADAPTER_ROLES:
@@ -479,6 +494,29 @@ class _BrokenIsolationNotNoneToy(_ConformingCliToy):
     def isolation(self):
         return {"sandbox": "none"}
 
+    def build_invocation(self, role, prompt_parts, options):
+        # Not self.isolation().tool_args: isolation() answers a dict here, on purpose.
+        if role not in ADAPTER_ROLES:
+            raise ValueError(role)
+        argv = ("toy-cli", "--model", options.model, *prompt_parts, *_TOY_ISOLATION.tool_args)
+        return CliInvocation(argv=argv)
+
+
+class _BrokenIsolationMissingRecordToy(_ConformingCliToy):
+    """isolation (D5 (1)): an adr_ref naming a record that does not exist."""
+
+    def isolation(self):
+        return dataclasses.replace(_TOY_ISOLATION, adr_ref="docs/adr/9999-does-not-exist.md")
+
+
+class _BrokenIsolationDropsFlagToy(_ConformingCliToy):
+    """isolation (D5 (1)): a command line that drops its own declared flag."""
+
+    def build_invocation(self, role, prompt_parts, options):
+        if role not in ADAPTER_ROLES:
+            raise ValueError(role)
+        return CliInvocation(argv=("toy-cli", "--model", options.model, *prompt_parts))
+
 
 class _RetryingBaseToy:
     """A base class a conforming toy below inherits from; only the base holds a retry loop."""
@@ -566,6 +604,10 @@ _BROKEN_CASES = (
      "outside ADAPTER_ERROR_CLASSES"),
     ("isolation", _BrokenIsolationNotNoneToy(), _CLI_SAMPLES,
      "isolation() must return a WorkerIsolation"),
+    ("isolation", _BrokenIsolationMissingRecordToy(), _CLI_SAMPLES,
+     "isolation record docs/adr/9999-does-not-exist.md is missing or has no status line"),
+    ("isolation", _BrokenIsolationDropsFlagToy(), _CLI_SAMPLES,
+     "the command line does not end with the declared tool_args"),
     ("transport", _BrokenTransportBaseClassRetriesToy(), _CLI_SAMPLES, "_RetryingBaseToy:"),
     ("transport", _BrokenTransportModuleFunctionToy(), _CLI_SAMPLES,
      "_BrokenTransportModuleFunctionToy calls _toy_fetch_helper: import of 'time'"),
@@ -592,6 +634,48 @@ def test_samples_lacking_a_timeout_sample_fail_errors_for_the_conforming_toy():
     failures = check_conformance_dimension(_ConformingCliToy(), bad_samples, "errors")
     assert failures
     assert all(f.dimension == "errors" for f in failures)
+
+
+# -- isolation (D5 (1)): the record check and the flag check, each named after what it proves ----
+
+
+def test_the_conforming_cli_toys_command_line_ends_with_its_declared_flag():
+    invocation = _ConformingCliToy().build_invocation(
+        "builder", ("a one-line prompt",), InvocationOptions(model="toy-model"))
+    tool_args = _TOY_ISOLATION.tool_args
+    assert invocation.argv[-len(tool_args):] == tool_args
+
+
+def test_isolation_fails_for_a_record_with_no_status_line(tmp_path, monkeypatch):
+    adr_dir = tmp_path / "docs" / "adr"
+    adr_dir.mkdir(parents=True)
+    (adr_dir / "0003-no-status.md").write_text("# a record with no status line\n")
+    monkeypatch.setattr(conformance_kit, "_REPO_ROOT", tmp_path)
+
+    class _NoStatusLineToy(_ConformingCliToy):
+        def isolation(self):
+            return dataclasses.replace(_TOY_ISOLATION, adr_ref="docs/adr/0003-no-status.md")
+
+    failures = check_conformance_dimension(_NoStatusLineToy(), _CLI_SAMPLES, "isolation")
+    assert len(failures) == 1
+    assert "is missing or has no status line" in failures[0].detail
+
+
+def test_isolation_skips_the_flag_check_when_the_declaration_does_not_apply():
+    class _NotAppliedDropsFlagToy(_ConformingCliToy):
+        def isolation(self):
+            return dataclasses.replace(_TOY_ISOLATION, applies=False)
+
+        def build_invocation(self, role, prompt_parts, options):
+            if role not in ADAPTER_ROLES:
+                raise ValueError(role)
+            return CliInvocation(argv=("toy-cli", "--model", options.model, *prompt_parts))
+
+    assert check_conformance_dimension(_NotAppliedDropsFlagToy(), _CLI_SAMPLES, "isolation") == ()
+
+
+def test_isolation_skips_the_flag_check_for_an_http_invocation():
+    assert check_conformance_dimension(_ConformingHttpToy(), _HTTP_SAMPLES, "isolation") == ()
 
 
 def test_check_conformance_dimension_raises_for_unknown_dimension():
