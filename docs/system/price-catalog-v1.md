@@ -50,6 +50,14 @@ picks one of two catalogs that list the same model.
 blended across bases — then a warning for every flagged call and for every catalog price older
 than `cost.catalog_stale_days` (default 60). A stale price is still used; nothing is blocked.
 
+Since operator amendment amend1024-one-real-order Part E these three commands, `remedy worker
+pricing-update`, `remedy stats valuations` and `remedy stats recompute-costs`, are advanced: the
+command catalog marks them `advanced`, so the default help of `remedy stats` and `remedy worker`
+leaves them out, and they still run and answer `--help`. `remedy stats valuations` shows its
+dollar figures only when `cost.show_usd` is true; otherwise each basis keeps its calls, a cost
+reads `not-shown` and the JSON's `normalized_cost` and `catalog_cost` read null
+(`docs/system/cost-currency-v1.md`).
+
 `remedy stats recompute-costs` values every call of a project's ledger again, for example after a
 catalog import, and rewrites only the valuations that changed. A second run over the same catalogs
 rewrites nothing.

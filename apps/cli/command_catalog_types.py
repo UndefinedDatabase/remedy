@@ -106,6 +106,9 @@ class CommandEntry:
     #: ascending, always the floor plus whatever it reaches above it.
     #: `tests/cli/test_exit_codes.py` asserts this against a static reading.
     exit_codes: tuple[int, ...] = EXIT_CODE_FLOOR
+    #: An advanced command is left out of its group's default help and stays callable, its own
+    #: `--help` included (operator amendment amend1024-one-real-order Part E: the dollar tooling).
+    advanced: bool = False
 
 
 # ---------------------------------------------------------------------------

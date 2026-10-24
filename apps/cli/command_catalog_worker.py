@@ -84,6 +84,8 @@ WORKER_COMMANDS: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         may_mutate_repo=True,
+        # amend1024 Part E: dollar tooling, out of the default help.
+        advanced=True,
         related=("worker.list",),
     ),
 )

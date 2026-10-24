@@ -129,6 +129,29 @@ class TestGroupOwnership:
         ]
 
 
+class TestAdvancedCommands:
+    """Operator amendment amend1024-one-real-order Part E: the dollar tooling is advanced."""
+
+    ADVANCED = {"stats.valuations", "stats.recompute-costs", "worker.pricing-update"}
+
+    def test_exactly_the_dollar_tooling_is_advanced(self) -> None:
+        assert {cmd.command_id for cmd in CATALOG if cmd.advanced} == self.ADVANCED
+
+    def test_the_default_group_help_leaves_them_out_and_they_still_parse(self, capsys) -> None:
+        from apps.cli.grouped import _print_group_help, build_parser
+
+        positionals = {"worker.pricing-update": ["catalog.toml"]}
+        for command_id in sorted(self.ADVANCED):
+            group_id, subcommand = command_id.split(".", 1)
+            _print_group_help(group_id)
+            assert f"  {subcommand}  " not in capsys.readouterr().out, command_id
+            args, _unknown = build_parser().parse_known_args(
+                [group_id, subcommand, *positionals.get(command_id, []), "--json"])
+            assert args._command_id == command_id
+        _print_group_help("stats")
+        assert "  cost  " in capsys.readouterr().out
+
+
 class TestCatalogClassification:
     def test_every_command_has_action_class(self) -> None:
         valid = {"read_only", "write_metadata", "approval_gate", "apply_write", "test_execution", "controlled_builder_execution", "dev_helper", "local_state_change"}
