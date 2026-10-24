@@ -32,9 +32,9 @@ class TestRoleOverrideResolver:
 
         cfgs = _resolve_cli_role_configs()
         for role in ("builder", "reviewer", "repair"):
-            assert cfgs[role] == {
-                "provider": "pi",
-                "model": resolve_model_alias("ollama-default"),
+            assert cfgs[role] == {          # amend1024 A1: the Claude Code CLI by default
+                "provider": "claude-cli",
+                "model": resolve_model_alias("claude-flagship"),
                 "effort": "medium",
             }
 
@@ -53,7 +53,7 @@ class TestRoleOverrideResolver:
         }
         # Partial override keeps defaults for unset fields.
         assert cfgs["reviewer"]["effort"] == "low"
-        assert cfgs["reviewer"]["provider"] == "pi"
+        assert cfgs["reviewer"]["provider"] == "claude-cli"
         assert cfgs["repair"]["provider"] == "fake"
         assert cfgs["repair"]["effort"] == "medium"
 

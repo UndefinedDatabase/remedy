@@ -98,7 +98,7 @@ def decide_order_scope(
     try:
         outcome = run_structured_call(OrderScopeDecision, scope_decision_prompt(order, tracked_files),
                                       call_fn, allow_parse_retry=True)
-    except Exception as exc:  # noqa: BLE001 — a failed planner call is no answer; the regex lanes decide
+    except (RuntimeError, OSError, ValueError, ImportError) as exc:   # no answer; the regex lanes decide
         return {**record, "outcome": "planner_failed", "decided": SCOPE_REGEX_FALLBACK,
                 "detail": f"{type(exc).__name__}: {exc}"[:500]}
     record["calls"] = outcome.calls

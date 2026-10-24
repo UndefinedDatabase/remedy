@@ -46,7 +46,7 @@ def main() -> int:
     output = None
     try:
         output = provider.build(PROMPT)
-    except Exception as exc:  # noqa: BLE001 — the record says what failed; the check never hides it
+    except (RuntimeError, OSError, ValueError) as exc:   # the record says what failed
         error = f"{type(exc).__name__}: {exc}"[:1000]
     seconds = round(time.monotonic() - started, 1)
     target = workdir / "hello.txt"

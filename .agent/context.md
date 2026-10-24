@@ -19,4 +19,8 @@ Anything that does not serve the one goal; the non-human content policy; `danger
 
 ## Constraints
 - At most 500 insertions per commit; no leading-slash tokens in commit subjects.
-- No test runs per part: one full run at the end, then review and repair until green.
+- No test runs per part: one full pytest run at the end, capped by `tests/conftest.py` (resource
+  safety), then review and repair until green.
+
+## Steps
+The item-status table lives in the handback, `~/.remedy-loop/amend1024-one-real-order.handback.md`.

@@ -1629,13 +1629,39 @@ def test_the_order_create_routes_body_matches_do_runs_own_flags():
             assert "--" + key.replace("_", "-") in value_options, key
 
 
+def _local_defaults(*named: str) -> list[str]:
+    """The options the route adds for a caller without `host_tools` (amend1024 A3), less NAMED."""
+    return [f"{flag}={value}" for flag, value in (("--builder-provider", "pi"), ("--reviewer-provider", "pi"),
+                                                   ("--planner-provider", "ollama")) if flag not in named]
+
+
+def test_a_caller_without_host_tools_keeps_the_local_defaults_and_one_with_it_runs_on_claude_cli(
+        registered_project_slug, monkeypatch, tmp_path):
+    """amend1024 A3: claude-cli is the product default, but only a `host_tools` client runs it over HTTP;
+    a role the project's `[roles]` table names is left to the table."""
+    from packages.orchestration import api_clients
+    from packages.orchestration.execution_options import http_order_default_options
+
+    monkeypatch.setattr(api_clients, "client_lists_project", lambda client, keys: True)
+    text = _order_text(registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    _run_calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(
+        ORDER_CREATE_PATH, json.dumps({"order": text}).encode("utf-8"), run, start, client=_host_tools_client(True))
+    assert status == 202, answer
+    assert calls == [(text, [])]
+    (tmp_path / ".remedy").mkdir()
+    (tmp_path / ".remedy" / "config.toml").write_text('[roles]\nbuilder = "claude-cli"\nplanner = "claude-cli"\n')
+    assert http_order_default_options({}, None, str(tmp_path)) == ["--reviewer-provider=pi"]
+
+
 @pytest.mark.parametrize("flag", ["no_llm", "new_mission", "force_job", "force_mission"])
 def test_each_order_create_flag_set_true_passes_its_option(registered_project_slug, flag):
     text = _order_text(registered_project_slug)
     calls, start = _recording_order_starter(_fixture_order_record())
     status, _body, _headers = _post_order({"order": text, flag: True}, start)
     assert status == 202
-    assert calls == [(text, ["--" + flag.replace("_", "-")])]
+    assert calls == [(text, ["--" + flag.replace("_", "-"), *_local_defaults()])]
 
 
 @pytest.mark.parametrize("flag", ["no_llm", "new_mission", "force_job", "force_mission"])
@@ -1644,7 +1670,7 @@ def test_each_order_create_flag_set_false_passes_nothing(registered_project_slug
     calls, start = _recording_order_starter(_fixture_order_record())
     status, _body, _headers = _post_order({"order": text, flag: False}, start)
     assert status == 202
-    assert calls == [(text, [])]
+    assert calls == [(text, _local_defaults())]
 
 
 @pytest.mark.parametrize("key, flag_name, value", [
@@ -1657,7 +1683,7 @@ def test_each_order_create_string_passes_its_value(registered_project_slug, key,
     calls, start = _recording_order_starter(_fixture_order_record())
     status, _body, _headers = _post_order({"order": text, key: value}, start)
     assert status == 202
-    assert calls == [(text, [f"{flag_name}={value}"])]
+    assert calls == [(text, [f"{flag_name}={value}", *_local_defaults(flag_name)])]
 
 
 @pytest.mark.parametrize("body", [{"builder_provider": "claude-cli"}, {"reviewer_provider": "claude-cli"},
@@ -1727,7 +1753,7 @@ def test_an_order_create_post_sends_the_order_text_to_the_starter_byte_for_byte(
     calls, start = _recording_order_starter(_fixture_order_record())
     status, _body, _headers = _post_order({"order": text}, start)
     assert status == 202
-    assert calls == [(text, [])]
+    assert calls == [(text, _local_defaults())]
 
 
 def test_an_order_create_post_answers_202_with_the_starters_record(
@@ -1751,7 +1777,7 @@ def test_an_order_create_post_answers_202_with_the_starters_record(
         "jobs": [],          # no mission batch records this order file: no job is invented
         "phase": "ended", "cancel": None,     # exec-1017c: a walk that ended with no job, never cancelled
     }
-    assert calls == [(text, [])]
+    assert calls == [(text, _local_defaults())]
 
 
 def test_an_order_create_post_without_the_order_key_is_400_and_starts_nothing():
@@ -1830,7 +1856,7 @@ def test_an_order_with_a_key_and_new_mission_true_does_not_ask_and_starts(
         {"order": text, "order_key": "k-1", "new_mission": True}, start)
     assert status == 202, answer
     assert asked == []
-    assert calls == [(text, ["--new-mission"], "k-1")]
+    assert calls == [(text, ["--new-mission", *_local_defaults()], "k-1")]
 
 
 def test_an_order_with_a_key_that_no_running_mission_records_is_202_and_starts_with_the_key(
@@ -1841,7 +1867,7 @@ def test_an_order_with_a_key_that_no_running_mission_records_is_202_and_starts_w
     status, answer, _headers = _post_order({"order": text, "order_key": "k-1"}, start)
     assert status == 202, answer
     assert len(asked) == 1
-    assert calls == [(text, [], "k-1")]
+    assert calls == [(text, _local_defaults(), "k-1")]
 
 
 def test_an_order_without_a_key_does_not_ask_and_the_starter_gets_two_positional_arguments(
@@ -1860,7 +1886,7 @@ def test_an_order_without_a_key_does_not_ask_and_the_starter_gets_two_positional
     status, answer, _headers = _post_order({"order": text}, start)
     assert status == 202, answer
     assert asked == []
-    assert seen == [((text, []), {})]
+    assert seen == [((text, _local_defaults()), {})]
 
 
 def test_an_order_create_post_with_a_broken_header_is_400_and_starts_nothing():
