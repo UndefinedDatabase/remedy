@@ -3,21 +3,21 @@
 ## Goal
 A declarative register maps every capability-consuming feature to the capabilities it requires
 and to one registered degradation; one central `require_or_degrade` call sits at each usage site;
-a per-run `degraded` evidence field, a report section and a UI badge show when a degradation ran;
-a guard fails a capability read outside the matrix (`docs/roadmap/features/T8_F157.md`).
+a per-run `capability_degradations` evidence field, a report section and a badge show when a
+degradation ran; a guard fails a capability read outside the matrix
+(`docs/roadmap/features/T8_F157.md`).
 
 ## Current Step
-Round 1: claim F157, re-head the review record and book F314's round 9, DECISION F157 D1, and
-T001 — the inventory of every capability check in the tree, its fallback and its tests, with a
-draft register — committed as `.agent/f157_inventory.md` for review.
+Round 2, T002: book round 1's verdict, DECISION F157 D2 (the register frozen from the reviewed
+inventory), the module `packages/contracts/capability_matrix.py` with its unit tests and its two
+guards, and `remedy worker show` as its first consumer, with the contract page's new section.
 
 ## Next Steps
-1. T002: the matrix module, the evidence field, the guard rules and their unit tests, with the
-   register frozen from the reviewed inventory by DECISION F157 D2.
-2. T003: one consolidation order per consumer with its existing tests unmodified, the report
-   section, the UI badge and the reduced-capability end-to-end.
-3. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
+1. T003: the badge's target by DECISION, then one consolidation order per register entry with its
+   existing tests unmodified, the run record's `capability_degradations` key behind the structure
+   ledger's boundary, the report section and the reduced-capability end-to-end.
+2. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
 
 ## Risks
-- The feature file's suggested design predates F151's contract in `packages/contracts/`; where the
-  two disagree, the inventory names it and DECISION F157 D2 decides.
+- `pingpong_loop.py` and `run_manifest.py` are structure-ledger rows; the evidence key's commit
+  draws their boundary first, in a commit of its own.
