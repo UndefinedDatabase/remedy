@@ -1,175 +1,207 @@
-# Handoff — F162 round 1
+# Handoff — F162 round 2
 
 ## Session
 
-SESSION 1 of feature F162 · round 1 · rounds so far 1. This session claimed F162, re-headed the
-review record, booked F152's round 10 verdict, recorded DECISION F162 D1, and landed the findings
-pass as a reviewed inventory before any code was authored; context self-assessment: the two prior
-enforcers (the exec guard and the tool sandbox) and F152's isolation declaration cover more of the
-feature's named dimensions than the feature file's own design prose credits them for, which is now
-on record for T001's DECISION F162 D2 to read.
+SESSION 1 of feature F162 · round 2 · rounds so far 2. This session booked round 1's verdict,
+appended DECISION F162 D2 and the plan rewrite in its first commit, then built T001 — the
+`sandbox_profiles` module, its three built-in profile files, the tighten-only preorder and its
+refusal — with table tests pinning every rule of D2 (3) through (6); context self-assessment: the
+module's own docstring and DECISION F162 D2 (7) already state plainly that nothing reads a profile
+yet, so this round's whole surface is policy math, proved against itself rather than against any
+spawn path.
 
-Fortschritt: ~8 % (findings pass landed · T001 to T003 open) — Schätzung.
+Fortschritt: ~25 % (T001 landed · T002, T003 open) — Schätzung.
 
 ## Range
 
-Review of `39beac4e1`..`e7ff11ad1` (C1 to C2; C3 — this file — is the commit that carries it, per
+Review of `a564541c9`..`aa9fccfec` (C1 to C3; C4 — this file — is the commit that carries it, per
 the handback template's self-reference exception).
 
 ## Commits
 
-### 389436af8 F162 R1 C1: claim F162, book F152 R10, re-head the ledger, DECISION F162 D1
+### be9762d37 F162 R2 C1: book round 1, DECISION F162 D2, the plan
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f162-r1.md` | +142/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
-| `.agent/context.md` | +9/-9 | rewritten: scope, do-not-touch and constraints re-stated for F162 |
-| `.agent/decisions.md` | +10/-0 | DECISION F162 D1 appended: the round's order (inventory, then T001-T003) |
-| `.agent/live_review.md` | +19/-16 | re-headed at the F162 claim; F152 round 10's PASS verdict booked as the closing Gate entry |
-| `.agent/plan.md` | +22/-11 | rewritten: Goal/Current Step/Next Steps to F162's round 1 |
-| `docs/roadmap/STATUS.md` | +1/-1 | F162's line becomes `[~]` |
+| `.agent/authored/f162-r2.md` | +147/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
+| `.agent/decisions.md` | +17/-0 | DECISION F162 D2 appended: the sandbox profile schema, the built-ins, the order and the refusal |
+| `.agent/live_review.md` | +2/-0 | round 1's gate/verdict entry booked |
+| `.agent/plan.md` | +8/-11 | rewritten: Current Step moves to T001 under DECISION F162 D2 |
+| `.agent/prose_slips.md` | +1/-0 | one reviewer-prose line appended, per the prepared file |
 
-### e7ff11ad1 F162 R1 C2: the findings pass, every place a worker process's limits are set or could be
+### f85e61882 F162 R2 C2a: the sandbox profile module and its three built-in profile files
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/f162_inventory.md` | +348/-0 | NEW FILE — the read-only inventory of every dimension's current enforcer, platform reach, container tooling, evidence/doctor precedent and the T001 naming check, each sentence citing `path:line` at `39beac4e1` or a command this session ran |
+| `packages/orchestration/sandbox_profile_files/net-local.toml` | +8/-0 | NEW FILE — the `net-local` built-in, `standard` plus a loopback/localhost allowlist |
+| `packages/orchestration/sandbox_profile_files/standard.toml` | +8/-0 | NEW FILE — the `standard` built-in |
+| `packages/orchestration/sandbox_profile_files/strict.toml` | +8/-0 | NEW FILE — the `strict` built-in |
+| `packages/orchestration/sandbox_profiles.py` | +330/-0 | NEW FILE — the schema, the TOML parser and its refusals, the loader, and the tighten-only comparator (DECISION F162 D2 (2)-(6)) |
+| `tests/test_no_orphan_modules.py` | +2/-0 | `ALLOWED_UNWIRED` entry for the new module, in path order after `hunk_apply.py` |
 
-### (this commit) F162 R1 C3: handback
+### 9641d1479 F162 R2 C2b: the sandbox profile module's parsing and built-in tests
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/orchestration/test_sandbox_profiles.py` | +158/-0 | NEW FILE — this half pins the TOML form's 25 refusal rules, the built-ins' exact values, `get_sandbox_profile`, normalization, and the loader's two folder-shape refusals |
+
+Deviation: C2 was split into C2a/C2b because the combined diff measured 514 insertions, over the
+500-insertion cap; the block names this split as the expected response and asks that it be
+declared (see Deviations & assumptions).
+
+### aa9fccfec F162 R2 C3: the tighten-only order's table tests and the refusal
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/orchestration/test_sandbox_profiles.py` | +177/-0 | per-dimension order tables (`fs_scope`, `net`, a ulimits key, `tmp_quota_mb`, `allowed_binaries`), the two built-in `profile_loosenings` results, the preorder's reflexivity/transitivity/non-antisymmetry, and `tighten_sandbox_profile`'s pass-through and refusal message |
+
+### (this commit) F162 R2 C4: handback
 | Path | +/- | Reason |
 |---|---|---|
 | `.agent/handoff.md` | rewritten | this file — carried alone, per the handback template's self-reference exception (R-0149) |
 
 ## External actions
 
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`, checked before any
-write (the Open PR Gate). No pull request open, so no merge was needed. `git checkout -b
-feature/f162-sandbox-profiles` from `main` at `39beac4e1`, run once at the branch's creation. No
-`gh pr create`, `gh pr merge`, `git worktree` command, or stash entry touched by this session. No
-`claude` binary invoked; no model/provider call of any kind this round. `git push -u origin
-feature/f162-sandbox-profiles` runs once, immediately after this commit, per the block's push
-discipline; its real outcome is reported in the session reply, not in this file.
+No `gh pr list`, `gh pr create`, `gh pr merge`, or `git worktree` command this round: this is a
+continuation round on the already-open feature branch, not a new branch start, so the Open PR Gate
+does not apply here (it is the next round's first duty, named in `## Next`). No `claude` binary
+invoked; no model/provider call of any kind. `git push origin feature/f162-sandbox-profiles` runs
+once, immediately after this commit, per the block's push discipline; its real outcome is reported
+in the session reply, not in this file.
 
 ## Verification
 
-**Gate 1.** After C2, `git status --porcelain` from the primary checkout: empty output, exit 0.
-Then `python3 .remedy-wt/f162-r1/prep/verify.py .`:
+**Gate 1.** After C3, `git -C <repository root> status --porcelain`: empty output. Then
+`python3 .remedy-wt/f162-r2/prep/verify.py .`:
 ```
-True	389436af8 single parent equal to the commit before it
-True	389436af8 insertions 203 under 500 (or the handoff alone)
-True	e7ff11ad1 single parent equal to the commit before it
-True	e7ff11ad1 insertions 348 under 500 (or the handoff alone)
-True	every commit carries a F162 R1 Cn subject: 2 of 2
+True	be9762d37 single parent equal to the commit before it
+True	be9762d37 subject carries a F162 R2 Cn tag
+True	be9762d37 insertions 175 under 500
+True	f85e61882 single parent equal to the commit before it
+True	f85e61882 subject carries a F162 R2 Cn tag
+True	f85e61882 insertions 356 under 500
+True	9641d1479 single parent equal to the commit before it
+True	9641d1479 subject carries a F162 R2 Cn tag
+True	9641d1479 insertions 158 under 500
+True	aa9fccfec single parent equal to the commit before it
+True	aa9fccfec subject carries a F162 R2 Cn tag
+True	aa9fccfec insertions 177 under 500
 True	on feature/f162-sandbox-profiles
-True	C1 paths exactly [...]: [...] (six paths, exact match)
-True	C1 .agent/authored/f162-r1.md equals c1-.agent__authored__f162-r1.md
-True	C1 .agent/context.md equals c1-.agent__context.md
+True	C1 paths exactly [...]: [...] (five paths, exact match)
+True	C1 .agent/authored/f162-r2.md equals c1-.agent__authored__f162-r2.md
 True	C1 .agent/decisions.md equals c1-.agent__decisions.md
 True	C1 .agent/live_review.md equals c1-.agent__live_review.md
 True	C1 .agent/plan.md equals c1-.agent__plan.md
-True	C1 docs/roadmap/STATUS.md equals c1-docs__roadmap__STATUS.md
-True	C2 paths exactly ['.agent/f162_inventory.md']: ['.agent/f162_inventory.md']
-True	C2 .agent/f162_inventory.md holds no machine path
-True	C2 .agent/f162_inventory.md has 348 lines, under 400
-absent	C3
+True	C1 .agent/prose_slips.md equals c1-.agent__prose_slips.md
+True	C2 paths exactly [...]: [...] (six paths across C2a+C2b, exact match)
+True	C2 <each path> adds no machine path (six lines)
+True	C3 paths exactly ['tests/orchestration/test_sandbox_profiles.py']: [same]
+True	C3 tests/orchestration/test_sandbox_profiles.py adds no machine path
+absent	C4
+True	C2 orphan entry present
+True	C2 orphan entry in path order
+True	C2 strict.toml holds 'net = "deny"' and ends with [ulimits]
+True	C2 standard.toml holds 'allowed_binaries = "any"' and ends with [ulimits]
+True	C2 net-local.toml holds 'allow = ["127.0.0.1", "::1", "localhost"]' and ends with [ulimits]
 True	the saved block equals block.md
 ALL True
 ```
-Every line `True` (C3 correctly `absent`, not yet committed when this gate ran); last line
+Every line `True` (C4 correctly `absent`, not yet committed when this gate ran); last line
 `ALL True`.
 
-**Gate 2.** `python3 .remedy-wt/f162-r1/prep/run_selection.py . .remedy-wt/f162-r1-worker/selection-output.txt`,
-run once from the primary checkout:
+**Gate 2.** `python3 .remedy-wt/f162-r2/prep/run_selection.py . .remedy-wt/f162-r2-worker/selection-output.txt`,
+run once, after C3:
 ```
-paths 82
+paths 84
 exit 0
-3765 passed, 2 skipped in 29.02s
+3831 passed, 2 skipped in 34.42s
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
 SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
 ```
-`exit 0`, no `FAILED` or `ERROR` line, no line containing `process(es) behind`. Both `SKIPPED` lines
-reported verbatim, as required.
+`exit 0`, no `FAILED` or `ERROR` line, no line containing `process(es) behind`. Both `SKIPPED`
+lines reported verbatim, as required. Not red, so no second run was needed.
 
-**Gate 3.** `python3 -m apps.cli.main integrity check --json`, run once from the primary checkout:
+**Gate 3.** `python3 -m ruff check packages/orchestration/sandbox_profiles.py tests/orchestration/test_sandbox_profiles.py tests/test_no_orphan_modules.py`:
+```
+All checks passed!
+```
+Exit 0.
+
+**Gate 4.** `python3 -m apps.cli.main integrity check --json`:
 ```
 {"check_count": 6, "checks": [{"message": "handlers=201", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
-`fail_count` 0, all six checks `pass`.
-
-**Gate 4.** `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`,
-run once from the primary checkout: `9`. Exactly the block's named count; the ids themselves (read
-separately, same function): `['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448',
-'R-1450', 'R-1464']`, every one owned by F316 per the re-headed ledger's own paragraph.
+`fail_count` 0, all six checks `pass`. Then
+`python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`:
+`9`. Exactly the block's named count.
 
 ## Authored-text proofs
 
-C1's six byte copies (`.remedy-wt/f162-r1-worker/c1_copy.py`) were each proved byte-equal to their
-prepared `c1-` file immediately after copying, by `.remedy-wt/f162-r1-worker/c1_prove.py`, which
-read `True` for all six targets and `True` for "authored equals block.md". The authored block's own
-proof: `.agent/authored/f162-r1.md` is 142 lines (`wc -l`-equivalent line count) with sha256
-`803c557120c3d3e9fe1af77030b3759a2588faa391644148a20f7171817826d4`, identical to `block.md`'s own
+C1's five byte copies (`.remedy-wt/f162-r2-worker/c1_copy.py`) were each proved byte-equal to their
+prepared `c1-` file immediately after copying. The authored block's own proof:
+`.agent/authored/f162-r2.md` is 147 lines (`wc -l`) with sha256
+`2b653a56c3df6ccbac94d26c10757b41f7a7dac0dc9b8292ada08b265c6c5a80`, identical to `block.md`'s own
 sha256 — the same digest `digests.txt` names for both prepared files. Gate 1's `verify.py` run
 independently re-confirmed every `C1 ... equals c1-...` line `True`.
 
 ## Deviations & assumptions
 
-1. This round's `.agent/f162_inventory.md` is new reviewer-facing content this session authored
-   itself (not a reviewer-authored `c1-` file), so it carries no byte-identity proof against a
-   prepared file; `verify.py`'s own checks for C2 are the no-machine-path and under-400-line checks
-   instead, both `True` above.
-2. Two commands this session ran joined `cd <repository root>` to a second command with `&&`
-   (the C1 and C2 `git commit` invocations, and gate 3's `integrity check` call) — a shape the
-   block's constraints ask to avoid in favour of `git -C`/absolute-path forms. Each ran from the
-   session's own default working directory, which was already the repository root, so no relative
-   path resolved differently than intended; all three completed with the exact expected output
-   before anything else depended on them, and no further command used that joined form. No commit,
-   decision or gate reading rests on an ambiguous path as a result.
-3. Gate 4 was run twice: once through a `python3 -I -c` subprocess with `sys.path` set explicitly
-   (to also print the nine ids themselves for this file's own record), then once more exactly as
-   the block's literal command, from the session's default working directory. Both readings agree
-   at `9`; the second, literal run is the one Gate 4 above reports as the compliant reading.
+1. C2 was split into C2a and C2b. The combined module, three TOML files, orphan entry and test
+   file measured 514 insertions against the 500-insertion cap; the block itself names this split
+   as the expected response ("If C2 would pass 500 insertions, split it once into C2a ... and C2b
+   ..., and say so"), so this is a planned, declared split rather than an ad hoc one. C2a carries
+   the module, the three built-in files and the orphan-list entry (356 insertions); C2b carries the
+   test file (158 insertions). `verify.py`'s own by-tag grouping treats `C2a`/`C2b` as one logical
+   `C2` for its path-set check, and that check reads `True` above.
+2. Before the official gate runs, several single-file `pytest` invocations
+   (`tests/orchestration/test_sandbox_profiles.py`, `tests/test_no_orphan_modules.py`,
+   `tests/orchestration/test_import_reachability.py`, `tests/test_structure_ratchet.py`) and several
+   `ruff check` runs were made during drafting, to self-review each commit's diff before it was
+   staged. None ran concurrently with another test command, none was the full suite, and none was a
+   mutation red-proof; gate 2 and gate 3 themselves each ran exactly once, after C3, as the block
+   requires.
+3. A throwaway sanity script and a digest-verification script were written under
+   `.remedy-wt/f162-r2-worker/` (created fresh this round) to prove the module's comparator and
+   refusal behaviour against DECISION F162 D2 before the test file was written; neither is committed
+   and neither is a model or `claude`-binary call.
 
-No other departure from the block's ordered commit sequence: no split, no correction commit, no
-file touched outside the paths named per commit, no mutation red-proof, no full suite run, no
-`REMEDY_TEST_MAX_WORKERS`, no two test commands run at once, no `claude` binary invoked, no
-container image pulled or run, no worktree of my own, and no `gh pr merge`, `git checkout`/`git
-switch` away from the feature branch, branch creation beyond C0, or force-push.
+No other departure from the block's ordered commit sequence: no correction commit beyond the
+declared split, no file touched outside the paths named per commit, no mutation red-proof, no full
+suite run beyond gate 2's own selection, no `REMEDY_TEST_MAX_WORKERS`, no two test commands run at
+once, no `claude` binary invoked, no container image pulled or run, no worktree of my own, and no
+`gh pr merge`, `git checkout`/`git switch` away from the feature branch, branch creation, rebase,
+amend, force-push, or `--no-verify`.
 
 ## For the operator, in plain sentences
 
-This session claimed the next feature on the roadmap, which gives each kind of worker a declared,
-testable limit on what it may touch — its files, its network reach and how much of the machine it
-may use. Before writing any of that, the session first read the whole existing tree to find out
-what already limits a worker today, because two separate mechanisms already exist and a new rule
-that ignored them would either duplicate work or make a promise nothing actually keeps. That
-reading is written down as a committed record for a human to check before any of the new code is
-built. It found that one kind of worker already runs inside a strong, kernel-enforced boundary,
-while the others only get a time limit and a cleaned set of settings, with no boundary around their
-files or their network access at all. It also found that a planned safety feature for isolated,
-offline deployments already assumes this feature will exist and behave a certain way, so the two
-must be designed together. The previous feature's closing paperwork was also filed in this
-session's first commit, as the process requires. No worker tool and no paid model call ran during
-this session; every check that did run passed. The next session turns this reading into the actual
-rule and its first tests.
+This session turned last round's reviewed design into real code: a new module that describes what
+a worker process may touch, in five separate categories, with three ready-made settings from
+strict to permissive, and a rule that lets a project tighten its own limits but never loosen them
+below what its adapter already requires. Every rule the design laid out — what a valid setting file
+must contain, how the three ready-made settings compare to each other, and the exact wording of the
+refusal when something tries to loosen a limit — now has a test proving it, including every way a
+malformed setting file is rejected. None of this new code is wired into anything that actually runs
+a worker yet; it is deliberately inert, policy math, by the design's own choice, so it can be
+checked on its own before the next round plugs it into the two existing enforcement mechanisms.
+Every check that ran this session passed, and nothing elsewhere in the repository was touched.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0 | done | branch `feature/f162-sandbox-profiles` created from `main` at `39beac4e1`, confirmed before any write |
-| C1 | done | six files byte-equal to the prepared snapshots; numstat matched the manifest exactly |
-| C2 | done | `.agent/f162_inventory.md` committed, 348 lines, read-only investigation, no other file touched |
-| C3 | done | this handoff, committed alone per the self-reference exception |
+| C1 | done | five files byte-equal to the prepared snapshots; numstat matched the manifest exactly |
+| C2a | deviated | split from the block's single C2, declared above; module, three built-ins and orphan entry, 356 insertions |
+| C2b | deviated | split from the block's single C2, declared above; the parsing/built-in test half, 158 insertions |
+| C3 | done | the tighten-only order's table tests and the refusal, 177 insertions, one path |
+| C4 | done | this handoff, committed alone per the self-reference exception |
 | Gate 1 | done | every line `True`, last line `ALL True` |
-| Gate 2 | done | exit 0, `3765 passed, 2 skipped`, no FAILED/ERROR/`process(es) behind` |
-| Gate 3 | done | `fail_count` 0, all six checks `pass` |
-| Gate 4 | done | open id count `9`, matching the block exactly |
+| Gate 2 | done | exit 0, `3831 passed, 2 skipped`, no FAILED/ERROR/`process(es) behind` |
+| Gate 3 | done | `All checks passed!`, exit 0 |
+| Gate 4 | done | `fail_count` 0; open id count `9`, matching the block exactly |
 | Push | pending | runs immediately after this commit, per the block's push discipline; outcome reported in the reply |
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` before any new work (absent as of this session).
 2. The Open PR Gate, before any new branch.
-3. Book round 1's verdict in the next round's first commit.
-4. T001: the profile schema, the built-ins and the tighten-only comparator, DECISION F162 D2.
+3. Book round 2's verdict in the next round's first commit.
+4. T002: enforcement per dimension through the exec guard and the tool sandbox, DECISION F162 D3.
 
 Operator questions open: 3.
 Open findings: 9 (R-1246, R-1281, R-1351, R-1353, R-1426, R-1428, R-1448, R-1450 and R-1464, owned by
