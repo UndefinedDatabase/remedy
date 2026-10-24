@@ -1185,6 +1185,11 @@ parked) and the public-benchmark half of M16 (F243). They resume when the
 relevant lines are unparked. The milestone R1 marker in STATUS.md Tier 2 is
 redefined from 'first public release cut' to 'Remedy as the daily tool':
 Tier 2 complete with F086 as the self-install/update vehicle.
+Operator amendment amend1024-one-real-order (2026-10-24, Part F2) parks the
+second-worker adapters F153, F154, F155 and F161, the routines F065 and F067,
+and the Tier 6 and Tier 7 lines no Package 1 feature depends on (F143, the
+Genesis run, among them) until F317 has worked three times in a row on Luna,
+so M7, M8 and the vendor half of M9 rest with the parked package as well.
 
 Luna gates (amendment 2026-10-06, amend1006-luna-control-plane): the execution order of Package 1 follows three gates, each a block of STATUS lines. Gate A, the machine client — F200 closed, F290, F295 — is proved by F295's gate test: a program writes an order file with a cost cap, runs Remedy to the approval gate, reads the digest, answers a decision, approves the apply and reads the proof through the command line alone; when it is green, the universe workspace builds Luna's side against docs/system/machine-client-contract-v1.md. Gate B, unattended missions — F287, F116, F058, F199, F203 — is proved when an interrupted, over-spending or provider-less mission ends honestly and resumes without paying twice. Gate C, controlled autonomy — F055, F078, F141, F060, F253 — is proved when a routine order starts under a configured level without a question, within the permission matrix, and leaves a verifiable certificate. The gates are described in docs/roadmap/design/luna-control-plane-v1.md.
 
