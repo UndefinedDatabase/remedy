@@ -105,12 +105,14 @@ class ClaudeCliReferenceAdapter:
     # flag and configuration, so a caller states them once instead of on every invocation.
     def __init__(
         self, *, claude_path: str = "claude", write_mode: str = "none",
-        streaming: bool = True, config: Any = None,
+        streaming: bool = True, config: Any = None, workspace: str | None = None,
     ) -> None:
         self._claude_path = claude_path
         self._write_mode = write_mode
         self._streaming = streaming
         self._config = config
+        # amend1024 C1: the job workspace whose project test command the builder's Bash may run.
+        self._workspace = workspace
 
     # WHY: the adapter's stable name is the provider's own, so the registry linkage reaches this
     # class through the same string `provider_names.py` already uses (DECISION F151 D5).
@@ -142,7 +144,7 @@ class ClaudeCliReferenceAdapter:
             self._claude_path, prompt,
             write_mode=write_mode, model=options.model, stream_evidence=self._streaming,
             json_schema=json_schema, resume_session=options.resume_ref or "",
-            config=self._config,
+            config=self._config, workspace=self._workspace,
         ))
         declaration = self.isolation()
         if declaration.applies:

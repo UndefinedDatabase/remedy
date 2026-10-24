@@ -184,6 +184,36 @@ Ubuntu 23.10 and later, only when the doctor says `unsupported_configuration`: s
 - A test command that needs a host-wide resource the sandbox hides (a database socket, a home
   configuration file, the internet) fails inside the sandbox and says so in its output.
 
+## What the builder may run itself
+
+The default builder since operator amendment amend1024-one-real-order is the Claude Code CLI
+(`claude-cli`), which runs outside this sandbox under Claude Code's own permission model. With the
+write mode `allowed-tools` it gets the tool `Bash`, but only for the command beginnings of one
+fixed list, `BUILDER_COMMAND_ALLOWLIST` and `builder_test_commands` in
+`packages/orchestration/claude_cli_command.py`, each passed as a `Bash(<command>:*)` rule. Every
+other command is refused by the CLI, and each refusal the CLI reports under `permission_denials` is
+appended to `builder_command_refusals.jsonl` in the run's evidence folder; a streamed call keeps
+it in its raw stream. The write mode `dangerous-skip` is unchanged: it keeps every tool.
+
+- The project's own test command (`[tests] command` of `.remedy/config.toml`, else `npm test` for
+  a `package.json`, else pytest over `tests/`, as `find_project_test_command` reads it): the
+  builder must see its own change pass before the reviewer reads it.
+- `python -m pytest`, `python3 -m pytest` and `pnpm test`, the fallback when the project names no
+  command: the common test runners, under both spellings of the Python interpreter, because a
+  machine may carry only `python3`.
+- `git status`, `git diff`, `git log`: the builder reads what it changed and what came before,
+  and none of the three writes to the repository.
+- `ls`, `cat`, `head`, `tail`, `wc`: they read files and folders, as the builder's Read tool does.
+- `grep`, `rg`: they search the workspace, as its Grep tool does.
+- `python -m py_compile`, `python3 -m py_compile`: a syntax check of a Python file writes nothing
+  but its bytecode cache.
+- `pnpm build`, `pnpm lint`: the project's own build and lint scripts, the checks a reviewer
+  would otherwise be the first to run.
+
+A command joined to another (`;`, `&&`, `||`, a pipe, a redirection or a substitution) is no
+command of the list by its first word: Claude Code checks each part, and Remedy's own reading,
+`builder_command_allowed`, refuses the whole.
+
 ## Rollback
 
 Revert the merge commit of the sandbox branch on Remedy's `main` and restart the supervisor.

@@ -19,8 +19,14 @@ from packages.orchestration import pingpong_provider
 from packages.orchestration.claude_cli_command import (
     _READER_TOOLS,
     _WRITER_TOOLS,
+    BUILDER_COMMAND_ALLOWLIST,
+    BUILDER_COMMAND_REFUSALS_FILENAME,
     build_claude_cli_args,
+    builder_bash_rules,
+    builder_command_allowed,
+    builder_test_commands,
     claude_cli_launch_switches,
+    log_builder_command_refusals,
 )
 from packages.orchestration.config import get_key_spec, load_config
 from packages.orchestration.pingpong_provider import ClaudeCliProvider
@@ -41,7 +47,7 @@ class TestTheSwitchesByRole:
 
     def test_a_builder_that_may_write_also_gets_the_editing_tools(self):
         assert claude_cli_launch_switches("allowed-tools", config=_keys()) == [
-            "--safe-mode", "--tools", "Read,Glob,Grep,Edit,Write,MultiEdit"]
+            "--safe-mode", "--tools", "Read,Glob,Grep,Edit,Write,MultiEdit,Bash"]
 
     def test_a_builder_started_with_dangerous_skip_keeps_every_tool(self):
         assert claude_cli_launch_switches("dangerous-skip", config=_keys()) == ["--safe-mode"]
@@ -81,8 +87,10 @@ class TestTheKeysTurnEachSourceBackOn:
 class TestTheCommandLineEndsWithTheSwitches:
     def test_the_switches_follow_the_write_mode_arguments(self):
         argv = build_claude_cli_args("claude", "P", write_mode="allowed-tools", config=_keys())
-        assert argv[-5:] == ["--allowedTools", "Edit,Write,MultiEdit", "--safe-mode", "--tools",
-                             _WRITER_TOOLS]
+        rules = builder_bash_rules(None)
+        start = argv.index("--allowedTools")
+        assert argv[start:start + 2 + len(rules)] == ["--allowedTools", "Edit,Write,MultiEdit", *rules]
+        assert argv[-3:] == ["--safe-mode", "--tools", _WRITER_TOOLS]
 
     def test_a_reviewer_command_line_ends_with_the_reading_tools(self):
         argv = build_claude_cli_args("claude", "P", json_schema="{}", config=_keys())
@@ -91,7 +99,8 @@ class TestTheCommandLineEndsWithTheSwitches:
     def test_the_old_command_line_comes_back_when_both_keys_are_true(self):
         on = _keys(customizations=True, all_tools=True)
         assert build_claude_cli_args("claude", "P", write_mode="allowed-tools", config=on) == [
-            "claude", "-p", "P", "--output-format", "json", "--allowedTools", "Edit,Write,MultiEdit"]
+            "claude", "-p", "P", "--output-format", "json", "--allowedTools", "Edit,Write,MultiEdit",
+            *builder_bash_rules(None)]
 
 
 def _provider(**kw) -> ClaudeCliProvider:
@@ -158,3 +167,53 @@ class TestTheKeysAreRegistered:
         project.write_text("[remedy.claude_cli]\nall_tools = true\n")
         config = load_config(project_path=project, user_path=tmp_path / "u.toml")
         assert claude_cli_launch_switches("allowed-tools", config=config) == ["--safe-mode"]
+
+
+class TestTheBuilderMayRunOnlyTheListedCommands:
+    """Operator amendment amend1024-one-real-order, Part C: the builder's Bash and its refusals."""
+
+    def test_every_listed_command_becomes_one_bash_rule_after_the_test_commands(self):
+        rules = builder_bash_rules(None)
+        assert rules[:3] == ["Bash(python -m pytest:*)", "Bash(python3 -m pytest:*)", "Bash(pnpm test:*)"]
+        assert rules[3:] == [f"Bash({command}:*)" for command in BUILDER_COMMAND_ALLOWLIST]
+        assert "Bash(git diff:*)" in rules and "Bash(pnpm lint:*)" in rules
+
+    def test_the_projects_own_test_command_comes_first(self, tmp_path):
+        (tmp_path / ".remedy").mkdir()
+        (tmp_path / ".remedy" / "config.toml").write_text('[tests]\ncommand = ["make", "check"]\n')
+        assert builder_test_commands(str(tmp_path))[0] == "make check"
+
+    def test_a_reviewer_and_a_dangerous_skip_builder_get_no_bash_rules(self):
+        assert not any(arg.startswith("Bash(") for arg in build_claude_cli_args("claude", "P", config=_keys()))
+        skip = build_claude_cli_args("claude", "P", write_mode="dangerous-skip", config=_keys())
+        assert "--dangerously-skip-permissions" in skip and not any(arg.startswith("Bash(") for arg in skip)
+
+    @pytest.mark.parametrize("command", ["git diff --stat", "python3 -m pytest -q tests", "pnpm test", "ls",
+                                         "grep -rn greet src"])
+    def test_a_listed_command_is_allowed(self, command):
+        assert builder_command_allowed(command, builder_test_commands(None) + BUILDER_COMMAND_ALLOWLIST)
+
+    @pytest.mark.parametrize("command", ["rm -rf build", "curl https://example.com", "git push", "pip install x",
+                                         "git status; rm -rf x", "cat a > b", "ls | sh", "echo $(id)", "lsblk",
+                                         "python -c 'print(1)'"])
+    def test_a_command_outside_the_list_is_refused(self, command):
+        assert not builder_command_allowed(command, builder_test_commands(None) + BUILDER_COMMAND_ALLOWLIST)
+
+    def test_a_refused_command_is_logged_as_evidence(self, tmp_path):
+        """C3: the CLI refuses a command outside the list; the refusal it reports lands in the evidence."""
+        log = tmp_path / "evidence" / BUILDER_COMMAND_REFUSALS_FILENAME
+        envelope = json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": "done",
+                               "permission_denials": [{"tool_name": "Bash", "tool_use_id": "t1",
+                                                       "tool_input": {"command": "rm -rf build"}}]})
+        assert not builder_command_allowed("rm -rf build", BUILDER_COMMAND_ALLOWLIST)
+        with patch.object(pingpong_provider, "_guarded_cli_run",
+                          return_value=MagicMock(returncode=0, stdout=envelope, stderr="")):
+            _provider(write_mode="allowed-tools", command_refusals_path=str(log)).build("B")
+        [line] = [json.loads(text) for text in log.read_text(encoding="utf-8").splitlines()]
+        assert line == {"tool": "Bash", "command": "rm -rf build", "reason": "outside the builder's command list"}
+
+    def test_a_reply_without_refusals_writes_nothing(self, tmp_path):
+        log = tmp_path / BUILDER_COMMAND_REFUSALS_FILENAME
+        assert log_builder_command_refusals(json.dumps({"result": "ok"}), str(log)) == []
+        assert log_builder_command_refusals("not json", str(log)) == []
+        assert not log.exists()

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.orchestration.capability_routes import routed_claude_cli_build
+from packages.orchestration.claude_cli_command import BUILDER_COMMAND_REFUSALS_FILENAME
 from packages.orchestration.model_failover import (
     FailoverLink,
     FailoverProvider,
@@ -94,7 +95,9 @@ def create_role_provider(
             "stream_counters": counters,
         }
         if role == "builder" and staging_dir:
-            provider: PingPongProvider = ClaudeCliProvider(write_mode=write_mode, **common)
+            refusals = str(Path(stream_evidence_dir) / BUILDER_COMMAND_REFUSALS_FILENAME) if stream_evidence_dir else None
+            provider: PingPongProvider = ClaudeCliProvider(write_mode=write_mode, command_refusals_path=refusals,
+                                                           **common)
         else:
             provider = ClaudeCliProvider(**common)
         _record_claude_cli_evidence(stream_evidence_dir, role=role, model=model)
