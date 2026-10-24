@@ -14,7 +14,7 @@ Canonical binding is `.remedy/config.toml`:
 ```toml
 [runtime]
 cmd = ["npm", "run", "dev", "--", "--port", "{port}"]   # argv, never a shell string
-cwd = "apps/ui"
+cwd = "frontend"   # relative to the target repository root; default "."
 port = 5173
 health_path = "/"
 ready_timeout_s = 30

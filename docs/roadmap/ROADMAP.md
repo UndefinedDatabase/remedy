@@ -73,10 +73,11 @@ Roles from that moment on:
   plans, builds, tests, reviews, writes the ledger and updates STATUS.md.
 - **Humans** approve plans and decisions (Flight Plan, decision queue, PR
   merges). Merging to main is always a human act.
-- **Parallel human track:** Tier 5 (Operator Cockpit) touches mostly
-  `apps/ui/` and can be built by humans with a coding agent at any time,
-  concurrently with Remedy's self-build of Tiers 2–4 — the path sets are
-  disjoint enough (worktrees + fences enforce it).
+- **Parallel human track:** Tier 5 (Operator Cockpit) touched mostly the
+  former `apps/ui/` cockpit, deleted on 2026-10-15 (operator amendment
+  amend1015-face-migration), and could be built by humans with a coding agent
+  at any time, concurrently with Remedy's self-build of Tiers 2–4 — the path
+  sets were disjoint enough (worktrees + fences enforced it).
 - **Gate:** unattended multi-cycle self-build is unlocked only after F075
   (10 clean self-runs). Until then max_cycles stays at 1.
 - **CLI-first approvals:** until Tier 5 exists, decisions and plan approvals
@@ -179,12 +180,14 @@ pricing, scoreboard, sandbox_profiles, *_adapter}.py` ·
 oversight, sbom_gate, policy_packs}.py` · `packages/org/…` ·
 `packages/telemetry/{otel, metrics, doctor, migrate, logging_setup}.py` ·
 `packages/intel/…` · `packages/product/…` · `packages/ecosystem/…` ·
-`apps/cli/golden.py` · `apps/server/daemon.py` ·
+`apps/cli/golden.py` · `apps/server/daemon.py` · and, in the former
+`apps/ui` cockpit that was deleted on 2026-10-15 (amend1015-face-migration),
 `apps/ui/src/components/brain/{GrowingBrain.tsx, NodeGlyphs.tsx,
 useSemanticZoom.ts, brainOntology.ts, useBrainStream.ts, renderers/}`.
 
 **Design tokens** — canonical file: `docs/ui/design_reference/tokens.css`,
-namespace **`--remedy-*`** (implemented in `apps/ui/src/styles/tokens.css`).
+namespace **`--remedy-*`** (implemented in `apps/ui/src/styles/tokens.css`
+until that cockpit was deleted on 2026-10-15, amend1015-face-migration).
 Groups: ink/surfaces, blue ramp, status palette `--remedy-state-*` (single
 source of truth for done/current/open/planned/blocked), graph tokens
 `--remedy-graph-*`, spacing `--remedy-space-*`, motion `--remedy-dur-*`/
