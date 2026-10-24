@@ -8,13 +8,10 @@ sandbox as reinforcement) with a required ADR, the call builder applies it and r
 adapter without its ADR (`docs/roadmap/features/T8_F152.md`).
 
 ## Current Step
-Round 9, the closure's evidence round: book round 8's PASS and R-1463 resolved, save the evidence
-script, the staging reclaim, the evidence job `f152r9e1001` and the review package.
+Round 10, the closing round: book round 9 and register R-1464 for F316, the Built State, the ledger
+rotation, F152 accepted in STATUS with the README sync and SU-082's `consumed_by`, and the pull
+request, left unmerged.
 
 ## Next Steps
-1. The closing round: the Built State, the ledger rotation, the STATUS acceptance with the README
-   sync and SU-082's `consumed_by`, and the pull request, left unmerged; the real-binary A/B is
-   named as the open risk while operator question Q26 is unanswered.
-
-## Risks
-- A package that does not read `READY_FOR_REVIEW` blocks the closure until it is repaired.
+1. The next session merges F152's pull request at the Open PR Gate, books round 10's verdict in the
+   next feature's first commit, and claims the next feature by Rule A5.
