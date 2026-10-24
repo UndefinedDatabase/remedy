@@ -3701,7 +3701,7 @@ def run_job(
         if len(job.tasks) > _tasks_before_injection_terminal_fold:
             job.state = JOB_PAUSED
 
-        # F027 D2 (5): THE TERMINAL — before the ordinary all_done reading, when at least
+        # F027 D2 (5): the veto terminal is `settle_veto_terminal` in task_veto.py (DECISION F314 D9).
         from packages.orchestration.task_veto import settle_veto_terminal
         if settle_veto_terminal(job, control_root_path=_control):
             _persist_budget_actuals()
