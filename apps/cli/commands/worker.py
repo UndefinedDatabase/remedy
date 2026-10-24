@@ -258,6 +258,8 @@ def _cmd_worker_doctor(*, json_output: bool = False) -> None:
     import shutil
 
     from packages.orchestration.worker_adapters import list_worker_specs
+    from packages.orchestration.worker_isolation import isolation_doctor_checks
+    from packages.providers.adapters.adapter_registry import resolve_worker_adapter
 
     checks: list[dict[str, str | bool]] = []
 
@@ -277,6 +279,15 @@ def _cmd_worker_doctor(*, json_output: bool = False) -> None:
             found = shutil.which(name) is not None
             _check(f"provider_{spec.provider_id}", found,
                    f"{name} on PATH" if found else f"{name} not found on PATH")
+            # DECISION F152 D5 (2): a worker's own isolation, checked only once its
+            # executable is confirmed reachable, for a spec that names an adapter.
+            if found and spec.adapter_ref:
+                adapter = resolve_worker_adapter(spec.adapter_ref)
+                if adapter is not None:
+                    for iso_name, iso_ok, iso_detail in isolation_doctor_checks(
+                        adapter, provider_id=spec.provider_id,
+                    ):
+                        _check(iso_name, iso_ok, iso_detail)
         else:
             # An `available` spec this doctor has no probe for: say so rather
             # than silently reporting it as though it had passed one.

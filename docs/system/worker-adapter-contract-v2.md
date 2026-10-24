@@ -138,7 +138,10 @@ The conformance kit's isolation dimension also refuses an adapter whose declared
 missing or carries no status line, and refuses a command line that drops its declared `tool_args`
 while the declaration applies, an HTTP invocation exempt from that second check (DECISION F152 D5
 (1)). An adapter failing either check does not certify, which is the handshake F156's certificate
-reads.
+reads. `worker doctor` adds four `isolation_<provider_id>_*` checks — declaration, record, home
+and flags — right after a worker's own executable check and only once that executable is found,
+reading the worker's `--help` through the replaceable `read_tool_help` rather than any paid call
+(DECISION F152 D5 (2) and (3)).
 
 ## The capability matrix
 `packages/contracts/capability_matrix.py` holds a declarative register,

@@ -25,10 +25,23 @@ class TestWorkerDoctorCatalog:
         assert entry.supports_json is True
 
 
+#: D5 (3): a help text listing the reference adapter's three declared flags, so a test that
+#: makes the doctor believe `claude` is on the path never reaches the real binary's own --help.
+_ISOLATION_HELP_TEXT_WITH_FLAGS = (
+    "Usage: claude [options]\n"
+    "  --setting-sources <sources>  comma-separated sources, e.g. project,local\n"
+    "  --strict-mcp-config          only the MCP servers named on the command line\n"
+)
+
+
 class TestWorkerDoctor:
     def test_ollama_on_path_reads_ready(self, monkeypatch, capsys):
         import shutil as _shutil
+
+        import packages.orchestration.worker_isolation as worker_isolation
         monkeypatch.setattr(_shutil, "which", lambda name: f"/usr/bin/{name}" if name in ("ollama", "claude", "pi") else None)
+        monkeypatch.setattr(worker_isolation, "read_tool_help",
+                             lambda executable, env: _ISOLATION_HELP_TEXT_WITH_FLAGS)
         import packages.orchestration.pi_provider as pi_provider
         monkeypatch.setattr(pi_provider, "default_chain_checks", lambda: [("pi_executable", True, "pi")])
         from apps.cli.commands.worker import _cmd_worker_doctor
@@ -70,7 +83,11 @@ class TestWorkerDoctor:
 
     def test_text_output(self, monkeypatch, capsys):
         import shutil as _shutil
+
+        import packages.orchestration.worker_isolation as worker_isolation
         monkeypatch.setattr(_shutil, "which", lambda name: f"/usr/bin/{name}" if name in ("ollama", "claude", "pi") else None)
+        monkeypatch.setattr(worker_isolation, "read_tool_help",
+                             lambda executable, env: _ISOLATION_HELP_TEXT_WITH_FLAGS)
         from apps.cli.commands.worker import _cmd_worker_doctor
         _cmd_worker_doctor(json_output=False)
         out = capsys.readouterr().out
@@ -82,7 +99,11 @@ class TestWorkerDoctor:
                                                                        executable):
         """amend1023 D4: `claude_code` and `pi_dev` read `available`, so each is probed, never failed unprobed."""
         import shutil as _shutil
+
+        import packages.orchestration.worker_isolation as worker_isolation
         monkeypatch.setattr(_shutil, "which", lambda name: None if name == executable else f"/usr/bin/{name}")
+        monkeypatch.setattr(worker_isolation, "read_tool_help",
+                             lambda exe, env: _ISOLATION_HELP_TEXT_WITH_FLAGS)
         from apps.cli.commands.worker import _cmd_worker_doctor
         _cmd_worker_doctor(json_output=True)
         out = json.loads(capsys.readouterr().out)
@@ -113,6 +134,47 @@ class TestWorkerDoctor:
         out = json.loads(capsys.readouterr().out)
         assert out["ready"] is False
         assert f"provider_{catalog_provider_id}" in out["blockers"]
+
+    def test_worker_doctor_lists_the_four_isolation_checks_for_claude_code(self, monkeypatch, capsys):
+        """DECISION F152 D5 (2): once claude_code's executable is found, `worker doctor` adds
+        its four `isolation_claude_code_*` checks, all passing when the help lists every flag."""
+        import shutil as _shutil
+
+        import packages.orchestration.worker_isolation as worker_isolation
+        monkeypatch.setattr(
+            _shutil, "which",
+            lambda name: f"/usr/bin/{name}" if name in ("ollama", "claude", "pi") else None)
+        monkeypatch.setattr(worker_isolation, "read_tool_help",
+                             lambda executable, env: _ISOLATION_HELP_TEXT_WITH_FLAGS)
+        import packages.orchestration.pi_provider as pi_provider
+        monkeypatch.setattr(pi_provider, "default_chain_checks", lambda: [("pi_executable", True, "pi")])
+        from apps.cli.commands.worker import _cmd_worker_doctor
+        _cmd_worker_doctor(json_output=True)
+        out = json.loads(capsys.readouterr().out)
+        check_names = {c["check"] for c in out["checks"]}
+        for suffix in ("declaration", "record", "home", "flags"):
+            assert f"isolation_claude_code_{suffix}" in check_names
+        assert out["ready"] is True
+        assert out["blockers"] == []
+
+    def test_worker_doctor_reads_not_ready_when_the_help_omits_a_declared_flag(self, monkeypatch, capsys):
+        """DECISION F152 D5 (2): a help text missing `--strict-mcp-config` names it a rejected
+        flag and fails `isolation_claude_code_flags`, which then blocks readiness."""
+        import shutil as _shutil
+
+        import packages.orchestration.worker_isolation as worker_isolation
+        monkeypatch.setattr(
+            _shutil, "which",
+            lambda name: f"/usr/bin/{name}" if name in ("ollama", "claude", "pi") else None)
+        monkeypatch.setattr(worker_isolation, "read_tool_help",
+                             lambda executable, env: "--setting-sources project,local\n")
+        import packages.orchestration.pi_provider as pi_provider
+        monkeypatch.setattr(pi_provider, "default_chain_checks", lambda: [("pi_executable", True, "pi")])
+        from apps.cli.commands.worker import _cmd_worker_doctor
+        _cmd_worker_doctor(json_output=True)
+        out = json.loads(capsys.readouterr().out)
+        assert out["ready"] is False
+        assert "isolation_claude_code_flags" in out["blockers"]
 
 
 class TestAWorkerRefusalIsShapedLikeTheCaller:

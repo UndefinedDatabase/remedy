@@ -19,6 +19,8 @@ from packages.orchestration.worker_isolation import (
     create_throwaway_home,
     declared_isolation,
     isolated_child_env,
+    isolation_doctor_checks,
+    read_tool_help,
     record_worker_isolation,
     remove_throwaway_home,
     run_isolation_ab,
@@ -28,6 +30,13 @@ from packages.orchestration.worker_isolation import (
 from packages.providers.adapters.claude_cli_reference import ClaudeCliReferenceAdapter
 
 _ADR_REF = "docs/adr/0002-claude-cli-worker-isolation.md"
+
+#: D5 (2): a help text listing the reference adapter's three declared flags.
+_HELP_TEXT_WITH_FLAGS = (
+    "Usage: claude [options]\n"
+    "  --setting-sources <sources>  comma-separated sources, e.g. project,local\n"
+    "  --strict-mcp-config          only the MCP servers named on the command line\n"
+)
 
 _APPLIES = WorkerIsolation(
     method="tool_flag", adr_ref=_ADR_REF, tool_args=("--x",), env_allowlist=("HOME", "PATH"))
@@ -335,3 +344,111 @@ class TestRunIsolationAb:
             run_isolation_ab(
                 adapter, marker="M-w", parent=str(tmp_path), poison_home=_raising_poison)
         assert _no_leftover_worker_home(tmp_path)
+
+
+def _patched_help(monkeypatch, help_text):
+    """Replace `read_tool_help` module-wide, so `isolation_doctor_checks`'s own call to it never
+    reaches a real binary (D5 (3))."""
+    import packages.orchestration.worker_isolation as worker_isolation_module
+    monkeypatch.setattr(worker_isolation_module, "read_tool_help", lambda executable, env: help_text)
+
+
+class _ThrowawayHomeAdapter(ClaudeCliReferenceAdapter):
+    """A `clean_env` declaration with a throwaway home, for the home check's throwaway branch."""
+
+    def isolation(self):
+        return WorkerIsolation(
+            method="clean_env", adr_ref=_ADR_REF, env_allowlist=("PATH",), throwaway_home=True)
+
+
+class TestIsolationDoctorChecks:
+    """F152 T003, DECISION F152 D5 (2) and (3): `worker doctor`'s own four isolation checks."""
+
+    def test_all_four_checks_pass_for_the_reference_adapter(self, monkeypatch):
+        _patched_help(monkeypatch, _HELP_TEXT_WITH_FLAGS)
+        adapter = ClaudeCliReferenceAdapter(claude_path="claude")
+        checks = {name: (ok, detail)
+                  for name, ok, detail in isolation_doctor_checks(adapter, provider_id="claude_code")}
+        assert set(checks) == {
+            "isolation_claude_code_declaration", "isolation_claude_code_record",
+            "isolation_claude_code_home", "isolation_claude_code_flags",
+        }
+        assert all(ok for ok, _detail in checks.values()), checks
+
+    def test_the_flags_check_fails_and_names_the_rejected_flag(self, monkeypatch):
+        _patched_help(monkeypatch, "--setting-sources project,local\n")  # drops --strict-mcp-config
+        adapter = ClaudeCliReferenceAdapter(claude_path="claude")
+        checks = {name: (ok, detail)
+                  for name, ok, detail in isolation_doctor_checks(adapter, provider_id="claude_code")}
+        ok, detail = checks["isolation_claude_code_flags"]
+        assert ok is False
+        assert "--strict-mcp-config" in detail
+
+    def test_the_home_check_fails_when_home_is_unset(self, monkeypatch):
+        _patched_help(monkeypatch, _HELP_TEXT_WITH_FLAGS)
+        monkeypatch.delenv("HOME", raising=False)
+        adapter = ClaudeCliReferenceAdapter(claude_path="claude")
+        checks = {name: (ok, detail)
+                  for name, ok, detail in isolation_doctor_checks(adapter, provider_id="claude_code")}
+        ok, _detail = checks["isolation_claude_code_home"]
+        assert ok is False
+
+    def test_the_home_check_fails_for_a_throwaway_home_adapter_when_the_parent_cannot_hold_a_directory(
+        self, monkeypatch, tmp_path,
+    ):
+        _patched_help(monkeypatch, _HELP_TEXT_WITH_FLAGS)
+        not_a_directory = tmp_path / "not-a-directory"
+        not_a_directory.write_text("x")
+        import tempfile as _tempfile
+        monkeypatch.setattr(_tempfile, "gettempdir", lambda: str(not_a_directory))
+        adapter = _ThrowawayHomeAdapter(claude_path="claude")
+        checks = {name: (ok, detail)
+                  for name, ok, detail in isolation_doctor_checks(adapter, provider_id="claude_code")}
+        ok, _detail = checks["isolation_claude_code_home"]
+        assert ok is False
+
+    def test_the_record_check_fails_for_a_missing_record(self, monkeypatch):
+        _patched_help(monkeypatch, _HELP_TEXT_WITH_FLAGS)
+
+        class _MissingRecordAdapter(ClaudeCliReferenceAdapter):
+            def isolation(self):
+                declared = super().isolation()
+                return dataclasses.replace(declared, adr_ref="docs/adr/9999-does-not-exist.md")
+
+        adapter = _MissingRecordAdapter(claude_path="claude")
+        checks = {name: (ok, detail)
+                  for name, ok, detail in isolation_doctor_checks(adapter, provider_id="claude_code")}
+        ok, detail = checks["isolation_claude_code_record"]
+        assert ok is False
+        assert "is missing or has no status line" in detail
+
+    def test_a_declaration_that_does_not_apply_answers_one_passing_check(self):
+        adapter = ClaudeCliReferenceAdapter(
+            claude_path="claude", config={"claude_cli.customizations": True})
+        checks = isolation_doctor_checks(adapter, provider_id="claude_code")
+        assert len(checks) == 1
+        name, ok, _detail = checks[0]
+        assert name == "isolation_claude_code"
+        assert ok is True
+
+    def test_declared_isolations_refusal_fails_the_declaration_check(self):
+        checks = isolation_doctor_checks(_NarrowAdapter(), provider_id="claude_code")
+        assert len(checks) == 1
+        name, ok, detail = checks[0]
+        assert name == "isolation_claude_code_declaration"
+        assert ok is False
+        assert "claude-cli" in detail
+
+
+class _NarrowAdapter:
+    """A real-world case: an installed adapter missing `isolation()` entirely."""
+
+    adapter_id = "claude-cli"
+
+    def __init__(self, **settings):
+        pass
+
+
+def test_read_tool_help_answers_none_for_an_executable_that_does_not_exist(tmp_path):
+    missing = str(tmp_path / "does-not-exist-binary")
+    assert read_tool_help(missing, None) is None

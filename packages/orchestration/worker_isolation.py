@@ -67,6 +67,111 @@ def declared_isolation(adapter: object) -> WorkerIsolation:
     return declaration
 
 
+#: The repository root resolved from this module's own location, two directories up from here the
+#: same as the kit's own `_REPO_ROOT` (DECISION F152 D5 (2)). Deviation (declared in the handback):
+#: D5 (2) asks the doctor's record check to call "the same function the kit's record check uses",
+#: moved into this module with the kit importing it; this round's own C4 lists
+#: `packages/contracts/adapter_conformance_kit.py` as OUTSIDE its Paths, so the kit keeps the
+#: definition C3 already committed and this module carries its own copy of the same check instead.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+# WHY: the doctor's own reading of the record requirement, kept identical in shape to the kit's
+# `_has_isolation_status_line` so the two check the same property even though C4's Paths forbid
+# editing the kit module to share one definition (DECISION F152 D5 (1) and (2); see the `_REPO_ROOT`
+# deviation note above).
+def has_isolation_record(adr_ref: str) -> bool:
+    """True when ADR_REF, resolved under this repository's root, is a file holding a line
+    beginning `> **Status:`."""
+    path = _REPO_ROOT / adr_ref
+    return path.is_file() and any(
+        line.startswith("> **Status:") for line in path.read_text(encoding="utf-8").splitlines())
+
+
+# WHY: the doctor's flags check reads a real `--help` without ever starting a model call (D5
+# (2)); a ten-second wall keeps a hung or interactive binary from blocking `worker doctor`.
+def read_tool_help(executable: str, env: Mapping[str, str] | None) -> str | None:
+    """EXECUTABLE's own `--help` text, or `None` when it cannot run at all."""
+    try:
+        result = run_guarded([executable, "--help"], ExecGuardPolicy(
+            wall_timeout_seconds=10.0, env=dict(env) if env is not None else None,
+            core_file_bytes=0))
+    except OSError:
+        return None
+    return result.stdout.decode("utf-8", errors="replace")
+
+
+# WHY: `worker doctor`'s own isolation checks, read-only and each replaceable in a test, so none
+# of them ever starts a real model call (DECISION F152 D5 (2) and (3)).
+def isolation_doctor_checks(
+    adapter: WorkerAdapter, *, provider_id: str,
+) -> tuple[tuple[str, bool, str], ...]:
+    """Four `(name, ok, detail)` triples — `isolation_<provider_id>_declaration`, `_record`,
+    `_home` and `_flags` — or, while the declared isolation does not apply, one passing check
+    saying the operator's own customization setting turned it off."""
+    try:
+        declaration = declared_isolation(adapter)
+    except TypeError as exc:
+        return ((f"isolation_{provider_id}_declaration", False, str(exc)),)
+
+    if not declaration.applies:
+        return ((
+            f"isolation_{provider_id}",
+            True,
+            "isolation does not apply: the operator's own customization setting turned it off",
+        ),)
+
+    checks: list[tuple[str, bool, str]] = [
+        (f"isolation_{provider_id}_declaration", True, f"method {declaration.method}"),
+    ]
+
+    record_ok = has_isolation_record(declaration.adr_ref)
+    checks.append((
+        f"isolation_{provider_id}_record",
+        record_ok,
+        declaration.adr_ref if record_ok
+        else f"isolation record {declaration.adr_ref} is missing or has no status line",
+    ))
+
+    if declaration.throwaway_home:
+        try:
+            home = create_throwaway_home(tempfile.gettempdir())
+        except OSError as exc:
+            checks.append((f"isolation_{provider_id}_home", False, str(exc)))
+        else:
+            remove_throwaway_home(home)
+            checks.append(
+                (f"isolation_{provider_id}_home", True, "throwaway home created and removed"))
+    else:
+        env = isolated_child_env(declaration, os.environ)
+        home_dir = (env or {}).get("HOME")
+        home_ok = bool(home_dir) and os.path.isdir(home_dir)
+        checks.append((
+            f"isolation_{provider_id}_home",
+            home_ok,
+            home_dir if home_ok else "the declared environment carries no directory named HOME",
+        ))
+
+    invocation = adapter.build_invocation(
+        "builder", ("a one-line prompt",), InvocationOptions(model=""))
+    if isinstance(invocation, CliInvocation) and invocation.argv:
+        help_text = read_tool_help(invocation.argv[0], isolated_child_env(declaration, os.environ))
+        if help_text is None:
+            checks.append((f"isolation_{provider_id}_flags", False, "could not read --help"))
+        else:
+            missing = [flag for flag in declaration.tool_args if flag not in help_text]
+            if missing:
+                checks.append(
+                    (f"isolation_{provider_id}_flags", False, f"rejected flag: {missing[0]}"))
+            else:
+                checks.append(
+                    (f"isolation_{provider_id}_flags", True, "every declared flag is listed"))
+    else:
+        checks.append((f"isolation_{provider_id}_flags", True, "no command line to check"))
+
+    return tuple(checks)
+
+
 # WHY: the one digest every worker_isolation.jsonl line carries, stable at equal configuration
 # and never derived from, or printing, a secret's own value (DECISION F152 D3 (3)).
 def worker_env_digest(env: Mapping[str, str] | None) -> str | None:
