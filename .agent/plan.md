@@ -8,16 +8,14 @@ when a degradation ran; a guard fails a capability read outside the matrix
 (`docs/roadmap/features/T8_F157.md`).
 
 ## Current Step
-Round 3: book round 2's verdict and R-1451, DECISION F157 D3; retire the planner entry and repair
-R-1451; the route module `packages/orchestration/capability_routes.py` with its evidence file, and
-`stream_evidence_capture` routed inside `create_role_provider`.
+Round 4: book round 3's verdict, R-1451's resolution and R-1452, DECISION F157 D4; repair R-1452;
+route `reviewer_schema_gate` and `parked_session_resume` inside the claude-cli provider, every
+decision of a build recorded by `routed_claude_cli_build`.
 
 ## Next Steps
-1. Route `reviewer_schema_gate` and `parked_session_resume` inside the claude-cli provider by
-   line-for-line swaps, their decisions joining the evidence file (DECISION F157 D3 (2)).
-2. The report section, the run's `Degradations:` line and the reduced-capability end-to-end
+1. The report section, the run's `Degradations:` line and the reduced-capability end-to-end
    (DECISION F157 D3 (5) and (6)).
-3. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
+2. The closure sequence: the integration gate, the evidence package, the STATUS acceptance.
 
 ## Risks
 - `pingpong_provider.py` and `pingpong_loop.py` are structure-ledger file rows; every edit there
