@@ -1,27 +1,28 @@
-# Live Review — F152 Worker config isolation
+# Live Review — F162 Sandbox profiles per adapter
 
-> Round-by-round review record, re-headed at the F152 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F157, whose STATUS
-> line went `[x]` on its own branch at `4c9f561da`; this session's Open PR Gate merged pull request
-> 387 into `main` as `ef2b85f83`, whose tree equals `4c9f561da`'s. F157's round 11, its closure
+> Round-by-round review record, re-headed at the F162 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F152, whose STATUS
+> line went `[x]` on its own branch at `ddbdbce8f`; this session's Open PR Gate merged pull request
+> 388 into `main` as `39beac4e1`, whose tree equals `ddbdbce8f`'s. F152's round 10, its closure
 > round, ended with its own handback, so operator amendment amend0827-process-diet rule 1 books its
 > verdict here, in the first commit of the next round that is happening anyway; its gate entry is
 > appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
 > section below are rewritten; everything else from the Findings heading to the end of the file as
-> it stood at `ef2b85f83` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic
-> R-XXXX series across the re-head. The open set at `ef2b85f83`, computed with `open_finding_ids`
-> from `scripts/rotate_live_review.py`, holds 8 ids — R-1246, R-1281, R-1351, R-1353, R-1426,
-> R-1428, R-1448 and R-1450 — every one owned by F316, so F152 takes none of them.
+> it stood at `39beac4e1` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic
+> R-XXXX series across the re-head. The open set at `39beac4e1`, computed with `open_finding_ids`
+> from `scripts/rotate_live_review.py`, holds 9 ids — R-1246, R-1281, R-1351, R-1353, R-1426,
+> R-1428, R-1448, R-1450 and R-1464 — every one owned by F316, so F162 takes none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F152 D1's. The first round claims F152, re-heads this record, books
-F157's round 11 and lands a findings pass as a committed inventory that is reviewed before any code
-is authored. Then T001, the isolation declaration in the adapter contract, the per-call evidence
-field and the throwaway-home mechanics with their unit tests, with the shape frozen from the
-reviewed inventory by DECISION F152 D2; then T002, the reference adapter's research written as an
-ADR and reviewed before its enforcement, the enforcement and the poisoned-config A/B proof; then
-T003, the doctor check, the conformance-kit requirement and the docs; then the closure.
+THE ORDER BELOW IS DECISION F162 D1's. The first round claims F162, re-heads this record, books
+F152's round 10 and lands a findings pass as a committed inventory that is reviewed before any code
+is authored. Then T001, the profile schema, the built-in profiles, the tighten-only comparator and
+its refusals with table tests, with the shape frozen from the reviewed inventory by DECISION F162
+D2; then T002, process-level enforcement per dimension through the existing exec guard and tool
+sandbox, the per-platform honesty record and the fixture processes; then T003, the adapter
+defaults and the run evidence, the optional container stage with its ADR, and the honesty document
+with its row-to-test walk; then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -208,3 +209,5 @@ Gate: F152 R8 — the F152 round 8 entry, the closure's first repair round, over
 Gate: F152 R9 — the F152 round 9 entry, the evidence round, over `74251df64`..`451ab8807` (3 commits, each single-parent). VERDICT PASS. The reviewer's prepared `verify.py` read `ALL True` over `451ab8807`: C1's three files and C2's evidence script equal to the prepared copies, the script generated from F157's committed one by exact replacements. The evidence job `f152r9e1001` read `head ab327e93f84f62018230713a4a8e46927e03567b`, both ancestry counts 34, `collected node ids 12941, deselected 253` as the reviewer's collect-only precheck at `74251df64` read them, the red control's unsafe count 0 with its planted id caught, pytest exit 0 at `12935` passed, `0` failed and `6` skipped over 1874.34 measured seconds, `validate_verification_tests problems []`, `is_valid_current_run True` and no validation error. The staging reclaim's preview listed no candidate, so no apply ran. The reviewer read the package itself: `remedy-review-20261024-111421-READY_FOR_REVIEW.zip`, SHA-256 `47ab419b8fe89aa50ff6106679c1089930649a4a1bebccfe6af6e6324dd30319` by the reviewer's own reading, `testzip()` None, its manifest's `package_status` `READY_FOR_REVIEW` and its review subject from the fork point `ef2b85f83` to `ab327e93f`; the build log read `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. The integrity check read `fail_count` 0. The worker declared one deviation: it wrote the package's folder with the home folder as `~` in the handoff, as the agent-state guard requires. F152 closes PASS_WITH_RISKS for the one acceptance line R-1464 names. The open set at `451ab8807` is the eight ids owned by F316, and R-1464 joins it, owned by F316.
 
 - R-1464 — Low, F152 closure: the feature file's first acceptance line asks for the poisoned-config A/B of the reference adapter, and F152 proves it against a stand-in `claude` that imitates the captured help text's surfaces (`tests/orchestration/test_worker_isolation.py`), not against the real binary, because these sessions may run neither the `claude` binary nor a web fetch (DECISIONs F152 D2 (3) and D4 (4); operator question Q26). What the real tool does is shown in part: the closure's self-use job `6f6d2e16e6114f58` ran its two claude-cli calls with `--setting-sources project,local --strict-mcp-config` and the cleaned environment, and both authenticated and finished; no run shows the real tool ignoring a poisoned user configuration. SEARCHED BEFORE MINTING: the open set for `run_isolation_ab` and `Q26`; none. THE REPAIR: once the operator allows it, `run_isolation_ab` runs once against the real binary with its login kept and a poisoned user configuration the operator's own files never hold, behind a switch that is off by default, and `docs/adr/0002-claude-cli-worker-isolation.md` marks the probes it closes VERIFIED. Owner: F316 — Findings paydown v11. OPEN.
+
+Gate: F152 R10 — the F152 round 10 entry, the closing round, over `451ab8807`..`ddbdbce8f` (3 commits, each single-parent; insertions by `git show --numstat` per commit: `901425b14` 283, `139945b2c` 68, `ddbdbce8f` 178). VERDICT PASS, verified by dry run, bytes identical (operator amendment amend0930-test-load rule 3). The reviewer of F162's first session compared every file C1, C2 and C3 committed with the copies prepared under `.remedy-wt/f152-r10/prep/`: each commit single-parent with a `F152 R10 Cn` subject, every committed file byte-equal to its prepared copy, and C3 carrying the handoff besides. The round's selection and integrity readings are therefore the dry run's: gate 3 `953 passed` with exit 0, integrity `fail_count` 0, and the open set the nine ids. The rotation moved 11 gate records and 9 finding pairs with the open count 9 before and after. This session's Open PR Gate merged pull request 388 as `39beac4e1`, whose tree equals `ddbdbce8f`'s; no hosted run was dispatched for it (operator amendment amend1011-manual-hosted-ci). The open set at `ddbdbce8f` is `['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448', 'R-1450', 'R-1464']`, every one owned by F316.
