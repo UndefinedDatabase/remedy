@@ -1,21 +1,27 @@
-# Plan — F162 Sandbox profiles per adapter
+# Plan — F158 Cost normalization & price catalog
 
 ## Goal
-What a worker process may touch becomes a named, testable profile: a profile file declares its
-filesystem scope, network (deny or a host allowlist), resource limits, allowed binaries and a tmp
-quota; each adapter declares its default profile; a project may tighten but never loosen below the
-policy minimum; an optional container runner reads the same profile; and an honesty document tables
-what each profile does and does not prevent, every row linked to a test
-(`docs/roadmap/features/T8_F162.md`).
+Cross-vendor money becomes comparable, honestly: one configured currency (`cost.currency`, default
+usd) shared by budgets, previews, the ledger and the catalog; a versioned price catalog per adapter
+with source comments; ledger rows gain raw counters, a normalized cost, the pricing version and a
+basis (provider_reported wins, the catalog cross-checks and warns past a threshold, a stale catalog
+warns and never blocks); and `remedy worker pricing update` imports catalogs behind a shown diff
+(`docs/roadmap/features/T8_F158.md`). F153 waits behind F316 (DECISION F158 D1).
 
 ## Current Step
-Round 12, the closing round (session 2): book round 11 (PASS), the Built State, the ledger rotation,
-the STATUS acceptance with the README sync and SU-083's `consumed_by`, and the pull request, left
-unmerged. F162 is accepted with this round.
+Round 1 (session 1): claim F158, book F162's round 12, re-head the review record, DECISIONs F158 D1
+and D2, operator question Q27, and the findings pass `.agent/f158_inventory.md`, reviewed before
+any code is authored.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F162's pull request, then the
-   first commit of the next feature books round 12's verdict, then Rule A5.
+1. Round 2, T001: the currency consolidation — the `cost.currency` key, the audit of every money
+   field and display, the mixed-currency guard — with its shape frozen by a DECISION from the
+   reviewed inventory.
+2. T002: the catalog format and validation, the ledger's additive columns, the writer's basis,
+   cross-check and staleness rules, and their goldens.
+3. T003: the recompute by pricing version (raw counters immutable), the update command with its
+   shown diff, the docs and the end-to-end; then the closure.
 
 ## Risks
-- R-1467 (the container runner's configuration key) is owned by F246; F162 closes PASS_WITH_RISKS.
+- Catalog prices may cite only sources already on disk (DECISION F158 D2 (3)); a model without one
+  stays unpriced.

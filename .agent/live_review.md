@@ -1,28 +1,30 @@
-# Live Review — F162 Sandbox profiles per adapter
+# Live Review — F158 Cost normalization & price catalog
 
-> Round-by-round review record, re-headed at the F162 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F152, whose STATUS
-> line went `[x]` on its own branch at `ddbdbce8f`; this session's Open PR Gate merged pull request
-> 388 into `main` as `39beac4e1`, whose tree equals `ddbdbce8f`'s. F152's round 10, its closure
+> Round-by-round review record, re-headed at the F158 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F162, whose STATUS
+> line went `[x]` on its own branch at `a954afc72`; this session's Open PR Gate merged pull request
+> 389 into `main` as `407536a9b`, whose tree equals `a954afc72`'s. F162's round 12, its closure
 > round, ended with its own handback, so operator amendment amend0827-process-diet rule 1 books its
 > verdict here, in the first commit of the next round that is happening anyway; its gate entry is
-> appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
-> section below are rewritten; everything else from the Findings heading to the end of the file as
-> it stood at `39beac4e1` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic
-> R-XXXX series across the re-head. The open set at `39beac4e1`, computed with `open_finding_ids`
-> from `scripts/rotate_live_review.py`, holds 9 ids — R-1246, R-1281, R-1351, R-1353, R-1426,
-> R-1428, R-1448, R-1450 and R-1464 — every one owned by F316, so F162 takes none of them.
+> appended at the end of this record by this claim. Rule A5 proposed F153 first; DECISION F158 D1
+> moves F153 behind the paydown F316 because no session can read the Codex command line it must
+> research, and F158 is the next line. Only the heading, this paragraph and the Steps section below
+> are rewritten; everything else from the Findings heading to the end of the file as it stood at
+> `407536a9b` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `407536a9b`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, holds 10 ids — R-1246, R-1281, R-1351, R-1353, R-1426, R-1428,
+> R-1448, R-1450 and R-1464, owned by F316, and R-1467, owned by F246 — so F158 takes none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F162 D1's. The first round claims F162, re-heads this record, books
-F152's round 10 and lands a findings pass as a committed inventory that is reviewed before any code
-is authored. Then T001, the profile schema, the built-in profiles, the tighten-only comparator and
-its refusals with table tests, with the shape frozen from the reviewed inventory by DECISION F162
-D2; then T002, process-level enforcement per dimension through the existing exec guard and tool
-sandbox, the per-platform honesty record and the fixture processes; then T003, the adapter
-defaults and the run evidence, the optional container stage with its ADR, and the honesty document
-with its row-to-test walk; then the closure.
+THE ORDER BELOW IS DECISION F158 D2's. The first round claims F158, re-heads this record, books
+F162's round 12 and lands a findings pass as a committed inventory that is reviewed before any code
+is authored. Then T001, the currency consolidation: the `cost.currency` key, the audit of every
+money field and display against it, and the mixed-currency guard, with its audit list reviewed;
+then T002, the catalog format and its validation, the ledger's additive columns and the writer's
+basis, cross-check and staleness rules with their goldens; then T003, the recompute by pricing
+version with the raw counters immutable, `remedy worker pricing update` with its shown diff, the
+docs and the end-to-end; then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -215,3 +217,5 @@ Gate: F162 R9 — the F162 round 9 entry, the R-1469 repair, over `2474214d2`..`
 Gate: F162 R10 — the F162 round 10 entry, the R-1470 repair, the consolidation pass, the closure's self-use run and the one full suite, over `8a61ba724`..`81eaa22a0` (6 commits, each single-parent; insertions by `git show --shortstat` per commit: `18ea2b563` 368, `65367b3b3` 1, `226015cb7` 17, `2fa84a217` 196, `b0ea97549` 27, `81eaa22a0` 341). VERDICT PASS, verified by dry run, bytes identical for C1 to C3: the reviewer's prepared `.remedy-wt/f162-r10/prep/verify.py` read `ALL True` over `81eaa22a0`, with C1's four paths, C2's index and C3's checklist page equal to the prepared copies the reviewer's own simulated commits over `8a61ba724` carried, where `tests/docs/`, `tests/cli/test_golden_path.py` and `tests/orchestration/test_doc_staleness.py` read `427 passed` and `run_staleness_checks` reported no `docs_index_type_column` claim. C4 appended SU-083, "Write the first tests for packages/orchestration/config_key_spec.py", from tier 5, with an empty `consumed_by`, and the run reached its approval gate never applied: job `0cdcfc43d6754774` `completed`, task T001 reviewer verdict `pass`, final status `staged_review_passed`, two claude-cli calls, `describe_self_use_run_defects` returning nothing, and both calls' `worker_sandbox.jsonl` lines naming profile `claude-cli` on the process runner. C5's transcript reads `24116 passed, 11 skipped, 1 warning in 403.19s (0:06:43)` with exit 0, no bad node id and no leftover process, on `2fa84a217`, and the cost script exited 0, 4.8 percent below F152's CPU seconds. The worker declared that its first try at C6 was refused by the commit hook for a machine path in its own text and was rewritten before any commit existed; nothing on disk is wrong. The open set at `81eaa22a0` is the nine ids owned by F316, R-1467 owned by F246, and R-1470 owned by F162, resolved below.
 
 Gate: F162 R11 — the F162 round 11 entry, the evidence job and the review package, over `81eaa22a0`..`72d970633` (3 commits, each single-parent; insertions by `git show --shortstat` per commit: `f4887aa4c` 135, `09b67feb1` 315, `72d970633` 159). VERDICT PASS. The reviewer's prepared `.remedy-wt/f162-r11/prep/verify.py` read `ALL True` over `72d970633`: C1's three paths and C2's evidence script equal to the prepared copies, the script generated from F152's committed one by counted replacements, and C3 the handoff alone. The reviewer's collect-only precheck at `81eaa22a0` read 13114 node ids with 253 deselected and none the packaging scan refuses; the evidence job `f162r11e1001` on `09b67feb1` read both ancestry counts 51, `13108 passed`, 6 skipped and none failed in 1860.906 seconds, `validate_verification_tests` with no problem and `is_valid_current_run True`. The staging reclaim's preview listed nothing, so nothing was applied. The package `remedy-review-20261024-161429-READY_FOR_REVIEW.zip` built `READY_FOR_REVIEW` on its first attempt; the reviewer's own sha256 over the file read `3aeabf2ebddca081b88766a65fa5431b19675ddedfa025062fff2ef159397d01`, `testzip()` none, and its manifest's committed review subject runs from the fork point `39beac4e1` to `09b67feb1` over 51 commits. The open set at `72d970633` is the nine ids owned by F316 and R-1467 owned by F246.
+
+Gate: F162 R12 — the F162 round 12 entry, the closing round, over `72d970633`..`a954afc72` (3 commits, each single-parent; insertions by `git show --shortstat` per commit: `46a56c32a` 294, `32ad4304d` 48, `a954afc72` 202). VERDICT PASS, verified by dry run, bytes identical (operator amendment amend0930-test-load rule 3). The reviewer of F162's second session re-ran its prepared `.remedy-wt/f162-r12/prep/verify.py` over `a954afc72` and read `ALL True`: each commit single-parent with a `F162 R12 Cn` subject, C1's five paths, C2's two ledger files and C3's three files byte-equal to the copies its simulated commits carried, and C3 carrying the handoff besides. The round's readings are therefore the dry run's: gate 3 `1028 passed` with exit 0, integrity `fail_count` 0 with six checks `pass`, and the open set the ten ids. The rotation moved 10 gate records, 5 finding pairs and 4 resolved-text records with the open count 10 before and after. The worker declared that several of its early read-only `git` and `gh` commands, and C1's commit, ran through a shell `cd` the block forbade, and that it ran every later step through `git -C`; nothing on disk is wrong. This session's Open PR Gate merged pull request 389 as `407536a9b`, whose tree equals `a954afc72`'s; no hosted run was dispatched for it (operator amendment amend1011-manual-hosted-ci). The open set at `a954afc72` is `['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448', 'R-1450', 'R-1464', 'R-1467']`, R-1467 owned by F246 and every other id by F316.

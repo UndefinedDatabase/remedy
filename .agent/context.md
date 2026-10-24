@@ -1,21 +1,21 @@
-# Context — F162 Sandbox profiles per adapter
+# Context — F158 Cost normalization & price catalog
 
 ## Active Branch
-`feature/f162-sandbox-profiles`, from `main` at `39beac4e1` (the merge of pull request 388).
+`feature/f158-cost-normalization`, from `main` at `407536a9b` (the merge of pull request 389).
 
 ## Scope
-F162 as `docs/roadmap/features/T8_F162.md` states it, in the order of DECISION F162 D1: the findings
-pass, T001 the profile schema, built-ins and tighten-only comparator, T002 process-level enforcement
-per dimension with platform honesty, T003 adapter defaults, evidence, the optional container stage
-with its ADR and the honesty document. The open findings are all F316's; F162 takes none.
+F158 as `docs/roadmap/features/T8_F158.md` states it, in the order of DECISION F158 D2: the
+findings pass, T001 the currency consolidation, T002 the catalog and the writer's rules, T003 the
+recompute, the update command and the end-to-end. F153 was moved behind F316 by DECISION F158 D1
+and is not touched here. The open findings are F316's and F246's; F158 takes none.
 
 ## Do not touch
-Exec-guard internals (extended, not forked), isolation HOME mechanics, air-gap policy (the feature
-file's Do-not-touch).
+Budget mechanics (aligned, not changed), the ledger's raw capture, the bases vocabulary (the
+feature file's Do-not-touch).
 
 ## Active assumptions
 - No paid model call is made outside a round that orders one by name.
-- A dimension a platform cannot enforce is recorded unenforced, never faked.
+- No price is invented: a catalog price cites a source on disk, else the model stays unpriced.
 
 ## Constraints
 - Under 500 insertions per commit; commit subjects carry no leading-slash tokens.

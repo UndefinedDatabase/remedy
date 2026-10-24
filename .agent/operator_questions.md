@@ -36,3 +36,13 @@ say otherwise: the two problems are carried to the next clean-up, which asks aga
 **My recommendation.** Allow sessions to run the claude command for version and help, allow one small paid call for the proof, and allow reading the public Claude documentation. Until then, the proof runs against a stand-in program and the real run sits behind a switch that is off by default.
 
 **What happens if you say nothing.** The recommendation is already executed and stands until you say otherwise: everything is built and tested with the stand-in, the real run stays switched off, and the work closes with that one point named as an open risk for a later clean-up.
+
+### Q27 — Let sessions read the Codex tool (2026-10-24, F158, round 1)
+
+**What needs deciding.** The next planned piece of work was to teach Remedy to use OpenAI's Codex command-line tool as a second kind of worker, beside the Claude tool it uses today. That work must begin with research on the exact tool installed on your machine: its version, the switches it accepts, the shape of what it prints, and a few recorded example runs. The plan forbids guessing any of this. The tool is installed, but the permission settings of these sessions refuse every way of finding out about it: running it even just to ask for its version or its help text, reading its installed files, and searching or reading the web. So the research cannot be done, and nothing about that tool can be built honestly.
+
+**Why it matters.** The Codex worker is the template that the later Gemini worker and other vendors copy, so it waits until the research is possible. The work on cost comparison, the clean-up of open problems and several other features do not depend on it and go ahead.
+
+**My recommendation.** Allow these sessions to run the Codex tool for its version and its help texts, to read its installed files, and to make a handful of very small paid example runs so that real recorded output can be saved as test material. Reading the public Codex documentation on the web would help too. Alternatively, run those few commands once yourself and save their output in the repository, and a session will work from that copy.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you say otherwise: the Codex worker has been moved behind the next clean-up of open problems, the work on comparing costs across vendors is being done now instead, and when its turn comes again a session that still cannot read the tool moves it back once more and asks again, rather than building it from guesses.
