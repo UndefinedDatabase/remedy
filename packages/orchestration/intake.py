@@ -290,9 +290,9 @@ def resolve_planner_target(
     """``(provider, model)`` for a planner call — the ONE place that decision is made.
 
     ``provider`` is an explicit choice (``--planner-provider``) and wins.
-    ``None`` asks the ``planner`` role, whose built-in default is ``ollama``
-    (packages/orchestration/role_config.py), so an unconfigured repository
-    resolves exactly what it resolved before this function existed.
+    ``None`` asks the ``planner`` role, whose built-in default is ``claude-cli``
+    since operator amendment amend1024-one-real-order
+    (packages/orchestration/role_config.py).
 
     The answered MODEL is ``None`` unless something actually named one — the
     ``model`` argument, or ``planner.model`` in the configuration. ``None`` is
@@ -347,8 +347,7 @@ def make_structured_call_fn(
     ``provider`` names the planning SERVICE: ``"ollama"``, ``"claude-cli"``, or
     ``None`` to take the ``planner`` role's own answer (operator amendment
     amend0920-selfuse-real, DECISION D1). That role's built-in default is
-    ``ollama``, so ``provider=None`` on an unconfigured repository builds
-    exactly the call_fn this factory built before a second planner existed.
+    ``claude-cli`` since operator amendment amend1024-one-real-order.
 
     ``model`` overrides the planner's configured model for this call_fn only —
     the F070 orchestrator role names a top-tier model through

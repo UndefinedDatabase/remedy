@@ -297,8 +297,8 @@ def check_providers(
 
 # The one next step for a default local chain with a missing link.
 DEFAULT_CHAIN_HINT: str = (
-    "the default builder and reviewer run the Pi harness on the local Ollama model; install Pi "
-    "and `ollama pull muse-glimmer:latest`, or pick an explicit provider"
+    "the local builder and reviewer (`pi`, a choice beside the default claude-cli) run the Pi "
+    "harness on the local Ollama model; install Pi and `ollama pull muse-glimmer:latest`, or use claude-cli"
 )
 
 

@@ -23,16 +23,23 @@ remedy do "<order>" --apply
 is the ordinary use: the reviewed change is applied to your files, nothing is committed, and the
 walk reports what is now uncommitted. Add `--commit-auto` to commit.
 
-- **Pi is the default execution harness**, with the local Ollama model `muse-glimmer:latest`, for
-  the builder, the reviewer and the repair role. Pi supplies the agent loop and the file tools;
-  Ollama is the model server and by itself is not a coding harness (a raw Ollama call returns
-  text, so `--builder-provider ollama` is refused and names `pi`). Pi runs in Remedy's isolated
-  job workspace; the reviewer's Pi has read-only tools. Explicit `--builder-provider claude-cli`
-  (or `claude`, `fake`) remains an override. A missing Pi, Ollama or model stops the walk before any
-  model call with the action to take, and never falls back to another provider. Pi loads no
-  `AGENTS.md` or `CLAUDE.md` on its own (`--no-context-files`): the builder sees the repository's
-  root agent file whole when it is at most 2,000 characters, and otherwise only its name, to read
-  when the task needs its conventions.
+- **The Claude Code CLI (`claude-cli`) is the default** for the planner, the builder, the reviewer
+  and the repair role (operator amendment amend1024-one-real-order). The builder writes in Remedy's
+  isolated job workspace and may run the commands of a fixed list, the project's tests among them
+  (see `docs/system/tool-sandbox-v1.md`, "What the builder may run itself"); the reviewer reads
+  only. Each role is chosen, highest first, by its option (`--planner-provider`,
+  `--builder-provider`, `--reviewer-provider`), a continued job's own record, the project's
+  `[roles]` table in `.remedy/config.toml` (`planner`, `builder`, `reviewer`) and then the
+  default; the planner also reads `planner.provider` of `remedy.toml` below the table.
+- **Pi with the local Ollama model `muse-glimmer:latest` stays a choice** (`--builder-provider pi`,
+  or `builder = "pi"` under `[roles]`). Pi supplies the agent loop and the file tools; Ollama is
+  the model server and by itself is not a coding harness (a raw Ollama call returns text, so
+  `--builder-provider ollama` is refused and names `pi`). Pi runs in Remedy's tool sandbox; the
+  reviewer's Pi has read-only tools. A missing Pi, Ollama or model stops the walk before any model
+  call with the action to take, and never falls back to another provider. Pi loads no `AGENTS.md`
+  or `CLAUDE.md` on its own (`--no-context-files`): the builder sees the repository's root agent
+  file whole when it is at most 2,000 characters, and otherwise only its name, to read when the
+  task needs its conventions.
 - **A dirty working tree is the baseline, for the files the job may change.** At the start Remedy
   captures what you can see of the job's deliverable paths (bytes, executable bit, symlinks,
   deletions), seeds the job workspace from them and measures the proposed change from that state.
