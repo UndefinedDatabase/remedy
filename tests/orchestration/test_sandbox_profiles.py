@@ -8,17 +8,25 @@ order's table tests, the preorder properties and the refusal message.
 """
 from __future__ import annotations
 
+import dataclasses
+import itertools
+
 import pytest
 
 from packages.orchestration.sandbox_profiles import (
     BUILTIN_SANDBOX_PROFILE_NAMES,
+    SandboxLoosening,
     SandboxNet,
     SandboxProfile,
     SandboxProfileError,
+    SandboxProfileLoosened,
     SandboxUlimits,
     get_sandbox_profile,
     load_builtin_sandbox_profiles,
     parse_sandbox_profile,
+    profile_loosenings,
+    profile_within,
+    tighten_sandbox_profile,
 )
 
 #: A profile that satisfies every rule of DECISION F162 D2 (3); every refusal case below is one
@@ -156,3 +164,172 @@ def test_loader_refuses_a_folder_holding_an_extra_toml_file(tmp_path):
     with pytest.raises(SandboxProfileError) as excinfo:
         load_builtin_sandbox_profiles(tmp_path)
     assert "stray" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# F162 round 2 C3: the tighten-only order's table tests and its refusal.
+# ---------------------------------------------------------------------------
+
+#: A neutral fixture profile; each dimension table below varies exactly one field off this base.
+_BASE = SandboxProfile(
+    name="base", fs_scope=("{workspace}",), net=SandboxNet("deny", ()),
+    ulimits=SandboxUlimits(cpu_s=10, mem_mb=10, nofile=10),
+    allowed_binaries=("git",), tmp_quota_mb=10,
+)
+
+_BUILTINS = load_builtin_sandbox_profiles()
+
+#: Reflexivity and transitivity are checked over this set: every built-in plus two fixtures whose
+#: fs_scope relationship is not already covered between the built-ins alone.
+_PREORDER_FIXTURES = (
+    *_BUILTINS.values(), _BASE,
+    dataclasses.replace(_BASE, name="base-sub", fs_scope=("{workspace}/sub",)),
+)
+
+_FS_SCOPE_CASES = (
+    ("equal", ("{workspace}",), ("{workspace}",), True),
+    ("below", ("{workspace}",), ("{workspace}/sub",), True),
+    ("sibling", ("{workspace}/a",), ("{workspace}/b",), False),
+    ("workspace_vs_absolute", ("{workspace}",), ("/abs",), False),
+    ("absolute_vs_workspace", ("/abs",), ("{workspace}",), False),
+    ("one_entry_outside", ("{workspace}",), ("{workspace}/sub", "/outside"), False),
+)
+
+
+@pytest.mark.parametrize("case_id,minimum_scope,candidate_scope,within", _FS_SCOPE_CASES,
+                         ids=[c[0] for c in _FS_SCOPE_CASES])
+def test_fs_scope_order_matches_decision_f162_d2_5(case_id, minimum_scope, candidate_scope, within):
+    minimum = dataclasses.replace(_BASE, fs_scope=minimum_scope)
+    candidate = dataclasses.replace(_BASE, fs_scope=candidate_scope)
+    assert profile_within(candidate, minimum) is within, case_id
+
+
+_NET_CASES = (
+    ("deny_within_deny", SandboxNet("deny", ()), SandboxNet("deny", ()), True),
+    ("deny_within_allowlist", SandboxNet("allowlist", ("a",)), SandboxNet("deny", ()), True),
+    ("allowlist_not_within_deny", SandboxNet("deny", ()), SandboxNet("allowlist", ("a",)), False),
+    ("subset", SandboxNet("allowlist", ("a", "b")), SandboxNet("allowlist", ("a",)), True),
+    ("superset", SandboxNet("allowlist", ("a",)), SandboxNet("allowlist", ("a", "b")), False),
+)
+
+
+@pytest.mark.parametrize("case_id,minimum_net,candidate_net,within", _NET_CASES,
+                         ids=[c[0] for c in _NET_CASES])
+def test_net_order_matches_decision_f162_d2_5(case_id, minimum_net, candidate_net, within):
+    minimum = dataclasses.replace(_BASE, net=minimum_net)
+    candidate = dataclasses.replace(_BASE, net=candidate_net)
+    assert profile_within(candidate, minimum) is within, case_id
+
+
+#: Shared by a ulimits key and tmp_quota_mb: both compare under the same int-or-None rule.
+_INT_CASES = (
+    ("smaller", 10, 5, True),
+    ("equal", 10, 10, True),
+    ("larger", 10, 20, False),
+    ("integer_within_unlimited", None, 10, True),
+    ("unlimited_not_within_integer", 10, None, False),
+)
+
+
+@pytest.mark.parametrize("case_id,minimum_value,candidate_value,within", _INT_CASES,
+                         ids=[c[0] for c in _INT_CASES])
+def test_a_ulimits_key_order_matches_decision_f162_d2_5(case_id, minimum_value, candidate_value, within):
+    minimum = dataclasses.replace(_BASE, ulimits=dataclasses.replace(_BASE.ulimits, cpu_s=minimum_value))
+    candidate = dataclasses.replace(_BASE, ulimits=dataclasses.replace(_BASE.ulimits, cpu_s=candidate_value))
+    assert profile_within(candidate, minimum) is within, case_id
+
+
+@pytest.mark.parametrize("case_id,minimum_value,candidate_value,within", _INT_CASES,
+                         ids=[c[0] for c in _INT_CASES])
+def test_tmp_quota_mb_order_matches_decision_f162_d2_5(case_id, minimum_value, candidate_value, within):
+    minimum = dataclasses.replace(_BASE, tmp_quota_mb=minimum_value)
+    candidate = dataclasses.replace(_BASE, tmp_quota_mb=candidate_value)
+    assert profile_within(candidate, minimum) is within, case_id
+
+
+_BINARIES_CASES = (
+    ("subset", ("a", "b"), ("a",), True),
+    ("superset", ("a",), ("a", "b"), False),
+    ("tuple_within_any", None, ("a",), True),
+    ("any_not_within_tuple", ("a",), None, False),
+)
+
+
+@pytest.mark.parametrize("case_id,minimum_binaries,candidate_binaries,within", _BINARIES_CASES,
+                         ids=[c[0] for c in _BINARIES_CASES])
+def test_allowed_binaries_order_matches_decision_f162_d2_5(case_id, minimum_binaries, candidate_binaries,
+                                                           within):
+    minimum = dataclasses.replace(_BASE, allowed_binaries=minimum_binaries)
+    candidate = dataclasses.replace(_BASE, allowed_binaries=candidate_binaries)
+    assert profile_within(candidate, minimum) is within, case_id
+
+
+def test_profile_loosenings_standard_against_strict_is_exactly_five_in_order():
+    loosenings = profile_loosenings(_BUILTINS["standard"], _BUILTINS["strict"])
+    assert loosenings == (
+        SandboxLoosening("ulimits.cpu_s", "600", "1800"),
+        SandboxLoosening("ulimits.mem_mb", "2048", "unlimited"),
+        SandboxLoosening("ulimits.nofile", "256", "1024"),
+        SandboxLoosening("allowed_binaries", '["git", "python3", "sh"]', "any"),
+        SandboxLoosening("tmp_quota_mb", "64", "512"),
+    )
+
+
+def test_profile_loosenings_net_local_against_standard_is_exactly_one_net_loosening():
+    loosenings = profile_loosenings(_BUILTINS["net-local"], _BUILTINS["standard"])
+    assert loosenings == (
+        SandboxLoosening("net", "deny", '{ allow = ["127.0.0.1", "::1", "localhost"] }'),
+    )
+
+
+def test_strict_is_within_standard_and_net_local_and_standard_is_within_net_local():
+    assert profile_within(_BUILTINS["strict"], _BUILTINS["standard"])
+    assert profile_within(_BUILTINS["strict"], _BUILTINS["net-local"])
+    assert profile_within(_BUILTINS["standard"], _BUILTINS["net-local"])
+
+
+def test_the_order_is_reflexive_over_every_builtin_and_fixture_profile():
+    for profile in _PREORDER_FIXTURES:
+        assert profile_within(profile, profile), profile.name
+
+
+def test_the_order_is_transitive_over_every_triple_of_builtin_and_fixture_profiles():
+    for a, b, c in itertools.product(_PREORDER_FIXTURES, repeat=3):
+        if profile_within(a, b) and profile_within(b, c):
+            assert profile_within(a, c), (a.name, b.name, c.name)
+
+
+def test_two_differently_named_equal_valued_profiles_are_within_each_other_both_ways():
+    standard = _BUILTINS["standard"]
+    twin = dataclasses.replace(standard, name="standard-twin")
+    assert profile_within(standard, twin)
+    assert profile_within(twin, standard)
+
+
+def test_tighten_sandbox_profile_returns_the_requested_object_when_within():
+    minimum = _BUILTINS["standard"]
+    requested = _BUILTINS["strict"]
+    assert tighten_sandbox_profile(minimum, requested) is requested
+
+
+def test_tighten_sandbox_profile_refuses_a_loosening_naming_the_minimum_and_every_loosening():
+    minimum = _BUILTINS["strict"]
+    requested = _BUILTINS["standard"]
+    with pytest.raises(SandboxProfileLoosened) as excinfo:
+        tighten_sandbox_profile(minimum, requested)
+    error = excinfo.value
+    assert str(error) == (
+        "sandbox profile 'standard' loosens the minimum 'strict': "
+        "ulimits.cpu_s 600 -> 1800; ulimits.mem_mb 2048 -> unlimited; "
+        "ulimits.nofile 256 -> 1024; "
+        'allowed_binaries ["git", "python3", "sh"] -> any; '
+        "tmp_quota_mb 64 -> 512"
+    )
+    assert error.minimum_name == "strict"
+    assert error.loosenings == (
+        SandboxLoosening("ulimits.cpu_s", "600", "1800"),
+        SandboxLoosening("ulimits.mem_mb", "2048", "unlimited"),
+        SandboxLoosening("ulimits.nofile", "256", "1024"),
+        SandboxLoosening("allowed_binaries", '["git", "python3", "sh"]', "any"),
+        SandboxLoosening("tmp_quota_mb", "64", "512"),
+    )
