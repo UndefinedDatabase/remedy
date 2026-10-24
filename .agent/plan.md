@@ -8,9 +8,9 @@ sandbox as reinforcement) with a required ADR, the call builder applies it and r
 adapter without its ADR (`docs/roadmap/features/T8_F152.md`).
 
 ## Current Step
-Round 7, the closure's integration-gate round: book round 6's PASS and R-1460 to R-1462 resolved,
-the checklist's one consolidation pass, the self-use item run to its approval gate through the
-isolated claude-cli worker, and the feature's one full suite with its cost reading.
+Round 8, the closure's repair round: book round 7's FAIL and register R-1463, rename the A/B
+marker out of the `REMEDY_` namespace, and run the one full suite again on the repaired tree,
+replacing the transcript at its path.
 
 ## Next Steps
 1. The evidence round: the staging reclaim, the evidence job and the review package.
@@ -19,5 +19,5 @@ isolated claude-cli worker, and the feature's one full suite with its cost readi
    as the open risk while operator question Q26 is unanswered.
 
 ## Risks
-- The self-use run is the first real claude-cli call through the declared flags and the cleaned
-  environment; a refusal or a lost login there is a finding of this feature.
+- A second red suite is the second of at most three repair rounds (operator amendment
+  amend0917-throughput rule 2); each must strictly shrink the bad set.
