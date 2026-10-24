@@ -1,68 +1,67 @@
-# Handoff — F162 round 5
+# Handoff — F162 round 6
 
 ## Session
 
-SESSION 1 of feature F162 · round 5 · rounds so far 5. This session booked round 4's FAIL verdict
-and R-1465, appended DECISION F162 D5 and the plan rewrite in its first commit, repaired R-1465
-exactly as its THE REPAIR clause states, then built the rest of T003's first half: the compiler's
-`tool_sandbox` keyword, the slot's two new functions, the sandbox evidence record and its writer,
-the generated reachability list's one line, both claude-cli spawn policies compiled through the
-slot, the factory's second evidence line, and the contract page's closing paragraph; context
-self-assessment: every new behaviour was proved against a dict literal or an exact field check
-written out in its own test rather than trusted by inspection, the claude-cli default's exec policy
-and evidence record were hand-verified against the block's own field-by-field description before
-any test was written, and one gate-1 false red — a pre-existing, pre-this-round disorder in the
-generated reachability list's full ordering, outside the one line this round added — is declared
-below rather than silently chased with a reorder the block forbids.
+SESSION 1 of feature F162 · round 6 · rounds so far 6. This session booked round 5's FAIL verdict,
+resolved R-1465 and registered R-1466 by copying the prepared ledger and plan texts byte-for-byte,
+repaired R-1466 exactly as its THE REPAIR clause states, then built T003's remaining half: the
+`claude_cli.sandbox_profile` config key with its regenerated guide row, the tighten-only resolver
+`effective_sandbox_profile` and its config-key helper, both slot functions reading through it
+instead of parsing the bare declaration, and `worker doctor`'s new `sandbox_<provider_id>` check
+wired in right after a worker's isolation checks; context self-assessment: every new behaviour was
+proved against an exact field check or a dict-literal comparison written out in its own test, the
+doctor's warning and refusal texts were hand-derived from the real built-in TOML values and the
+enforcement functions' own branches before any test was written, and one drafting slip — an Edit
+that briefly orphaned one assertion line of a pre-existing test while inserting a new test class
+after it — was caught and fixed before any test ran green and before anything was staged, so it
+never reached a commit.
 
-Fortschritt: ~65 % (T001, T002 landed · T003 under way) — Schätzung.
+Fortschritt: ~72 % (T001, T002 landed · T003 under way) — Schätzung.
 
 ## Range
 
-Review of `62b2bb2bf`..`204dd5824` (C1 to C4; C5 — this file — is the commit that carries it, per
+Review of `e673cc738`..`477f39922` (C1 to C4; C5 — this file — is the commit that carries it, per
 the handback template's self-reference exception).
 
 ## Commits
 
-### eb5edad53 F162 R5 C1: book round 4 and R-1465, DECISION F162 D5, the plan
+### 50446b91a F162 R6 C1: book round 5, resolve R-1465, register R-1466, DECISION F162 D6, the plan
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f162-r5.md` | +139/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
-| `.agent/decisions.md` | +15/-0 | DECISION F162 D5 appended: the compiler's keyword, the slot's two functions, the evidence record and writer, both claude-cli policies, the generated list's line |
-| `.agent/live_review.md` | +4/-0 | round 4's gate/verdict entry (VERDICT FAIL) and R-1465 booked |
-| `.agent/plan.md` | +5/-5 | rewritten: Current Step moves to round 5 under DECISION F162 D5 |
-| `.agent/prose_slips.md` | +1/-0 | round 4's own prose slip (the two forwarding methods and the raw-text comment search) appended |
+| `.agent/authored/f162-r6.md` | +140/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
+| `.agent/decisions.md` | +14/-0 | DECISION F162 D6 appended: the `claude_cli.sandbox_profile` key, the resolver, the calls' and evidence's use of it, the doctor check |
+| `.agent/live_review.md` | +6/-0 | round 5's gate/verdict entry (VERDICT FAIL), R-1465's Done paragraph booked, R-1466 registered |
+| `.agent/plan.md` | +7/-9 | rewritten: Current Step moves to round 6 under DECISION F162 D6 |
+| `.agent/prose_slips.md` | +1/-0 | round 5's own prose slip (the `verify.py` reachability-sort false red) appended |
 
-### 75e6b81e2 F162 R5 C2: repair R-1465, the page names the right decision and two needless methods go
+### 3b66e93cc F162 R6 C2: repair R-1466, the falsy-directory test runs where a stray write would land
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/system/worker-adapter-contract-v2.md` | +1/-1 | `DECISION F152 D3 (4)` corrected to `DECISION F162 D3 (4)` in the Sandbox default section |
-| `tests/orchestration/test_worker_adapter_slot.py` | +0/-6 | `_ThrowawayAdapter`'s forwarding `sandbox_default()` method and its false comment deleted |
-| `tests/orchestration/test_worker_isolation.py` | +0/-6 | `_ThrowawayHomeAdapter`'s forwarding `sandbox_default()` method and its false comment deleted |
+| `tests/orchestration/test_sandbox_profiles.py` | +4/-1 | `test_writes_nothing_for_a_falsy_directory` now sets its working directory to `tmp_path` via `monkeypatch.chdir` before either call, per R-1466's THE REPAIR clause |
 
-### 13b7bf122 F162 R5 C3: the slot compiles an adapter's default profile, and the sandbox record
+### b09b690ed F162 R6 C3: the claude_cli.sandbox_profile key and the tighten-only resolver
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/sandbox_profiles.py` | +51/-3 | D5 (1)'s `tool_sandbox` keyword on the compiler; D5 (4)'s `WORKER_SANDBOX_FILENAME`, `worker_sandbox_record`, `record_worker_sandbox` |
-| `packages/orchestration/worker_adapter_slot.py` | +40/-0 | D5 (2)'s `adapter_exec_policy` and `adapter_sandbox_record` |
-| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | D5 (5)'s one generated line, `packages.orchestration.sandbox_profiles`, in its local sorted place |
-| `tests/orchestration/test_sandbox_profiles.py` | +82/-0 | the compiler's `tool_sandbox=False` cases, the `worker_sandbox_record` dict-literal case, `record_worker_sandbox`'s falsy/two-line cases |
-| `tests/orchestration/test_worker_adapter_slot.py` | +81/-1 | `adapter_exec_policy`'s claude-cli case and its `tool_sandbox=True`/no-`cwd` cases, `adapter_sandbox_record`'s claude-cli dict-literal case |
+| `docs/guides/environment.md` | +1/-0 | the new `REMEDY_CLAUDE_CLI_SANDBOX_PROFILE` row, regenerated from the registry by the command the guide's own header gives |
+| `packages/orchestration/config_keys_claude.py` | +12/-0 | the `claude_cli.sandbox_profile` key, D6 (1), word for word |
+| `packages/orchestration/sandbox_profiles.py` | +29/-0 | `sandbox_profile_config_key` and `effective_sandbox_profile`, D6 (2) |
+| `packages/orchestration/worker_adapter_slot.py` | +10/-10 | `adapter_exec_policy` and `adapter_sandbox_record` now resolve through `effective_sandbox_profile` instead of parsing the bare declaration, D6 (3) |
+| `tests/orchestration/test_sandbox_profiles.py` | +57/-0 | the resolver's own cases: the config key, an unset/blank value, `strict`, `net-local`'s refusal, `bogus`'s refusal, no-config reading the process config |
+| `tests/orchestration/test_worker_adapter_slot.py` | +43/-0 | `adapter_exec_policy`/`adapter_sandbox_record` read the real `REMEDY_CLAUDE_CLI_SANDBOX_PROFILE` for `strict`'s tightened fields and `net-local`'s refusal |
 
-### 204dd5824 F162 R5 C4: both claude-cli policies compile the default, and every build records it
+### 477f39922 F162 R6 C4: worker doctor names each worker's sandbox profile and its unenforced dimensions
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/system/worker-adapter-contract-v2.md` | +6/-0 | the Sandbox default section's closing paragraph: `adapter_exec_policy`, `worker_sandbox.jsonl`, `worker_isolation.jsonl` |
-| `packages/orchestration/pingpong_provider.py` | +12/-12 | `_cli_exec_policy` and `_stream_exec_policy` now return `adapter_exec_policy("claude-cli", ...)`; the import swaps `adapter_child_env` for `adapter_exec_policy`; file stays at 1570 lines |
-| `packages/orchestration/role_provider_factory.py` | +14/-3 | `_record_claude_cli_evidence` helper writes both the isolation and the sandbox line, keeping `create_role_provider` under the structure ratchet's 100-line limit |
-| `tests/orchestration/test_capability_routes.py` | +7/-5 | the folder assertion now names both evidence files, sorted |
-| `tests/orchestration/test_claude_cli_exec_guard.py` | +12/-0 | `TestStageOnePolicyAndShape` gains the three new field assertions for `_cli_exec_policy`, plus one new test for `_stream_exec_policy` |
-| `tests/orchestration/test_role_provider_factory.py` | +29/-0 | `TestWorkerSandboxEvidence`: one claude-cli build writes exactly one sandbox line, one non-claude-cli build writes none |
+| `apps/cli/commands/worker.py` | +6/-0 | `_cmd_worker_doctor` calls `sandbox_doctor_checks` right after a worker's isolation checks, inside the same condition |
+| `docs/system/worker-adapter-contract-v2.md` | +7/-0 | the Sandbox default section's closing paragraph (DECISION F162 D6); a blank line added before round 5's own paragraph so it renders on its own |
+| `packages/orchestration/sandbox_profiles.py` | +23/-0 | `sandbox_doctor_checks`, D6 (4) |
+| `tests/cli/test_worker.py` | +48/-0 | `worker doctor --json` lists a passing `sandbox_claude_code` right after isolation's checks and stays ready; with `net-local` chosen it fails and is named among the blockers |
+| `tests/orchestration/test_sandbox_profiles.py` | +75/-0 | `sandbox_doctor_checks`' own cases: the default's warning, `strict`'s warning outside the tool sandbox, `net-local`'s refusal, a double with every dimension enforced |
 
-### (this commit) F162 R5 C5: handback
+### (this commit) F162 R6 C5: handback
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +1/-0 | the `Landed: R-1465` ledger line appended as the file's last line |
+| `.agent/live_review.md` | +1/-0 | the `Landed: R-1466` ledger line appended as the file's last line |
 | `.agent/handoff.md` | rewritten | this file — carried alone, per the handback template's self-reference exception (R-0149) |
 
 ## External actions
@@ -77,66 +76,60 @@ discipline; its real outcome is reported in the session reply, not in this file.
 ## Verification
 
 **Gate 1.** After C4, `git -C <repository root> status --porcelain`: empty output. Then
-`python3 .remedy-wt/f162-r5/prep/verify.py .`:
+`python3 .remedy-wt/f162-r6/prep/verify.py .`:
 ```
-True	eb5edad53 single parent equal to the commit before it
-True	eb5edad53 subject carries a F162 R5 Cn tag: F162 R5 C1: book round 4 and R-1465, DECISION F162 D5, the plan
-True	eb5edad53 insertions 164 under 500 (or the handback)
-True	75e6b81e2 single parent equal to the commit before it
-True	75e6b81e2 subject carries a F162 R5 Cn tag: F162 R5 C2: repair R-1465, the page names the right decision and two n
-True	75e6b81e2 insertions 1 under 500 (or the handback)
-True	13b7bf122 single parent equal to the commit before it
-True	13b7bf122 subject carries a F162 R5 Cn tag: F162 R5 C3: the slot compiles an adapter's default profile, and the sa
-True	13b7bf122 insertions 255 under 500 (or the handback)
-True	204dd5824 single parent equal to the commit before it
-True	204dd5824 subject carries a F162 R5 Cn tag: F162 R5 C4: both claude-cli policies compile the default, and every bu
-True	204dd5824 insertions 80 under 500 (or the handback)
+True	50446b91a single parent equal to the commit before it
+True	50446b91a subject carries a F162 R6 Cn tag: F162 R6 C1: book round 5, resolve R-1465, register R-1466, DECISION F1
+True	50446b91a insertions 168 under 500 (or the handback)
+True	3b66e93cc single parent equal to the commit before it
+True	3b66e93cc subject carries a F162 R6 Cn tag: F162 R6 C2: repair R-1466, the falsy-directory test runs where a stray
+True	3b66e93cc insertions 4 under 500 (or the handback)
+True	b09b690ed single parent equal to the commit before it
+True	b09b690ed subject carries a F162 R6 Cn tag: F162 R6 C3: the claude_cli.sandbox_profile key and the tighten-only re
+True	b09b690ed insertions 152 under 500 (or the handback)
+True	477f39922 single parent equal to the commit before it
+True	477f39922 subject carries a F162 R6 Cn tag: F162 R6 C4: worker doctor names each worker's sandbox profile and its
+True	477f39922 insertions 159 under 500 (or the handback)
 True	on feature/f162-sandbox-profiles
 True	C1 paths exactly [five paths]: [five paths] (exact match)
-True	C1 .agent/authored/f162-r5.md equals c1-.agent__authored__f162-r5.md
+True	C1 .agent/authored/f162-r6.md equals c1-.agent__authored__f162-r6.md
 True	C1 .agent/decisions.md equals c1-.agent__decisions.md
 True	C1 .agent/live_review.md equals c1-.agent__live_review.md
 True	C1 .agent/plan.md equals c1-.agent__plan.md
 True	C1 .agent/prose_slips.md equals c1-.agent__prose_slips.md
-True	C2 paths exactly [three paths]: [three paths] (exact match)
-True	C2 75e6b81e2 adds no machine path
-True	C3 paths exactly [five paths]: [five paths] (exact match)
-True	C3 13b7bf122 adds no machine path
-True	C4 paths exactly [six paths]: [six paths] (exact match)
-True	C4 204dd5824 adds no machine path
+True	C2 paths exactly [one path]: [one path] (exact match)
+True	C2 3b66e93cc adds no machine path
+True	C3 paths exactly [six paths]: [six paths] (exact match)
+True	C3 b09b690ed adds no machine path
+True	C4 paths exactly [five paths]: [five paths] (exact match)
+True	C4 477f39922 adds no machine path
 absent	C5
-True	C2 page names F162 D3 (4)
-True	C2 _ThrowawayHomeAdapter has no sandbox_default method
-True	C2 _ThrowawayAdapter has no sandbox_default method
-True	C3 reachability list holds sandbox_profiles
-False	C3 reachability list stays sorted
-True	C3 reachability list gains exactly the one line
-True	C3 slot defines both functions
-True	C4 pingpong_provider.py at 1570 lines, 1570 required
-True	C4 pingpong imports adapter_exec_policy and not adapter_child_env: ['adapter_cli_argv', 'adapter_exec_policy', 'adapter_usage_actuals']
-True	C4 page paragraph present
+True	config.py untouched
+True	C3 key declared
+True	C3 guide row present
+True	C3 resolver functions defined
+True	C4 doctor check defined
+True	C4 worker doctor calls it
 True	the saved block equals block.md
-ALL False
+ALL True
 ```
-Every line `True` except one (C5 correctly `absent`, not yet committed when this gate ran; the one
-real `False` is declared below). Not re-run: the one red line is not a defect this round's own
-paths can fix without breaking a different instruction of the same block (declared below), so a
-second run would read the identical result.
+Every line `True`; `C5` correctly `absent` (not yet committed when this gate ran). Not re-run: it
+was green on the first run.
 
-**Gate 2.** `python3 .remedy-wt/f162-r5/prep/run_selection.py . .remedy-wt/f162-r5-worker/selection-output.txt`,
+**Gate 2.** `python3 .remedy-wt/f162-r6/prep/run_selection.py . .remedy-wt/f162-r6-worker/selection-output.txt`,
 run once, after C4:
 ```
-paths 105
+paths 110
 exit 0
-4939 passed, 2 skipped in 49.93s
+5134 passed, 2 skipped in 54.35s
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
 SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
 ```
 `exit 0`, no `FAILED` or `ERROR` line, no line containing `process(es) behind`. Both `SKIPPED`
-lines are the pre-existing two prior handoffs already named; neither is from this round's new
-tests, so the gate is not red on that account. Not red, so no second run was needed.
+lines are the same two pre-existing, opt-in skips named by every prior round's own handoff; neither
+is from this round's new tests. Not red, so no second run was needed.
 
-**Gate 3.** `python3 -m ruff check packages/orchestration/sandbox_profiles.py packages/orchestration/worker_adapter_slot.py packages/orchestration/pingpong_provider.py packages/orchestration/role_provider_factory.py tests/orchestration`:
+**Gate 3.** `python3 -m ruff check packages/orchestration/sandbox_profiles.py packages/orchestration/worker_adapter_slot.py packages/orchestration/config_keys_claude.py apps/cli/commands/worker.py tests/orchestration tests/cli/test_worker.py`:
 ```
 All checks passed!
 ```
@@ -146,91 +139,80 @@ Exit 0.
 ```
 {"check_count": 6, "checks": [{"message": "handlers=201", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict FAIL", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
-`fail_count` 0, all six checks `pass` (`live_review_verdict`'s message reports round 4's own FAIL
-verdict, now booked; the check itself still reads `pass` because booking a FAIL is correct). Then
+`fail_count` 0, all six checks `pass` (`live_review_verdict`'s message still reports round 5's own
+FAIL verdict, now booked by this round's C1; the check itself reads `pass` because booking a FAIL
+correctly is what it checks for). Then
 `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`:
 `10`. Exactly the block's named count.
 
 ## Authored-text proofs
 
 C1's five byte copies were each proved byte-equal to their prepared `c1-` file immediately after
-copying, via a dedicated digest-verification script. The authored block's own proof:
-`.agent/authored/f162-r5.md` is 139 lines (`wc -l`) with sha256
-`757b6b94fd98b41809f46960569c1c55411354be033e54b3d7caf38f686298b4`, identical to `block.md`'s own
+copying, via a dedicated digest-verification script (every digest also independently re-confirmed
+against `.remedy-wt/f162-r6/prep/digests.txt` before any prepared file was read). The authored
+block's own proof: `.agent/authored/f162-r6.md` is 140 lines (`wc -l`) with sha256
+`f51c55e4430c2a9145b07fcb13ec24a0fa7375448f805ead3f95012e8c8a0a53`, identical to `block.md`'s own
 sha256 — the same digest `digests.txt` names for both prepared files. Gate 1's `verify.py` run
 independently re-confirmed every `C1 ... equals c1-...` line `True`.
 
 ## Deviations & assumptions
 
-1. Gate 1's `verify.py` reads `False` on "C3 reachability list stays sorted," and this line was
-   NOT fixed. Measured directly: `git show 62b2bb2bf:tests/orchestration/import_reachability_allowlist.txt`
-   was already not in full alphabetical order before this round started (confirmed by comparing it
-   against Python's own `sorted()` on its own content) — long-standing disorder around the
-   `job_report`/`job_input_definition` region and the `serve_http_handler`/`side_role_*`/`tier_*`
-   region, neither touched by this round. This round's own C3 commit added exactly one line,
-   `packages.orchestration.sandbox_profiles`, in its correct LOCAL sorted place — immediately after
-   `packages.orchestration.safe_points` and before `packages.orchestration.sandbox_relay`, which is
-   the ascending order of all three — and `verify.py`'s own "C3 reachability list gains exactly the
-   one line" check, which measures the real property the block orders ("add the one line in its
-   sorted place, never reorder others"), reads `True`. Resorting the whole file to make the global
-   check read `True` would reorder every one of those pre-existing out-of-place lines, which is the
-   one thing this round's own block explicitly forbids ("never reorder others"); it would also be a
-   far larger, unrelated diff than this round's own scope. This is declared as a gate-1 false red
-   rather than silently chased, on the precedent of F162 R3's and R4's own declared `verify.py`
-   measurement quirks; it is not added to `.agent/prose_slips.md` because this round's block names
-   no commit permitted to touch that file again after C1.
-2. Before the official gates ran, several single-file `pytest` invocations covering each file
-   touched this round, and several `ruff check` runs, were made during drafting to self-review each
-   commit's diff before it was staged. None ran concurrently with another test command, none was
-   the full suite, and none was a mutation red-proof; gate 2 and gate 3 themselves each ran exactly
-   once, after C4, as the block requires.
-3. A digest-verification script, a byte-copy script, and several standalone read-only sanity checks
-   (confirming `adapter_exec_policy`'s and `adapter_sandbox_record`'s field-by-field behaviour
-   against the block's own prose before any test was written) were run under
-   `.remedy-wt/f162-r5-worker/` (created fresh this round); none is committed and none is a model or
-   `claude`-binary call.
-4. `create_role_provider` in `packages/orchestration/role_provider_factory.py` grew to 102 lines
-   when the sandbox-evidence call was first added inline, which `tests/test_structure_ratchet.py`
-   caught as a new function above the 100-line limit with no ledger row. Rather than add a row to
-   `docs/system/structure-ledger-v1.md` — scope this round's block never orders — the two evidence
-   calls were folded into one small helper, `_record_claude_cli_evidence`, bringing the function
-   back to 97 lines. This is a deviation in STYLE only: the block's own text, "The factory writes
-   `record_worker_sandbox(...)` right after the isolation line," is satisfied exactly — both calls
-   happen together, in order, for every claude-cli build — just inside the helper rather than
-   written out twice in the outer function's own body.
+1. While drafting C3's new tests, an `Edit` whose `old_string` ended one line short of the real end
+   of the pre-existing `test_appends_one_sorted_key_line_per_call` test body left that test's last
+   assertion (`assert all(p["provider"] == "claude-cli" and p["model"] == "m" for p in parsed)`)
+   sitting after the inserted test classes instead of inside the test it belonged to. This was
+   caught at once by the first `pytest` run on the file (`NameError: name 'parsed' is not defined`
+   in the wrong test), before the file was staged or committed; it was fixed by moving the line back
+   into the original test and the file was re-read and re-run clean before anything else happened.
+   Nothing wrong ever reached a commit.
+2. `sandbox_doctor_checks`' own detail text is pinned to Linux's enforcement branches (every
+   `_enforcement_for_*` helper treats a non-Linux `sys.platform` as `unenforced, "not verified on
+   <platform>"`), so three of the four new tests in `TestSandboxDoctorChecks` carry
+   `@pytest.mark.skipif(not sys.platform.startswith("linux"), ...)`, matching the block's own
+   parenthetical for the first case and extended here to the other platform-pinned ones on the same
+   reasoning; the fourth, the `net-local` refusal, is platform-independent (the refusal text comes
+   from `SandboxProfileLoosened`/`SandboxProfileError`, not from the enforcement table) and carries
+   no skip. This host is Linux, so none of the three skips actually fired.
+3. Several single-file `pytest` invocations covering each file touched this round, and several
+   `ruff check` runs, were made during drafting to self-review each commit's diff before it was
+   staged. None ran concurrently with another test command, none was the full suite, and none was a
+   mutation red-proof; gate 2 and gate 3 themselves each ran exactly once, after C4, as the block
+   requires.
+4. A digest-verification script and a byte-copy script were run under
+   `.remedy-wt/f162-r6-worker/` (created fresh this round); neither is committed and neither is a
+   model or `claude`-binary call.
 
-No other departure from the block's ordered commit sequence beyond the two declared above: no file
-touched outside the paths named per commit, no mutation red-proof, no full suite run beyond gate
-2's own selection, no `REMEDY_TEST_MAX_WORKERS`, no two test commands run at once, no `claude`
-binary invoked, no worktree of my own, and no `gh pr merge`, `git checkout`/`git switch` away from
-the feature branch, branch creation, rebase, amend, force-push, or `--no-verify`.
+No other departure from the block's ordered commit sequence: no file touched outside the paths
+named per commit, no mutation red-proof, no full suite run beyond gate 2's own selection, no
+`REMEDY_TEST_MAX_WORKERS`, no two test commands run at once, no `claude` binary invoked, no worktree
+of my own, and no `gh pr merge`, `git checkout`/`git switch` away from the feature branch, branch
+creation, rebase, amend, force-push, or `--no-verify`.
 
 ## For the operator, in plain sentences
 
-This session recorded the previous session's result, fixed the two small mistakes that session's
-own verification caught, and finished connecting the new safety declaration to how a real worker
-call actually runs. Every limit a backend declares for itself now actually reaches the process that
-runs its calls, with the strongest protection skipped exactly where a backend says it must be, and
-every such call now leaves behind a written record of which limits applied and which did not, right
-beside the record already kept of how its environment was cleaned. One already-existing ordering
-problem in a generated bookkeeping file, unrelated to anything touched this session, was found and
-left alone rather than fixed by a change far outside this session's own boundary, because fixing it
-correctly needs its own separate pass. What still needs doing is letting a project state its own
-tighter choice, and telling the project's health check what to warn about when it cannot trust what
-it is told.
+This session recorded the previous session's result and the two small corrections it ordered, then
+let a project ask for a stricter safety profile than a worker's own built-in default and made every
+place that reads the profile — the actual call, its written record, and the health check — agree on
+the same answer. Asking for anything looser than the built-in default is refused before any call
+runs, naming what the worker would have used instead. The health check now also says, for the one
+worker type that has a safety profile today, which of its protections are honestly not being
+enforced on this machine, and only turns that into a failure when the project's own choice was
+refused outright. What still needs doing is the optional extra layer of protection that runs a
+worker inside its own small throwaway container, which is this feature's last remaining piece.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
 | C1 | done | five files byte-equal to the prepared snapshots; numstat matched the manifest exactly |
-| C2 | done | the page's decision reference corrected; both forwarding `sandbox_default()` methods and their false comments deleted; 1 insertion |
-| C3 | done | the compiler's `tool_sandbox` keyword, the slot's two functions, the evidence record and writer, the generated list's one line; 255 insertions |
-| C4 | done | both claude-cli policies compiled through the slot, the factory's second evidence line, the page's closing paragraph; 80 insertions |
+| C2 | done | the falsy-directory test now runs with its working directory set to `tmp_path`; 4 insertions, 1 deletion |
+| C3 | done | the `claude_cli.sandbox_profile` key, the regenerated guide row, the resolver, both slot functions reading through it; 152 insertions |
+| C4 | done | `sandbox_doctor_checks`, its wiring into `worker doctor`, the contract page's new paragraph; 159 insertions |
 | C5 | done | this handoff, committed alone per the self-reference exception, plus the one `Landed:` ledger line |
-| R-1465 | done | RESOLVED at F162 R5 by C2, `75e6b81e2` |
-| Gate 1 | deviated | one real `False` line declared above (pre-existing, unrelated disorder in a generated file); every other line `True` |
-| Gate 2 | done | exit 0, `4939 passed, 2 skipped`, no FAILED/ERROR/`process(es) behind`, no SKIPPED from this round's new tests |
+| R-1465 | done | RESOLVED at F162 R5 by C2, `75e6b81e2`; booked into the permanent ledger by this round's C1 |
+| R-1466 | done | RESOLVED at F162 R6 by C2, `3b66e93cc` |
+| Gate 1 | done | every line `True`, `C5` correctly `absent` |
+| Gate 2 | done | exit 0, `5134 passed, 2 skipped`, no FAILED/ERROR/`process(es) behind`, both SKIPPED lines pre-existing |
 | Gate 3 | done | `All checks passed!`, exit 0 |
 | Gate 4 | done | `fail_count` 0; open id count `10`, matching the block exactly |
 | Push | pending | runs immediately after this commit, per the block's push discipline; outcome reported in the reply |
@@ -239,9 +221,9 @@ it is told.
 
 1. Phase 1 rule 1: check `.agent/STOP` before any new work (absent as of this session).
 2. Phase 1 rule 2: the Open PR Gate, before any new branch.
-3. Book round 5's verdict in the next round's first commit.
-4. T003: a project's choice in `remedy.toml` and the doctor's warnings, DECISION F162 D6.
+3. Book round 6's verdict in the next round's first commit.
+4. T003: the optional container stage with its ADR, DECISION F162 D7.
 
 Operator questions open: 3.
 Open findings: 10 (R-1246, R-1281, R-1351, R-1353, R-1426, R-1428, R-1448, R-1450, R-1464 and
-R-1465, owned by F316 and F162).
+R-1466, owned by F316 and F162).
