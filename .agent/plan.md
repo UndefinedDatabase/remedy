@@ -9,17 +9,12 @@ what each profile does and does not prevent, every row linked to a test
 (`docs/roadmap/features/T8_F162.md`).
 
 ## Current Step
-Round 10, the closure's integration-gate round (session 2): book round 9 (PASS) with R-1469
-resolved; register and repair R-1470, the docs index row whose type cell reads `system, generated`;
-the checklist's one consolidation pass; the closure's self-use item run to its approval gate, never
-applied; and the feature's one full suite with its CPU cost.
+Round 11, the closure's evidence round (session 2): book round 10 (PASS) with R-1470 resolved, save
+the evidence script, then the staging reclaim, the evidence job and the review package.
 
 ## Next Steps
-1. Round 11: the reviewer books round 10, R-1470 and every self-use run defect; then a repair round
-   naming every bad node id if the suite is red, else the evidence script, the evidence bundle and
-   the review package.
-2. The closing round: the Built State, the ledger rotation, the STATUS acceptance with the README
-   sync and the self-use queue's `consumed_by`, and the pull request.
+1. The closing round: the Built State, the ledger rotation, SU-083's `consumed_by`, the STATUS
+   acceptance with the README sync, and the pull request, left unmerged.
 
 ## Risks
 - The container fixtures need a local `python:3.12-slim`; where it is absent they skip, NOT VERIFIED.
