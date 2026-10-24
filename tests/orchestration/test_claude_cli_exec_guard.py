@@ -7,14 +7,19 @@ translated wall trip from a forwarded `timeout=` keyword.
 from __future__ import annotations
 
 import ast
+import errno
 import inspect
+import re
+import resource
 import stat
 import subprocess
+import sys
 import textwrap
 
 import pytest
 
 from packages.orchestration import pingpong_provider as pp
+from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.pingpong_provider import ClaudeCliProvider
 from packages.orchestration.worker_adapter_slot import adapter_child_env
 
@@ -133,3 +138,57 @@ class TestStageOnePolicyAndShape:
 
     def test_an_undecodable_byte_is_replaced_instead_of_raising(self):
         assert pp._decode_cli_stream(b"ok\xff") == "ok\ufffd"
+
+
+# ---------------------------------------------------------------------------
+# DECISION F162 D8 (5): the end-to-end \u2014 the claude-cli default reaches a real spawned child.
+# ---------------------------------------------------------------------------
+
+#: Tries to open 2000 files, then prints how many it opened and the errno that stopped it
+#: (`None` when it opened all 2000).
+_OPEN_2000_FILES_SCRIPT = (
+    "handles = []\n"
+    "stopped_errno = None\n"
+    "for _ in range(2000):\n"
+    "    try:\n"
+    "        handles.append(open('/dev/null'))\n"
+    "    except OSError as exc:\n"
+    "        stopped_errno = exc.errno\n"
+    "        break\n"
+    "print('OPENED', len(handles))\n"
+    "print('ERRNO', stopped_errno)\n"
+)
+
+
+def _opened_and_errno(output: bytes | str) -> tuple[int, int | None]:
+    text = output.decode(errors="replace") if isinstance(output, bytes) else output
+    opened = int(re.search(r"OPENED (\d+)", text).group(1))
+    errno_text = re.search(r"ERRNO (\S+)", text).group(1)
+    return opened, None if errno_text == "None" else int(errno_text)
+
+
+def test_the_claude_cli_defaults_nofile_reaches_a_real_spawned_child(tmp_path):
+    """DECISION F162 D8 (5): a control run through `run_guarded` with a bare `ExecGuardPolicy()`
+    opens all 2000 files; the same stand-in through `_guarded_cli_run` \u2014 the real claude-cli
+    spawn seam, with the reference adapter installed \u2014 stops near 1024 with errno 24 (EMFILE),
+    proving the adapter's declared `nofile` reaches the child through `adapter_exec_policy`."""
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    if hard < 2100:
+        pytest.skip(
+            f"NOT VERIFIED: this process's own RLIMIT_NOFILE hard limit is {hard}, below the "
+            "2100 the control run needs to open all 2000 files itself")
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+    try:
+        argv = [sys.executable, "-I", "-c", _OPEN_2000_FILES_SCRIPT]
+
+        control = run_guarded(argv, ExecGuardPolicy(cwd=str(tmp_path)))
+        control_opened, control_errno = _opened_and_errno(control.stdout)
+        assert control_opened == 2000
+        assert control_errno is None
+
+        proc = pp._guarded_cli_run(argv, timeout_sec=30, cwd=str(tmp_path))
+        opened, stopped_errno = _opened_and_errno(proc.stdout)
+        assert stopped_errno == errno.EMFILE
+        assert opened < 1024
+    finally:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
