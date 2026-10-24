@@ -535,6 +535,10 @@ def _record_finalized_call_in_ledger(
         if records is None:
             return
         record_task_run_calls(records, project_id=project_id, path=ledger_path)
+        # F158 D5: each mirrored call valued beside its row; the row itself is never touched.
+        from packages.orchestration.call_valuation import value_and_record_calls
+
+        value_and_record_calls(records, project_id=project_id, path=ledger_path)
     except Exception:
         logger.error(
             "token ledger hook FAILED after writing evidence for task %r (the "

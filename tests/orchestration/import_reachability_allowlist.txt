@@ -134,6 +134,7 @@ packages.orchestration.builder_models
 packages.orchestration.burn_detector
 packages.orchestration.call_identity
 packages.orchestration.call_tokens
+packages.orchestration.call_valuation
 packages.orchestration.capability_bench
 packages.orchestration.capability_evidence
 packages.orchestration.capability_routes
@@ -326,6 +327,7 @@ packages.orchestration.planner_cancel
 packages.orchestration.planner_models
 packages.orchestration.preview_control
 packages.orchestration.preview_runner
+packages.orchestration.price_catalog
 packages.orchestration.product_smoke
 packages.orchestration.project_brain
 packages.orchestration.project_brain_aggregate

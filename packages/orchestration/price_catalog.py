@@ -169,6 +169,12 @@ def load_price_catalogs(directory: Path | None = None) -> dict[str, PriceCatalog
             for path in sorted(base.glob("*.toml"))}
 
 
+def stale_model_prices(catalog: PriceCatalog, *, today: datetime.date,
+                       window_days: int) -> tuple[ModelPrice, ...]:
+    """The prices of `catalog` valid from more than `window_days` before `today`: warned, never blocking."""
+    return tuple(p for p in catalog.prices if (today - p.valid_from).days > window_days)
+
+
 def price_catalog_warnings(catalog: PriceCatalog, *, currency: str = COST_CURRENCY_USD) -> list[str]:
     """Advisory doubts about a valid catalog: unknown model ids and prices in another currency."""
     known = set(builtin_model_ids())
