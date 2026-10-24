@@ -1,198 +1,437 @@
-# Handoff — F158 round 6
+# Handoff — F158 round 7
 
 ## Session
 
-SESSION 1 of feature F158 · round 6 · rounds so far 6. This session verified the prepared digest
-and every manifest entry before touching a file, applied the four byte-copy commits exactly as
-ordered, and found all five gates green on the first and only run of each.
+SESSION 2 of feature F158 · round 7 · rounds so far 7. This session verified the prepared digest
+and every file's sha256 before touching anything, applied the five ordered commits exactly as the
+block specified, and found all four gates green on the first and only run of each, with comfortable
+context headroom throughout.
 
-Fortschritt: ~85 % (T001 to T003 built · the closure open) — Schätzung.
+Fortschritt: ~92 % (T001 to T003 built; R-1471 repaired, the consolidation pass, the self-use run and the one full suite done · the evidence, the package and the closing round remain) — Schätzung.
 
 ## Range
 
-Review of `2f620c763`..`d404415e6` (C1 to C4; C5 — this file — is the commit that carries it, per
+Review of `02955645d`..`7a80b7611` (C1 to C5; C6 — this file — is the commit that carries it, per
 the handback template's self-reference exception).
 
 ## Commits
 
-### 23c690330 F158 R6 C1: book round 5, DECISION F158 D7, the plan
+### d0ecb839c F158 R7 C1: book round 6, register R-1471, the plan, the block and the self-use script
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f158-r6.md` | +95/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
-| `.agent/decisions.md` | +10/-0 | DECISION F158 D7 appended (the recompute, `remedy stats recompute-costs`, `remedy stats valuations`, the docs page, amendment A3), byte-copied |
-| `.agent/live_review.md` | +2/-0 | the F158 round 5 Gate entry booked at its end, byte-copied |
-| `.agent/plan.md` | +10/-11 | rewritten: Current Step/Next Steps moved to round 6 and the closure, Risks line adjusted, byte-copied |
+| `.agent/authored/f158-r7.md` | +165/-0 | NEW FILE — this round's block, the authored-text proof, byte-copied from the prepared `c1-` file |
+| `.agent/authored/f158-r7-selfuse.py` | +224/-0 | NEW FILE — the reviewer-authored self-use script for this round, byte-copied |
+| `.agent/live_review.md` | +4/-0 | round 6's PASS verdict booked and R-1471 registered, byte-copied |
+| `.agent/plan.md` | +8/-8 | rewritten: Current Step/Next Steps moved to round 7, byte-copied |
 
-### 9a64e8293 F158 R6 C2: the recompute of a ledger's valuations and the per-basis summary
+### 9f50d3b6a F158 R7 C2: repair R-1471, the do guide names the cost object's dollar field
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/call_valuation.py` | +70/-3 | `ledger_call_records`, `recompute_call_valuations` and `summarize_call_valuations` added; the unused `DEFAULT_CATALOG_STALE_DAYS` removed, byte-copied |
-| `tests/orchestration/test_call_valuation.py` | +63/-0 | tests for the recompute and the per-basis summary added, byte-copied |
+| `docs/guides/do-run-v1.md` | +2/-2 | the sentence naming `cost.cost_usd` as a configuration key now names it as the `cost_usd` field of the `cost` object, byte-copied |
 
-### 6a76b4732 F158 R6 C3: remedy stats valuations and remedy stats recompute-costs, with the end-to-end
+### e8ee05c84 F158 R7 C3: the checklist's consolidation pass for F158
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/command_catalog_stats.py` | +43/-0 | the two new `stats` entries (`recompute-costs`, `valuations`) added to the catalog, byte-copied |
-| `apps/cli/commands/__init__.py` | +2/-1 | `stats_valuation_cmd` imported and registered in `collect_all_handlers`, byte-copied |
-| `apps/cli/commands/stats_valuation_cmd.py` | +122/-0 | NEW FILE — the two handlers: `recompute-costs` (`write_metadata`) and `valuations` (`read_only`), byte-copied |
-| `apps/cli/commands/worker_pricing_cmd.py` | +1/-1 | the success line now names `remedy stats recompute-costs`, byte-copied |
-| `tests/cli/test_stats_valuation_cmd.py` | +196/-0 | NEW FILE — the end-to-end: two calls valued, a catalog shown then imported with `--yes`, revalue stability, the bases, the flagged call and the unchanged `calls` digest, byte-copied |
-| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | the new handler module's reachability entry added, byte-copied |
+| `docs/agents/planner_reviewer_prompt.md` | +10/-0 | F158's consolidation paragraph appended: nothing joined, no two items merged, the list stays at 34 items, byte-copied |
 
-### d404415e6 F158 R6 C4: the price catalog and valuations page, its index rows, and amendment A3
+### b16e6f296 F158 R7 C4: the closure's self-use item run to its approval gate, never applied
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/README.md` | +2/-0 | index row for `price-catalog-v1.md` added to both tables, byte-copied |
-| `docs/roadmap/features/T8_F158.md` | +10/-0 | amendment A3 recorded: the two command names, and that staleness is reported by `stats valuations`, not `worker doctor`, byte-copied |
-| `docs/system/price-catalog-v1.md` | +55/-0 | NEW FILE — the catalog format, the shipped empty catalog and why, the update command, the valuation table, the deliberate absences and the two `stats` commands, byte-copied |
+| `scripts/self_use_queue.json` | +8/-0 | the generator's one appended entry, `SU-084`, `consumed_by` empty |
+| `.agent/selfuse_f158/SU-084.md` | +11/-0 | NEW FILE — the job markdown |
+| `.agent/selfuse_f158/entry_and_job_file.txt` | +5/-0 | NEW FILE |
+| `.agent/selfuse_f158/execution_config.txt` | +43/-0 | NEW FILE |
+| `.agent/selfuse_f158/result_state.txt` | +12/-0 | NEW FILE |
+| `.agent/selfuse_f158/timing.txt` | +3/-0 | NEW FILE |
+| `.agent/selfuse_f158/changed_paths.txt` | +1/-0 | NEW FILE |
+| `.agent/selfuse_f158/full_transcript.txt` | +14/-0 | NEW FILE |
+| `.agent/selfuse_f158/worker_isolation.txt` | +2/-0 | NEW FILE |
+| `.agent/selfuse_f158/worker_sandbox.txt` | +2/-0 | NEW FILE |
+| `.agent/selfuse_f158/valuations.txt` | +1/-0 | NEW FILE — `NONE` (no project ledger carries a row for this job) |
+| `.agent/selfuse_f158/staleness_after.txt` | +2/-0 | NEW FILE |
+| `.agent/selfuse_f158/job_diff.txt` | +145/-0 | NEW FILE |
+| `.agent/selfuse_f158/run_defects.txt` | +1/-0 | NEW FILE — `NONE` |
 
-### (this commit) F158 R6 C5: handback
+### 7a80b7611 F158 R7 C5: the closure's one full suite and its CPU cost
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f158-closure-suite.txt` | +27/-0 | NEW FILE — the one full-suite transcript and the cost script's reading, in the shape of `f162-closure-suite.txt` |
+
+### (this commit) F158 R7 C6: handback
 | Path | +/- | Reason |
 |---|---|---|
 | `.agent/handoff.md` | rewritten | this file — carried alone, per the handback template's self-reference exception (R-0149) |
 
 ## External actions
 
-No `gh` command run this round. No `git worktree` command run by me. No stash entry touched. No
-`claude` or `codex` binary invoked by me; no provider call this round; no web fetch.
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft` run once before any write
+→ `[]` (Open PR Gate). No other `gh` command run. No `git worktree` command run by me directly; the
+reviewer-authored self-use script (C4) added and removed one detached worktree of the job branch
+`remedy/job-e796fd1de2eb4516` itself, to read the job's post-run staleness catalog, and removed it
+before exiting — that is the script's own documented action (`.agent/authored/f158-r7-selfuse.py`),
+not a worktree of mine. No stash entry touched. No `claude` or `codex` binary invoked by me
+directly; the self-use run's two provider calls were made by the `self_use` role's configured
+provider through the run infrastructure the script calls, at the role's budget, exactly as the
+block expected. No web fetch by me.
 `git push origin feature/f158-cost-normalization` runs once, immediately after this commit, per
 the block's push instruction; its real outcome is reported in the session reply, not in this file.
 
 ## Verification
 
 **Gate 1.** `git -C <repo> status --porcelain` → empty (exit 0). Then
-`python3 .remedy-wt/f158-r6/prep/verify.py .`, run from the primary checkout through a `cwd`-set
-Python wrapper (no shell `cd`):
+`python3 .remedy-wt/f158-r7/prep/verify.py <repo>`, run once from the primary checkout:
 ```
-True	23c690330 single parent equal to the commit before it
-True	23c690330 insertions 117 under 500 (or the handoff alone)
-True	9a64e8293 single parent equal to the commit before it
-True	9a64e8293 insertions 133 under 500 (or the handoff alone)
-True	6a76b4732 single parent equal to the commit before it
-True	6a76b4732 insertions 365 under 500 (or the handoff alone)
-True	d404415e6 single parent equal to the commit before it
-True	d404415e6 insertions 67 under 500 (or the handoff alone)
-True	every commit carries a F158 R6 Cn subject: 4 of 4
+True	d0ecb839c single parent equal to the commit before it
+True	d0ecb839c subject carries a F158 R7 Cn tag: F158 R7 C1: book round 6, register R-1471, the plan, the block and the
+True	d0ecb839c adds no machine path
+True	9f50d3b6a single parent equal to the commit before it
+True	9f50d3b6a subject carries a F158 R7 Cn tag: F158 R7 C2: repair R-1471, the do guide names the cost object's dollar
+True	9f50d3b6a adds no machine path
+True	e8ee05c84 single parent equal to the commit before it
+True	e8ee05c84 subject carries a F158 R7 Cn tag: F158 R7 C3: the checklist's consolidation pass for F158
+True	e8ee05c84 adds no machine path
+True	b16e6f296 single parent equal to the commit before it
+True	b16e6f296 subject carries a F158 R7 Cn tag: F158 R7 C4: the closure's self-use item run to its approval gate, neve
+True	b16e6f296 adds no machine path
+True	7a80b7611 single parent equal to the commit before it
+True	7a80b7611 subject carries a F158 R7 Cn tag: F158 R7 C5: the closure's one full suite and its CPU cost
+True	7a80b7611 adds no machine path
 True	on feature/f158-cost-normalization
-True	C1 paths exactly [the four paths]: [the same four paths]
-True	C1 .agent/authored/f158-r6.md equals c1-.agent__authored__f158-r6.md
-True	C1 .agent/decisions.md equals c1-.agent__decisions.md
-True	C1 .agent/live_review.md equals c1-.agent__live_review.md
-True	C1 .agent/plan.md equals c1-.agent__plan.md
-True	C2 paths exactly [the two paths]: [the same two paths]
-True	C2 packages/orchestration/call_valuation.py equals c2-packages__orchestration__call_valuation.py
-True	C2 tests/orchestration/test_call_valuation.py equals c2-tests__orchestration__test_call_valuation.py
-True	C3 paths exactly [the six paths]: [the same six paths]
-True	C3 apps/cli/command_catalog_stats.py equals c3-apps__cli__command_catalog_stats.py
-True	C3 apps/cli/commands/__init__.py equals c3-apps__cli__commands____init__.py
-True	C3 apps/cli/commands/stats_valuation_cmd.py equals c3-apps__cli__commands__stats_valuation_cmd.py
-True	C3 apps/cli/commands/worker_pricing_cmd.py equals c3-apps__cli__commands__worker_pricing_cmd.py
-True	C3 tests/cli/test_stats_valuation_cmd.py equals c3-tests__cli__test_stats_valuation_cmd.py
-True	C3 tests/orchestration/import_reachability_allowlist.txt equals c3-tests__orchestration__import_reachability_allowlist.txt
-True	C4 paths exactly [the three paths]: [the same three paths]
-True	C4 docs/README.md equals c4-docs__README.md
-True	C4 docs/roadmap/features/T8_F158.md equals c4-docs__roadmap__features__T8_F158.md
-True	C4 docs/system/price-catalog-v1.md equals c4-docs__system__price-catalog-v1.md
-absent	C5
+True	C1 paths ['.agent/authored/f158-r7-selfuse.py', '.agent/authored/f158-r7.md', '.agent/live_review.md', '.agent/plan.md']
+True	C1 .agent/authored/f158-r7-selfuse.py equals its c1- file
+True	C1 .agent/authored/f158-r7.md equals its c1- file
+True	C1 .agent/live_review.md equals its c1- file
+True	C1 .agent/plan.md equals its c1- file
+True	C2 the do guide alone
+True	C2 guide equals the prepared copy
+True	C2 numstat ['2\t2\tdocs/guides/do-run-v1.md']
+True	C2 no doc_config_keys claim at HEAD: []
+True	C3 the checklist page alone
+True	C3 page equals the prepared copy
+True	C3 numstat ['10\t0\tdocs/agents/planner_reviewer_prompt.md']
+True	C4 paths: the queue and 13 file(s) under .agent/selfuse_f158/
+True	C4 writes thirteen self-use files: 13
+True	C4 writes entry_and_job_file.txt
+True	C4 writes execution_config.txt
+True	C4 writes result_state.txt
+True	C4 writes timing.txt
+True	C4 writes changed_paths.txt
+True	C4 writes full_transcript.txt
+True	C4 writes worker_isolation.txt
+True	C4 writes worker_sandbox.txt
+True	C4 writes valuations.txt
+True	C4 writes staleness_after.txt
+True	C4 writes job_diff.txt
+True	C4 writes run_defects.txt
+True	C4 queue gains exactly one appended entry: SU-084
+True	C4 the new entry is not consumed
+True	C4 writes the entry's own job file
+True	C5 the transcript alone
+True	C5 transcript carries 'command:'
+True	C5 transcript carries 'real exit code:'
+True	C5 transcript carries 'wall time:'
+True	C5 transcript carries 'summary line:'
+True	C5 transcript carries 'bad node ids (failed + errors):'
+True	C5 transcript carries 'leftover processes:'
+True	C5 transcript carries 'tree it ran on:'
+True	C5 transcript carries 'reflog unchanged during the run:'
+True	C5 transcript carries 'cost exit code:'
+absent	C6
 True	the saved block equals block.md
 ALL True
 ```
-Exit 0. Every line `True` (C5 correctly `absent`, since C5 had not committed yet when this gate
+Exit 0. Every line `True` (C6 correctly `absent`, since C6 had not committed yet when this gate
 ran); last line `ALL True`.
 
-**Gate 2.** `python3 .remedy-wt/f158-r6/prep/run_selection.py . .remedy-wt/f158-r6-worker/selection-output.txt`,
-run once from the primary checkout through the same kind of wrapper:
+**Gate 2.** The thirteen files under `.agent/selfuse_f158/`, each confirmed non-empty with a Python
+byte-size read:
 ```
-paths 83
-exit 0
-6728 passed, 2 skipped in 136.70s (0:02:16)
-SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
-SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
+SU-084.md 898 bytes
+entry_and_job_file.txt 287 bytes
+execution_config.txt 1367 bytes
+result_state.txt 866 bytes
+timing.txt 105 bytes
+changed_paths.txt 37 bytes
+full_transcript.txt 1574 bytes
+worker_isolation.txt 861 bytes
+worker_sandbox.txt 1431 bytes
+valuations.txt 5 bytes
+staleness_after.txt 200 bytes
+job_diff.txt 5292 bytes
+run_defects.txt 5 bytes
 ```
-Exit 0, `6728 passed, 2 skipped`, no `FAILED`, `ERROR` or `process(es) behind` line. Both skips are
-pre-existing and unrelated to this round (a deliberately quarantined test and an opt-in network
-smoke test).
+All thirteen non-empty.
 
-**Gate 3.** `python3 -m ruff check packages/orchestration/call_valuation.py apps/cli/commands/stats_valuation_cmd.py apps/cli/command_catalog_stats.py apps/cli/commands/__init__.py apps/cli/commands/worker_pricing_cmd.py tests/orchestration/test_call_valuation.py tests/cli/test_stats_valuation_cmd.py`,
-run once from the primary checkout:
-```
-All checks passed!
-```
-Exit 0.
+**Gate 3.** The suite of C5, as the committed transcript records it: real exit code 0, summary line
+`24235 passed, 11 skipped, 1 warning in 364.35s (0:06:04)`, bad node ids (failed + errors) `NONE`.
 
 **Gate 4.** `python3 -m apps.cli.main integrity check --json`, run once from the primary checkout:
 ```
 {"check_count": 6, "checks": [{"message": "handlers=204", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
-Exit 0, `fail_count` 0, all six checks `pass`.
-
-**Gate 5.** `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`,
-run once from the primary checkout:
+Exit 0, `fail_count` 0, all six checks `pass`. Then
+`python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:
 ```
-10
+['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448', 'R-1450', 'R-1464', 'R-1467', 'R-1471']
 ```
-Exit 0, matching the block's required `10` exactly.
+Exit 0, the eleven ids named by the block, in that order.
 
 ## Authored-text proofs
 
-C1's byte copy and its disk-to-disk proof read `True` for all four targets immediately after
-copying, before staging. The mandated proof, `.agent/authored/f158-r6.md` against `block.md`:
-byte-identical, `wc -l` 95, sha256
-`daa7c26650e0d8b7f2f0954b2c7033a7238e877131666eabab7d447a11ff0e78` for both files — the exact
-digest `digests.txt` stated for `block.md`. Gate 1's independent `verify.py` run re-confirmed every
-`C1 ... equals c1-...`, `C2 ... equals c2-...`, `C3 ... equals c3-...` and `C4 ... equals c4-...`
-line `True`. `None applied` beyond C1 — C2, C3 and C4's files are prepared docs/code byte copies
-proved the same way, not reviewer-authored findings or verdict prose under the fidelity protocol.
+C1's byte copy and its disk-to-disk proof read `True`/`EQUAL` for all four targets immediately after
+copying, before staging. The mandated proof, `.agent/authored/f158-r7.md` against `block.md`:
+byte-identical, 165 lines, sha256 `5939c86b3d695e486c80b09330ed8e121714b2ee37f549353c9ed1bfb0aa12bc`
+for both files — the exact digest `digests.txt` stated for `block.md`. Gate 1's independent
+`verify.py` run re-confirmed every `C1 ... equals its c1- file`, `C2 ... equals the prepared copy`
+and `C3 ... equals the prepared copy` line `True`. The reviewer-authored self-use script,
+`.agent/authored/f158-r7-selfuse.py`, was copied once in C1 and run unmodified in C4 (invoked by
+path through `launch.py`'s own command table); no edit was made to it between the copy and the run.
+`None applied` beyond these — C2 and C3's files are prepared docs byte copies proved the same way,
+not reviewer-authored findings or verdict prose under the fidelity protocol.
+
+## Self-use run
+
+- Entry id: `SU-084` — "Write the first tests for packages/orchestration/do_study.py" (generated,
+  self-use-generator tier 5, untested module `packages/orchestration/do_study.py`; the queue held no
+  pending item before this round's repair, so the generator supplied this one).
+- Job id: `e796fd1de2eb4516`.
+- Builder: provider `claude-cli`, model `claude-sonnet-4-6`, effort `medium` (source `cli`).
+- Reviewer: provider `claude-cli`, model `claude-sonnet-4-6`, effort `medium` (source `cli`).
+- Job state: `completed`; stop reason: (empty — the job ran to completion, not a stop).
+- Task `T001`: status `applied_to_job_workspace`; reviewer verdict `pass`; final_status
+  `staged_review_passed`; repair_rounds_used `0`; run_id `6cd9e46050ec4373`. Never applied to the
+  project — the change lives only on the job's own branch.
+- Wall seconds: `168.3`.
+- Paths in `changed_paths.txt`: `tests/orchestration/test_do_study.py`.
+- `valuations.txt` VERBATIM:
+```
+NONE
+```
+- `job_diff.txt` VERBATIM:
+```
+$ git diff HEAD...remedy/job-e796fd1de2eb4516  (exit 0)
+diff --git a/tests/orchestration/test_do_study.py b/tests/orchestration/test_do_study.py
+new file mode 100644
+index 000000000..e959c8278
+--- /dev/null
++++ b/tests/orchestration/test_do_study.py
+@@ -0,0 +1,138 @@
++"""Tests for packages/orchestration/do_study.py — repo_has_committed_file and do_step_study."""
++from __future__ import annotations
++
++from unittest.mock import MagicMock, patch
++
++import packages.orchestration.do_study  # noqa: F401 — ensures the module is importable
++from packages.orchestration.do_context import (
++    DO_STEP_DONE,
++    DO_STEP_SKIPPED,
++    DO_STEP_STOPPED,
++    DoContext,
++)
++from packages.orchestration.do_study import do_step_study, repo_has_committed_file
++
++
++# ---------------------------------------------------------------------------
++# repo_has_committed_file
++# ---------------------------------------------------------------------------
++
++
++def test_repo_has_committed_file_returns_true_when_git_lists_files():
++    result = MagicMock()
++    result.returncode = 0
++    result.stdout = "README.md\nsrc/main.py\n"
++    with patch("subprocess.run", return_value=result) as mock_run:
++        assert repo_has_committed_file("/fake/repo") is True
++    mock_run.assert_called_once_with(
++        ["git", "ls-tree", "-r", "--name-only", "HEAD"],
++        cwd="/fake/repo",
++        capture_output=True,
++        text=True,
++        timeout=30,
++    )
++
++
++def test_repo_has_committed_file_returns_false_when_git_fails():
++    result = MagicMock()
++    result.returncode = 128
++    result.stdout = ""
++    with patch("subprocess.run", return_value=result):
++        assert repo_has_committed_file("/empty/repo") is False
++
++
++def test_repo_has_committed_file_returns_false_when_stdout_is_blank():
++    result = MagicMock()
++    result.returncode = 0
++    result.stdout = "   \n"
++    with patch("subprocess.run", return_value=result):
++        assert repo_has_committed_file("/empty/repo") is False
++
++
++# ---------------------------------------------------------------------------
++# do_step_study
++# ---------------------------------------------------------------------------
++
++
++def _make_ctx(**kwargs) -> DoContext:
++    project = MagicMock()
++    project.metadata = {}
++    project.id = "proj-id-1"
++    project.slug = "test-project"
++    ctx = DoContext(order="Add a README.", repo_root="/repo", project=project)
++    for k, v in kwargs.items():
++        setattr(ctx, k, v)
++    return ctx
++
++
++def _no_op_lane(hold: bool = False) -> MagicMock:
++    lane = MagicMock()
++    lane.hold = hold
++    lane.bounded = True
++    lane.reason = "test lane"
++    return lane
++
++
++def test_do_step_study_stops_when_lane_is_on_hold():
++    ctx = _make_ctx()
++    with patch("packages.orchestration.do_study.settle_do_lane", return_value=_no_op_lane(hold=True)):
++        status, detail = do_step_study(ctx)
++    assert status == DO_STEP_STOPPED
++    assert "nothing was planned or run" in detail
++
++
++def test_do_step_study_skips_when_already_studied_and_not_stale():
++    ctx = _make_ctx()
++    ctx.project.metadata = {"studied_at": "2026-01-01T00:00:00Z", "studied_head": "abc123"}
++    import packages.orchestration.study as study_mod
++    with (
++        patch("packages.orchestration.do_study.settle_do_lane", return_value=_no_op_lane()),
++        patch("packages.orchestration.do_study.repo_has_committed_file", return_value=True),
++        patch.object(study_mod, "study_stale_reason", return_value=""),
++    ):
++        status, detail = do_step_study(ctx)
++    assert status == DO_STEP_SKIPPED
++    assert "already studied" in detail
++
++
++def test_do_step_study_skips_when_repo_has_no_committed_file():
++    ctx = _make_ctx()
++    ctx.project.metadata = {}
++    with (
++        patch("packages.orchestration.do_study.settle_do_lane", return_value=_no_op_lane()),
++        patch("packages.orchestration.do_study.repo_has_committed_file", return_value=False),
++    ):
++        status, detail = do_step_study(ctx)
++    assert status == DO_STEP_SKIPPED
++    assert "no commit" in detail or "nothing to study" in detail
++
++
++def test_do_step_study_returns_done_after_a_successful_study():
++    ctx = _make_ctx()
++    ctx.project.metadata = {}
++    ctx.no_llm = True
++
++    study_result = MagicMock()
++    study_result.cards_written = ["card1", "card2"]
++    study_result.partial = False
++
++    updated_project = MagicMock()
++    updated_project.metadata = {}
++    updated_project.id = "proj-id-1"
++    updated_project.slug = "test-project"
++
++    with (
++        patch("packages.orchestration.do_study.settle_do_lane", return_value=_no_op_lane()),
++        patch("packages.orchestration.do_study.repo_has_committed_file", return_value=True),
++    ):
++        import packages.orchestration.study as study_mod
++        with (
++            patch.object(study_mod, "study_stale_reason", return_value=""),
++            patch.object(study_mod, "run_study", return_value=study_result),
++            patch.object(study_mod, "record_study_pass", return_value=updated_project),
++            patch.object(study_mod, "study_call_fn", return_value=None),
++        ):
++            status, detail = do_step_study(ctx)
++
++    assert status == DO_STEP_DONE
++    assert "2" in detail or "memory card" in detail
++```
+- `run_defects.txt` VERBATIM:
+```
+NONE
+```
+No finding is registered by me for this run; the block reserves that for the next round's reviewer.
+
+## Closure suite
+
+`.agent/authored/f158-closure-suite.txt`, whole and verbatim:
+```
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 365.2s (the launcher's reading); pytest's own reported wall time: 364.35s (0:06:04)
+summary line: 24235 passed, 11 skipped, 1 warning in 364.35s (0:06:04)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: b16e6f296 (F158 R7 C4: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C4 changed only .agent/ files, one sentence of a guide, the checklist page and the self-use queue
+reflog before: b16e6f296 HEAD@{2026-10-24 18:33:45 +0200}: commit: F158 R7 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: b16e6f296 HEAD@{2026-10-24 18:33:45 +0200}: commit: F158 R7 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F158 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1421.53 CPU seconds, 364.38 wall seconds, 24246 tests collected, exit status 0, recorded 2026-10-24T16:39:56Z
+This closure's suite used 1421.53 CPU seconds, 2.2 percent less than F162's 1453.59, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F162's closure run:
+  +4.85 s  tests/cli/test_stats_valuation_cmd.py (0.00 -> 4.85)
+  +3.12 s  tests/orchestration/test_job_worktree_handoff.py (7.76 -> 10.88)
+  +2.31 s  tests/orchestration/test_run_manifest_integrity.py (5.73 -> 8.04)
+  +2.18 s  tests/orchestration/test_job_stop_integration.py (3.35 -> 5.53)
+  +2.12 s  tests/orchestration/test_run_manifest.py (5.92 -> 8.04)
+  +2.09 s  tests/orchestration/test_job_task_runner.py (19.72 -> 21.81)
+  +2.03 s  tests/orchestration/test_repo_mission.py (3.07 -> 5.10)
+  +1.99 s  tests/orchestration/test_cost_currency.py (0.00 -> 1.99)
+  +1.98 s  tests/cli/test_worker_pricing_cmd.py (0.00 -> 1.98)
+  +1.90 s  tests/cli/test_test_run_runtime.py (8.41 -> 10.31)
+```
 
 ## Deviations & assumptions
 
-None. No split, no correction commit, no file touched outside the paths named per commit, no
-second test command beyond Gate 2's one scoped pytest run, no `REMEDY_TEST_MAX_WORKERS`, no `-n`
-of my own beyond what `run_selection.py` itself passes, no `claude` or `codex` binary invoked, no
-web fetch, no mutation red-proof, no full suite, no worktree of my own, no agent/fork/helper of
-any kind started, and no `gh pr create/merge`, `git checkout`/`git switch`, branch
-creation/move/deletion or force-push, and no `--no-verify`.
+None. Every commit matched the block's ordered sequence and paths exactly; every numstat matched
+the block's required numbers (`2\t2` for C2, `10\t0` for C3); the self-use run reached its approval
+gate on the first and only attempt and was never applied; the full suite and the cost script each
+ran exactly once and both exited 0; no file outside the paths named per commit was touched; no
+`REMEDY_TEST_MAX_WORKERS` or extra `-n`; no second test command; no worktree of my own (the self-use
+script's internal worktree add/remove, documented above, is the reviewer-authored script's own
+action); no agent/fork/helper of any kind started; no `gh pr create/merge`, `git checkout`/`git
+switch`, branch creation/move/deletion or force-push; no `--no-verify`; no `claude`/`codex` binary
+invoked directly by me.
 
 ## For the operator, in plain sentences
 
-This session continued teaching the program to compare money honestly across the different AI
-services it calls. It first booked last round's approved decision and plan update. Then it built
-the piece that decision described: a way to revalue every call in a project's record again after a
-price list changes, touching only the entries whose value actually moved, together with a summary
-that totals what each kind of pricing evidence found, warns about calls flagged as suspicious or
-prices going stale, and never blocks on either. A new command lets someone trigger that
-revaluation on demand, and a second new command shows the summary and its warnings. The command
-that imports an updated price list now points to the second of these by name in its own success
-message. A documentation page was added describing the price list format, why the one shipped with
-the program starts empty, the import command, the valuation summary, a few things the program
-deliberately does not do, and both new commands, and that page joined the project's two
-documentation indexes. A matching decision recorded why these two commands live where they do
-rather than inside an existing one. A test file drives the whole new path end to end against a
-real project record: two calls valued, a price list shown and then imported, the calls revalued,
-the exact same revaluation run again to show nothing moves a second time, and the underlying raw
-call records checked unchanged throughout. Every file this session wrote was an exact copy of text
-the reviewing session had already prepared and approved, checked byte for byte both before and
-after copying. All required checks passed: a full test run, a style check, a health check of the
-whole repository, and a count of how many known problems remain open, which held steady. Three
-questions from earlier work still await your decision and are unchanged by this round. With this
-round, the first three pieces of this feature's plan are now built, and what remains is the
-closing work: writing down the built state, a consolidation pass, a self-use run, and one full test
-run, before the usual review and merge.
+Before this feature closes, Remedy ran one real piece of paid work on itself: it was asked to write
+the first tests for a module nothing in the project's test collection covered yet, and that work
+finished successfully, reviewed and approved, but it was deliberately not merged into the project.
+The run's model calls were not given a recorded value in the new cost record, because no project
+ledger on this machine carries a row for this particular job. Then Remedy ran its whole test
+collection once on the code that will ship: every test passed, none failed, alongside a small,
+unchanged number of tests that are skipped on purpose. That whole run took a little over six
+minutes. The cost reading said this feature's computer time came in slightly lower than the
+previous feature's, comfortably inside the margin allowed.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | four files byte-equal to prepared copies; DECISION F158 D7 and the plan booked |
-| C2 | done | two files byte-equal; the recompute and the per-basis summary landed |
-| C3 | done | six files byte-equal; `remedy stats recompute-costs`, `remedy stats valuations` and the end-to-end landed |
-| C4 | done | three files byte-equal; `docs/system/price-catalog-v1.md`, its index rows and amendment A3 landed |
-| C5 | done | this handoff, committed alone per the self-reference exception |
-| Gate 1 | done | every line `True`, last line `ALL True` (C5 correctly `absent`) |
-| Gate 2 | done | exit 0, 6728 passed, 2 pre-existing skips, no FAILED/ERROR/process(es)-behind |
-| Gate 3 | done | `All checks passed!` |
-| Gate 4 | done | exit 0, `fail_count` 0, all six checks pass |
-| Gate 5 | done | open ids count exactly 10, matching the block |
+| C1 | done | four files byte-equal to prepared copies; round 6's PASS verdict and R-1471 booked, plan advanced |
+| C2 | done | one file byte-equal; the do guide's `cost.cost_usd` sentence repaired, numstat `2 2` |
+| C3 | done | one file byte-equal; the consolidation paragraph appended, list stays at 34, numstat `10 0` |
+| C4 | done | the self-use item `SU-084` generated and run to its approval gate, never applied; thirteen files written |
+| C5 | done | the one full suite (24235 passed, 0 failed) and the cost script (exit 0, within limit) transcribed |
+| C6 | done | this handoff, committed alone per the self-reference exception |
+| Gate 1 | done | every line `True`, last line `ALL True` (C6 correctly `absent`) |
+| Gate 2 | done | all thirteen `.agent/selfuse_f158/` files confirmed non-empty |
+| Gate 3 | done | exit 0, `24235 passed, 11 skipped, 1 warning in 364.35s (0:06:04)`, bad node ids `NONE` |
+| Gate 4 | done | exit 0, `fail_count` 0, all six checks pass; eleven open ids match the block exactly |
 | Push | pending | runs immediately after this commit; outcome reported in the reply |
 
 ## Next
@@ -200,9 +439,11 @@ run, before the usual review and merge.
 1. Phase 1 rule 1: check `.agent/STOP` before any new work.
 2. Phase 1 rule 2 — the Open PR Gate: this round opens no pull request, so the next session checks
    for open pull requests before starting anything new.
-3. Book round 6's verdict in the next round's first commit.
-4. The closure, per `docs/roadmap/STATUS_closure_protocol.md`: the Built State, the consolidation
-   pass, the self-use run and the one full suite.
+3. The reviewer reviews round 7, books its verdict and R-1471, and registers every self-use run
+   defect in the next round's first commit.
+4. The evidence bundle and the review package (the suite was green).
+5. The closing round: the Built State, the rotation, the STATUS line, the README and the pull
+   request.
 
 Operator questions open: 3.
-Open findings: 10 (unchanged this round; none owned by F158).
+Open findings: 11 (the eleven ids gate 4 printed).
