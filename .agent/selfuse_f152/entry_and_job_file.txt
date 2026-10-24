@@ -1,0 +1,5 @@
+Entry ID: SU-082
+Entry Title: Write the first tests for packages/orchestration/client_scope.py
+Entry Provenance: generated (self-use-generator tier 5, untested module, packages/orchestration/client_scope.py)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f152-r7-selfuse/SU-082.md
