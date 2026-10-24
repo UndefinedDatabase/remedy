@@ -1,0 +1,139 @@
+{
+  "changes": [
+    {
+      "added": 2,
+      "path": "README.md",
+      "removed": 0
+    },
+    {
+      "added": 2,
+      "path": "greet/core.py",
+      "removed": 2
+    },
+    {
+      "added": 22,
+      "path": "tests/test_greet.py",
+      "removed": 0
+    }
+  ],
+  "dirty_start": null,
+  "end": null,
+  "ended_at": "2026-10-24T20:02:10.638604+00:00",
+  "job_id": "e17412639ed14265",
+  "next": {
+    "action": "none",
+    "route": null
+  },
+  "note_open": false,
+  "numbers": {
+    "calls": 8,
+    "duration_s": 117,
+    "model_turns": null,
+    "rounds": 4,
+    "tokens_in": 48,
+    "tokens_out": 7918
+  },
+  "ok": true,
+  "order": "Die Funktion, die den Gruß baut, soll den Namen auch dann groß schreiben, wenn er klein getippt wurde. Die README bekommt einen Satz dazu.",
+  "schema_version": 1,
+  "scope_findings": [],
+  "started_at": "2026-10-24T20:00:12.838222+00:00",
+  "state": "stopped",
+  "state_detail": {
+    "reason": {
+      "args": {},
+      "key": "declined"
+    }
+  },
+  "steps": [
+    {
+      "id": "reading",
+      "phrase": {
+        "args": {
+          "first": ".gitignore",
+          "n": 6
+        },
+        "key": "found_files"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "planning",
+      "phrase": {
+        "args": {
+          "n": 3
+        },
+        "key": "planned_tasks"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "building",
+      "phrase": {
+        "args": {
+          "n": 3
+        },
+        "key": "changed_files"
+      },
+      "status": "done",
+      "tasks": [
+        {
+          "files": [
+            "greet/core.py",
+            "tests/test_greet.py"
+          ],
+          "rounds": 2,
+          "status": "done",
+          "title": "Add capitalisation logic to greeting-building function (4/4): Edit the greeting-building function inside the greet directory so that the name is title-cased in the returned greeting string, without mutating the caller's input.\nThis one task does all of these, in order:\nStep 1, Add capitalisation logic to greeting-building function (1/4): Edit the greeting-building function inside the greet directory so that the name is title-cased in the returned greeting string, without mutating the caller's input.\nStep 2, Add capitalisation logic to greeting-building function (2/4): Edit the greeting-building function inside the greet directory so that the name is title-cased in the returned greeting string, without mutating the caller's input.\nStep 3, Add capitalisation logic to greeting-building function (3/4): Edit the greeting-building function inside the greet directory so that the name is title-cased in the returned greeting string, without mutating the caller's input.\nStep 4, Add capitalisation logic to greeting-building function (4/4): Edit the greeting-building function inside the greet directory so that the name is title-cased in the returned greeting string, without mutating the caller's input."
+        },
+        {
+          "files": [
+            "tests/test_greet.py"
+          ],
+          "rounds": 1,
+          "status": "done",
+          "title": "Update tests to cover capitalisation behaviour (4/4): Add or update tests in the tests directory to assert that the greeting function handles lowercase, uppercase, and mixed-case name inputs correctly after the capitalisation change.\nThis one task does all of these, in order:\nStep 1, Update tests to cover capitalisation behaviour (1/4): Add or update tests in the tests directory to assert that the greeting function handles lowercase, uppercase, and mixed-case name inputs correctly after the capitalisation change.\nStep 2, Update tests to cover capitalisation behaviour (2/4): Add or update tests in the tests directory to assert that the greeting function handles lowercase, uppercase, and mixed-case name inputs correctly after the capitalisation change.\nStep 3, Update tests to cover capitalisation behaviour (3/4): Add or update tests in the tests directory to assert that the greeting function handles lowercase, uppercase, and mixed-case name inputs correctly after the capitalisation change.\nStep 4, Update tests to cover capitalisation behaviour (4/4): Add or update tests in the tests directory to assert that the greeting function handles lowercase, uppercase, and mixed-case name inputs correctly after the capitalisation change."
+        },
+        {
+          "files": [
+            "README.md"
+          ],
+          "rounds": 1,
+          "status": "done",
+          "title": "Add capitalisation description sentence to README: Append exactly one sentence to README.md stating that names are automatically capitalised in the greeting."
+        }
+      ],
+      "tokens": {
+        "in": 48,
+        "out": 7918
+      }
+    },
+    {
+      "id": "checking",
+      "phrase": {
+        "args": {
+          "n": 1
+        },
+        "key": "tests_passed"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "finished",
+      "phrase": {
+        "args": {},
+        "key": "declined"
+      },
+      "status": "skipped",
+      "tokens": null
+    }
+  ],
+  "updated_at": "2026-10-24T20:03:18.099217+00:00",
+  "verification": {
+    "required": false,
+    "status": "passed"
+  }
+}

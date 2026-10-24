@@ -1,0 +1,18 @@
+{
+  "checks": [
+    {
+      "acceptance_refs": [
+        "C001:0"
+      ],
+      "blocking": false,
+      "description": "The mission goal is met in full: Die Funktion, die den Gru\u00df baut, soll den Namen auch dann gro\u00df schreiben, wenn er klein getippt wurde. Die README bekommt eine\u2026",
+      "id": "ctr-C001",
+      "kind": "project_tests",
+      "source": "plan_acceptance",
+      "spec": {}
+    }
+  ],
+  "compiled": false,
+  "origin": "deterministic",
+  "schema_v": "dod_v1"
+}

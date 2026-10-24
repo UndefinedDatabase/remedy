@@ -1,0 +1,22 @@
+{
+  "released": true,
+  "blocking_red": [],
+  "reported_red": [],
+  "not_run": [],
+  "error": "",
+  "checks": [
+    {
+      "check_id": "ctr-C001",
+      "kind": "project_tests",
+      "source": "plan_acceptance",
+      "blocking": false,
+      "status": "passed",
+      "reason": "",
+      "command": "/usr/bin/python3 -m pytest -p no:cacheprovider tests -q",
+      "exit_code": 0,
+      "duration_ms": 192,
+      "output_tail": "........                                                                 [100%]\n8 passed in 0.01s\n",
+      "cwd": ""
+    }
+  ]
+}

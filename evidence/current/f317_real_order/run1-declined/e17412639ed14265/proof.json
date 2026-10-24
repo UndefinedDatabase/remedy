@@ -1,0 +1,20 @@
+{
+  "changes": [],
+  "generated_at": "2026-10-24T20:05:53.568658+00:00",
+  "goal": "Die Funktion, die den Gruß baut, soll den Namen auch dann groß schreiben, wenn er klein getippt wurde. Die README bekommt einen Satz dazu.",
+  "job_applies": [],
+  "job_id": "e17412639ed14265",
+  "missing_links": [],
+  "next_safe_action": "No changes to verify.",
+  "next_safe_action_obj": {
+    "available": true,
+    "command": "",
+    "label": "No changes to verify.",
+    "reason": "No patch intents found."
+  },
+  "ok": true,
+  "overall_status": "not_applicable",
+  "path_filter": "",
+  "schema_version": 1,
+  "version": 2
+}

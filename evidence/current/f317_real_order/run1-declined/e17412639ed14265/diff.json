@@ -1,0 +1,33 @@
+{
+  "files": [
+    {
+      "added": 2,
+      "change": "modified",
+      "patch": "diff --git a/README.md b/README.md\nindex a2c7a7d..41f419d 100644\n--- a/README.md\n+++ b/README.md\n@@ -3,3 +3,5 @@\n A tiny package that builds a greeting.\n \n     python3 -c \"from greet.core import build_greeting; print(build_greeting('Ada'))\"\n+\n+Names are automatically capitalised in the greeting, so `build_greeting('ada')` returns `Hallo, Ada!`.\n",
+      "path": "README.md",
+      "removed": 0,
+      "truncated": false
+    },
+    {
+      "added": 2,
+      "change": "modified",
+      "patch": "diff --git a/greet/core.py b/greet/core.py\nindex 503aa34..906a244 100644\n--- a/greet/core.py\n+++ b/greet/core.py\n@@ -2,5 +2,5 @@\n \n \n def build_greeting(name: str) -> str:\n-    \"\"\"Return the greeting for NAME.\"\"\"\n-    return f\"Hallo, {name.strip()}!\"\n+    \"\"\"Return the greeting for NAME, with the name title-cased.\"\"\"\n+    return f\"Hallo, {name.strip().title()}!\"\n",
+      "path": "greet/core.py",
+      "removed": 2,
+      "truncated": false
+    },
+    {
+      "added": 22,
+      "change": "modified",
+      "patch": "diff --git a/tests/test_greet.py b/tests/test_greet.py\nindex 1766d41..23ff783 100644\n--- a/tests/test_greet.py\n+++ b/tests/test_greet.py\n@@ -10,6 +10,28 @@ def test_greeting_trims_spaces():\n     assert build_greeting(\"  Ada \") == \"Hallo, Ada!\"\n \n \n+def test_greeting_capitalises_a_lowercase_name():\n+    assert build_greeting(\"alice\") == \"Hallo, Alice!\"\n+\n+\n+def test_greeting_title_cases_an_uppercase_name():\n+    assert build_greeting(\"ALICE\") == \"Hallo, Alice!\"\n+\n+\n+def test_greeting_keeps_an_already_capitalised_name():\n+    assert build_greeting(\"Alice\") == \"Hallo, Alice!\"\n+\n+\n+def test_greeting_title_cases_a_mixed_case_name():\n+    assert build_greeting(\"aLiCe\") == \"Hallo, Alice!\"\n+\n+\n+def test_greeting_leaves_the_input_unchanged():\n+    name = \"aLiCe\"\n+    build_greeting(name)\n+    assert name == \"aLiCe\"\n+\n+\n def test_cli_prints_the_greeting(capsys):\n     assert main([\"Ada\"]) == 0\n     assert capsys.readouterr().out == \"Hallo, Ada!\\n\"\n",
+      "path": "tests/test_greet.py",
+      "removed": 0,
+      "truncated": false
+    }
+  ],
+  "job": "e17412639ed14265",
+  "ok": true,
+  "schema_version": 1,
+  "state": "declined",
+  "truncated": false
+}
