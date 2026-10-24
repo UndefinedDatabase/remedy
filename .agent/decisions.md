@@ -31711,3 +31711,13 @@ THE DECISION: (1) The block becomes `settle_veto_terminal(job, *, control_root_p
 ALTERNATIVES CONSIDERED: (a) the end state first, REJECTED because it reads `run_job`'s nested budget helpers, which step (5) moves; (b) a new module, REJECTED because `task_veto.py` already owns every reader the block calls.
 
 HOW TO REVERSE: move the block back into `run_job` from `de55496dd`, restore the rows, the pins and the ledger's text, and delete this entry.
+
+## DECISION F157 D1 — F157's slice order: the inventory first and reviewed, then the matrix and its guards, then the consumers (2026-10-24, T001)
+
+THE PROBLEM: `docs/roadmap/features/T8_F157.md` slices F157 into T001 (the inventory of every capability check and the register drafted from it, reviewed), T002 (the matrix module, the evidence field, the guard rules and their unit tests) and T003 (the consolidation per consumer, the report section, the UI badge and the end-to-end), and its Orchestrator brief says the register is not frozen before the inventory is reviewed. Its suggested design names `packages/workers/capability_matrix.py`, in a package that does not exist at `0f811a713`; F151 put the adapter contract and its `AdapterCapabilities` in `packages/contracts/adapter_contract.py`.
+
+THE DECISION: (1) Round 1 lands T001 as `.agent/f157_inventory.md`, written by the worker from the code and reviewed before any code is authored; it proposes and decides nothing. (2) T002 opens with DECISION F157 D2, which freezes the register's entries, the module's home and its names from the reviewed inventory. (3) T003 is one order per consumer, each consumer's existing tests unmodified, then the report section, the badge and the end-to-end with a reduced-capability fake adapter. (4) F157 owns none of the open findings, which F316 owns. SLOW MODE is not active in this session, so no hardening stage is planned before the closure.
+
+ALTERNATIVES CONSIDERED: (a) drafting the register in this round from the feature file's examples, REJECTED by the Orchestrator brief; (b) creating `packages/workers/` because the feature file names it, REJECTED until the inventory has read where the contract and its readers live.
+
+HOW TO REVERSE: delete this entry and restore `.agent/plan.md`, `.agent/context.md` and the STATUS line from `0f811a713`.

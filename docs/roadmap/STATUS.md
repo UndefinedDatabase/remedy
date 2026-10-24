@@ -327,7 +327,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane, continued)
 
-- [ ] F157 — Capability matrix & honest degradation
+- [~] F157 — Capability matrix & honest degradation
 - [ ] F152 — Worker config isolation
 - [ ] F162 — Sandbox profiles per adapter
 - [ ] F153 — Codex CLI adapter

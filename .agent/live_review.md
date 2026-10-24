@@ -1,26 +1,26 @@
-# Live Review — F314 Findings paydown v10
+# Live Review — F157 Capability matrix & honest degradation
 
-> Round-by-round review record, re-headed at the F314 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F315, whose STATUS
-> line went `[x]` on its own branch at `3eebb6283`; this session's Open PR Gate merged pull request
-> 385 into `main` as `47cdb1b06`, whose tree equals `3eebb6283`'s. F315's round 6 was reviewed
-> after its own handback, so operator amendment amend0827-process-diet rule 1 books its verdict
-> here, in the first commit of the next round that is happening anyway; its gate entry is appended
-> at the end of this record by this claim. Only the heading, this paragraph and the Steps section
-> below are rewritten; everything else from the Findings heading to the end of the file as it stood
-> at `47cdb1b06` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `47cdb1b06`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, holds 12 ids — R-1246, R-1281, R-1326, R-1351, R-1353, R-1418,
-> R-1421, R-1425 to R-1428 and R-1442 — every one owned by F314.
+> Round-by-round review record, re-headed at the F157 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F314, whose STATUS
+> line went `[x]` on its own branch at `e75a46f7e`; this session's Open PR Gate merged pull request
+> 386 into `main` as `0f811a713`, whose tree equals `e75a46f7e`'s. F314's round 9, its closure
+> round, ended with its own handback, so operator amendment amend0827-process-diet rule 1 books its
+> verdict here, in the first commit of the next round that is happening anyway; its gate entry is
+> appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
+> section below are rewritten; everything else from the Findings heading to the end of the file as
+> it stood at `0f811a713` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic
+> R-XXXX series across the re-head. The open set at `0f811a713`, computed with `open_finding_ids`
+> from `scripts/rotate_live_review.py`, holds 8 ids — R-1246, R-1281, R-1351, R-1353, R-1426,
+> R-1428, R-1448 and R-1450 — every one owned by F316, so F157 takes none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F314 D1's, which also writes the feature file's slice list. The first
-round claims F314, re-heads this record, books F315's round 6 and lands T002, the self-use
-generator's two findings, under DECISION F314 D2. Then one slice per round in the order D1 names:
-T003 the gauntlet's missions, T004 the `[roles]` table, T005 the type-check growth, T006 the hosted
-runner's three findings, T007 the closure suite's cost, T008 the closing structural step; then the
-closure, which carries R-1246, R-1351 and R-1353 by name to the next findings paydown.
+THE ORDER BELOW IS DECISION F157 D1's. The first round claims F157, re-heads this record, books
+F314's round 9 and lands T001, the findings pass, as a committed inventory that is reviewed before
+any code is authored. Then T002, the matrix module, its evidence field, its guard rules and their
+unit tests, with the register frozen from the reviewed inventory by DECISION F157 D2; then T003,
+one consolidation order per consumer, the report section, the badge and the end-to-end; then the
+closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -203,3 +203,5 @@ Gate: F314 R7 — the F314 round 7 entry, the closure's integration gate, over `
 Owner: F316 — Findings paydown v11 (re-assigned at F314's closure, 2026-10-24; this line supersedes any earlier Owner line in this paragraph).
 
 Gate: F314 R8 — the F314 round 8 entry, the closure's evidence round, over `6fd281609`..`aa9900968` (3 commits, each single-parent; insertions by `git show --shortstat`: `3b41ca753` 134, `7e02a9110` 312, `aa9900968` 135). VERDICT PASS. The reviewer's `verify.py` read every line `True` and the last line `ALL True`: C1's three files and C2's evidence script equal the prepared snapshots, and C3 is the handoff alone with no machine path. C1 was dry-run by the reviewer in a disposable worktree at `6fd281609`: the state guards read `498 passed`, the open set eight ids with R-1450 and the integrity check `fail_count` 0. The evidence script is F315's with its base, round, directory, job id, title, feature id, step range, run id and four test files changed; the reviewer's collect-only precheck at `6fd281609` read 390 test files, 12777 node ids with 251 deselected and no id the packaging scan refuses. The staging reclaim previewed nothing, so no apply ran. The evidence job `f314r8e1001` ran on `7e02a9110` with both ancestry counts 30, 12777 node ids collected and 251 deselected, the planted red control caught, `12771 passed, 6 skipped` with exit 0 in 1845.449 seconds, `validate_verification_tests` without problems and `is_valid_current_run True`. The review package `remedy-review-20261024-030553-READY_FOR_REVIEW.zip` reads `READY_FOR_REVIEW`; the reviewer read its SHA-256 `cbcf7163ae8ffa580d6ea95e572df6e29b2260b71129ab428280f7a96687fec3`, `is_zipfile` True, `testzip()` None and its manifest's subject from `47cdb1b06` to `7e02a9110` over 30 commits itself. The worker declared no deviation. The open set at `aa9900968` is `['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448', 'R-1450']`, every one carried to F316 by the Owner lines this commit adds.
+
+Gate: F314 R9 — the F314 round 9 entry, the closure round, over `aa9900968`..`e75a46f7e` (4 commits, each single-parent; insertions by `git show --shortstat`: `add31060c` 227, `d6cc7aeb7` 66, `c36418b00` 67, `e75a46f7e` 176). VERDICT PASS. The reviewer of F157's first session read the round from its commits after its handback: each commit's paths and `+/-` counts equal the handback's changed-files tables, C2 is the rotation alone with the archive gaining exactly the 66 lines the ledger lost, C3 registers F316 with its feature file, its STATUS line, the `TOTAL_FEATURES` pin and the README counters in one commit, and C4 flips F314 to `[x]` with its README sync and `SU-080`'s `consumed_by`. The handback records the reviewer's prepared `verify.py` at every line `True` and `ALL True`, the round's selection at `680 passed` with exit 0, the integrity check at `fail_count` 0 and the open set at the eight ids. This session's Open PR Gate merged pull request 386 as `0f811a713`, whose tree equals `e75a46f7e`'s; no hosted run was dispatched for it (operator amendment amend1011-manual-hosted-ci). The open set at `e75a46f7e` is `['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448', 'R-1450']`, every one owned by F316.
