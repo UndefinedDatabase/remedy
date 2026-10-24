@@ -288,12 +288,6 @@ def test_adapter_child_env_refuses_a_throwaway_home_declaration(monkeypatch):
                 method="clean_env", adr_ref="docs/adr/0002-claude-cli-worker-isolation.md",
                 env_allowlist=("PATH",), throwaway_home=True)
 
-        # WHY: an adapter overriding isolation() must still declare a sandbox default of its own
-        # kind to stay a WorkerAdapter (DECISION F162 D4 (1)); this fixture borrows the reference
-        # adapter's, having none of its own to test.
-        def sandbox_default(self):
-            return super().sandbox_default()
-
     monkeypatch.setitem(slot._INSTALLED_WORKER_ADAPTERS, "claude-cli", _ThrowawayAdapter)
     with pytest.raises(ValueError, match="declares throwaway_home"):
         adapter_child_env("claude-cli")

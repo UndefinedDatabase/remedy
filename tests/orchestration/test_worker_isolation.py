@@ -366,12 +366,6 @@ class _ThrowawayHomeAdapter(ClaudeCliReferenceAdapter):
         return WorkerIsolation(
             method="clean_env", adr_ref=_ADR_REF, env_allowlist=("PATH",), throwaway_home=True)
 
-    # WHY: an adapter overriding isolation() must still declare a sandbox default of its own kind
-    # to stay a WorkerAdapter (DECISION F162 D4 (1)); this fixture has none of its own to test, so
-    # it borrows the reference adapter's.
-    def sandbox_default(self):
-        return super().sandbox_default()
-
 
 class TestIsolationDoctorChecks:
     """F152 T003, DECISION F152 D5 (2) and (3): `worker doctor`'s own four isolation checks."""

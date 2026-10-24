@@ -150,7 +150,7 @@ its default sandbox profile as TOML text and whether its process runs inside the
 with a reason required whenever it does not. The claude-cli adapter's default is an API allowlist
 naming `api.anthropic.com`, every ulimit unlimited except `nofile` at 1024, and `tool_sandbox`
 false, because the claude command line keeps its login in the operator's home, which the tool
-sandbox hides (DECISION F152 D3). The allowlist is declarative, not enforced: DECISION F152 D3 (4)
+sandbox hides (DECISION F152 D3). The allowlist is declarative, not enforced: DECISION F162 D3 (4)
 already records an allowlist as unenforced, so a host the tool also reaches makes no recorded
 promise false. The conformance kit's sandbox dimension refuses a `sandbox_default()` answer that
 is not a `WorkerSandboxDefault`, and refuses a declared profile whose TOML `parse_sandbox_profile`
