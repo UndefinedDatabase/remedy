@@ -1,47 +1,54 @@
-# Handback — F314 "Findings paydown v10," round 5
+# Handback — F314 "Findings paydown v10," round 6
 
 ## Session
 
-SESSION 1 of feature F314 · round 5 · rounds so far 5
+SESSION 1 of feature F314 · round 6 · rounds so far 6
 
-Context self-assessment: this session booked round 4's PASS verdict, resolved six findings carried
-from rounds 3 and 4, recorded DECISION F314 D7 for the hosted runner's three findings, repaired the
-scale harness's git identity and the sandbox test's disk search to match that decision, ran every
-gate exactly once after the last commit, and is about to push and dispatch one hosted run.
+Context self-assessment: this session booked round 5's PASS verdict, resolved R-1427 and R-1421
+by DECISION, recorded the refused hosted run as a recurrence with operator question Q25, and
+closed the paydown's mandatory structural step by moving `run_job`'s veto terminal into
+`task_veto.py`, lowering the structure ratchet's two pins by the measured amount; it ran every
+gate exactly once and is about to push.
 
 State block:
-Feature F314 (claimed `[~]`), branch `feature/f314-findings-paydown-v10`, base `ba1c97279`.
-Fortschritt: ~65 % (T001 to T005 landed, T006 awaiting its hosted run · T007 and T008 open) — Schätzung
+Feature F314 (claimed `[~]`), branch `feature/f314-findings-paydown-v10`, base `de55496dd`.
+Fortschritt: ~80 % (T001 to T008 landed · the closure open) — Schätzung
 
 ## Range
 
-Review of `ba1c97279`..HEAD.
+Review of `de55496dd`..HEAD.
 
 ## Commits
 
-### ba89c7248 F314 R5 C1: book F314 R4, resolve six findings, DECISION F314 D7
+### f7eb4b318 F314 R6 C1: book F314 R5, resolve R-1427 and R-1421, DECISIONs F314 D8 and D9, Q25
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f314-r5.md` | +93/-0 | NEW FILE; byte copy of this round's block, `block.md` |
-| `.agent/decisions.md` | +10/-0 | DECISION F314 D7 appended (the hosted runner's three findings) |
-| `.agent/live_review.md` | +16/-0 | F314 round 4's PASS gate entry and the resolutions of R-1326, R-1425, R-1446 and R-1447 appended, plus R-1427's reproduction recorded as a Recurrence |
-| `.agent/plan.md` | +7/-7 | rewritten for F314 round 5 |
+| `.agent/authored/f314-r6.md` | +108/-0 | NEW FILE; byte copy of this round's block, `block.md` |
+| `.agent/decisions.md` | +20/-0 | DECISION F314 D8 (R-1421 resolved by measurement) and DECISION F314 D9 (the closing structural step) appended |
+| `.agent/live_review.md` | +8/-0 | round 5's PASS gate entry, the resolutions of R-1427 and R-1421, and R-1426's recurrence (the refused hosted run) appended |
+| `.agent/operator_questions.md` | +20/-0 | Q25 appended: the one hosted run this session could not start |
+| `.agent/plan.md` | +9/-10 | rewritten for F314 round 6 |
 
-All four paths are byte copies of the reviewer's prepared `c1-*` files; gate 1's `verify.py` and a
+All five paths are byte copies of the reviewer's prepared `c1-*` files; gate 1's `verify.py` and a
 direct sha256 comparison (see Authored-text proofs) confirm each equality.
 
-### 271ccac5e F314 R5 C2: the harness repositories carry their own git identity, and the disk search prunes the read-only toolchain (R-1427, R-1428)
+### d97132d3a F314 R6 C2: run_job's veto terminal is settle_veto_terminal in task_veto.py (structure step)
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/scale_harness.py` | +7/-1 | `commit_repository` now writes `user.email`, `user.name` and `commit.gpgsign` into the repository's own configuration, in addition to passing them on each git call, so a commit the harness makes works on a machine with no global git identity |
-| `tests/orchestration/test_tool_sandbox.py` | +13/-3 | the whole-disk search test now prunes the sandbox's own read-only trees (`/proc`, `/dev`, the system directories and the run's toolchain directories) by full path with `find`, instead of excluding three directories by base name with `grep --exclude-dir`, so a hosted runner's much larger toolchain no longer makes the search time out while every other directory stays searched |
+| `packages/orchestration/task_veto.py` | +81/-0 | `settle_veto_terminal(job, *, control_root_path) -> bool` added: the veto-terminal block moved here from `run_job` verbatim, with the `_veto_terminal_` prefix dropped from its local names, `_tv.` calls turned into calls of this module's own functions, the missing task/job states (`JOB_BLOCKED`, `TASK_APPLIED`, `TASK_PASSED`, `TASK_SPLIT`) added to the existing import from `pingpong_job`, and every `job.state = JOB_BLOCKED; ...; return job` site turned into `return True`; falling through returns `False` |
+| `packages/orchestration/pingpong_job.py` | +5/-76 | the moved block replaced by its comment's first line and `if settle_veto_terminal(job, control_root_path=_control): ...`; nothing else in `run_job` changed |
+| `docs/system/structure-ledger-v1.md` | +4/-3 | `run_job`'s row lowered 1381→1310, `pingpong_job.py`'s row lowered 4939→4868, and the `run_job` paragraph's text now names `settle_veto_terminal` in `task_veto.py` in place of "the veto's terminal reading" |
+| `tests/test_structure_ratchet.py` | +2/-2 | `MAX_FUNCTION_LINES` lowered 28513→28442 and `MAX_FILE_LINES` lowered 63047→62976, both by 71, the exact amount both rows fell |
 
-Both paths are byte copies of the reviewer's prepared `c2-*` files; gate 1's `verify.py` and a direct
-sha256 comparison (see Authored-text proofs) confirm each equality. Self-review ran over
-`git diff --cached` before this commit: both diffs matched their prepared files exactly, touched
-only the two named test files, and introduced no behaviour change outside the two findings.
+Both measured rows fell by the same 71 lines (the block removed from `run_job` is exactly the
+block added to `settle_veto_terminal`, net of the listed renames). `task_veto.py`'s new function
+and the file's new total (785 lines) stayed under both limits, so no new row was needed. Self-
+review ran over `git diff --cached` before this commit: the diff touched only the four named
+paths, `grep -c "_veto_terminal_"` read 0 in both changed Python files, and
+`python3 -m pytest tests/test_structure_ratchet.py -q` (run once, ahead of gate 3's one pytest
+invocation) read 5 passed.
 
-### this commit — F314 R5 C3: handback
+### this commit — F314 R6 C3: handback
 | Path | +/- | Reason |
 |---|---|---|
 | `.agent/handoff.md` | n/a (self-reference; R-0149 pattern) | this handback, rewritten per `docs/agents/handback_template.md` |
@@ -50,55 +57,52 @@ only the two named test files, and introduced no behaviour change outside the tw
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | `ba89c7248`, exactly the four named paths, each byte-equal to its prepared `c1-*` file |
-| C2 | done | `271ccac5e`, exactly the two named paths, each byte-equal to its prepared `c2-*` file |
+| C1 | done | `f7eb4b318`, exactly the five named paths, each byte-equal to its prepared `c1-*` file |
+| C2 | done | `d97132d3a`, exactly the four named paths; the ratchet's two pins fall by the measured amount |
 | C3 | done | this commit, `.agent/handoff.md` only |
 | Gate 1 (`verify.py`) | done | every line `True`, `C3` read `absent`, last line `ALL True` |
 | Gate 2 (`ruff check .`) | done | `All checks passed!` |
-| Gate 3 (pytest selection) | done | exit 0, `3823 passed, 2 skipped in 105.00s`, no FAILED/ERROR/`process(es) behind` line |
+| Gate 3 (pytest selection) | done | exit 0, `3827 passed, 2 skipped in 30.00s`, no FAILED/ERROR/`process(es) behind` line |
 | Gate 4 (integrity) | done | `"fail_count": 0` |
-| Gate 5 (open finding ids) | done | `9` |
+| Gate 5 (open finding ids) | done | `7` |
 | Push | done | see External actions / the reply after this handback |
-| Dispatch | pending | dispatched after this commit is pushed; its run id is in the worker's reply and the reviewer books it |
 
 ## External actions
 
 - `git push origin feature/f314-findings-paydown-v10` — to run immediately after this commit,
-  carrying `ba89c7248`, `271ccac5e` and this handback's own commit; see the reply for the push's
-  own result. The branch already tracks `origin/feature/f314-findings-paydown-v10`.
-- `gh workflow run ci.yml --ref feature/f314-findings-paydown-v10` — to run once, immediately after
-  the push, under operator amendment amend1011-manual-hosted-ci; see the reply for its output and
-  the one allowed `gh run list` reading.
-- No PR created, edited or merged by this session (none is ordered by this round's block; no open
-  PR exists on this branch). No other `gh` command run. No `git worktree add`/`remove` run.
-- One scratch directory used, `.remedy-wt/f314-r5-worker/` (created this round), holding one
-  digest-verification helper (`check_digests.py`), two copy-and-verify helpers for C1 and C2
-  (`copy_c1.py`, `copy_c2.py`) and the gate output file (`selection-output.txt`);
-  `.remedy-wt/f314-r5/` (the reviewer's prepared tree) was only read, never written.
+  carrying `f7eb4b318`, `d97132d3a` and this handback's own commit; see the reply for the push's
+  own result.
+- No PR created, edited or merged by this session (none is ordered by this round's block). No
+  `gh` command run. No `git worktree add`/`remove` run.
+- One scratch directory used, `.remedy-wt/f314-r6-worker/` (created this round), holding one
+  copy-and-verify helper for C1 (`copy_c1.py`) and the gate 3 output file
+  (`selection-output.txt`); `.remedy-wt/f314-r6/` (the reviewer's prepared tree) was only read,
+  never written.
 
 ## Verification
 
 Gate order per the block, run once each, after C2 and before this handoff.
 
 1. `git status --porcelain` → empty.
-   `python3 .remedy-wt/f314-r5/prep/verify.py .` →
+   `python3 .remedy-wt/f314-r6/prep/verify.py .` →
    ```
-   True	ba89c7248 single parent equal to the commit before it
-   True	ba89c7248 carries a new F314 R5 Cn subject
-   True	ba89c7248 insertions 126 under 500
-   True	271ccac5e single parent equal to the commit before it
-   True	271ccac5e carries a new F314 R5 Cn subject
-   True	271ccac5e insertions 20 under 500
+   True	f7eb4b318 single parent equal to the commit before it
+   True	f7eb4b318 carries a new F314 R6 Cn subject
+   True	f7eb4b318 insertions 165 under 500
+   True	d97132d3a single parent equal to the commit before it
+   True	d97132d3a carries a new F314 R6 Cn subject
+   True	d97132d3a insertions 92 under 500
    True	the commits come in block order: ['C1', 'C2']
    True	on feature/f314-findings-paydown-v10
    True	C1 paths exactly [...]
-   True	C1 .agent/authored/f314-r5.md equals c1-.agent__authored__f314-r5.md
+   True	C1 .agent/authored/f314-r6.md equals c1-.agent__authored__f314-r6.md
    True	C1 .agent/decisions.md equals c1-.agent__decisions.md
    True	C1 .agent/live_review.md equals c1-.agent__live_review.md
+   True	C1 .agent/operator_questions.md equals c1-.agent__operator_questions.md
    True	C1 .agent/plan.md equals c1-.agent__plan.md
    True	C2 paths exactly [...]
-   True	C2 tests/orchestration/scale_harness.py equals c2-tests__orchestration__scale_harness.py
-   True	C2 tests/orchestration/test_tool_sandbox.py equals c2-tests__orchestration__test_tool_sandbox.py
+   True	run_job holds no _veto_terminal_ name any more
+   True	run_job calls settle_veto_terminal
    absent	C3
    True	the saved block equals block.md
    ALL True
@@ -106,70 +110,92 @@ Gate order per the block, run once each, after C2 and before this handoff.
 
 2. `python3 -m ruff check .` → exit 0, `All checks passed!`.
 
-3. `python3 .remedy-wt/f314-r5/prep/run_selection.py . .remedy-wt/f314-r5-worker/selection-output.txt` →
+3. `python3 .remedy-wt/f314-r6/prep/run_selection.py . .remedy-wt/f314-r6-worker/selection-output.txt` →
    ```
-   paths 90
+   paths 84
    exit 0
-   3823 passed, 2 skipped in 105.00s (0:01:44)
+   3827 passed, 2 skipped in 30.00s
    SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): ...
    SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
    ```
-   Exit 0; no FAILED, ERROR or `process(es) behind` line. Both skips are pre-existing and unrelated
-   to this round's files (one a documented quarantine, one an opt-in network smoke test) — the same
-   two round 4's handback recorded.
+   Exit 0; no FAILED, ERROR or `process(es) behind` line. Both skips are pre-existing and
+   unrelated to this round's files (one a documented quarantine, one an opt-in network smoke
+   test) — the same two round 5's handback recorded.
 
 4. `python3 -m apps.cli.main integrity check --json` →
    `{"check_count": 6, ..., "fail_count": 0, "ok": true, "passed": true, ...}` — `fail_count: 0`.
 
 5. `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"` →
-   `9`. The open set itself: `R-1246`, `R-1281`, `R-1351`, `R-1353`, `R-1421`, `R-1426`, `R-1427`,
-   `R-1428`, `R-1448` — R-1427 and R-1428 stay open until the dispatched hosted run reads green in
-   both columns, per DECISION F314 D7 (3).
+   `7`. The open set itself: `R-1246`, `R-1281`, `R-1351`, `R-1353`, `R-1426`, `R-1428`, `R-1448`.
 
 ## Authored-text proofs
 
-- `.agent/authored/f314-r5.md`: `wc -l` 93, matching `block.md`'s 93; sha256
-  `5a0887ec82323b12612e3fe7dbd93a4d650e5a306f9106fd70810f48f8d22190` on both. Byte-identical.
-- `.agent/decisions.md` against `.remedy-wt/f314-r5/prep/c1-.agent__decisions.md`: sha256
-  `e554411e6dce43666293cee65f963ebdfe65c7081a3fe0240b71f2ecb61107d5` on both. Byte-identical.
-- `.agent/live_review.md` against `.remedy-wt/f314-r5/prep/c1-.agent__live_review.md`: sha256
-  `b0bcc766e02cd6cf835716ace99633c51ec35faf549581f7b3e3bf4c21544696` on both. Byte-identical.
-- `.agent/plan.md` against `.remedy-wt/f314-r5/prep/c1-.agent__plan.md`: sha256
-  `8e146f72c277f5bc51e3fb9283b97a10f925d876a362a533e6293ca2c19d0f56` on both. Byte-identical.
-- `tests/orchestration/scale_harness.py` against `.remedy-wt/f314-r5/prep/c2-tests__orchestration__scale_harness.py`:
-  sha256 `0d7f52ec76e92a9e447f3065cf14bafe8a4961170c9d6a6c9292643f28cd9680` on both. Byte-identical.
-- `tests/orchestration/test_tool_sandbox.py` against `.remedy-wt/f314-r5/prep/c2-tests__orchestration__test_tool_sandbox.py`:
-  sha256 `48d188eca3b033faf9085c2171d995223cc9f8faa9724e22a1d250725ab1bbf9` on both. Byte-identical.
+- `.agent/authored/f314-r6.md`: `wc -l` 108, matching `block.md`'s 108; sha256
+  `87d8ee5ede0004037b1f3a353dbb03b782ad2cf898dcf4a56e54e41862f49d13` on both. Byte-identical.
+- `.agent/decisions.md` against `.remedy-wt/f314-r6/prep/c1-.agent__decisions.md`: sha256
+  `ea4f6157b14b7ae72518ecceddaa2b744b4e3d7c843fef9bf23280e42b51f7db` on both. Byte-identical.
+- `.agent/live_review.md` against `.remedy-wt/f314-r6/prep/c1-.agent__live_review.md`: sha256
+  `5313e891131b4805dd69577d6bbc958c3dc1e96ae25a03c2b394200e95430056` on both. Byte-identical.
+- `.agent/operator_questions.md` against `.remedy-wt/f314-r6/prep/c1-.agent__operator_questions.md`:
+  sha256 `b03e571816bd3cd450855c44f57b9ecc2c6897c7cd1bcb3e073e13b796a50c6e` on both. Byte-identical.
+- `.agent/plan.md` against `.remedy-wt/f314-r6/prep/c1-.agent__plan.md`: sha256
+  `fc81f32b4c9d3bb84227f1baeaaa6a783a2c002aed5ad093d226fa676d311426` on both. Byte-identical.
 
-Before using any prepared file, `.remedy-wt/f314-r5/prep/digests.txt` was checked against its own
-stated sha256 (`e7ab5cb8c587a79882434717816f7aa2b2485f9eee3e8b9a30347d1d1a3dcebe`, matched), then
-every one of its ten listed entries was recomputed and matched, before any prepared file was
+Before using any prepared file, `.remedy-wt/f314-r6/prep/digests.txt` was checked against its own
+stated sha256 (`418c12c59b2f860e8edbfa72b4f6f590fa2560d21be1f3b720942eb0a17ecd8c`, matched), then
+every one of its nine listed entries was recomputed and matched, before any prepared file was
 copied, run or read.
+
+No reviewer-authored text was applied as C2's content — C2 is a worker-written structural step,
+not a byte copy of a prepared `c2-*` file.
 
 ## Deviations & assumptions
 
-None. C1 and C2 landed in the block's order, with no added, dropped or reordered commit; every
-prepared byte was copied verbatim and proved equal by direct byte comparison before being staged;
-every gate ran exactly once, after C2 and before this handoff, with no retry needed.
+1. C2's exact wording of the WHY comment above `settle_veto_terminal` and the docstring-free
+   body are the worker's own composition to the block's specification ("a WHY comment above it
+   naming DECISION F314 D9 and DECISION F027 D2 (5) and D4 (5)"), since the block did not dictate
+   the comment's literal text the way it dictated the C1 byte copies. The function's own body
+   keeps the original inline comments verbatim, unedited for their new location (e.g. "the task
+   cap's `paused` reading below" still refers to `run_job`'s code, not a passage inside this
+   function), per the block's "comments move with it."
+2. In `run_job`, "the block is replaced by its comment's first line" was read literally: the exact
+   first physical line of the original seven-line comment (`# F027 D2 (5): THE TERMINAL — before
+   the ordinary all_done reading, when at least`), even though that line now ends mid-clause. The
+   block named no replacement text of its own, and `verify.py`'s check (`settle_veto_terminal(job,
+   control_root_path=_control)` present in the committed text) does not test the comment, so this
+   reading was taken as the obviously-intended one and not re-worded.
+3. Two unrelated `http.server` processes (under a `pytest-of-decodeux` temp directory, for a test
+   named `test_a_phone_outside_reaches_t0` that exists in no file of the current tree) were seen
+   running when this round checked for leftovers. They were not started by any command this round
+   ran — this round's only test commands were `pytest tests/test_structure_ratchet.py`, `ruff
+   check`, and the ordered pytest selection, none of which touch a phone-reachability test — and a
+   peer session (`universe-ef`) has been running interactively for the duration of this round, so
+   they most likely belong to it. They were left untouched rather than killed, to avoid acting on
+   another session's work.
+
+No added, dropped or reordered commit; C1 and C2 landed in the block's order; every prepared byte
+was copied verbatim and proved equal by direct byte comparison before being staged; every gate ran
+exactly once, after C2 and before this handoff.
 
 ## For the operator, in plain sentences
 
-This session closed out last round's review and fixed the two small things it found in the
-project's own test suite: one test's helper now leaves a working author name and email inside
-every throwaway repository it builds, so it still works on a computer that has none of its own
-set up, such as the hosted machine that runs the checks; and one test's disk search is now told
-exactly which read-only system folders to skip, so it finishes quickly even on a hosted machine
-whose installed toolchain is much larger than the one this session runs on. Every required local
-check came back clean, and the branch is about to be pushed. Right after that push, this session
-starts one run of the checks on the hosted service and reports which run it started, without
-waiting for it to finish; a later session will read its result and close out this piece of work.
+This session closed out last round's review, including the two open problems it could resolve by
+reading evidence already on record rather than by a new run. It then carried out this clean-up
+cycle's one mandatory piece of housekeeping: Remedy keeps a running list of its own
+over-sized functions, and every fifth clean-up has to shrink one of them by moving part of it into
+a better home without changing what it does. This time that meant taking the part of the job
+runner that decides what happens once a person has refused a step, and moving it into the file
+that already handles everything else about refusals. Every check this session is required to run
+came back clean, and the branch is about to be pushed. The one piece from last round still
+waiting on you is the hosted test run; nothing new was added to that wait this round beyond the
+question already on file.
 
 ## Next
 
 1. Phase 1 rule 1: if `.agent/STOP` exists, the next session finishes whatever commit is in hand,
    writes the handoff, pushes, and stops, before anything else.
 2. Rule 2, the Open PR Gate: check for open pull requests before starting any new unrelated work.
-3. Read the dispatched hosted run and book round 5's verdict in the next round's first commit.
-4. T007: R-1421, the closure suite's cost per test module.
+3. Book round 6's verdict in the next round's first commit.
+4. The closure sequence.
 
-Operator questions open: 1. Open findings: 9.
+Operator questions open: 2. Open findings: 7.
