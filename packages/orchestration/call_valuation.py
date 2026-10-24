@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 from collections.abc import Iterable, Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any
 
@@ -40,9 +40,8 @@ CALL_VALUATIONS_TABLE = "call_valuations"
 CALL_VALUATIONS_SCHEMA_KEY = "call_valuations_schema_version"
 CALL_VALUATIONS_SCHEMA_VERSION = 1
 
-#: The defaults of `cost.cross_check_threshold_percent` and `cost.catalog_stale_days`.
+#: The default of `cost.cross_check_threshold_percent`, for a configuration that leaves it unset.
 DEFAULT_CROSS_CHECK_THRESHOLD_PERCENT = 5.0
-DEFAULT_CATALOG_STALE_DAYS = 60
 
 #: Why a call's cost is unknown, or how a provider-reported cost was checked.
 VALUATION_NOTE_PROVIDER = "the provider reported this cost"
@@ -238,3 +237,71 @@ def value_and_record_calls(records: Iterable[CallRecord], *, project_id: str | N
                 v.call_id, v.model, v.normalized_cost, v.currency, v.adapter, v.catalog_cost, threshold)
     record_call_valuations(valuations, project_id=project_id, path=path)
     return valuations
+
+
+def ledger_call_records(*, project_id: str | None = None,
+                        path: Path | str | None = None) -> list[CallRecord]:
+    """Every `calls` row of the ledger as the record it was written from, sorted by call id; read only."""
+    names = [f.name for f in fields(CallRecord)]
+    conn = _open(project_id, path)
+    try:
+        rows = conn.execute(f"SELECT {', '.join(names)} FROM calls ORDER BY call_id").fetchall()
+    finally:
+        conn.close()
+    return [CallRecord(**dict(zip(names, row))) for row in rows]
+
+
+@dataclass(frozen=True)
+class CallRecomputeResult:
+    """What a recompute did: every call examined, the valuations it rewrote and those it left."""
+
+    examined: int
+    revalued: int
+    unchanged: int
+
+
+def recompute_call_valuations(*, project_id: str | None = None, path: Path | str | None = None,
+                              catalogs: Mapping[str, PriceCatalog] | None = None,
+                              config: Any = None) -> CallRecomputeResult:
+    """Value every call in the ledger again and rewrite only the valuations that changed.
+
+    The `calls` rows are only read, so the raw counters and the reported costs never change; a
+    call valued for the first time counts as revalued, and a second run over the same catalogs
+    rewrites nothing.
+    """
+    from packages.orchestration.price_catalog import load_price_catalogs
+
+    currency, threshold = configured_valuation_settings(config)
+    loaded = load_price_catalogs() if catalogs is None else catalogs
+    current = {v.call_id: v for v in query_call_valuations(project_id=project_id, path=path)}
+    fresh = [value_ledger_call(r, loaded, currency=currency, threshold_percent=threshold)
+             for r in ledger_call_records(project_id=project_id, path=path)]
+    changed = [v for v in fresh if current.get(v.call_id) != v]
+    record_call_valuations(changed, project_id=project_id, path=path)
+    return CallRecomputeResult(examined=len(fresh), revalued=len(changed),
+                               unchanged=len(fresh) - len(changed))
+
+
+#: The order a summary lists the bases in: the strongest evidence first.
+VALUATION_BASIS_ORDER = (COST_BASIS_PROVIDER_REPORTED, COST_BASIS_PRICE_TABLE, COST_BASIS_UNKNOWN)
+
+
+@dataclass(frozen=True)
+class ValuationBasisTotal:
+    """The calls of one basis and their summed normalized cost; None for the unknown basis."""
+
+    basis: str
+    calls: int
+    normalized_cost: float | None
+
+
+def summarize_call_valuations(valuations: Iterable[CallValuation]) -> list[ValuationBasisTotal]:
+    """One total per basis present, never blending bases, in `VALUATION_BASIS_ORDER`."""
+    groups: dict[str, list[CallValuation]] = {}
+    for v in valuations:
+        groups.setdefault(v.basis, []).append(v)
+    return [ValuationBasisTotal(
+        basis=basis, calls=len(groups[basis]),
+        normalized_cost=None if basis == COST_BASIS_UNKNOWN else round(
+            sum(v.normalized_cost or 0.0 for v in groups[basis]), 10))
+        for basis in VALUATION_BASIS_ORDER if basis in groups]

@@ -23,8 +23,11 @@ from packages.orchestration.call_valuation import (
     VALUATION_NOTE_UNMEASURED,
     CallValuation,
     configured_valuation_settings,
+    ledger_call_records,
     query_call_valuations,
+    recompute_call_valuations,
     record_call_valuations,
+    summarize_call_valuations,
     value_and_record_calls,
     value_ledger_call,
 )
@@ -259,3 +262,63 @@ class TestTheLiveHook:
         finally:
             conn.close()
         assert CALL_VALUATIONS_TABLE in tables
+
+
+class TestTheRecompute:
+    def _ledger(self, tmp_path):
+        path = tmp_path / "ledger.sqlite"
+        for record in RECORDS:
+            assert record_call(record, path=path) is True
+        return path
+
+    def test_the_calls_read_back_as_the_records_they_were_written_from(self, tmp_path) -> None:
+        path = self._ledger(tmp_path)
+        assert ledger_call_records(path=path) == sorted(RECORDS, key=lambda r: r.call_id)
+
+    def test_a_first_recompute_values_every_call_and_a_second_rewrites_nothing(self, tmp_path) -> None:
+        path = self._ledger(tmp_path)
+        first = recompute_call_valuations(path=path, catalogs=CATALOGS, config={})
+        assert (first.examined, first.revalued, first.unchanged) == (len(RECORDS), len(RECORDS), 0)
+        second = recompute_call_valuations(path=path, catalogs=CATALOGS, config={})
+        assert (second.revalued, second.unchanged) == (0, len(RECORDS))
+        assert [_golden(v) for v in query_call_valuations(path=path)] == sorted(
+            GOLDENS, key=lambda g: g[0])
+
+    def test_a_new_pricing_version_revalues_exactly_the_calls_it_prices(self, tmp_path) -> None:
+        path = self._ledger(tmp_path)
+        recompute_call_valuations(path=path, catalogs=CATALOGS, config={})
+        newer = PriceCatalog(adapter="claude-cli", pricing_version=4, prices=tuple(
+            ModelPrice(**{**p.__dict__, "input_per_million": p.input_per_million * 2})
+            for p in CATALOG.prices))
+        result = recompute_call_valuations(path=path, catalogs={"claude-cli": newer, "other": OTHER},
+                                           config={})
+        changed = {v.call_id for v in query_call_valuations(path=path) if v.pricing_version == 4}
+        assert changed == {"b-agrees", "c-within", "d-at-boundary", "e-beyond", "f-catalog-only",
+                           "k-provider-zero", "m-cost-not-reported"}
+        assert result.revalued == len(changed)
+
+    def test_a_recompute_never_touches_the_calls_rows(self, tmp_path) -> None:
+        path = self._ledger(tmp_path)
+        conn = open_ledger(path)
+        try:
+            before = conn.execute("SELECT * FROM calls ORDER BY call_id").fetchall()
+        finally:
+            conn.close()
+        recompute_call_valuations(path=path, catalogs=CATALOGS, config={})
+        conn = open_ledger(path)
+        try:
+            assert conn.execute("SELECT * FROM calls ORDER BY call_id").fetchall() == before
+        finally:
+            conn.close()
+
+
+class TestTheSummary:
+    def test_each_basis_is_totalled_on_its_own_and_unknown_has_no_figure(self) -> None:
+        totals = summarize_call_valuations(value_ledger_call(r, CATALOGS) for r in RECORDS)
+        assert [(t.basis, t.calls, t.normalized_cost) for t in totals] == [
+            ("provider_reported", 6, 0.0538),
+            ("price_table", 2, 0.016),
+            ("unknown", 5, None)]
+
+    def test_an_empty_ledger_has_no_totals(self) -> None:
+        assert summarize_call_valuations([]) == []
