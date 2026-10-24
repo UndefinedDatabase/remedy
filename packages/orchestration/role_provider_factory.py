@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.orchestration.capability_routes import routed_claude_cli_build
+from packages.orchestration.claude_cli_command import BUILDER_COMMAND_REFUSALS_FILENAME
 from packages.orchestration.model_failover import (
     FailoverLink,
     FailoverProvider,
@@ -34,6 +35,12 @@ def _record_claude_cli_evidence(evidence_dir: str | None, *, role: str, model: s
                              record=adapter_isolation_record("claude-cli"))
     record_worker_sandbox(evidence_dir, role=role, provider="claude-cli", model=model,
                            record=adapter_sandbox_record("claude-cli"))
+
+
+# WHY: a claude-cli builder's refused commands are evidence beside the run's isolation line (amend1024 C3).
+def _refusals_path(evidence_dir: str | None) -> str | None:
+    """Where a builder's refused commands are logged, or None for a run with no evidence folder."""
+    return str(Path(evidence_dir) / BUILDER_COMMAND_REFUSALS_FILENAME) if evidence_dir else None
 
 
 # WHY: the seam where a run builds a role's provider, so DECISION F058 D2's failover walk can wrap it.
@@ -94,7 +101,8 @@ def create_role_provider(
             "stream_counters": counters,
         }
         if role == "builder" and staging_dir:
-            provider: PingPongProvider = ClaudeCliProvider(write_mode=write_mode, **common)
+            provider: PingPongProvider = ClaudeCliProvider(
+                write_mode=write_mode, command_refusals_path=_refusals_path(stream_evidence_dir), **common)
         else:
             provider = ClaudeCliProvider(**common)
         _record_claude_cli_evidence(stream_evidence_dir, role=role, model=model)

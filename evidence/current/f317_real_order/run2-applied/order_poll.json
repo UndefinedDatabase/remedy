@@ -1,0 +1,255 @@
+{
+  "answer": {
+    "contract": {
+      "amendments": [],
+      "criteria": [
+        {
+          "blocking": true,
+          "check": {
+            "acceptance_refs": [
+              "C001:0"
+            ],
+            "blocking": true,
+            "description": "The mission goal is met in full: Die Funktion, die den Gruß baut, soll den Namen auch dann groß schreiben, wenn er klein getippt wurde. Die README bekommt eine…",
+            "id": "ctr-C001",
+            "kind": "project_tests",
+            "source": "plan_acceptance",
+            "spec": {}
+          },
+          "evidence_ref": "24270f620da248bc:ctr-C001",
+          "id": "C001",
+          "milestones": [
+            "M001"
+          ],
+          "origin": "planner",
+          "status": "met",
+          "text": "The mission goal is met in full: Die Funktion, die den Gruß baut, soll den Namen auch dann groß schreiben, wenn er klein getippt wurde. Die README bekommt einen Satz dazu."
+        }
+      ],
+      "schema": "contract_v1",
+      "template": null
+    },
+    "cost": {
+      "cost_usd": 0.3097006,
+      "job_ids": [
+        "24270f620da248bc"
+      ],
+      "mirror_errors": {},
+      "mirror_failed_job_ids": [],
+      "roles": [
+        {
+          "cache_read": 99654,
+          "cost_usd": 0.1912748,
+          "harness_invocations": 3,
+          "model_turns": null,
+          "role": "builder",
+          "tokens_in": 24,
+          "tokens_out": 3600
+        },
+        {
+          "cache_read": 36149,
+          "cost_usd": 0.11842579999999998,
+          "harness_invocations": 3,
+          "model_turns": null,
+          "role": "reviewer",
+          "tokens_in": 12,
+          "tokens_out": 1593
+        }
+      ],
+      "show_cost_usd": false
+    },
+    "job_ids": [
+      "24270f620da248bc"
+    ],
+    "jobs": [
+      {
+        "job_id": "24270f620da248bc",
+        "tasks": [
+          {
+            "deliverable": "greet/",
+            "title": "Apply title-case capitalisation in greeting-builder function: Modify the greeting-builder function in the greet module so that the name argument is passed through a title-case transform before being embedded in the greeting string, normalising both lowercase and ALL-CAPS input."
+          },
+          {
+            "deliverable": "tests/",
+            "title": "Add or update tests for name capitalisation behaviour (4/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder.\nThis one task does all of these, in order:\nStep 1, Add or update tests for name capitalisation behaviour (1/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder.\nStep 2, Add or update tests for name capitalisation behaviour (2/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder.\nStep 3, Add or update tests for name capitalisation behaviour (3/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder.\nStep 4, Add or update tests for name capitalisation behaviour (4/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder."
+          },
+          {
+            "deliverable": "README.md",
+            "title": "Add capitalisation documentation sentence to README: Append exactly one sentence to README.md stating that the greeting-builder automatically capitalises names regardless of how they were originally typed."
+          }
+        ],
+        "verification": {
+          "reason": "",
+          "request": "",
+          "required": false,
+          "runs": [
+            {
+              "blocking": false,
+              "check_id": "ctr-C001",
+              "command": "python3 -m pytest -p no:cacheprovider tests -q",
+              "source": "dod",
+              "status": "passed"
+            }
+          ],
+          "status": "passed"
+        }
+      }
+    ],
+    "landed": [],
+    "mission_id": "1bdc428c44904f3cb95fb528bdebae51",
+    "mission_plan_path": "/tmp/amend1024-g/data/missions/e7924e48-3790-484e-8365-d8335c161254/1bdc428c44904f3cb95fb528bdebae51/evidence/orders/c793316efdd849a5a60e6f6210fbe2ac/mission_plan_v2.md",
+    "next": [
+      "remedy job show 24270f620da248bc",
+      "remedy serve start",
+      "remedy client story 24270f620da248bc",
+      "remedy job apply 24270f620da248bc --repo /tmp/amend1024-g/greet-project --approve"
+    ],
+    "ok": true,
+    "order_budget": {
+      "calls": [
+        {
+          "attempt": 0,
+          "estimated_tokens": 393,
+          "outcome": "ok",
+          "prompt_chars": 1349,
+          "reason": "scope_decision",
+          "response_chars": 224,
+          "role": "planner",
+          "seconds": 3.689,
+          "tokens_estimated": true
+        },
+        {
+          "attempt": 0,
+          "estimated_tokens": 847,
+          "outcome": "ok",
+          "prompt_chars": 2252,
+          "reason": "intake",
+          "response_chars": 1138,
+          "role": "planner",
+          "seconds": 13.482,
+          "tokens_estimated": true
+        },
+        {
+          "attempt": 0,
+          "estimated_tokens": 2242,
+          "outcome": "ok",
+          "prompt_chars": 6245,
+          "reason": "task_plan",
+          "response_chars": 2726,
+          "role": "planner",
+          "seconds": 20.206,
+          "tokens_estimated": true
+        }
+      ],
+      "caps": {
+        "deadline": null,
+        "max_cost_usd": null,
+        "max_provider_calls": 40,
+        "max_total_tokens": 300000,
+        "max_wall_clock_minutes": null,
+        "min_free_disk_bytes": null
+      },
+      "cost": {
+        "cap_usd": null,
+        "enforced": false,
+        "measured_usd": 0.3097006,
+        "unpriced_calls": 3
+      },
+      "estimated_planning_tokens": 3482,
+      "jobs": {
+        "24270f620da248bc": {
+          "calls": 6,
+          "cost_usd": 0.3097006,
+          "measured": true,
+          "tokens": 5229,
+          "unpriced_calls": 0
+        }
+      },
+      "planner_calls": 3,
+      "planner_calls_by_reason": {
+        "intake": 1,
+        "scope_decision": 1,
+        "task_plan": 1
+      },
+      "refused_calls": 0,
+      "unmeasured_jobs": [],
+      "used": {
+        "calls": 9,
+        "cost_usd": 0.3097006,
+        "elapsed_minutes": 2.064,
+        "tokens": 8711
+      }
+    },
+    "order_id": "c793316efdd849a5a60e6f6210fbe2ac",
+    "push": null,
+    "review_report": null,
+    "schema_version": 1,
+    "shape": "one job",
+    "shape_source": "the planner's scope decision",
+    "steps": [
+      {
+        "detail": "project greet-project (e7924e48-3790-484e-8365-d8335c161254) selected by --project",
+        "name": "init",
+        "status": "done"
+      },
+      {
+        "detail": "already studied at 2026-10-24T19:59:38.472294+00:00 (head 66f9cee2fc4aad802950b1d618fb81512556c1b4); study again by hand: remedy study run --path /tmp/amend1024-g/greet-project",
+        "name": "study",
+        "status": "skipped"
+      },
+      {
+        "detail": "mission 1bdc428c44904f3cb95fb528bdebae51 plan v2 (deterministic, 1 milestone(s)): /tmp/amend1024-g/data/missions/e7924e48-3790-484e-8365-d8335c161254/1bdc428c44904f3cb95fb528bdebae51/evidence/orders/c793316efdd849a5a60e6f6210fbe2ac/mission_plan_v2.md; lane: full (the planner's scope decision says one job (Die Änderung betrifft eine einzelne Funktion und ihre Dokumentation, die zusammen in einem Schritt umgesetzt werden können.), so it is one job without milestones and the planner plans its tasks only (routing alone: the order names one file, README.md, and asks for one thing)); no contract template, none proposed from the order",
+        "name": "plan",
+        "status": "done"
+      },
+      {
+        "detail": "one job 24270f620da248bc linked to mission 1bdc428c44904f3cb95fb528bdebae51 (shape: one job, from the planner's scope decision): 3 task(s), plan: task plan task_plan_v1 (approved via --run-unattended), intake: llm",
+        "name": "shape",
+        "status": "done"
+      },
+      {
+        "detail": "job 24270f620da248bc ran 3 task(s) to completed",
+        "name": "run",
+        "status": "done"
+      },
+      {
+        "detail": "stopped before apply; /tmp/amend1024-g/greet-project is untouched. Apply the reviewed result with: remedy job apply 24270f620da248bc --repo /tmp/amend1024-g/greet-project --approve",
+        "name": "apply",
+        "status": "stopped"
+      }
+    ],
+    "stopped_before_apply": true,
+    "unmet_blocking_criteria": [],
+    "waiting_job_ids": []
+  },
+  "cancel": null,
+  "ended_at": "2026-10-24T20:05:28Z",
+  "exit_code": 0,
+  "jobs": [
+    {
+      "blocking_criterion": null,
+      "executable": false,
+      "job_id": "24270f620da248bc",
+      "mission_id": "1bdc428c44904f3cb95fb528bdebae51",
+      "phase": "applied",
+      "state": "completed",
+      "story": "/api/v1/jobs/24270f620da248bc/story",
+      "tasks": {
+        "current": "",
+        "done": 3,
+        "total": 3
+      },
+      "title": "Die Funktion, die den Gruß baut, soll den Namen auch dann groß schreiben, wenn…",
+      "verification": "passed",
+      "waiting_reason": "",
+      "waits_for": null
+    }
+  ],
+  "ok": true,
+  "order_file": "/tmp/amend1024-g/data/serve/order-keys/amend1024-g2.md",
+  "order_id": "e4eaaaa9cebd3304",
+  "phase": "done",
+  "schema_version": 1,
+  "started_at": "2026-10-24T20:03:24Z",
+  "state": "ended"
+}

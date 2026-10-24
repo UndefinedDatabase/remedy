@@ -141,8 +141,7 @@ DEFAULT_MODEL = _PROVIDER_DEFAULT_MODELS[DEFAULT_PROVIDER]
 #: here so an operator can name the planning SERVICE — `planner.provider` and
 #: `planner.model` through `remedy config` — now that a second one exists
 #: (``packages/providers/claude_planner/provider.py``). Its default provider
-#: stays ``ollama``, so an unconfigured repository plans exactly as it did
-#: before this role was named.
+#: is ``claude-cli`` since operator amendment amend1024-one-real-order (A1).
 #: ``self_use`` (operator amendment amend0920-selfuse-real, DECISION D2) is the
 #: builder-and-reviewer pair of the self-use track's own runs
 #: (``packages.orchestration.self_use_runner``), and it is the ONE role whose
@@ -170,15 +169,14 @@ KNOWN_ROLES: tuple[str, ...] = (
 #: existed — ``DEFAULT_PROVIDER`` and that provider's default model — so naming
 #: two roles here changes nothing for the ten that came before them.
 _ROLE_DEFAULT_PROVIDERS: dict[str, str] = {
-    "planner": "ollama",
     "self_use": "claude-cli",
-    # Operator amendment amend1014b, DECISION D1: the roles that must WRITE or judge a written
-    # change run in the Pi harness. A raw Ollama text completion cannot edit a file, so it is
-    # no longer the default mutating builder; Pi inherits local agentic execution with the
-    # same local model.
-    "builder": "pi",
-    "reviewer": "pi",
-    "repair": "pi",
+    # Operator amendment amend1024-one-real-order, A1: an everyday order is planned, built,
+    # reviewed and repaired by the Claude Code CLI. The local Pi harness with Ollama
+    # (amend1014b D1) stays a choice (`--builder-provider pi`, `[roles]`), no longer the default.
+    "planner": "claude-cli",
+    "builder": "claude-cli",
+    "reviewer": "claude-cli",
+    "repair": "claude-cli",
 }
 
 #: A role whose default MODEL is not simply its provider's default. ``self_use``
@@ -190,9 +188,8 @@ _ROLE_DEFAULT_MODELS: dict[str, str] = {
 }
 
 #: THE ROLES THAT ACTUALLY RESOLVE SOMETHING OTHER THAN THE PRODUCT DEFAULT, and
-#: it is DERIVED rather than typed: ``planner`` names its own default provider
-#: above and that provider IS :data:`DEFAULT_PROVIDER`, so it belongs here only
-#: if that ever stops being true. The pins in tests/orchestration/test_role_config.py
+#: it is DERIVED rather than typed: a role whose own default provider equals
+#: :data:`DEFAULT_PROVIDER` would not belong here. The pins in tests/orchestration/test_role_config.py
 #: read this set, so a role opted out of the product default is opted out in ONE
 #: place and the pin that guards the rest cannot be quietly widened.
 ROLES_WITH_THEIR_OWN_DEFAULTS: frozenset[str] = frozenset(

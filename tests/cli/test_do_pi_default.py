@@ -63,6 +63,11 @@ def pi_world(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", f"{bindir}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setattr(PP, "_ollama_models", lambda host: ["muse-glimmer:latest"])
+    # amend1024 A1: claude-cli is the product default; these tests prove the Pi harness as the
+    # default a machine chooses, so Pi is made the mutating roles' default for them.
+    from packages.orchestration import role_config
+    for role in ("builder", "reviewer", "repair"):
+        monkeypatch.setitem(role_config._ROLE_DEFAULT_PROVIDERS, role, "pi")
     calls: list[dict] = []
     real = PP.run_guarded
 
@@ -156,11 +161,11 @@ def test_the_docs_and_the_help_describe_pi_the_model_and_a_dirty_tree_without_th
     root = Path(__file__).resolve().parents[2]
     guide = (root / "docs/guides/do-run-v1.md").read_text()
     quick = (root / "docs/guides/simple-operator-quickstart-v0.md").read_text()
-    for needle in ("Pi is the default execution harness", "muse-glimmer:latest", "`--apply`",
+    for needle in ("Pi with the local Ollama model `muse-glimmer:latest` stays a choice", "`--apply`",
                    "`--commit-auto` commits only the files the job changed",
                    "A dirty working tree is the baseline", "target_changed_during_run"):
         assert needle in guide, needle
-    assert 'remedy do "' in quick and "--apply" in quick and "Pi and Ollama" in quick
+    assert 'remedy do "' in quick and "--apply" in quick and "Pi and Ollama" in quick and "claude" in quick
     for text in (guide, quick):
         assert "commit or stash first" not in text and "must be clean" not in text
     help_text = " ".join(arg.help for cmd in DO_COMMANDS for arg in cmd.args

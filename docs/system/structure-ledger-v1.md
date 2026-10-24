@@ -26,7 +26,9 @@ page. Each row must equal its measure exactly:
   record always says what the code is. One that fell to its limit or below, or no longer exists,
   loses its row in the same commit.
 - The number of rows of each table and the sum of their lines are pinned in the test and may only
-  fall. A row may be renamed when a structural step moves a function to another module or gives
+  fall. One exception, operator amendment amend1024-one-real-order (F4, 2026-10-24): a file or
+  function that amendment touched and that had to grow had its row and the pinned sum raised, each
+  with one sentence on this page saying why; nothing was split to avoid it. A row may be renamed when a structural step moves a function to another module or gives
   it another name, because its count and its lines stay; a row is added only by the DECISION that
   the rule below requires.
 
@@ -157,7 +159,9 @@ commit with no alias left behind, and changes the tests in their import lines on
   refusals before any step (the rehearsal's conflicting flags, the commit and push flags, the
   planner, the contract template, and an order file a mission still runs) and the one call into
   `_cmd_do_order`. Steps: (1) the refusals before any step become one function that exits 2 or
-  returns; (2) the call stays.
+  returns; (2) the call stays. Raised from 110 to 111 lines by operator amendment
+  amend1024-one-real-order (F4): the walk must read the project's `[roles]` planner once, before any
+  step, which is one line here (R-1448).
 - `_cmd_job_run` (`apps/cli/commands/do_cmd.py`). Boundary: the checks of its flags, the budgets
   it resolves from them, the refusals before anything runs (a job that cannot be continued, a
   cancelled job, a plan not approved), the forward to a supervisor that answers, the run, and its
@@ -246,7 +250,9 @@ with the code that calls it.
 - `packages/orchestration/job_apply.py`: the result model, the history, commit and push policy,
   and the export and summary, each to a module of its own.
 - `apps/cli/commands/job.py`: the budget commands, then the sections of `remedy job show`, each to
-  a module of its own.
+  a module of its own. Operator amendment amend1024-one-real-order Part E raised its row from 2483
+  to 2484, the one import line of `cost_currency`'s dollar rule that `job show` and its report
+  section apply, which no boundary step of this file could carry without moving a section.
 - `packages/orchestration/orchestrator_loop.py`: the protocol, context and milestones, the ledger,
   and the evaluation of a move, each to a module of its own, the shared constants first.
 - `scripts/remedy_smoke.sh`: the long block of surface checks and the patch lifecycle, each to a
@@ -260,7 +266,9 @@ with the code that calls it.
   `packages/orchestration/claude_cli_command.py`. Step (2), done by F307: the Ollama provider,
   `packages/orchestration/pingpong_provider_ollama.py`, which `create_provider` imports when it
   builds one. Step (3), done by F307: the fake provider,
-  `packages/orchestration/pingpong_provider_fake.py`.
+  `packages/orchestration/pingpong_provider_fake.py`. Raised from 1,570 to 1,573 lines by operator
+  amendment amend1024-one-real-order (F4): the claude-cli builder's refused commands must be logged
+  where the call's raw answer is read, which is one argument, one field and one call here.
 - `packages/orchestration/config.py`: `ConfigKeySpec` to `packages/orchestration/config_key_spec.py`,
   then the key registry one contiguous group at a time, each to a module of its own that
   `_CONFIG_KEY_SPECS` splices in at the group's own place, so the registry and the environment guide
@@ -440,7 +448,7 @@ with the code that calls it.
 | 112 | `packages/runtimes/dev_server.py` | `DevServer.start` |
 | 112 | `scripts/build_review_manifest.py` | `_verify_task_provenance_integrity` |
 | 111 | `packages/orchestration/run_manifest.py` | `_verified_episode_export` |
-| 110 | `apps/cli/commands/do_cmd.py` | `_cmd_do` |
+| 111 | `apps/cli/commands/do_cmd.py` | `_cmd_do` |
 | 110 | `packages/orchestration/job_plan.py` | `render_plan_md` |
 | 110 | `packages/orchestration/run_manifest.py` | `validate_job_input_definition` |
 | 110 | `packages/orchestration/run_manifest.py` | `validate_ledger_chain` |
@@ -469,11 +477,11 @@ with the code that calls it.
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2199 | `apps/cli/command_catalog.py` |
 | 2541 | `packages/orchestration/job_apply.py` |
-| 2483 | `apps/cli/commands/job.py` |
+| 2484 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 1898 | `scripts/remedy_smoke.sh` |
 | 1983 | `packages/runtimes/dev_server.py` |
-| 1570 | `packages/orchestration/pingpong_provider.py` |
+| 1573 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1545 | `packages/orchestration/config.py` |

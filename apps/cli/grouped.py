@@ -377,11 +377,12 @@ def _print_group_help(group_word: str) -> None:
     """Print Bootcamp-style group help and exit 0.
 
     `group_word` is the word typed, the id or an alias; the page names every other
-    word of the same group (DECISION amend0831 D-D).
+    word of the same group (DECISION amend0831 D-D). An advanced command is not listed
+    (operator amendment amend1024-one-real-order Part E); it still runs and has its own help.
     """
     group_id = resolve_group(group_word)
     group_def = GROUPS[group_id]
-    cmds = get_commands_for_group(group_id)
+    cmds = [c for c in get_commands_for_group(group_id) if not c.advanced]
     commands = [(c.subcommand, c.description) for c in cmds]
     also = tuple(w for w in (group_id, *group_def.aliases) if w != group_word)
     print(render_group_help("remedy", group_word, group_def.description, commands, also=also))

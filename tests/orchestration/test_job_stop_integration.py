@@ -321,8 +321,8 @@ class TestAClaudeCliStopWithNoModelSet:
                           lambda self: "/fake/claude"), \
              patch.object(pingpong_provider.ClaudeCliProvider, "_resolve_version",
                           lambda self: "1.0.0 (test)"):
-            stopped = run_job(job.job_id, builder_name="claude-cli",
-                              reviewer_name="claude-cli", repair_rounds=0)
+            stopped = run_job(job.job_id, builder_name="claude-cli",   # the fake answers JSON (amend1024 D5)
+                              reviewer_name="claude-cli", repair_rounds=0, stream_evidence=False)
 
         assert len(calls) == 1 and "--model" not in calls[0]
         assert stopped.state == JOB_STOPPED

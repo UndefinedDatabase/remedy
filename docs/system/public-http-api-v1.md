@@ -225,7 +225,13 @@ no project, or one that names a project this machine does not register as exactl
 before anything starts, with 409 `api_order_project_unknown` — because the order would otherwise
 run in a folder nobody chose. An order whose header sets no cap — none of `max-cost-usd`,
 `max-total-tokens`, `max-provider-calls` and `max-wall-clock-minutes` — is refused before anything
-starts with 400 `order_file_no_cost_cap` and the sentence `remedy do` refuses it with. Every other
+starts with 400 `order_file_no_cost_cap` and the sentence `remedy do` refuses it with. Cap an order
+by `max-total-tokens`, `max-provider-calls` and `max-wall-clock-minutes`: `max-cost-usd` is still
+accepted but not recommended, because Remedy judges a run by its tokens and provider calls and a
+dollar cap cannot be enforced while any call carries no price (operator amendment
+amend1024-one-real-order Part E). For the same reason every answer of this API reads null in each
+dollar field, keeping its key, unless `cost.show_usd = true` is set in `remedy.toml`; a cap the
+client set is always answered (`docs/system/cost-currency-v1.md`). Every other
 refusal is `remedy do`'s own, read back only once the order is polled. When the order's child process cannot be started at all, nothing is left behind:
 the order's folder is removed and the call answers 500 with `api_command_failed`. The refusals
 this paragraph and the paragraph on keys below name are the route's own, not `remedy do`'s:
@@ -341,7 +347,15 @@ reads `selectable_over_http` `true`, with `ollama` and `claude-cli` offered, and
 /api/v1/orders` takes the body key `planner_provider`, passed to `remedy do` as
 `--planner-provider`. `POST /api/v1/jobs/{job}/run` and `/retry` take `claude-cli` for both of
 their keys. Every other caller that names `claude-cli` or a `planner_provider` is refused with the
-same 400 `api_provider_not_offered` as before, and its `not_offered_reason` names the property. A
+same 400 `api_provider_not_offered` as before, and its `not_offered_reason` names the property.
+**Which providers an order runs on when it names none (operator amendment amend1024-one-real-order).**
+For a client granted `host_tools` it is the product default, `claude-cli`, for the planner, the
+builder and the reviewer, unless the project's `[roles]` table chooses otherwise. For every other
+caller, the server's own token included, the route keeps the defaults it had before: it passes
+`--builder-provider=pi`, `--reviewer-provider=pi` and `--planner-provider=ollama` for each role
+that neither the body nor the project's `[roles]` table names (the planner also not when
+`planner.provider` is configured). The answer's `default_provider` under `roles` reads the same
+for the calling token. A
 `claude-cli` that is offered but not installed here is refused as not available. A run's effective configuration is the job's `execution_config` in the
 `job run` answer and in the review report (`docs/system/review-reports-v1.md`).
 

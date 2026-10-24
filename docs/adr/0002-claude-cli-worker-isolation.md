@@ -1,12 +1,14 @@
 # ADR-0002 — How the claude-cli worker keeps the operator's configuration out of a run
 
-> **Status: RESEARCH RECORD, partly verified.** This is a research record under DECISION F152 D2:
-> it pins what local evidence shows about the claude-cli tool's configuration surfaces, carries no
-> diff, and needs no human apply step.
+> **Status: RESEARCH RECORD, partly verified; checked against the real binary on 2026-10-24.**
+> This is a research record under DECISION F152 D2: it pins what local evidence shows about the
+> claude-cli tool's configuration surfaces, carries no diff, and needs no human apply step. The
+> section "The real binary, 2026-10-24" records the real call operator amendment
+> amend1024-one-real-order (D2) ordered, and replaces each UNVERIFIED that call proves.
 
 - Date: 2026-10-24
 - Feature: T8_F152 — Worker config isolation
-- Tool version read: 2.1.296 (from the captured help text)
+- Tool version read: 2.1.296 (from the captured help text); 2.1.310 run for real on 2026-10-24
 
 ## Context
 
@@ -37,7 +39,7 @@ already requesting the CLI's own customization suppression, independent of this 
 | Plugins and skills | UNVERIFIED default discovery; explicit load is `--plugin-dir`/`--plugin-url` | `--safe-mode` disables installed plugins and skills; `--disable-slash-commands` disables all skills; `--bare` skips plugin sync but states "Skills still resolve via /skill-name" | VERIFIED: `:215-225`, `:83`, `:44-61`, `:165-172`. |
 | Hooks | UNVERIFIED — "those defined in settings and by installed plugins", per `--bare`'s own text; no path named | `--safe-mode` disables hooks; `--bare` skips hooks ("features built into Claude Code are unaffected") | VERIFIED: `:215-225`, `:44-61`. |
 | The login | `~/.claude/.credentials.json` exists (filesystem existence only, not a help-text claim — `.agent/f152_inventory.md` §4); `$HOME`-derivation UNVERIFIED | None found that suppresses or redirects it; `--bare` NARROWS accepted auth to `ANTHROPIC_API_KEY` or `apiKeyHelper` via `--settings`, stating OAuth and keychain "are never read" under that flag — implying both are normally-available sources outside `--bare` | VERIFIED (the narrowing and its implication): `:44-61`. UNVERIFIED (storage location and mechanism). |
-| Environment variables | n/a | None found — the captured text names no environment variable that selects, adds or suppresses configuration; the only env vars present are two OUTPUTS the flags set (`CLAUDE_CODE_SAFE_MODE`, `CLAUDE_CODE_SIMPLE`) and `ANTHROPIC_API_KEY` as one accepted auth input | VERIFIED as an absence from this captured text (whole text read); UNVERIFIED as a claim about the real binary, since help text is not behavior (`.agent/f152_inventory.md` §4's own caveat). |
+| Environment variables | `CLAUDE_CONFIG_DIR` selects the folder the login and the user configuration are read from; on this machine the operator's profile wrapper sets it | Passed through by the allowlist since amend1024 D1, so the worker keeps the account the operator's own session chose | VERIFIED (2026-10-24, real call): the call ran with the operator's `CLAUDE_CONFIG_DIR` and authenticated; the captured help text names no such variable, which stays true of that text. |
 
 ## The login
 
@@ -109,6 +111,40 @@ cloud credential or other name this allowlist does not itself name; the operator
 customizations, CLAUDE.md auto-discovery, skills, plugins or hooks, which `--safe-mode` already
 suppresses independently of this feature; or any MCP server not named on the command line.
 
+## The real binary, 2026-10-24
+
+Operator amendment amend1024-one-real-order (D2) ordered one real call of this machine's `claude`
+through the adapter: `scripts/claude_cli_real_binary_check.py` builds a `ClaudeCliProvider` builder
+with `allowed-tools` in a fresh temporary folder and asks it to create one file. The record is
+`evidence/current/claude_cli_real_binary_check.json`; it names every environment name the child got
+and never a value.
+
+- **Result.** `claude` 2.1.310 (found on PATH as the operator's profile wrapper), 6.8 seconds, the
+  file created with exactly the asked content, 4 input and 166 output tokens beside 11,957 cached
+  and 1,943 cache-written, two model turns. The isolation applied: method `tool_flag`, the
+  operator's home, the argv ending with `--safe-mode`, `--tools Read,Glob,Grep,Edit,Write,MultiEdit,Bash`,
+  `--setting-sources project,local` and `--strict-mcp-config`, and the builder's `Bash(<command>:*)`
+  rules after `--allowedTools Edit,Write,MultiEdit`.
+- **The environment the child got:** `CLAUDE_CONFIG_DIR`, `HOME`, `LANG`, `LOGNAME`, `PATH`, `SHELL`,
+  `TERM` and `USER`; every other declared name is unset on this machine. No `ANTHROPIC_API_KEY` was
+  set: the login is the operator's own Claude Code login, read by a non-interactive `-p` call.
+- **The control with F152's list** (`evidence/current/claude_cli_real_binary_check_f152_control.json`,
+  the same call without the twelve names amend1024 D1 added) also succeeded, in 11.4 seconds, with
+  `CLAUDE_CONFIG_DIR` dropped. So no variable was missing for a working call on this machine: the
+  operator's wrapper, which stands first on PATH, chooses its active profile itself when
+  `CLAUDE_CONFIG_DIR` is absent. That choice is the wrapper's, not the session's: without the
+  variable a worker may run on another of the operator's accounts than the session that started
+  it, which is why D1 passes it.
+
+What the call proves, and so no longer UNVERIFIED: the flags `--safe-mode`, `--tools`,
+`--setting-sources project,local`, `--strict-mcp-config` and `--allowedTools` with `Bash(...)` rules
+are accepted by the real binary 2.1.310; a non-interactive `-p` call reaches the operator's OAuth
+login with `HOME` and `CLAUDE_CONFIG_DIR` alone (probe 5 below); and the allowlisted environment
+reaches the child as built, without the floor removing a name it carries. What it does not prove,
+and stays UNVERIFIED: where the settings files live, whether `--safe-mode` and
+`--strict-mcp-config` suppress every customization of a real session (the poisoned A/B of probe 3),
+and whether a throwaway `HOME` would hide the login.
+
 ## Verification owed
 
 1. Whether `~/.claude` and its settings/credentials files are actually derived from `$HOME` rather
@@ -129,10 +165,9 @@ suppresses independently of this feature; or any MCP server not named on the com
    filesystem view. Probe: a stub executable standing in for `claude` that prints what it can see
    under its own `$HOME`, run once against the real home and once against the throwaway one. No
    real binary and no cost — runs now, does not wait on Q26.
-5. Whether the OAuth/keychain login path `--bare`'s text implies is reachable from a non-interactive
-   `-p` call at all, or needs an interactive session first. Probe: run `claude -p` once from a shell
-   holding a working OAuth login and once from a shell with only `ANTHROPIC_API_KEY` set, and
-   compare the two outcomes. Needs the real binary — waits on Q26.
+5. ANSWERED on 2026-10-24 for the OAuth half: a non-interactive `-p` call reaches the operator's
+   OAuth login with no `ANTHROPIC_API_KEY` set ("The real binary, 2026-10-24"). The
+   `ANTHROPIC_API_KEY`-only half was not run.
 6. Whether `env=<explicit dict>` really reaches the child without `scrub_child_env`'s floor removing
    a key the dict carries but the allowlist does not name. Probe: a unit test calling
    `plan_child_spawn` with a policy whose `env` includes a `FORBIDDEN_ENV_KEYS` member and whose

@@ -23,16 +23,26 @@ remedy do "<order>" --apply
 is the ordinary use: the reviewed change is applied to your files, nothing is committed, and the
 walk reports what is now uncommitted. Add `--commit-auto` to commit.
 
-- **Pi is the default execution harness**, with the local Ollama model `muse-glimmer:latest`, for
-  the builder, the reviewer and the repair role. Pi supplies the agent loop and the file tools;
-  Ollama is the model server and by itself is not a coding harness (a raw Ollama call returns
-  text, so `--builder-provider ollama` is refused and names `pi`). Pi runs in Remedy's isolated
-  job workspace; the reviewer's Pi has read-only tools. Explicit `--builder-provider claude-cli`
-  (or `claude`, `fake`) remains an override. A missing Pi, Ollama or model stops the walk before any
-  model call with the action to take, and never falls back to another provider. Pi loads no
-  `AGENTS.md` or `CLAUDE.md` on its own (`--no-context-files`): the builder sees the repository's
-  root agent file whole when it is at most 2,000 characters, and otherwise only its name, to read
-  when the task needs its conventions.
+- **The Claude Code CLI (`claude-cli`) is the default** for the planner, the builder, the reviewer
+  and the repair role (operator amendment amend1024-one-real-order). The builder writes in Remedy's
+  isolated job workspace and may run the commands of a fixed list, the project's tests among them
+  (see `docs/system/tool-sandbox-v1.md`, "What the builder may run itself"); the reviewer reads
+  only. Each role is chosen, highest first, by its option (`--planner-provider`,
+  `--builder-provider`, `--reviewer-provider`), a continued job's own record, the project's
+  `[roles]` table in `.remedy/config.toml` (`planner`, `builder`, `reviewer`) and then the
+  default; the planner also reads `planner.provider` of `remedy.toml` below the table. A claude-cli
+  builder streams its call by default (`raw_stream.jsonl` and `run_events.jsonl` in the task's
+  evidence), so every command it ran, its own test run among them, is evidence;
+  `--no-stream-evidence` turns that off.
+- **Pi with the local Ollama model `muse-glimmer:latest` stays a choice** (`--builder-provider pi`,
+  or `builder = "pi"` under `[roles]`). Pi supplies the agent loop and the file tools; Ollama is
+  the model server and by itself is not a coding harness (a raw Ollama call returns text, so
+  `--builder-provider ollama` is refused and names `pi`). Pi runs in Remedy's tool sandbox; the
+  reviewer's Pi has read-only tools. A missing Pi, Ollama or model stops the walk before any model
+  call with the action to take, and never falls back to another provider. Pi loads no `AGENTS.md`
+  or `CLAUDE.md` on its own (`--no-context-files`): the builder sees the repository's root agent
+  file whole when it is at most 2,000 characters, and otherwise only its name, to read when the
+  task needs its conventions.
 - **A dirty working tree is the baseline, for the files the job may change.** At the start Remedy
   captures what you can see of the job's deliverable paths (bytes, executable bit, symlinks,
   deletions), seeds the job workspace from them and measures the proposed change from that state.
@@ -76,8 +86,8 @@ An ordinary, bounded request needs nothing but the order:
 remedy do "Add one concise project-description paragraph below the heading in README.md. Change no other files." --repo .
 ```
 
-`remedy do` reads the order and the repository and picks a lane without asking a model. It
-first sorts the order's sentences into **deliverables** (the change asked for) and
+`remedy do` reads the order and the repository, asks the planner how many jobs the order is (the
+scope decision below) and picks a lane. It first sorts the order's sentences into **deliverables** (the change asked for) and
 **constraints**: "change only README.md", "change no other files", "run npm test", "the tests
 must pass", "apply nothing automatically", "review the diff", "report the result", in English or
 German, and every header `constraint:` line. Remedy enforces each constraint itself (the scope
@@ -127,7 +137,22 @@ HTTP no client can name a test command: it is always the project's own. In a fen
 nothing else"), a planned task whose deliverable the order did not ask for is left out, and a plan
 of nothing else fails (exec-1017 D2).
 
-The lane is decided from the order and the repository's tracked files, with no model call:
+**The scope decision (operator amendment amend1024-one-real-order).** Before any milestone is
+planned, the planner (claude-cli unless `--planner-provider` or `[roles]` names another) reads the
+order, the repository's tracked paths (paths only, at most 2,000 lines) and one question: is this
+one job, or does it really need several? It answers one JSON object with `single_job`, `files` and
+`reason` (one German sentence), kept in each job's evidence folder as `scope_decision.json`. One job
+is the default: the order walks as one job without milestones, whose tasks the planner plans, and
+a bounded order whose files the planner agrees with keeps its bounded lane. Several jobs, the full
+lane's milestones, come only from `single_job: false` with a reason. An order whose header says
+`shape: single-job`, or whose text spells its files in the bounded lane, is not asked: it says what
+it is. Neither is an order under `--no-llm`, `--force-job` or `--force-mission`, nor one over
+several projects. **The lanes below are the fallback:** when the planner is not reachable, its call
+fails, or its answer is not that object after one parse retry, the lane is decided from the order
+and the repository's tracked files alone, with no model call, exactly as before, and
+`scope_decision.json` says why (`planner_unreachable`, `planner_failed`, `answer_invalid`).
+
+The fallback lanes, decided from the order and the repository's tracked files with no model call:
 
 | Lane | When | What happens |
 |------|------|--------------|
@@ -298,17 +323,20 @@ worker program) and the model turns (how many times the model answered inside on
 A figure no call reported says "not reported", never 0.
 
 The `Cost:` line shows no dollar figure by default. It reads `Cost: not shown — tokens only (…)`
-when a cost was measured, and `Cost: not reported by the provider` when none was. A project that
-wants dollars sets this in its `.remedy/config.toml`:
+when a cost was measured, and `Cost: not reported by the provider` when none was. An operator who
+wants dollars sets this in `remedy.toml` (or `REMEDY_COST_SHOW_USD=true`):
 
 ```toml
-[cockpit]
-show_cost_usd = true
+[remedy.cost]
+show_usd = true
 ```
 
-The key defaults to `false`. With it set, the `Cost:` line shows the measured
-dollar figure. The `--json` output always carries it as the `cost_usd` field of its `cost` object,
-because it is for programs, not people (operator amendment amend1015).
+The key defaults to `false`. With it set, the `Cost:` line shows the measured dollar figure. The
+`--json` output keeps the `cost_usd` fields of its `cost` object and of each role, and every other
+dollar field, such as `order_budget`'s spend; they read `null` while the key is false, and the
+`cost` object's `show_cost_usd` says which reading the answer holds (operator amendment
+amend1024-one-real-order Part E, `docs/system/cost-currency-v1.md`). The key replaced the
+per-project `[cockpit] show_cost_usd` switch of `.remedy/config.toml`, which nothing reads any more.
 
 ## --plan-only and --step-by-step
 
@@ -391,8 +419,8 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
 - `--repo` — target repository path (default `.`)
 - `--project` — select a registered project by slug or id instead of the repository's own
 - `--json` — the JSON output above
-- `--builder-provider` — `pi` (the default), claude, claude-cli or fake; `ollama` is refused
-- `--reviewer-provider` — `pi` (the default), claude, claude-cli, fake or ollama
+- `--builder-provider` — `claude-cli` (the default), pi, claude or fake; `ollama` is refused
+- `--reviewer-provider` — `claude-cli` (the default), pi, claude, fake or ollama
 - `--builder-model`, `--reviewer-model` — model for the role on every task `do` runs
 - `--planner-model` — model for every planner call of the plan and shape steps
 - `--planner-provider` — which service makes those planner calls: `ollama`

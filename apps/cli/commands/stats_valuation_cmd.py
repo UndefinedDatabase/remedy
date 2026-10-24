@@ -6,6 +6,11 @@ more than the threshold apart, and every catalog price older than the stale wind
 never blocking. `recompute-costs` values every call of a project's ledger again after a catalog
 changed and rewrites only the valuations that changed; it reads the `calls` rows and never writes
 them, so the raw counters stay what the provider reported.
+
+Both are advanced commands, left out of the default help (operator amendment
+amend1024-one-real-order Part E), and `valuations` shows its dollar figures only when
+`cost.show_usd` is true: otherwise each basis shows its calls, a cost reads `not-shown` in the
+text and `normalized_cost` and `catalog_cost` read null in the JSON.
 """
 
 from __future__ import annotations
@@ -18,6 +23,11 @@ from pathlib import Path
 # WHY: one project's ledger is resolved exactly as `stats backfill-ledger` resolves it.
 from apps.cli.commands.stats_ledger_cmd import _one_project_ledger
 from apps.cli.json_envelope import emit_ok, fail
+from packages.orchestration.cost_currency import (
+    COST_USD_HIDDEN_LABEL,
+    COST_USD_HIDDEN_NOTE,
+    show_cost_usd,
+)
 
 EXIT_ERROR = 1
 
@@ -71,6 +81,10 @@ def _cmd_stats_valuations(*, project: str | None, all_projects: bool, catalog_di
     totals = summarize_call_valuations(valuations)
     currency = valuations[0].currency if valuations else COST_CURRENCY_USD
     flagged = [v for v in valuations if v.cross_check_exceeded]
+    show_usd = show_cost_usd()
+
+    def money(value: float | None) -> float | None:
+        return value if show_usd else None
     window = _stale_window_days()
     today = datetime.date.today()
     stale = [(catalog.adapter, price)
@@ -80,10 +94,11 @@ def _cmd_stats_valuations(*, project: str | None, all_projects: bool, catalog_di
     if json_output:
         emit_ok(
             ledger=str(ledger), currency=currency,
-            bases=[{"basis": t.basis, "calls": t.calls, "normalized_cost": t.normalized_cost}
+            bases=[{"basis": t.basis, "calls": t.calls, "normalized_cost": money(t.normalized_cost)}
                    for t in totals],
-            flagged=[{"call_id": v.call_id, "model": v.model, "normalized_cost": v.normalized_cost,
-                      "catalog_cost": v.catalog_cost, "deviation_percent": v.deviation_percent}
+            flagged=[{"call_id": v.call_id, "model": v.model,
+                      "normalized_cost": money(v.normalized_cost),
+                      "catalog_cost": money(v.catalog_cost), "deviation_percent": v.deviation_percent}
                      for v in flagged],
             stale_window_days=window,
             stale=[{"adapter": adapter, "model": p.model, "valid_from": p.valid_from.isoformat()}
@@ -94,16 +109,24 @@ def _cmd_stats_valuations(*, project: str | None, all_projects: bool, catalog_di
         print("  no call has been valued yet")
     for t in totals:
         cost = "unknown" if t.normalized_cost is None else f"{t.normalized_cost:.6f} {currency}"
+        if t.normalized_cost is not None and not show_usd:
+            cost = COST_USD_HIDDEN_LABEL
         print(f"  {t.basis:<18} {t.calls:>5} call(s)  {cost}")
     for v in flagged:
         apart = ("" if v.deviation_percent is None
                  else f", {v.deviation_percent} percent apart")
+        if not show_usd:
+            print(f"warning: cross-check: call {v.call_id} on model {v.model}: the cost the provider "
+                  f"reported and the catalog's price disagree{apart}")
+            continue
         print(f"warning: cross-check: call {v.call_id} on model {v.model} cost {v.normalized_cost} "
               f"{currency} as the provider reported it, and the catalog prices it at "
               f"{v.catalog_cost}{apart}")
     for adapter, p in stale:
         print(f"warning: stale price: the {adapter} catalog's price for {p.model} is valid from "
               f"{p.valid_from.isoformat()}, more than {window} days ago; it is still used")
+    if not show_usd:
+        print(COST_USD_HIDDEN_NOTE)
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

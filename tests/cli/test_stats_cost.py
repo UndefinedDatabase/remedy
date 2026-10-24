@@ -56,6 +56,12 @@ def data_root(tmp_path, monkeypatch) -> Path:
 
 
 @pytest.fixture
+def usd_shown(monkeypatch) -> None:
+    """`cost.show_usd = true` (operator amendment amend1024 Part E): dollars are printed."""
+    monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+
+
+@pytest.fixture
 def project_id(data_root) -> str:
     from packages.orchestration.project_registry import RemyProject, save_project
 
@@ -227,7 +233,7 @@ class TestCostJsonShape:
         assert json.loads(capsys.readouterr().out) == first
 
     def test_the_grand_total_matches_the_evidence(self, filled_ledger, project_id,
-                                                  capsys):
+                                                  usd_shown, capsys):
         CMD._cmd_stats_cost(project=project_id, json_output=True)
         total = json.loads(capsys.readouterr().out)["total"]
         assert total["calls"] == 2
@@ -235,6 +241,18 @@ class TestCostJsonShape:
         assert total["tokens_out"] == 200
         assert total["cost_usd"] == pytest.approx(0.25)
         assert total["basis"] == "mixed"
+
+    def test_the_dollars_read_null_unless_cost_show_usd_is_true(self, filled_ledger,
+                                                                project_id, capsys):
+        """amend1024 Part E: every key stays; the tokens and calls are there, the dollars null."""
+        CMD._cmd_stats_cost(project=project_id, by="role", json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+
+        assert payload["total"]["calls"] == 2
+        assert payload["total"]["tokens_in"] == 1000
+        for row in [payload["total"], *payload["rows"]]:
+            assert "cost_usd" in row
+            assert row["cost_usd"] is None, row
 
 
 class TestCostGrouping:
@@ -282,7 +300,7 @@ class TestBasisLabeling:
     """Every figure names its basis, and no unmeasured figure renders as 0."""
 
     def test_the_human_table_prints_the_unmeasured_word_not_a_zero(
-        self, filled_ledger, project_id, capsys
+        self, filled_ledger, project_id, usd_shown, capsys
     ):
         CMD._cmd_stats_cost(project=project_id, by="role")
         out = capsys.readouterr().out
@@ -297,6 +315,21 @@ class TestBasisLabeling:
         builder = _table_row(out, "builder")
         assert builder[2:7] == ["1000", "200", "64", "32", "0.2500"]
         assert builder[7] == "provider_reported"
+
+    def test_the_human_table_prints_no_dollar_figure_by_default(
+        self, filled_ledger, project_id, capsys
+    ):
+        """amend1024 Part E: tokens and calls stay, a reported cost reads `not-shown`."""
+        from packages.orchestration.cost_currency import COST_USD_HIDDEN_LABEL, COST_USD_HIDDEN_NOTE
+
+        CMD._cmd_stats_cost(project=project_id, by="role")
+        out = capsys.readouterr().out
+
+        builder = _table_row(out, "builder")
+        assert builder[1:7] == ["1", "1000", "200", "64", "32", COST_USD_HIDDEN_LABEL]
+        assert "0.2500" not in out and "$" not in out
+        assert _table_row(out, "reviewer")[6] == CMD.UNMEASURED
+        assert COST_USD_HIDDEN_NOTE in out
 
     def test_the_human_output_names_the_basis_counts_in_words(
         self, filled_ledger, project_id, capsys

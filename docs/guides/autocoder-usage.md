@@ -24,8 +24,9 @@ remedy do run "fix the add function" --repo /tmp/myrepo --builder-provider fake 
 
 ### Real local run via `remedy do` (requires Pi and running Ollama)
 
-The default builder and reviewer are the Pi harness on the local Ollama model
-`muse-glimmer:latest`; no provider flag is needed. Pi reads, edits and tests inside the
+Since operator amendment amend1024-one-real-order the default builder and reviewer are the Claude
+Code CLI; `--builder-provider pi --reviewer-provider pi` chooses the Pi harness on the local Ollama
+model `muse-glimmer:latest`. Pi reads, edits and tests inside the
 job's isolated workspace, and Ollama is only the model server (a raw Ollama call returns
 text and cannot write a file, so `--builder-provider ollama` is refused).
 

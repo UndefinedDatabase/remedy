@@ -72,6 +72,12 @@ class TestGroupHelpContent:
         stdout, _, _ = _capture_grouped([group_id])
         cmds = get_commands_for_group(group_id)
         for cmd in cmds:
+            # amend1024 Part E: an advanced command is left out of the default help.
+            if cmd.advanced:
+                assert f"  {cmd.subcommand}  " not in stdout, (
+                    f"'remedy {group_id}' help lists the advanced '{cmd.subcommand}'"
+                )
+                continue
             assert cmd.subcommand in stdout, (
                 f"'remedy {group_id}' help missing subcommand '{cmd.subcommand}'"
             )
@@ -230,8 +236,8 @@ class TestMainEntrypointDelegatesGroupHelp:
             f"remedy {group_id} via main still shows old flat argparse error"
         )
         assert "Traceback" not in stderr
-        # Must include expected subcommands
-        cmds = get_commands_for_group(group_id)
+        # Must include expected subcommands; an advanced one is left out (amend1024 Part E)
+        cmds = [cmd for cmd in get_commands_for_group(group_id) if not cmd.advanced]
         for cmd in cmds:
             assert cmd.subcommand in stdout, (
                 f"'remedy {group_id}' via main missing subcommand '{cmd.subcommand}'"

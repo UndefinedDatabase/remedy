@@ -105,7 +105,9 @@ def _calls_digest(path: Path) -> str:
 @pytest.mark.subprocess
 class TestTheEndToEndPath:
     def test_import_recompute_and_read_with_the_raw_rows_unchanged(
-            self, project_id, ledger, catalogs, tmp_path) -> None:
+            self, project_id, ledger, catalogs, tmp_path, monkeypatch) -> None:
+        # `cost.show_usd = true` (operator amendment amend1024 Part E): the dollars are shown.
+        monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
         raw = _calls_digest(ledger)
 
         first = _json("stats", "recompute-costs", "--project", project_id, "--catalog-dir", str(catalogs))
@@ -152,6 +154,26 @@ class TestTheReadings:
         assert any(line.split()[:3] == ["price_table", "1", "call(s)"] for line in lines)
         assert "warning: cross-check: call job-f158:T001" in r.stdout
         assert "47.5 percent apart" in r.stdout
+
+    def test_no_dollar_figure_is_shown_unless_cost_show_usd_is_true(
+            self, project_id, ledger, catalogs) -> None:
+        """amend1024 Part E: each basis keeps its calls; its cost reads `not-shown` or null."""
+        (catalogs / "claude-cli.toml").write_text(_catalog(2, "2026-10-01"), encoding="utf-8")
+        assert _remedy("stats", "recompute-costs", "--project", project_id,
+                       "--catalog-dir", str(catalogs)).returncode == 0
+        body = _json("stats", "valuations", "--project", project_id, "--catalog-dir", str(catalogs))
+        assert body["bases"] == [
+            {"basis": "provider_reported", "calls": 1, "normalized_cost": None},
+            {"basis": "price_table", "calls": 1, "normalized_cost": None}]
+        assert body["flagged"] == [{"call_id": "job-f158:T001", "model": MODEL, "normalized_cost": None,
+                                    "catalog_cost": None, "deviation_percent": 47.5}]
+        r = _remedy("stats", "valuations", "--project", project_id, "--catalog-dir", str(catalogs))
+        assert r.returncode == 0, r.stderr
+        lines = [line.split() for line in r.stdout.splitlines()]
+        assert ["provider_reported", "1", "call(s)", "not-shown"] in lines
+        assert "0.02" not in r.stdout and "0.0105" not in r.stdout
+        assert "47.5 percent apart" in r.stdout
+        assert "set cost.show_usd = true" in r.stdout
 
     def test_a_stale_catalog_price_is_warned_about_and_nothing_fails(
             self, project_id, ledger, catalogs) -> None:

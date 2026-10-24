@@ -1,0 +1,7 @@
+[
+  {
+    "command": "printf '\\n`build_greeting` automatically capitalises names, so `ada`, `ADA` and `Ada` all produce the same greeting.\\n' >> README.md && git diff && python3 -m pytest -q 2>&1 | tail -3",
+    "task_run": "229d4626d47142f5",
+    "tool": "Bash"
+  }
+]

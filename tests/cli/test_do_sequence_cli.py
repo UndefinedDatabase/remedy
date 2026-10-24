@@ -672,10 +672,14 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
 # ── R-0807's F268 half: measured tokens per role and cost (DECISION F268 D11) ──
 
 
-def test_the_json_cost_has_a_row_per_role_with_the_ledgers_own_numbers(repo, capsys):
+def test_the_json_cost_has_a_row_per_role_with_the_ledgers_own_numbers(repo, capsys, monkeypatch):
+    from packages.orchestration.config import reset_config
     from packages.orchestration.project_registry import resolve_project
     from packages.orchestration.token_ledger import query_cost
 
+    # Operator amendment amend1024 Part E: with `cost.show_usd` the dollars are the ledger's own.
+    monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+    reset_config()
     data = _do_json(capsys)
 
     [job_id] = data["job_ids"]

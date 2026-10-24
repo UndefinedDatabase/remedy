@@ -26,7 +26,7 @@ from packages.orchestration.call_identity import (
 from packages.orchestration.capability_routes import routed_parked_resume, routed_reviewer_schema
 
 # DECISION F315 D2: the installed adapter builds every call's command line (`claude_cli_command.py`).
-from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL
+from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL, log_builder_command_refusals
 from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.planner_cancel import planner_cancel_check
@@ -896,8 +896,10 @@ class ClaudeCliProvider:
         stream_rel_prefix: str = "",
         stream_max_bytes: int | None = None,
         stream_counters: dict[tuple[int, str], int] | None = None,
+        command_refusals_path: str | None = None,
     ) -> None:
         self._cwd = cwd
+        self._command_refusals_path = command_refusals_path   # amend1024 C3: refused Bash calls
         self._write_mode = write_mode
         self._max_tokens = max_tokens
         self._model = model
@@ -1057,7 +1059,7 @@ class ClaudeCliProvider:
                       *, streaming: bool = False) -> list[str]:
         return adapter_cli_argv(
             "claude-cli", role, prompt, model=self._model, json_schema=json_schema, resume=resume,
-            claude_path=claude, write_mode=self._write_mode, streaming=streaming)
+            claude_path=claude, write_mode=self._write_mode, streaming=streaming, workspace=self._cwd)
 
     def _call_streamed(
         self, claude: str, prompt: str, *, timeout_sec: int, max_output_chars: int,
@@ -1169,6 +1171,7 @@ class ClaudeCliProvider:
         if proc.returncode != 0:
             raise _CliNonZeroExit(proc.returncode, proc.stderr or "")
         raw = proc.stdout or ""
+        log_builder_command_refusals(raw, self._command_refusals_path)
 
         actuals, parse_reason = adapter_usage_actuals(
             "claude-cli", raw, claude_path=claude, write_mode=self._write_mode)

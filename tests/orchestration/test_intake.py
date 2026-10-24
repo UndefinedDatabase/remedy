@@ -279,6 +279,7 @@ class TestMakeProviderCallFn:
         return captured
 
     def test_returns_callable_with_ollama(self, monkeypatch):
+        monkeypatch.setenv("REMEDY_PLANNER_PROVIDER", "ollama")   # amend1024 A1: no longer the default
         self._install_fake_ollama(monkeypatch)
         fn = make_provider_call_fn()
         assert fn is not None
@@ -286,6 +287,7 @@ class TestMakeProviderCallFn:
         assert "goal" in result
 
     def test_env_model_reaches_chat_call(self, monkeypatch):
+        monkeypatch.setenv("REMEDY_PLANNER_PROVIDER", "ollama")
         monkeypatch.setenv("REMEDY_OLLAMA_PLANNER_MODEL", "intake-test-model")
         captured = self._install_fake_ollama(monkeypatch)
         fn = make_provider_call_fn()

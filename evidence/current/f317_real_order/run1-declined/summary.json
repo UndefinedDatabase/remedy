@@ -1,0 +1,31 @@
+{
+  "exit_code": 0,
+  "job_ids": [
+    "e17412639ed14265"
+  ],
+  "jobs": {
+    "e17412639ed14265": {
+      "builder": "claude-cli",
+      "builder_bash_calls": 0,
+      "builder_refused_commands": 0,
+      "builder_test_runs": [],
+      "reviewer": "claude-cli",
+      "stream_evidence": false
+    }
+  },
+  "order_budget_used": {
+    "calls": 11,
+    "cost_usd": 0.6493426000000001,
+    "elapsed_minutes": 2.635,
+    "tokens": 11820
+  },
+  "order_id": "3a45850644d6d551",
+  "planner_calls_by_reason": {
+    "intake": 1,
+    "scope_decision": 1,
+    "task_plan": 1
+  },
+  "shape": "one job",
+  "shape_source": "the planner's scope decision",
+  "state": "ended"
+}

@@ -165,27 +165,33 @@ def _cost_section(counters: Any | None) -> dict[str, str]:
     ``measured_cost_usd is None`` is ``absent``, any unpriced provider call makes
     the figure a floor and reads ``lower_bound``, and everything else is
     ``actual``.
+
+    With ``cost.show_usd`` false (amend1024 Part E) a measured figure reads
+    ``COST_USD_HIDDEN_LABEL`` and keeps its basis; an unmeasured one still reads as unmeasured.
     """
+    from packages.orchestration.cost_currency import visible_cost_text
+
     if counters is None:
         return {"value": COST_NOT_MEASURED, "basis": COST_BASIS_ABSENT}
-    value = str(counters.cost_description())
+    value = visible_cost_text(str(counters.cost_description()))
     return {"value": value, "basis": cost_exactness_basis(
         counters.measured_cost_usd, counters.unpriced_call_count)}
 
 
 def _tokens_section(job: Any) -> dict[str, Any]:
-    """amend1015 Part 5: the job's tokens, and whether the project asked to see its money.
+    """amend1015 Part 5: the job's tokens, and whether the operator asked to see its money.
 
     ``job_tokens.job_token_summary`` — the reader ``remedy do`` prints its ``Tokens`` lines
-    from — plus ``show_cost_usd``: true only when ``[cockpit] show_cost_usd = true`` in the
-    job's ``.remedy/config.toml``. ``cost`` above stays the money figure DECISION F040 D4
-    defines; the hero card shows this section's ``line`` unless ``show_cost_usd`` is true.
+    from — plus ``show_cost_usd``: true only when ``cost.show_usd = true`` in ``remedy.toml``
+    (amend1024 Part E), and while it is false every ``cost_usd`` of the section reads null.
+    ``cost`` above stays the money figure DECISION F040 D4 defines; the hero card shows this
+    section's ``line`` unless ``show_cost_usd`` is true.
     Additive, so no version bump (DECISION F040 D3, amend1015 D5).
     """
-    from packages.orchestration.job_tokens import cockpit_show_cost_usd, job_token_summary
+    from packages.orchestration.cost_currency import show_cost_usd, visible_cost_usd
+    from packages.orchestration.job_tokens import job_token_summary
 
-    return {**job_token_summary(job),
-            "show_cost_usd": cockpit_show_cost_usd(str(getattr(job, "repo_path", "") or ""))}
+    return visible_cost_usd({**job_token_summary(job), "show_cost_usd": show_cost_usd()})
 
 
 # DECISION F040 D4's exactness rule for one job's cost; the job digest and the client digest share it.

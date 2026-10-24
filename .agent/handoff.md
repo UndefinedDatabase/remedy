@@ -1,218 +1,223 @@
-# Handoff — F158 round 9 (closing round)
+# Handoff — operator amendment amend1024-one-real-order (session 1, closing)
 
-## Session
+Branch `feature/amend1024-one-real-order`, merged into `main`. Feature F317 accepted; next line under
+Rule A5: F316. The handback below is the one written to
+`~/.remedy-loop/amend1024-one-real-order.handback.md`, copied unchanged.
 
-SESSION 2 of feature F158 · round 9 · rounds so far 9. This session verified the prepared digest
-and every file's sha256 against `manifest.tsv` before touching anything, applied the two ordered
-commits exactly as the block specified, ran all five gates green on the first run of each (gate 5
-run twice only because its first invocation used a forbidden `cd` compound and was immediately
-redone correctly; both readings were identical), and had comfortable context headroom throughout.
-The session ends here because F158 is closed and the next feature starts in a fresh session.
+# Übergabe — Operator-Amendment amend1024-one-real-order
 
-Fortschritt: 100 % (F158 is accepted; its pull request waits for the next session's Open PR Gate) —
-Schätzung.
+Stand: 25. Oktober 2026. Zweig `feature/amend1024-one-real-order`, nach `main` gemergt und gepusht.
+Zu Beginn der Sitzung war ein Pull Request offen (#390, F158). Das Open-PR-Gate hat ihn gemergt,
+bevor die Arbeit begann.
 
-## Range
+## Was ist jetzt Standard?
 
-Review of `0f423ab6b`..`HEAD` (C1 to C2; C3 — this file — is the commit that carries it, per the
-handback template's self-reference exception).
+Der Standard für Planer, Bauer, Prüfer und Reparatur ist jetzt das Claude-Code-Programm `claude-cli`.
+Pi mit dem lokalen Modell `muse-glimmer:latest` über Ollama bleibt wählbar. Man wählt es mit
+`--builder-provider pi` oder mit `builder = "pi"` in der Tabelle `[roles]` der Datei `.remedy/config.toml`.
+Alle anderen Rollen wie `study`, `summary` und `teacher` behalten ihr lokales Modell.
 
-## Commits
+Der Planer liest jetzt die Tabelle `[roles]` genauso wie Bauer und Prüfer. Damit ist der Befund
+R-1448 geschlossen. Die Reihenfolge ist: Kommandozeilen-Flag, gespeicherter Job, Tabelle `[roles]`,
+dann `planner.provider` aus `remedy.toml`, dann der Produktstandard.
 
-### 5b7b85786 F158 R9 C1: book round 8, the Built State, save the round 9 block and the PR body
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f158-r9.md` | +150/-0 | NEW FILE — this round's block, byte-copied from the prepared `c1-` file |
-| `.agent/authored/f158-r9-pr_body.md` | +81/-0 | NEW FILE — the pull request body, byte-copied |
-| `.agent/live_review.md` | +2/-0 | round 8's verdict booked, byte-copied |
-| `.agent/plan.md` | +8/-12 | rewritten for the closing round, byte-copied |
-| `docs/roadmap/features/T8_F158.md` | +54/-0 | the feature file's Built State section added, byte-copied |
+Über die öffentliche HTTP-API gilt dasselbe für einen Client mit `host_tools`. Für jeden anderen
+Aufrufer, auch für das eigene Token des Servers, bleibt alles wie bisher. Die Route gibt ihm `pi`, `pi`
+und `ollama` mit, solange weder der Auftrag noch die Tabelle `[roles]` des Projekts etwas anderes
+nennt.
 
-### c5e3a1471 F158 R9 C2: rotate the finding ledger into its archive
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +0/-28 | `scripts/rotate_live_review.py` moved 12 Gate records and one finding pair (2 records) out |
-| `.agent/live_review_archive.md` | +28/-0 | the same 12 Gate records and finding pair appended, byte-verbatim |
+Die Größe eines Auftrags entscheidet jetzt der Planer und nicht mehr ein regulärer Ausdruck. Vor jeder
+Meilensteinplanung fragt Remedy den Planer, ob der Auftrag ein Job ist oder wirklich mehrere braucht.
+Die Antwort hat genau drei Felder: `single_job`, `files` und `reason`. Sie liegt in jedem Job als
+`scope_decision.json` unter `evidence`. Ein Job ist der Standard. Mehrere Jobs gibt es nur, wenn der
+Planer `single_job: false` mit einer Begründung liefert. Ein Auftrag mit der Kopfzeile
+`shape: single-job` wird nicht gefragt. Die alten Lanes aus `do_lane.py` entscheiden nur noch, wenn
+der Planer nicht erreichbar ist oder keine brauchbare Antwort gibt.
 
-### (this commit) F158 R9 C3: accept F158 in STATUS with its README sync and the self-use queue
-Measured on the working tree before this handoff joined it:
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | F158's `[~]` line replaced by the accepted `[x]` line from `status_line.txt` |
-| `README.md` | +15/-3 | capability count `166 of 316`, Tier 8 row `6 \| 13`, Tier 8 list gains F158 after F162 |
-| `scripts/self_use_queue.json` | +1/-1 | SU-084's `consumed_by` set to `F158` |
-| `.agent/handoff.md` | rewritten | this file — carried alone, per the handback template's self-reference exception (R-0149) |
+Der claude-cli-Bauer darf jetzt Bash benutzen, aber nur für eine feste Liste:
+- den Testbefehl des Projekts,
+- `python -m pytest`, `python3 -m pytest` und `pnpm test`,
+- `git status`, `git diff` und `git log`,
+- `ls`, `cat`, `head`, `tail`, `wc`, `grep` und `rg`,
+- `py_compile`, `pnpm build` und `pnpm lint`.
 
-## External actions
+Jeder abgelehnte Befehl wird als Nachweis protokolliert. Der Modus `dangerous-skip` ist unverändert.
 
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` run once before any write
-→ `[]` (Open PR Gate). No other `gh` command run yet. No `git worktree` command run by me. No stash
-entry touched. No `claude`/`codex` binary invoked by me. No web fetch by me.
-`git push origin feature/f158-cost-normalization` and `gh pr create` both run immediately after this
-commit; their outcomes are reported in the session reply, not in this file, because neither existed
-when this handoff was written.
+Ein claude-cli-Bauer zeichnet seinen Aufruf jetzt standardmäßig als Stream auf. So ist jeder Befehl,
+den er ausgeführt hat, im Nachweis sichtbar.
 
-## Verification
+Dollarbeträge erscheinen nur noch, wenn `cost.show_usd = true` in `remedy.toml` steht. Das gilt für
+`remedy stats`, `remedy job show`, `remedy do` und die öffentliche API. Standardmäßig zeigen sie Tokens
+und Aufrufe. Die Befehle `remedy stats valuations`, `remedy stats recompute-costs` und
+`remedy worker pricing-update` sind als fortgeschritten markiert und fehlen in der Standardhilfe. Sie
+laufen aber weiter.
 
-**Gate 1.** `git status --porcelain` → only the three C3 files modified (exit 0). Then
-`python3 .remedy-wt/f158-r9/prep/verify.py .`, run once from the primary checkout:
-```
-True	5b7b85786 single parent equal to the commit before it
-True	c5e3a1471 single parent equal to the commit before it
-True	every commit carries a F158 R9 Cn subject: 2 of 2
-True	on feature/f158-cost-normalization
-True	C1 paths exactly the manifest's: [5 files]
-True	C1 .agent/authored/f158-r9-pr_body.md numstat 81 0 equals 81 0 (and equals the prepared file)
-True	C1 .agent/authored/f158-r9.md numstat 150 0 equals 150 0 (and equals the prepared file)
-True	C1 .agent/live_review.md numstat 2 0 equals 2 0 (and equals the prepared file)
-True	C1 .agent/plan.md numstat 8 12 equals 8 12 (and equals the prepared file)
-True	C1 docs/roadmap/features/T8_F158.md numstat 54 0 equals 54 0 (and equals the prepared file)
-True	C2 paths exactly the manifest's: [2 files]
-True	C2 .agent/live_review.md numstat 0 28 equals 0 28 (and equals the prepared file)
-True	C2 .agent/live_review_archive.md numstat 28 0 equals 28 0 (and equals the prepared file)
-absent	C3 committed
-True	C3 working tree README.md equals c3-README.md
-True	C3 working tree docs/roadmap/STATUS.md equals c3-docs__roadmap__STATUS.md
-True	C3 working tree scripts/self_use_queue.json equals c3-scripts__self_use_queue.json
-ALL True
-```
-Exit 0. Every line `True` (C3 correctly `absent`, since C3 had not committed yet when this gate
-ran); last line `ALL True`.
+## Hat der echte Lauf geklappt, und wie viele Tokens hat er gebraucht?
 
-**Gate 2.** The STATUS line: `status_line.txt`'s content, without its trailing newline, occurs
-exactly once in `docs/roadmap/STATUS.md`:
-```
-occurrences 1
-begins_with_dash_tilde False
-```
-One occurrence, and the line begins `- [x]`, never `- [~]`.
+Ja. Das Testprojekt lag unter `/tmp/amend1024-g/greet-project`: ein Paket mit zwei Modulen, einer
+README und drei Tests. Ein Client mit `host_tools` hat den Auftrag über die öffentliche API
+eingereicht, ohne Dateipfad und ohne Formkopfzeile. Der Auftrag lautete: „Die Funktion, die den Gruß
+baut, soll den Namen auch dann groß schreiben, wenn er klein getippt wurde. Die README bekommt einen
+Satz dazu.“ Der Kopf enthielt nur, was die API verlangt: das Projekt sowie `max-total-tokens: 300000`
+und `max-provider-calls: 40`.
 
-**Gate 3.** `python3 .remedy-wt/f158-r9/prep/gate3.py .`, run once from the primary checkout:
-```
-exit 0
-733 passed in 96.19s (0:01:37)
-NOTICE R-1411: 3 entries of the configured data root changed in folders a supervisor this run did
-not start and its clients write; not counted.
-integrity exit 0 6 pass; fail_count 0
-```
-Exit 0, 733 passed — the same passed count as `sim-gate3.txt`'s second line (seconds differ, as
-permitted). No `FAILED`, `ERROR` or `SKIPPED` line. The one `NOTICE` line names the shared data root
-being written by a foreign process during the run, but the run's own exit code was already 0 (not
-1), so DECISION F151 D6's retry exception does not apply — it is recorded here as an observation,
-not a second run.
+Der zweite Lauf (Auftrag `e4eaaaa9cebd3304`, Job `24270f620da248bc`) ist so gelaufen:
+- claude-cli hat entschieden, dass es ein Job ist, und hat einen deutschen Satz als Begründung
+  geschrieben.
+- Genau ein Job wurde gebaut.
+- Der Bauer hat `python3 -m pytest -q` selbst ausgeführt. Er sah „5 passed“ und später „9 passed“.
+- Der Prüfer hat alle drei Aufgaben mit `pass` angenommen.
+- `remedy job apply` hat die Änderung ins Testprojekt gebracht. `greet/core.py` schreibt den Namen
+  jetzt groß, die README hat einen Satz dazu, und es gibt sechs neue Tests. Danach liefen dort 9 Tests
+  grün.
 
-**Gate 4.** Gate 3's integrity line, read from the same transcript: `integrity exit 0`,
-`"fail_count": 0`, all six checks `pass` — matching `sim-gate3.txt` exactly.
+Der Lauf hat 9 Aufrufe gebraucht, in gut 2 Minuten:
+- Die 6 Aufrufe von Bauer und Prüfer brauchten 36 Eingabe-Tokens und 5.193 Ausgabe-Tokens. Dazu kamen
+  135.803 Tokens aus dem Cache und 22.317 Tokens, die in den Cache geschrieben wurden.
+- Die 3 Planeraufrufe brauchten geschätzt etwa 3.500 Tokens.
+- Das Auftragsbuch zählt 8.711 Tokens.
 
-**Gate 5.** `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`,
-run twice (see Deviations): both readings
-```
-['R-1246', 'R-1281', 'R-1351', 'R-1353', 'R-1426', 'R-1428', 'R-1448', 'R-1450', 'R-1464', 'R-1467', 'R-1472']
-```
-identical and matching the block exactly.
+Ein erster Lauf (Auftrag `3a45850644d6d551`) hat ebenfalls eine richtige Änderung geliefert. Er
+brauchte 11 Aufrufe und 11.820 Tokens. Damals fehlte aber der Stream des Bauers, also war nicht zu
+sehen, dass er die Tests selbst ausgeführt hatte. Ich habe dieses Ergebnis absichtlich abgelehnt und
+den Stream zum Standard gemacht. Dann habe ich den Auftrag erneut geschickt.
 
-## Authored-text proofs
+Der vollständige Nachweis liegt unter `evidence/current/f317_real_order/` mit einer README. Es gibt
+keinen `manual_operator_repair`. F317 ist in `docs/roadmap/STATUS.md` angenommen.
 
-C1's byte copy and its disk-to-disk proof read `bytes_equal True` for all five targets immediately
-after copying, before staging. C2's rotation output was compared line-by-line against
-`sim-rotation.txt` (exit code and every line but the `written:` line identical) and both resulting
-ledger files were proved byte-equal to the prepared `c2-` files before staging. The mandated C3
-proof — the STATUS line in `docs/roadmap/STATUS.md` byte-identical to `status_line.txt` without its
-trailing newline — read one occurrence (Gate 2 above):
-```
-- [x] F158 — Cost normalization & price catalog (T001–T003 complete; accepted 2026-10-24 · live
-review PASS_WITH_RISKS — ACCEPTED · Evidence job f158r8e1001 · package
-remedy-review-20261024-192309-READY_FOR_REVIEW.zip · SHA-256
-f095df6c9db88fc7ac379572cf9a0d783f4eb187cdfa68b5123917814fa6451a · package path
-~/Repos/remedy-history/zips · accepted HEAD 18af758dbe3e6b569083215ead8ceb5f25fed4cb)
-```
-(package folder written as `~` per instruction; the committed line itself carries the real absolute
-path, which is permitted outside `.agent/`). `None applied` beyond these.
+## Welche Umgebungsvariable hat beim echten claude-Aufruf gefehlt?
 
-## Rotation detail
+Für einen funktionierenden Aufruf hat auf dieser Maschine keine Variable gefehlt.
 
-`scripts/rotate_live_review.py`'s whole output, run once from the primary checkout:
-```
-exit 0
-gate records moved: 12
-finding pairs moved: 1 (2 records)
-resolved-text records moved: 0
-old ledger size: 171789 bytes
-new ledger size: 148366 bytes
-old archive size: 7396987 bytes
-new archive size: 7420410 bytes
-open findings before: 11
-open findings after: 11
-gate headers matching neither known form (left in place): 1
-written: .agent/live_review.md and .agent/live_review_archive.md
-```
-Ledger: 171789 bytes before, 148366 bytes after. Archive: 7396987 bytes before, 7420410 bytes
-after. Open-findings count unchanged at 11, as required.
+Ich habe zwei echte Aufrufe gemacht:
+- Mit der neuen Liste hat der Aufruf in 6,8 Sekunden die verlangte Datei angelegt.
+- Mit der alten Liste aus F152 als Gegenprobe hat der Aufruf ebenfalls funktioniert, in 11,4 Sekunden.
 
-## Deviations & assumptions
+Der Grund für das zweite Ergebnis: Der `claude`-Wrapper aus `~/Repos/system/bin` steht als erster auf
+dem Pfad. Wenn `CLAUDE_CONFIG_DIR` fehlt, wählt er selbst ein aktives Profil. Ohne diese Variable
+könnte ein Bauer deshalb auf einem anderen Ihrer Konten laufen als die Sitzung, die ihn gestartet hat.
+Deshalb wird `CLAUDE_CONFIG_DIR` jetzt durchgereicht, zusammen mit den anderen elf Namen aus D1.
 
-One: Gate 5 was first run as `cd <repo> && python3 -c "..."`, a compound shell shape the block
-explicitly forbids ("never cd ... the sandbox refuses compound shell shapes"). The sandbox did not
-in fact refuse it, but the command still violated the constraint, so it was immediately re-run
-correctly — a standalone script under `.remedy-wt/f158-r9-worker/` that adds the repository root to
-`sys.path` instead of changing directory — with an identical result. No commit, push or PR action
-was taken between the two runs; both are read-only. Everything else matched the block's ordered
-commit sequence and paths exactly: every digest in `digests.txt` and every prepared file's sha256 in
-`manifest.tsv` matched before any file was used; C1 and C2 ran exactly as specified; C2's rotation
-ran exactly once; gates 1–4 each ran exactly once; no file outside the paths named per commit was
-touched; no `REMEDY_TEST_MAX_WORKERS` or extra `-n`; no second test command; no worktree of my own;
-no agent/fork/helper of any kind started; no `gh pr merge`, `git checkout`/`git switch`, branch
-creation/move/deletion or force-push; no `--no-verify`; no `claude`/`codex` binary invoked by me.
+Beide Ergebnisse stehen unter `evidence/current/claude_cli_real_binary_check*.json` und in
+`docs/adr/0002-claude-cli-worker-isolation.md`.
 
-## For the operator, in plain sentences
+## Welche Features wurden geparkt?
 
-Remedy now keeps all of its money bookkeeping in one single currency, the dollar, and it will
-refuse any setting that tries to name a different one, because it keeps every budget in dollars and
-will never guess an exchange rate on its own. Each kind of worker can now be given its own price
-list, and every price on that list has to say when it was set and where the number came from; the
-one price list shipped for the model's own command-line tool is deliberately left empty, because
-that tool already reports what each of its own calls cost, and no outside price list for it was
-available. Every model call that gets written into the cost record now also carries a small note
-next to it explaining what that cost figure is based on: the provider's own reported number, a
-number from a price list, or "unknown" together with the reason it is unknown; when a provider's own
-number disagrees with the price list by more than an allowed margin, that call gets flagged, while a
-price list that has simply gone stale only produces a warning and never stops anything from running.
-A brand new price list is always shown to a person as a comparison against the old one first, and it
-is only saved once that comparison is confirmed; two new commands can also take a past set of calls
-and value them again after a price change, then show the old and new totals side by side along with
-any warnings. Separately, a paid trial run of Remedy on itself wrote the first tests for one of
-Remedy's own untested modules; its own reviewer looked at that work and approved it, but it was
-deliberately left sitting unapplied rather than merged in, and the calls that trial made were never
-recorded in this feature's cost bookkeeping, because no suitable place for them existed yet — that
-gap has been written down as a known gap for a future clean-up feature to close. The entire
-automated test collection passed on the exact code being shipped. The review package built for this
-feature is saved outside the project's own folder, on this machine, under a folder named after the
-project's history. A pull request for this feature is now open and will be merged automatically at
-the very start of the next work session, unless the operator chooses to merge it sooner.
+22 Features stehen jetzt in Package 2 mit dem Vermerk „geparkt bis F317 dreimal in Folge auf Luna
+geklappt hat“:
+- F153, F155, F154 und F161,
+- F067 und F065,
+- F130, F132, F136, F137, F142 und F143,
+- F088, F091, F092, F093, F095, F097, F099, F100, F101 und F102.
 
-## Item status
+33 Features habe ich nicht geparkt. Sonst wäre eine Abhängigkeit zerrissen, denn Features, die aktiv
+bleiben, nennen sie in ihrer Zeile „Depends on“. Betroffen sind:
+- der ganze Tier 4,
+- F073, F063, F064 und F066,
+- F129, F131, F134, F135, F138, F139 und F140,
+- F087, F089, F090, F094, F096 und F098.
 
-| Item | Status | Reason |
-|---|---|---|
-| C1 | done | five files byte-equal to prepared copies; numstat matched manifest exactly |
-| C2 | done | rotation ran once, exit 0, output matched `sim-rotation.txt`; both ledger files byte-equal to prepared copies |
-| C3 | done | three files byte-equal to prepared copies; numstat matched manifest exactly; handoff carried alongside |
-| Gate 1 | done | every line `True`, last line `ALL True` (C3 correctly `absent` before commit) |
-| Gate 2 | done | STATUS line occurs exactly once, begins `- [x]` |
-| Gate 3 | done | exit 0, 733 passed, matching `sim-gate3.txt`'s count; no FAILED/ERROR/SKIPPED |
-| Gate 4 | done | `integrity exit 0`, `fail_count` 0, matching `sim-gate3.txt` |
-| Gate 5 | done | open finding ids list matched exactly (run twice due to the Gate 5 deviation above, identical both times) |
-| Push | pending | runs immediately after this commit; outcome in the session reply |
-| Pull request | pending | created immediately after the push; number and URL in the session reply |
+Das steht als Frage Q28 in `.agent/operator_questions.md`. Meine Empfehlung dort ist, die abhängigen
+Features ebenfalls zu parken.
 
-## Next
+F316 bleibt offen, aber ohne R-1448. Die übrigen Befunde schließt keiner der Teile A bis E.
 
-1. Phase 1 rule 1: check `.agent/STOP` before any new work.
-2. Phase 1 rule 2 — the Open PR Gate: merges F158's pull request in the NEXT session, never in this
-   one.
-3. The reviewer reviews round 9 and books its verdict in the next feature's first commit.
-4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md` is F316 — Findings paydown v11.
+## Was muss der Operator auf seiner Maschine noch tun?
 
-Operator questions open: 3.
-Open findings: 11 (`R-1246`, `R-1281`, `R-1351`, `R-1353`, `R-1426`, `R-1428`, `R-1448`, `R-1450`,
-`R-1464` and `R-1472`, owned by F316; `R-1467`, owned by F246).
+Remedy muss nicht neu installiert werden. Die Installation ist editierbar und zeigt auf
+`~/Repos/remedy`. Jeder neue Aufruf von `remedy` läuft also schon mit dem neuen Code, sobald `main`
+ausgecheckt ist.
+
+Den langlaufenden Supervisor (Prozess 740108, seit dem 20. Oktober auf Port 8450) müssen Sie neu
+starten. Sein HTTP-Teil läuft noch mit altem Code im Speicher und gibt Clients ohne `host_tools` die
+lokalen Standards nicht mit. Die Läufe, die er startet, nutzen aber schon den neuen Standard
+claude-cli. Neu starten Sie ihn mit:
+
+    remedy serve stop
+    REMEDY_SERVE_API_PORT=8450 remedy serve start
+
+Erst nach dem Neustart gewähren Sie dem Universe-Client `host_tools`. Dann laufen seine Aufträge mit
+claude-cli. Für das Orb des Universums ist das dieser Befehl:
+
+    remedy client grant-host-tools orb-universe
+
+Für die anderen beiden Clients geht es genauso:
+
+    remedy client grant-host-tools orb-remedy
+    remedy client grant-host-tools luna
+
+Prüfen können Sie das Ergebnis mit `remedy client show`.
+
+Es gibt keinen Befehl, der einen neuen Client anlegt. Einen Client trägt man von Hand in
+`.data/api/clients.json` ein, mit Dateirechten 0600, so wie es `docs/system/public-http-api-v1.md`
+beschreibt. Ich habe das im echten Lauf genau so gemacht.
+
+Beantworten Sie bitte Q28.
+
+Nach Belieben können Sie die Reste des gelöschten Cockpits entfernen: `apps/ui/dist`,
+`apps/ui/node_modules`, `apps/ui/legacy` und `apps/ui/.data`. Sie sind nicht versioniert, und ich
+habe sie nicht angefasst.
+
+Der Supervisor des Testlaufs ist beendet. Das Testprojekt und seine Daten liegen noch unter
+`/tmp/amend1024-g`. Den Ordner können Sie löschen.
+
+## Abweichungen vom Auftrag
+
+- Den Schlüssel `dod.test_command` gibt es in Remedy nicht. Der Testbefehl eines Projekts steht in
+  `[tests] command` der Datei `.remedy/config.toml`. Die Erlaubnisliste liest ihn von dort, mit den
+  bekannten Rückfällen.
+- Die Erlaubnisliste enthält zusätzlich `python3` und erlaubt `pytest` mit beliebigen Argumenten statt
+  nur `-q`. Auf dieser Maschine gibt es kein `python`, und ein Bauer muss auch einzelne Testdateien
+  laufen lassen dürfen.
+- Ein Auftrag im begrenzten Lane, der seine Dateien selbst ausdrücklich nennt, wird nicht nach seiner
+  Größe gefragt. Er sagt schon selbst, was er ist, und bleibt ohne Planeraufruf.
+- Der Kopf des API-Auftrags enthält das Projekt und die Kappen, weil die API ohne beides ablehnt. Eine
+  Formkopfzeile enthält er nicht.
+- `apps/ui` habe ich in den Plantexten umgeschrieben. Die 43 Dateien abgeschlossener Features haben je
+  einen datierten Hinweissatz bekommen, statt ihre Geschichte umzuschreiben.
+- Die Struktur-Ratsche ist für `_cmd_do` (+1 Zeile), `pingpong_provider.py` (+3) und
+  `apps/cli/commands/job.py` (+1) angehoben. Für jede steht ein Satz im Struktur-Hauptbuch. Nichts
+  wurde künstlich abgespalten.
+- Die Teile E und F2/F5 haben zwei Hilfsagenten in eigenen Arbeitsbäumen gebaut. Ich habe ihre Commits
+  übernommen, ihre Arbeitsbäume entfernt und alles im gemeinsamen Testlauf geprüft.
+
+## Tests
+
+Der erste vollständige Lauf hatte 67 Fehler. Die Ursachen:
+- Tests schrieben den alten Standard fest.
+- Gefälschte Planer kannten die neue Größenfrage nicht.
+- Durch den Stream-Standard fehlte JSON.
+- Mehrere Wächter waren betroffen: die Zahl der breiten `except`, ein verwaister Script-Eintrag, die
+  Erreichbarkeitsliste, ein Wort in einer Hilfe und der fehlende Abschnitt in `context.md`.
+- Einige Fehler kamen nur aus den Arbeitsbäumen der Hilfsagenten.
+
+Kein Test wurde gelöscht oder abgeschwächt. Tests, die den alten Standard prüfen, wählen ihn jetzt
+ausdrücklich.
+
+Neu ist ein Schutz in `tests/conftest.py`: Kein Test erreicht mehr das echte `claude` dieser Maschine.
+
+Der zweite Lauf hatte noch 4 Fehler. Die Interface-Route darf ihre Dollar-Schlüssel nicht verstecken,
+weil sie Schlüssel nur beschreibt. Danach war alles grün.
+
+Der letzte vollständige Lauf: `python3 -m pytest -n auto -q --maxfail=400` mit Python 3.10.12,
+24.290 Tests bestanden und 11 übersprungen. Er lief vor dem Commit dieser Übergabe auf Commit
+`8f4de35b3`. Danach habe ich ihn auf dem endgültigen Baum wiederholt, das Ergebnis steht im Merge-Commit.
+`ruff check .` ist grün.
+
+## Stand der Teile
+
+| Teil | Status | Grund |
+|------|--------|-------|
+| A1 | done | |
+| A2 | done | R-1448 geschlossen |
+| A3 | done | |
+| B1–B4 | done | |
+| C1–C3 | done | `dod.test_command` gibt es nicht, siehe Abweichungen |
+| D1–D2 | done | keine Variable fehlte, siehe oben |
+| E1–E2 | done | |
+| F1 | done | F317 registriert und angenommen |
+| F2 | deviated | 22 geparkt, 33 bleiben wegen Abhängigkeiten, Frage Q28 |
+| F3 | done | |
+| F4 | done | |
+| F5 | done | |
+| G1–G4 | done | zweiter Lauf, der erste wurde absichtlich abgelehnt |

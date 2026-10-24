@@ -12,15 +12,22 @@ from pathlib import Path
 
 import pytest
 
-from packages.orchestration.config import all_key_specs, get_key_spec
+from packages.orchestration.config import all_key_specs, get_key_spec, reset_config
 from packages.orchestration.cost_currency import (
     COST_CURRENCIES,
     COST_CURRENCY_KEY,
     COST_CURRENCY_USD,
+    COST_SHOW_USD_KEY,
+    COST_USD_HIDDEN_LABEL,
     CostCurrencyError,
     cost_currency_problems,
     foreign_currency_markers,
+    hide_cost_usd_fields,
+    is_cost_usd_field,
     resolve_cost_currency,
+    show_cost_usd,
+    visible_cost_text,
+    visible_cost_usd,
 )
 
 REPO = Path(__file__).resolve().parents[2]
@@ -70,6 +77,64 @@ class TestTheKeyAndItsRefusal:
 
 
 @pytest.mark.subprocess
+class TestDollarsAreHiddenByDefault:
+    """Operator amendment amend1024-one-real-order Part E: tokens, not dollars."""
+
+    def test_the_key_is_registered_off_by_default(self) -> None:
+        spec = get_key_spec(COST_SHOW_USD_KEY)
+        assert spec is not None
+        assert spec.env_var == "REMEDY_COST_SHOW_USD"
+        assert spec.value_type is bool
+        assert spec.default is False
+
+    def test_the_key_and_only_true_shows_dollars(self, monkeypatch, tmp_path) -> None:
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("REMEDY_COST_SHOW_USD", raising=False)
+        assert show_cost_usd() is False
+        for raw, expected in (("true", True), ("false", False), ("no", False)):
+            monkeypatch.setenv("REMEDY_COST_SHOW_USD", raw)
+            reset_config()
+            assert show_cost_usd() is expected, raw
+        monkeypatch.delenv("REMEDY_COST_SHOW_USD")
+        (tmp_path / "remedy.toml").write_text("[remedy.cost]\nshow_usd = true\n", encoding="utf-8")
+        reset_config()
+        assert show_cost_usd() is True
+
+    def test_a_measured_dollar_field_is_hidden_and_a_limit_is_kept(self) -> None:
+        for name in ("cost_usd", "value_usd", "measured_usd", "expected_cost_usd",
+                     "measured_cost_usd"):
+            assert is_cost_usd_field(name), name
+        for name in ("max_cost_usd", "cap_usd", "confirm_above_usd", "show_cost_usd",
+                     "price_basis_usd_per_1k_tokens", "tokens_in"):
+            assert not is_cost_usd_field(name), name
+
+    def test_hiding_keeps_every_key_and_nulls_only_the_dollars(self) -> None:
+        document = {"cost": {"cost_usd": 0.5, "show_cost_usd": False,
+                             "roles": [{"role": "builder", "tokens_in": 10, "cost_usd": 0.5}]},
+                    "budgets": {"max_cost_usd": 2.0}, "used": ({"cost_usd": 1.0, "calls": 3},)}
+        hidden = hide_cost_usd_fields(document)
+        assert hidden == {"cost": {"cost_usd": None, "show_cost_usd": False,
+                                   "roles": [{"role": "builder", "tokens_in": 10, "cost_usd": None}]},
+                          "budgets": {"max_cost_usd": 2.0}, "used": [{"cost_usd": None, "calls": 3}]}
+        assert document["cost"]["cost_usd"] == 0.5, "the input is not changed"
+
+    def test_visible_cost_usd_is_the_document_itself_with_the_key_true(self, monkeypatch) -> None:
+        monkeypatch.delenv("REMEDY_COST_SHOW_USD", raising=False)
+        document = {"cost_usd": 0.5}
+        assert visible_cost_usd(document) == {"cost_usd": None}
+        monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+        reset_config()
+        assert visible_cost_usd(document) is document
+
+    def test_a_text_naming_dollars_reads_not_shown_and_any_other_stays(self, monkeypatch) -> None:
+        monkeypatch.delenv("REMEDY_COST_SHOW_USD", raising=False)
+        assert visible_cost_text(">= $0.5000 (2 provider calls unpriced)") == COST_USD_HIDDEN_LABEL
+        assert visible_cost_text("not-measured") == "not-measured"
+        monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+        reset_config()
+        assert visible_cost_text("$1.2500") == "$1.2500"
+
+
 class TestConfigValidateReadsTheKey:
     """The user's path: `remedy config validate` names a refused currency and says invalid."""
 

@@ -34,6 +34,7 @@ CALL_REASONS = {
     "TaskPlan": "task_plan",
     "MissionPlanDraft": "mission_plan",
     "StudyCategoryNarration": "study_narration",
+    "OrderScopeDecision": "scope_decision",
 }
 #: Characters per token for the estimate of a planning call; labelled an estimate wherever shown.
 CHARS_PER_ESTIMATED_TOKEN = 4

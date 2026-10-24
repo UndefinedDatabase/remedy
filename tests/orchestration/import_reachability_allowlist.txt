@@ -382,6 +382,7 @@ packages.orchestration.run_report
 packages.orchestration.run_rounds_view
 packages.orchestration.run_task_list
 packages.orchestration.runtime_integration_gate
+packages.orchestration.scope_decision
 packages.orchestration.safe_points
 packages.orchestration.sandbox_profiles
 packages.orchestration.sandbox_relay

@@ -1,0 +1,36 @@
+{
+  "exit_code": 0,
+  "job_ids": [
+    "24270f620da248bc"
+  ],
+  "jobs": {
+    "24270f620da248bc": {
+      "builder": "claude-cli",
+      "builder_bash_calls": 6,
+      "builder_refused_commands": 1,
+      "builder_test_runs": [
+        "printf '\\n`build_greeting` automatically capitalises names, so `ada`, `ADA` and `Ada` all produce the same greeting.\\n' >> README.md && git diff && python3 -m pytest -q 2>&1 | tail -3",
+        "git diff && python3 -m pytest -q 2>&1 | tail -3",
+        "python3 -m pytest -q 2>&1 | tail -5",
+        "python3 -m pytest -q 2>&1 | tail -5; git diff --stat"
+      ],
+      "reviewer": "claude-cli",
+      "stream_evidence": true
+    }
+  },
+  "order_budget_used": {
+    "calls": 9,
+    "cost_usd": 0.3097006,
+    "elapsed_minutes": 2.064,
+    "tokens": 8711
+  },
+  "order_id": "e4eaaaa9cebd3304",
+  "planner_calls_by_reason": {
+    "intake": 1,
+    "scope_decision": 1,
+    "task_plan": 1
+  },
+  "shape": "one job",
+  "shape_source": "the planner's scope decision",
+  "state": "ended"
+}

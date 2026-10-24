@@ -51,6 +51,15 @@ CLI_ONLY_PROVIDERS: dict[str, str] = {
 }
 
 
+#: What an order over HTTP runs on for a caller WITHOUT `host_tools` when neither its body nor its
+#: project's `[roles]` table names the role (operator amendment amend1024-one-real-order, A3): the
+#: local defaults it ran on before claude-cli became the product default. A client granted
+#: `host_tools` takes the product default, claude-cli, and is handed none of these.
+LOCAL_ORDER_DEFAULTS: dict[str, str] = {
+    "builder_provider": "pi", "reviewer_provider": "pi", "planner_provider": "ollama",
+}
+
+
 def client_has_host_tools(client: Any) -> bool:
     """True for a client token whose registry entry holds `host_tools`; False for the server's own token."""
     return bool(getattr(client, HOST_TOOLS_PROPERTY, False))
@@ -88,6 +97,29 @@ def remote_provider_refusal(body: dict[str, Any], client: Any = None) -> str:
             return (f"{key} {value!r} is offered but not available on this server (see GET "
                     f"/api/v1/execution). Nothing was started.")
     return ""
+
+
+# WHY: claude-cli is the product default, but only a client granted `host_tools` may run it over
+# HTTP, so every other caller's order keeps the local defaults it ran on before (amend1024 A3).
+def http_order_default_options(body: dict[str, Any], client: Any, repo_root: str | None) -> list[str]:
+    """The `remedy do` options naming LOCAL_ORDER_DEFAULTS for each role BODY leaves unnamed.
+
+    None for a client with `host_tools`: its order runs on the product default. A role the order's
+    project names in its `[roles]` table, and the planner when `planner.provider` is configured,
+    are left to that choice. A table that cannot be read hands nothing: `remedy do` refuses it.
+    """
+    if client_has_host_tools(client):
+        return []
+    from packages.orchestration.config import get_config
+    from packages.orchestration.project_roles import ProjectRolesError, read_project_roles
+
+    try:
+        table = read_project_roles(repo_root)
+    except ProjectRolesError:
+        return []
+    chosen = {*table, *(["planner"] if get_config().get("planner.provider") else [])}
+    return [f"--{key.replace('_', '-')}={value}" for key, value in LOCAL_ORDER_DEFAULTS.items()
+            if key not in body and key.removesuffix("_provider") not in chosen]
 
 
 #: The providers each role can name on the command line, in the order `remedy do` lists them.
@@ -147,12 +179,21 @@ def _not_offered_reason(role: str, provider: str, client: Any = None) -> str:
     return CLI_ONLY_PROVIDERS.get(provider, "not a provider this role takes over HTTP")
 
 
-def _role_default(role: str) -> tuple[str, str]:
+def _role_default(role: str, client: Any = None) -> tuple[str, str]:
+    """The provider and model CLIENT's order runs ROLE on when it names none (amend1024 A3)."""
+    from packages.orchestration.role_config import default_model_for_provider, resolve_role_config
+
     if role == "planner":
+        from packages.orchestration.config import get_config
         from packages.orchestration.intake import resolve_planner_target
+
+        if not client_has_host_tools(client) and not get_config().get("planner.provider"):
+            return LOCAL_ORDER_DEFAULTS["planner_provider"], ""
         provider, model = resolve_planner_target(None, None)
         return provider, model or ""
-    from packages.orchestration.role_config import resolve_role_config
+    local = LOCAL_ORDER_DEFAULTS.get(f"{role}_provider", LOCAL_ORDER_DEFAULTS["builder_provider"])
+    if not client_has_host_tools(client):
+        return local, default_model_for_provider(local)
     config = resolve_role_config(role)
     return config.provider, config.model or ""
 
@@ -182,7 +223,7 @@ def execution_capabilities(client: Any = None) -> dict[str, Any]:
         models = None
     roles: dict[str, Any] = {}
     for role, providers in _ROLE_PROVIDERS.items():
-        default_provider, default_model = _role_default(role)
+        default_provider, default_model = _role_default(role, client)
         roles[role] = {
             "default_provider": default_provider, "default_model": default_model,
             "selectable_over_http": role in remote_role_providers(client),

@@ -92,7 +92,8 @@ def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
     """
     if not ctx.cost_mirrors:
         return None
-    from packages.orchestration.job_tokens import cockpit_show_cost_usd, job_token_roles
+    from packages.orchestration.cost_currency import show_cost_usd
+    from packages.orchestration.job_tokens import job_token_roles
 
     failed = {job_id: str(mirror.get("error") or "")
               for job_id, mirror in ctx.cost_mirrors.items()
@@ -118,7 +119,7 @@ def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
         "job_ids": [job_id for job_id in ctx.cost_mirrors if job_id not in failed],
         "mirror_failed_job_ids": list(failed),
         "mirror_errors": failed,
-        "show_cost_usd": cockpit_show_cost_usd(str(getattr(ctx, "repo_root", "") or "")),
+        "show_cost_usd": show_cost_usd(),
     }
 
 
@@ -180,9 +181,9 @@ def _turns_words(role: dict[str, Any]) -> str:
 def do_cost_summary_lines(summary: dict[str, Any] | None, *, show_cost_usd: bool | None = None) -> list[str]:
     """The text lines of `do_cost_summary`: one per role, one for the cost, one per failed mirror.
 
-    amend1015 Part 5.2: a measured dollar figure is printed only with *show_cost_usd*, which
-    defaults to the summary's own reading of `[cockpit] show_cost_usd = true` in the project's
-    `.remedy/config.toml`.
+    amend1015 Part 5.2, amend1024 Part E: a measured dollar figure is printed only with
+    *show_cost_usd*, which defaults to the summary's own reading of `cost.show_usd = true` in
+    `remedy.toml` (`cost_currency.show_cost_usd`).
     """
     if summary is None:
         return []
@@ -198,8 +199,8 @@ def do_cost_summary_lines(summary: dict[str, Any] | None, *, show_cost_usd: bool
     elif show_cost_usd:
         lines.append(f"Cost: ${cost:.6f} (measured, from the ledger)")
     else:
-        lines.append("Cost: not shown — tokens only (set show_cost_usd = true under [cockpit] "
-                     "in .remedy/config.toml to show it)")
+        lines.append("Cost: not shown — tokens only (set cost.show_usd = true in remedy.toml "
+                     "to show it)")
     lines.extend(f"Cost NOT recorded to the ledger for job {job_id}: {error}"
                  for job_id, error in summary["mirror_errors"].items())
     return lines
@@ -211,8 +212,11 @@ def do_json_document(ctx: DoContext, *, jobs: list[dict[str, Any]], cost: dict[s
 
     `order_budget` is the order's one ledger (scale audit P1-4): the caps, every planner call with
     its reason and outcome, the jobs' spend and what the planning calls cost in estimated tokens.
+    Every dollar field reads null unless `cost.show_usd` is true (`cost_currency.visible_cost_usd`).
     """
-    return {
+    from packages.orchestration.cost_currency import visible_cost_usd
+
+    return visible_cost_usd({
         "mission_id": ctx.mission_id or None, "order_id": ctx.order_id or None,
         "job_ids": list(ctx.job_ids),
         "waiting_job_ids": list(ctx.waiting_job_ids),
@@ -230,7 +234,7 @@ def do_json_document(ctx: DoContext, *, jobs: list[dict[str, Any]], cost: dict[s
         "push": ctx.push_outcome,
         "next": list(ctx.next_lines),
         "review_report": ctx.review_report,
-    }
+    })
 
 
 def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:

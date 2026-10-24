@@ -83,6 +83,10 @@ def test_isolation_equals_decision_f152_d3_2_exactly():
             "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "SHELL", "TERM", "TMPDIR",
             "TZ", "USER", "ANTHROPIC_API_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
             "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+            # operator amendment amend1024-one-real-order, D1: what the real program reads
+            "CLAUDE_CONFIG_DIR", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_MODEL", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "SSL_CERT_FILE",
+            "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "NODE_OPTIONS",
         ),
         applies=True,
     )

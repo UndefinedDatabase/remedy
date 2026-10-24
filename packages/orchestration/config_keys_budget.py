@@ -174,6 +174,20 @@ BUDGET_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=60,
     ),
+    # Operator amendment amend1024-one-real-order Part E: Remedy judges a run by its tokens and
+    # provider calls, so every dollar figure stays hidden until this key is true; it replaced the
+    # per-project `[cockpit] show_cost_usd` switch of `.remedy/config.toml` (amend1015 D7).
+    ConfigKeySpec(
+        key="cost.show_usd",
+        env_var="REMEDY_COST_SHOW_USD",
+        description=(
+            "Whether stats, job show, do and the HTTP API show dollar figures; off by default, "
+            "when they show tokens and provider calls and every dollar field reads null "
+            "(amend1024 Part E)"
+        ),
+        value_type=bool,
+        default=False,
+    ),
     ConfigKeySpec(
         key="budget.deadline",
         env_var="REMEDY_BUDGET_DEADLINE",

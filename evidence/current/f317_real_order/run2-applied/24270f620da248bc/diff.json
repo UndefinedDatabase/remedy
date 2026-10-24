@@ -1,0 +1,33 @@
+{
+  "files": [
+    {
+      "added": 2,
+      "change": "modified",
+      "patch": "diff --git a/README.md b/README.md\nindex a2c7a7d..3dd53d0 100644\n--- a/README.md\n+++ b/README.md\n@@ -3,3 +3,5 @@\n A tiny package that builds a greeting.\n \n     python3 -c \"from greet.core import build_greeting; print(build_greeting('Ada'))\"\n+\n+`build_greeting` automatically capitalises names regardless of how they were originally typed, so `ada`, `ADA` and `Ada` all produce the same greeting.\n",
+      "path": "README.md",
+      "removed": 0,
+      "truncated": false
+    },
+    {
+      "added": 1,
+      "change": "modified",
+      "patch": "diff --git a/greet/core.py b/greet/core.py\nindex 503aa34..5f32cd5 100644\n--- a/greet/core.py\n+++ b/greet/core.py\n@@ -3,4 +3,4 @@\n \n def build_greeting(name: str) -> str:\n     \"\"\"Return the greeting for NAME.\"\"\"\n-    return f\"Hallo, {name.strip()}!\"\n+    return f\"Hallo, {name.strip().title()}!\"\n",
+      "path": "greet/core.py",
+      "removed": 1,
+      "truncated": false
+    },
+    {
+      "added": 24,
+      "change": "modified",
+      "patch": "diff --git a/tests/test_greet.py b/tests/test_greet.py\nindex 1766d41..33c25e0 100644\n--- a/tests/test_greet.py\n+++ b/tests/test_greet.py\n@@ -10,6 +10,30 @@ def test_greeting_trims_spaces():\n     assert build_greeting(\"  Ada \") == \"Hallo, Ada!\"\n \n \n+def test_greeting_capitalises_lowercase_name():\n+    assert build_greeting(\"john\") == \"Hallo, John!\"\n+\n+\n+def test_greeting_normalises_all_caps_name():\n+    assert build_greeting(\"JOHN DOE\") == \"Hallo, John Doe!\"\n+\n+\n+def test_greeting_normalises_all_caps_single_word_name():\n+    assert build_greeting(\"JOHN\") == \"Hallo, John!\"\n+\n+\n+def test_greeting_capitalises_lowercase_multi_word_name():\n+    assert build_greeting(\"john doe\") == \"Hallo, John Doe!\"\n+\n+\n+def test_greeting_normalises_mixed_case_single_word_name():\n+    assert build_greeting(\"jOhN\") == \"Hallo, John!\"\n+\n+\n+def test_greeting_normalises_mixed_case_multi_word_name():\n+    assert build_greeting(\"jOHN dOE\") == \"Hallo, John Doe!\"\n+\n+\n def test_cli_prints_the_greeting(capsys):\n     assert main([\"Ada\"]) == 0\n     assert capsys.readouterr().out == \"Hallo, Ada!\\n\"\n",
+      "path": "tests/test_greet.py",
+      "removed": 0,
+      "truncated": false
+    }
+  ],
+  "job": "24270f620da248bc",
+  "ok": true,
+  "schema_version": 1,
+  "state": "applied",
+  "truncated": false
+}

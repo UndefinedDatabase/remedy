@@ -2,7 +2,7 @@
 
 > Grammar: see ROADMAP.md Part C. States: `[ ]` todo · `[~]` in progress · `[x]` done (PR/evidence ref REQUIRED) · `[!]` blocked (reason).
 > Rule A5: the next feature is the first unchecked line, top to bottom. Update this file in the same PR as the work (A4).
-> Packages (operator decision 2026-08-10): Package 1 "Self-Use" below is the active execution order. Package 2 "Parked: Product & Governance" holds registered features deliberately scheduled last, so Rule A5 never selects them while Package 1 has open lines. Every registered feature appears exactly once in this file; parking or unparking a feature means moving its line between the packages by operator decision, in a reviewed docs round. New registrations land in Package 1 (Self-Use) by default, at the operator-chosen position or, absent one, at the end of the matching tier block; registering directly into Package 2 requires an explicit parking note in the registration commit. Grammar is identical in both packages; F080 parses this file unchanged.
+> Packages (operator decision 2026-08-10): Package 1 "Self-Use" below is the active execution order. Package 2 "Parked: Product & Governance" holds registered features deliberately scheduled last, so Rule A5 never selects them while Package 1 has open lines. Every registered feature appears exactly once in this file; parking or unparking a feature means moving its line between the packages by operator decision, in a reviewed docs round. New registrations land in Package 1 (Self-Use) by default, at the operator-chosen position or, absent one, at the end of the matching tier block; registering directly into Package 2 requires an explicit parking note in the registration commit. Grammar is identical in both packages; F080 parses this file unchanged. Operator amendment amend1024-one-real-order (2026-10-24, Part F2) parked a further 22 self-use lines, geparkt bis F317 dreimal in Folge auf Luna geklappt hat; they are the last blocks of Package 2.
 
 ## Package 1 — Self-Use (active execution order)
 
@@ -332,16 +332,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F162 — Sandbox profiles per adapter (T001–T003 complete; accepted 2026-10-24 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f162r11e1001 · package remedy-review-20261024-161429-READY_FOR_REVIEW.zip · SHA-256 3aeabf2ebddca081b88766a65fa5431b19675ddedfa025062fff2ef159397d01 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 09b67feb1b39ee23e91abdefb8d77e5e61c15204)
 - [x] F158 — Cost normalization & price catalog (T001–T003 complete; accepted 2026-10-24 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f158r8e1001 · package remedy-review-20261024-192309-READY_FOR_REVIEW.zip · SHA-256 f095df6c9db88fc7ac379572cf9a0d783f4eb187cdfa68b5123917814fa6451a · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 18af758dbe3e6b569083215ead8ceb5f25fed4cb)
 
+## Tier 2 — One real order lands (operator amendment amend1024-one-real-order)
+
+- [x] F317 — One real order lands (built and accepted 2026-10-24 by operator amendment amend1024-one-real-order, Parts A to G · evidence: evidence/current/f317_real_order/README.md · order e4eaaaa9cebd3304 · job 24270f620da248bc · real claude-cli calls, no manual operator repair)
+
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
 - [ ] F316 — Findings paydown v11
-
-## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane, continued)
-
-- [ ] F153 — Codex CLI adapter
-- [ ] F155 — Local full builder
-- [ ] F154 — Gemini CLI adapter
-- [ ] F161 — MCP passthrough with policy
 
 ## Tier 3 — Self-dogfood automation (operator ruling amend1006-luna-control-plane)
 
@@ -349,8 +346,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [ ] F063 — Idea engine v1
 - [ ] F064 — Idea queue UI/CLI
 - [ ] F066 — Idea provenance
-- [ ] F067 — Routine missions
-- [ ] F065 — Idea engine v2 (continuous, opt-in)
 
 ## Tier 3 — Full Token Economy & Autonomy Extension (the rest)
 
@@ -391,37 +386,21 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 7 — Quality & Trust (the rest)
 
 - [ ] F129 — TDD gate (optional per job)
-- [ ] F130 — Mutation sampling
 - [ ] F131 — Adversarial second review
-- [ ] F132 — Review tournament
 - [ ] F134 — Security gate
 - [ ] F135 — Flaky detector
-- [ ] F136 — Time-travel checkpoints
-- [ ] F137 — Shadow mode
 - [ ] F138 — ADR automation
 - [ ] F139 — Code churn metric
 - [ ] F140 — Bit-exact evidence replay
-- [ ] F142 — Trust dashboard
-- [ ] F143 — Genesis run: one prompt → one product
 
 ## Tier 6 — Design-to-Code
 
 - [ ] F087 — design_reference as job input
-- [ ] F088 — Reference image to the builder
 - [ ] F089 — Design decomposition
 - [ ] F090 — Screenshot capability
-- [ ] F091 — Visual self-comparison
-- [ ] F092 — Visual reviewer
-- [ ] F093 — Fidelity loop
 - [ ] F094 — Interaction verification
-- [ ] F095 — Responsive verification
 - [ ] F096 — Design token extraction
-- [ ] F097 — Component catalog
 - [ ] F098 — Baseline guard (visual regression)
-- [ ] F099 — Design feedback channel
-- [ ] F100 — Multi-reference consistency
-- [ ] F101 — Reference fidelity rule
-- [ ] F102 — Long-run × design
 
 ## Tier 11 — Verification v2
 
@@ -466,7 +445,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Package 2 — Parked: Product & Governance
 
-Registered, counted and tier-assigned like every other feature — deliberately last. These lines exist for the product path (teams, sales, compliance-as-product, ecosystem APIs) and rest until an operator decision moves them back into Package 1. Known product-scoped dependencies of scheduled features into this package: F201 depends on F176, F236 depends on F174, and F232 depends on F156/F159; the Self-Use rounds for those substitute a local mechanism by operator ruling at claim time (for F232: the F082 self-benchmark stands in for certification and scoreboard), documented in the feature round itself.
+Registered, counted and tier-assigned like every other feature — deliberately last. These lines exist for the product path (teams, sales, compliance-as-product, ecosystem APIs) and rest until an operator decision moves them back into Package 1. Known product-scoped dependencies of scheduled features into this package: F201 depends on F176, F236 depends on F174, and F232 depends on F156/F159; the Self-Use rounds for those substitute a local mechanism by operator ruling at claim time (for F232: the F082 self-benchmark stands in for certification and scoreboard), documented in the feature round itself. Operator amendment amend1024-one-real-order (2026-10-24, Part F2) is the parking decision for the last four blocks: self-use features, not product ones, parked until F317 has worked three times in a row on Luna.
 
 ## Tier 8 — Worker Ecosystem & Neutrality
 
@@ -553,3 +532,38 @@ Registered, counted and tier-assigned like every other feature — deliberately 
 - [ ] F246 — Verification gate plugin API
 - [ ] F247 — Community import with provenance
 - [ ] F249 — Anonymized research exports
+
+<!-- operator amendment amend1024-one-real-order (2026-10-24, Part F2): geparkt bis F317 dreimal in Folge auf Luna geklappt hat. The 22 lines below moved here from Package 1, where they stood under the Tier 8 second-worker, Tier 3 self-dogfood, Tier 7 Quality & Trust and Tier 6 Design-to-Code headings, so that Rule A5 does not reach them before F317 has run three times in a row on Luna. The open lines of Tier 4, Tier 7 and Tier 6 that a Package 1 feature depends on (its feature file's Depends on line) stay in Package 1, together with F073, F063, F064 and F066, because parking them would tear those dependencies; the operator decides them. Reversible by moving each line back under its former heading. -->
+## Tier 8 — Worker Ecosystem & Neutrality: the second worker, parked (operator amendment amend1024-one-real-order)
+
+- [ ] F153 — Codex CLI adapter (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F155 — Local full builder (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F154 — Gemini CLI adapter (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F161 — MCP passthrough with policy (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+
+## Tier 3 — Self-dogfood automation, parked (operator amendment amend1024-one-real-order)
+
+- [ ] F067 — Routine missions (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F065 — Idea engine v2 (continuous, opt-in; geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+
+## Tier 7 — Quality & Trust, parked (operator amendment amend1024-one-real-order)
+
+- [ ] F130 — Mutation sampling (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F132 — Review tournament (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F136 — Time-travel checkpoints (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F137 — Shadow mode (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F142 — Trust dashboard (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F143 — Genesis run: one prompt → one product (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+
+## Tier 6 — Design-to-Code, parked (operator amendment amend1024-one-real-order)
+
+- [ ] F088 — Reference image to the builder (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F091 — Visual self-comparison (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F092 — Visual reviewer (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F093 — Fidelity loop (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F095 — Responsive verification (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F097 — Component catalog (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F099 — Design feedback channel (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F100 — Multi-reference consistency (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F101 — Reference fidelity rule (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+- [ ] F102 — Long-run × design (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)

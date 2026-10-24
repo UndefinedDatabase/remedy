@@ -252,6 +252,8 @@ STATS_COMMANDS: tuple[CommandEntry, ...] = (
         ),
         action_class="read_only",
         supports_json=True,
+        # amend1024 Part E: dollar tooling, out of the default help.
+        advanced=True,
         related=("stats.recompute-costs", "stats.cost", "worker.pricing-update"),
         args=(
             _PROJECT_SCOPE_OPT,
@@ -273,6 +275,8 @@ STATS_COMMANDS: tuple[CommandEntry, ...] = (
         ),
         action_class="write_metadata",
         supports_json=True,
+        # amend1024 Part E: dollar tooling, out of the default help.
+        advanced=True,
         related=("stats.valuations", "worker.pricing-update"),
         args=(
             _PROJECT_SCOPE_OPT,

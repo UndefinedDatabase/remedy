@@ -127,7 +127,13 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
    the Pi harness's own event stream (null when it made no record), and the tokens by kind, `input`, `output`, `cache_read` and
    `cache_creation`, that the projects' cost ledgers hold for the job and for the UTC day. A
    kind no call reported is null, never 0; a job no ledger names reads 0 harness invocations, or null
-   when a ledger could not be read. Each completed job also carries
+   when a ledger could not be read. Remedy judges a run by these tokens and invocations: every
+   dollar field of every answer — a job's `cost.value_usd`, a project's `cost_today.value_usd`,
+   `remedy do`'s `cost_usd` fields and `order_budget` spend — keeps its key and reads null unless
+   `cost.show_usd = true` is set in `remedy.toml`, and the `basis` beside it still says whether the
+   cost was measured (operator amendment amend1024-one-real-order Part E,
+   `docs/system/cost-currency-v1.md`). A cap the client set, such as `max_cost_usd`, is always
+   answered. Each completed job also carries
    `approval_card`, what an operator approves its result on, read from the job's record and its
    mission's contract alone: how many files its tasks changed and the first twenty of them by
    name, the test command the job ran with, and each task's title, reviewer's verdict and repair
@@ -224,7 +230,7 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
 | `job_id` | digest jobs and decisions; `remedy change proof` | the job |
 | `order_id` | digest jobs | the order the job belongs to; null for a job of no order |
 | `state` | digest jobs | the job's state: `stopped`, `completed` and the others |
-| `cost` | digest jobs | `value_usd` and its `basis`, measured, never guessed |
+| `cost` | digest jobs | `value_usd` and its `basis`, measured, never guessed; `value_usd` reads null unless `cost.show_usd` is true |
 | `evidence` | digest jobs | the job's evidence references |
 | `run_manifest_path` | digest job evidence | the run manifest the job's runs wrote |
 | `waits_for_apply` | digest jobs | true while a completed job's result is not applied |
@@ -456,12 +462,12 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--repo` | yes | no | yes | no | Path to target repository (default: the registered repository of the project --project or the order file names, else the current directory) |
 | `--project` | yes | no | yes | no | Select a registered project by slug or id instead of the repository's own |
 | `--json` | yes | no | no | no | Output JSON |
-| `--builder-provider` | yes | no | yes | no | Builder provider for `do`: claude, claude-cli, fake or pi (default: pi, the local Pi harness with the Ollama model muse-glimmer:latest; ollama alone cannot write files) |
-| `--reviewer-provider` | yes | no | yes | no | Reviewer provider for `do`: claude, claude-cli, fake, ollama or pi (default: pi, read-only tools) |
+| `--builder-provider` | yes | no | yes | no | Builder provider for `do`: claude, claude-cli, fake or pi (default: claude-cli, the Claude Code CLI; pi is the local Pi harness with the Ollama model muse-glimmer:latest; ollama alone cannot write files) |
+| `--reviewer-provider` | yes | no | yes | no | Reviewer provider for `do`: claude, claude-cli, fake, ollama or pi (default: claude-cli, read-only tools) |
 | `--builder-model` | yes | no | yes | no | Model for the builder role on every task `do` runs (default: the builder role config) |
 | `--reviewer-model` | yes | no | yes | no | Model for the reviewer role on every task `do` runs (default: the reviewer role config) |
 | `--planner-model` | yes | no | yes | no | Model for every planner call of the plan and shape steps (default: the planner's configured model) |
-| `--planner-provider` | yes | no | yes | no | Which service plans: ollama or claude-cli (default: the configured planner role) |
+| `--planner-provider` | yes | no | yes | no | Which service plans: ollama or claude-cli (default: the planner of the repository's [roles] table, else planner.provider, else claude-cli) |
 | `--run-unattended` | yes | no | no | no | Run a generated plan of tasks without interactive confirmation and use the documented default for every open planning question, audited; it never implies --apply, a commit, a push, a merge or a deployment |
 | `--no-ui` | yes | no | no | no | Deprecated and inert: the old cockpit was deleted, so there is nothing to open; kept so existing scripts keep working |
 | `--max-total-tokens` | yes | no | yes | no | Maximum total tokens for this job (F018 budget) |
@@ -594,10 +600,10 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--tasks` | yes | no | yes | no | Max tasks to execute (omitted keeps persisted; 0=all) |
 | `--timeout-sec` | yes | no | yes | no | Raw per-call timeout in seconds (omitted keeps persisted/default) |
 | `--max-output-chars` | yes | no | yes | no | Max provider output chars (omitted keeps persisted/default) |
-| `--builder-provider` | yes | no | yes | no | Builder provider: claude, claude-cli, fake or pi (default: pi, the local Pi harness with Ollama; ollama alone cannot write files; persisted on continuation) |
+| `--builder-provider` | yes | no | yes | no | Builder provider: claude, claude-cli, fake or pi (default: claude-cli, the Claude Code CLI; pi is the local Pi harness with the Ollama model muse-glimmer:latest; ollama alone cannot write files; persisted on continuation) |
 | `--builder-model` | yes | no | yes | no | Model for builder role |
 | `--builder-effort` | yes | no | yes | no | Effort level for builder role |
-| `--reviewer-provider` | yes | no | yes | no | Reviewer provider: claude, claude-cli, fake, ollama or pi (default: pi, read-only tools; persisted on continuation) |
+| `--reviewer-provider` | yes | no | yes | no | Reviewer provider: claude, claude-cli, fake, ollama or pi (default: claude-cli, read-only tools; persisted on continuation) |
 | `--reviewer-model` | yes | no | yes | no | Model for reviewer role |
 | `--reviewer-effort` | yes | no | yes | no | Effort level for reviewer role |
 | `--repair-provider` | yes | no | yes | no | Provider for repair role |

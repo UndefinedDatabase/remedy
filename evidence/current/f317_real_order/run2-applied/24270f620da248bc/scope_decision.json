@@ -1,0 +1,18 @@
+{
+  "calls": 1,
+  "decided": "one_job",
+  "detail": "",
+  "files": [
+    "greet/core.py",
+    "README.md",
+    "tests/test_greet.py"
+  ],
+  "model": "claude-sonnet-4-6",
+  "outcome": "answered",
+  "paths_shown": 6,
+  "paths_total": 6,
+  "planner": "claude-cli",
+  "reason": "Die Änderung betrifft eine einzelne Funktion und ihre Dokumentation, die zusammen in einem Schritt umgesetzt werden können.",
+  "schema_v": "order_scope_decision_v1",
+  "single_job": true
+}

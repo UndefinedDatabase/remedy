@@ -56,6 +56,7 @@ not read as its type; neither warning stops Remedy from running.
 | `REMEDY_COST_CROSS_CHECK_THRESHOLD_PERCENT` | a number | `5.0` | `cost.cross_check_threshold_percent` | Percent by which a catalog-computed cost may differ from the cost the provider reported before the call is flagged and a warning is logged (F158) |
 | `REMEDY_COST_CURRENCY` | text | `usd` | `cost.currency` | Currency every cost figure is stated and normalized in; usd is the only accepted value while every budget field is a USD field (F158) |
 | `REMEDY_COST_PREVIEW_CONFIRM_ABOVE_USD` | a number | `0.5` | `cost_preview.confirm_above_usd` | USD threshold above which an expensive command's cost preview requires operator confirmation before it runs (F114) |
+| `REMEDY_COST_SHOW_USD` | yes or no (1, true, yes / 0, false, no) | no | `cost.show_usd` | Whether stats, job show, do and the HTTP API show dollar figures; off by default, when they show tokens and provider calls and every dollar field reads null (amend1024 Part E) |
 | `REMEDY_COVERAGE_FAIL_UNDER` | a whole number | none | `quality.coverage_fail_under` | Minimum test coverage percentage |
 | `REMEDY_CYCLES_BATCH_SIZE` | a whole number | `1` | `cycles.batch_size` | Maximum tasks executed per cycle (F046) |
 | `REMEDY_CYCLES_CHECKPOINT_RETENTION` | a whole number | `5` | `cycles.checkpoint_retention` | How many per-cycle checkpoints to keep for a job (F047). The FIRST and the LATEST checkpoint are always kept on top of this count, and a checkpoint that does not verify is never pruned — it is forensic evidence. |

@@ -1,26 +1,26 @@
-# Context — F158 Cost normalization & price catalog
+# Context — operator amendment amend1024-one-real-order
 
 ## Active Branch
-`feature/f158-cost-normalization`, from `main` at `407536a9b` (the merge of pull request 389).
+`feature/amend1024-one-real-order`, from `main` at `6caeb480c` (the merge of pull request 390,
+F158, merged by the Open PR Gate at the start of this session).
 
 ## Scope
-F158 as `docs/roadmap/features/T8_F158.md` states it, in the order of DECISION F158 D2: the
-findings pass, T001 the currency consolidation, T002 the catalog and the writer's rules, T003 the
-recompute, the update command and the end-to-end. F153 was moved behind F316 by DECISION F158 D1
-and is not touched here. The open findings are F316's and F246's; F158 takes none.
+Parts A to G of the operator's order of 2026-10-24 exactly: the claude-cli default, the scope
+decision, the builder's Bash allowlist, the real isolation check, tokens before dollars, the
+roadmap alignment (F317 registered and closed here) and one real run over the public API.
 
 ## Do not touch
-Budget mechanics (aligned, not changed), the ledger's raw capture, the bases vocabulary (the
-feature file's Do-not-touch).
+Anything that does not serve the one goal; the non-human content policy; `dangerous-skip`.
 
 ## Active assumptions
-- No paid model call is made outside a round that orders one by name.
-- No price is invented: a catalog price cites a source on disk, else the model stays unpriced.
+- The order's real run uses a temporary project under `/tmp` and a supervisor started for it,
+  never the operator's long-running supervisor.
+- A provider call made by the real run (G) and the real binary check (D2) is ordered by name.
 
 ## Constraints
-- Under 500 insertions per commit; commit subjects carry no leading-slash tokens.
-- pytest runs only the round's selection, once, capped by `tests/conftest.py` (resource safety);
-  the full suite runs once, in the closure.
+- At most 500 insertions per commit; no leading-slash tokens in commit subjects.
+- No test runs per part: one full pytest run at the end, capped by `tests/conftest.py` (resource
+  safety), then review and repair until green.
 
 ## Steps
-The item-status table of each round lives in `.agent/handoff.md`.
+The item-status table lives in the handback, `~/.remedy-loop/amend1024-one-real-order.handback.md`.

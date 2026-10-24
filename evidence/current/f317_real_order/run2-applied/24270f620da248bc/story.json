@@ -1,0 +1,138 @@
+{
+  "changes": [
+    {
+      "added": 2,
+      "path": "README.md",
+      "removed": 0
+    },
+    {
+      "added": 1,
+      "path": "greet/core.py",
+      "removed": 1
+    },
+    {
+      "added": 24,
+      "path": "tests/test_greet.py",
+      "removed": 0
+    }
+  ],
+  "dirty_start": null,
+  "end": null,
+  "ended_at": "2026-10-24T20:05:28.039223+00:00",
+  "job_id": "24270f620da248bc",
+  "next": {
+    "action": "none",
+    "route": null
+  },
+  "note_open": false,
+  "numbers": {
+    "calls": 6,
+    "duration_s": 85,
+    "model_turns": null,
+    "rounds": 3,
+    "tokens_in": 36,
+    "tokens_out": 5193
+  },
+  "ok": true,
+  "order": "Die Funktion, die den Gruß baut, soll den Namen auch dann groß schreiben, wenn er klein getippt wurde. Die README bekommt einen Satz dazu.",
+  "schema_version": 1,
+  "scope_findings": [],
+  "started_at": "2026-10-24T20:04:02.235395+00:00",
+  "state": "done_applied",
+  "state_detail": {
+    "changed_files": 3
+  },
+  "steps": [
+    {
+      "id": "reading",
+      "phrase": {
+        "args": {
+          "first": ".gitignore",
+          "n": 6
+        },
+        "key": "found_files"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "planning",
+      "phrase": {
+        "args": {
+          "n": 3
+        },
+        "key": "planned_tasks"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "building",
+      "phrase": {
+        "args": {
+          "n": 3
+        },
+        "key": "changed_files"
+      },
+      "status": "done",
+      "tasks": [
+        {
+          "files": [
+            "greet/core.py",
+            "tests/test_greet.py"
+          ],
+          "rounds": 1,
+          "status": "done",
+          "title": "Apply title-case capitalisation in greeting-builder function: Modify the greeting-builder function in the greet module so that the name argument is passed through a title-case transform before being embedded in the greeting string, normalising both lowercase and ALL-CAPS input."
+        },
+        {
+          "files": [
+            "tests/test_greet.py"
+          ],
+          "rounds": 1,
+          "status": "done",
+          "title": "Add or update tests for name capitalisation behaviour (4/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder.\nThis one task does all of these, in order:\nStep 1, Add or update tests for name capitalisation behaviour (1/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder.\nStep 2, Add or update tests for name capitalisation behaviour (2/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder.\nStep 3, Add or update tests for name capitalisation behaviour (3/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder.\nStep 4, Add or update tests for name capitalisation behaviour (4/4): Add test cases to the test suite that assert title-case normalisation for lowercase, mixed-case, and ALL-CAPS single- and multi-word names passed to the greeting-builder."
+        },
+        {
+          "files": [
+            "README.md"
+          ],
+          "rounds": 1,
+          "status": "done",
+          "title": "Add capitalisation documentation sentence to README: Append exactly one sentence to README.md stating that the greeting-builder automatically capitalises names regardless of how they were originally typed."
+        }
+      ],
+      "tokens": {
+        "in": 36,
+        "out": 5193
+      }
+    },
+    {
+      "id": "checking",
+      "phrase": {
+        "args": {
+          "n": 1
+        },
+        "key": "tests_passed"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "finished",
+      "phrase": {
+        "args": {
+          "n": 3
+        },
+        "key": "applied"
+      },
+      "status": "done",
+      "tokens": null
+    }
+  ],
+  "updated_at": "2026-10-24T20:05:46.589093+00:00",
+  "verification": {
+    "required": false,
+    "status": "passed"
+  }
+}

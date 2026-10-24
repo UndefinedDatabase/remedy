@@ -62,16 +62,18 @@ class TestDefaults:
     def test_defaults_preserve_current_behavior(self):
         cfg = resolve_role_config("builder")
         assert cfg.role == "builder"
-        # Amend1014b D1: the mutating roles default to the Pi harness; the model is unchanged.
+        # amend1024 A1: the mutating roles default to the Claude Code CLI and its flagship model;
+        # every other role keeps the product default, the local model.
         assert DEFAULT_PROVIDER == "ollama"
-        assert cfg.provider == "pi"
-        assert cfg.model == DEFAULT_MODEL == resolve_model_alias("ollama-default")
+        assert cfg.provider == "claude-cli"
+        assert cfg.model == resolve_model_alias("claude-flagship")
+        assert DEFAULT_MODEL == resolve_model_alias("ollama-default")
         assert cfg.effort == DEFAULT_EFFORT == "medium"
 
     def test_defaults_with_empty_sources(self):
         cfg = resolve_role_config("reviewer", cli_args={}, config_file={})
-        assert cfg.provider == "pi"
-        assert cfg.model == DEFAULT_MODEL
+        assert cfg.provider == "claude-cli"
+        assert cfg.model == resolve_model_alias("claude-flagship")
         assert cfg.effort == DEFAULT_EFFORT
 
 
@@ -87,7 +89,7 @@ class TestConfigFile:
 
     def test_config_file_partial_override_keeps_defaults(self):
         cfg = resolve_role_config("builder", config_file={"model": "custom"})
-        assert cfg.provider == "pi"
+        assert cfg.provider == "claude-cli"
         assert cfg.model == "custom"
         assert cfg.effort == DEFAULT_EFFORT
 
@@ -338,8 +340,8 @@ class TestRoutedCallEvidenceForInheritingRoles:
         assert cfg.routed_call is None
         # ...and the ordinary config resolution is untouched by that absence.
         assert cfg.role == role
-        assert cfg.provider == "pi"
-        assert cfg.model == DEFAULT_MODEL
+        assert cfg.provider == "claude-cli"
+        assert cfg.model == resolve_model_alias("claude-flagship")
         assert cfg.effort == DEFAULT_EFFORT
 
     @pytest.mark.parametrize("origin", ["architecture", "format"])
@@ -1158,20 +1160,18 @@ class TestThePlannerRole:
 
         assert "planner" in KNOWN_ROLES
 
-    def test_resolve_role_config_planner_defaults_to_ollama(self):
+    def test_resolve_role_config_planner_defaults_to_claude_cli(self):
         from packages.orchestration.role_config import resolve_role_config
 
         cfg = resolve_role_config("planner")
-        assert cfg.provider == "ollama", (
-            "the default planner must stay the one Remedy always had, so an "
-            "unconfigured repository plans exactly as it did before"
-        )
+        assert cfg.provider == "claude-cli", (
+            "operator amendment amend1024-one-real-order, A1: a strong model plans by default")
 
-    def test_the_planner_default_model_is_the_ollama_default(self):
+    def test_the_planner_default_model_is_the_claude_flagship(self):
         from packages.orchestration.model_aliases import resolve_model_alias
         from packages.orchestration.role_config import resolve_role_config
 
-        assert resolve_role_config("planner").model == resolve_model_alias("ollama-default")
+        assert resolve_role_config("planner").model == resolve_model_alias("claude-flagship")
 
     def test_a_configured_provider_outranks_the_built_in_default(self):
         from packages.orchestration.role_config import resolve_role_config
@@ -1246,7 +1246,7 @@ class TestTheTenOlderRolesAreUntouched:
         )
 
         for role in KNOWN_ROLES:
-            if role in ("self_use", "builder", "reviewer", "repair"):
+            if role in ("self_use", "planner", "builder", "reviewer", "repair"):
                 continue
             cfg = resolve_role_config(role)
             assert cfg.provider == DEFAULT_PROVIDER, role

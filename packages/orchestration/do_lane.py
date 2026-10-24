@@ -5,10 +5,11 @@ repository, the deterministic one-milestone mission plan, a deterministic DoD, o
 task for the one file, and no planning provider call at all; only the builder and the reviewer
 are called. Anything else walks the full lane, the scalable mission path, unchanged.
 
-Remedy deliberately does not ask a model whether an order is small, because a classifier call
-would be one more provider call spent to decide whether to spend provider calls. The decision is
-`select_do_lane`, pure and table-tested, and it takes the full lane whenever a fact is missing
-or the scope is not clear.
+Operator amendment amend1024-one-real-order, Part B: the PLANNER decides how many jobs an order
+is (`scope_decision.py`), before any milestone is planned, and one job is the default. The regex
+lanes of `select_do_lane`, pure and table-tested, stay as the fallback when the planner gives no
+answer, and as the fast path of a bounded order whose files its own text spells, which is not
+asked. `settle_do_lane` joins the two.
 
 DECISION amend1016p D1: the TRANSPORT never decides. An order typed on the command line, read from
 an order file or posted to the HTTP API (which writes an order file) gets the same lane for the
@@ -126,6 +127,8 @@ class DoLaneDecision:
     mentioned: tuple[str, ...] = ()
     #: DECISION amend1023 D7: why the order is one job without milestones (`order_single_job_reason`), or "".
     single_job: str = ""
+    #: amend1024 B2: *single_job* is the planner's scope decision, not the order's own header or file.
+    scope_decided: bool = False
 
     @property
     def bounded(self) -> bool:
@@ -351,14 +354,66 @@ def is_tiny_repo(tracked_files: list[str]) -> bool:
     return 0 < len(tracked_files) <= DO_TINY_REPO_MAX_FILES
 
 
+def asks_scope_decision(ctx: DoContext, lane: DoLaneDecision) -> bool:
+    """True when the planner's scope decision (amend1024 B1) decides how many jobs ORDER is.
+
+    Not with `--no-llm`, `--force-job`, `--force-mission` or several projects; not for a hold, an
+    order that asks no change, an order its header or its one named file already makes one job,
+    or a bounded order whose files its own text spells: such an order says what it is.
+    """
+    if ctx.no_llm or ctx.force_job or ctx.force_mission or len(ctx.projects) > 1 or lane.hold:
+        return False
+    if lane.intent not in (ORDER_INTENT_CHANGE, ORDER_INTENT_PLAN_ONLY) or lane.single_job:
+        return False
+    return not (lane.bounded and explicit_order_paths(ctx.order))
+
+
+def lane_after_scope_decision(lane: DoLaneDecision, record: dict) -> DoLaneDecision:
+    """The lane once the planner's scope decision RECORD is read (amend1024 B2).
+
+    One job: a bounded lane whose files the planner's agree with stays bounded; otherwise the order
+    walks the full lane as ONE job without milestones, whose tasks the planner plans. Several jobs:
+    the full lane's milestones. No answer: the regex lane, unchanged (B3).
+    """
+    from packages.orchestration.scope_decision import SCOPE_ONE_JOB, SCOPE_SEVERAL_JOBS
+
+    def said(size: str) -> str:
+        return f"the planner's scope decision says {size} ({record.get('reason') or 'no reason given'})"
+
+    if record.get("decided") == SCOPE_SEVERAL_JOBS:
+        if not lane.bounded:
+            return replace(lane, reason=f"{said('several jobs')}; routing alone: {lane.reason}")
+        return DoLaneDecision(DO_LANE_FULL, f"{said('several jobs')}; routing alone: {lane.reason}",
+                              intent=lane.intent, with_tests=lane.with_tests)
+    if record.get("decided") != SCOPE_ONE_JOB:
+        return lane
+    one = said("one job")
+    if lane.bounded and set(record.get("files") or ()) <= {lane.deliverable, *lane.also}:
+        return replace(lane, reason=f"{lane.reason}; {one}")
+    return DoLaneDecision(DO_LANE_FULL, f"{one}, so it is one job without milestones and the planner plans "
+                          f"its tasks only (routing alone: {lane.reason})", single_job=one, scope_decided=True,
+                          intent=lane.intent, with_tests=lane.with_tests, risk=lane.risk)
+
+
 def settle_do_lane(ctx: DoContext) -> DoLaneDecision:
-    """The walk's lane, decided once from its context on first use and kept on it (`lane`, `tiny_repo`)."""
+    """The walk's lane, decided once from its context on first use and kept on it (`lane`, `tiny_repo`).
+
+    The planner's scope decision runs here, before any milestone is planned, and is kept on the
+    context as `scope_decision` for the jobs' evidence (amend1024 B1).
+    """
     if ctx.lane is None:
         files = tracked_repo_files(ctx.repo_root)
-        ctx.lane = select_do_lane(
+        lane = select_do_lane(
             ctx.order, tracked_files=files, projects=len(ctx.projects) or 1,
             force_job=ctx.force_job, force_mission=ctx.force_mission,
             single_job=order_single_job_reason(ctx.order, ctx.order_source_path))
+        if asks_scope_decision(ctx, lane):
+            from packages.orchestration.scope_decision import decide_order_scope
+
+            ctx.scope_decision = decide_order_scope(ctx.order, files, provider=ctx.planner_provider,
+                                                    model=ctx.planner_model)
+            lane = lane_after_scope_decision(lane, ctx.scope_decision)
+        ctx.lane = lane
         ctx.tiny_repo = is_tiny_repo(files)
         # exec-1018 (R-1349): an order whose own words ask for a plan only walks as `--plan-only`.
         ctx.plan_only = ctx.plan_only or ctx.lane.intent == ORDER_INTENT_PLAN_ONLY

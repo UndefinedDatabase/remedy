@@ -6,9 +6,9 @@
 tile read neither, so a run the terminal measured showed "not-measured" and "—". Every
 surface now reads ``job_token_roles``; the digest and the dashboard read its summary.
 
-Remedy deliberately does not show a dollar figure in the cockpit unless the project asks
-for it with ``show_cost_usd = true`` in the ``[cockpit]`` table of ``.remedy/config.toml``:
-the operator works on subscriptions and judges a run by its tokens (amend1015 Part 5).
+Remedy deliberately does not show a dollar figure unless ``cost.show_usd = true`` in
+``remedy.toml`` (``cost_currency.show_cost_usd``): the operator works on subscriptions and judges
+a run by its tokens (amend1015 Part 5, amend1024 Part E).
 
 The dashboard's older, event-estimated reading (``event_token_usage``) moved here from
 ``serve_http_handler.py`` unchanged, so both token readings of a job live in one module.
@@ -18,7 +18,6 @@ Public API::
     job_token_roles(project_id, job_id, run_ids) -> list[dict]
     job_token_summary(job) -> dict
     job_token_line(roles) -> str
-    cockpit_show_cost_usd(repo_path) -> bool
     event_token_usage(events) -> dict
     dashboard_token_usage(job, events) -> dict
 """
@@ -26,7 +25,6 @@ Public API::
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 from typing import Any
 
 #: The token fields a role row carries; each is None when no call of the role reported it.
@@ -108,22 +106,6 @@ def job_token_summary(job: Any) -> dict[str, Any]:
     return {"roles": roles, **totals, "line": job_token_line(roles)}
 
 
-def cockpit_show_cost_usd(repo_path: str) -> bool:
-    """True only when ``[cockpit] show_cost_usd = true`` in *repo_path*'s ``.remedy/config.toml``."""
-    try:
-        import tomllib
-    except ImportError:  # Python 3.10
-        import tomli as tomllib  # type: ignore[no-redef]
-    if not repo_path:
-        return False
-    try:
-        data = tomllib.loads((Path(repo_path) / ".remedy" / "config.toml").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return False
-    cockpit = data.get("cockpit")
-    return isinstance(cockpit, dict) and cockpit.get("show_cost_usd") is True
-
-
 def event_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
     """Build safe token usage summary from events. Estimated only — no exact billing."""
     by_role: dict[str, int] = {}
@@ -165,6 +147,9 @@ def event_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
 
 def dashboard_token_usage(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     """The dashboard's ``token_usage``: the event estimate, plus ``ledger`` (``job_token_summary``)
-    and ``show_cost_usd`` (``cockpit_show_cost_usd`` of the job's repository)."""
-    return {**event_token_usage(events), "ledger": job_token_summary(job),
-            "show_cost_usd": cockpit_show_cost_usd(str(getattr(job, "repo_path", "") or ""))}
+    and ``show_cost_usd`` (``cost_currency.show_cost_usd``, the ``cost.show_usd`` key); while it
+    is false every ``cost_usd`` reads null."""
+    from packages.orchestration.cost_currency import show_cost_usd, visible_cost_usd
+
+    return visible_cost_usd({**event_token_usage(events), "ledger": job_token_summary(job),
+                             "show_cost_usd": show_cost_usd()})

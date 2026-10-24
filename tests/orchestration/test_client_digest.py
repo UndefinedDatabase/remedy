@@ -14,6 +14,7 @@ import pytest
 
 from packages.core.models import RunState
 from packages.orchestration.client_digest import _decision_entry, build_client_digest
+from packages.orchestration.config import reset_config
 from packages.orchestration.decision_queue import HumanDecision
 from packages.orchestration.escalation import answer_task_decision, enqueue_task_decision
 from packages.orchestration.job_apply import job_apply_landed
@@ -387,6 +388,12 @@ def test_the_age_helper_reads_a_non_iso8601_created_at_as_null():
 ACTUALS_STARTED_AT = "2026-01-01T11:00:00+00:00"
 
 
+@pytest.fixture
+def usd_shown(monkeypatch):
+    """`cost.show_usd = true` (amend1024 Part E): the digest carries the dollars it measured."""
+    monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+
+
 def _priced_actuals(*, cost, priced, unpriced) -> dict:
     """A version-2 persisted actuals record that `decode_persisted_budget_actuals` accepts."""
     return {
@@ -422,7 +429,7 @@ def test_a_job_without_actuals_or_evidence_reads_an_absent_cost_and_null_referen
     (None, 0, 2, {"value_usd": None, "basis": "absent"}),
 ], ids=["every-call-priced", "a-call-unpriced", "never-priced"])
 def test_a_jobs_persisted_actuals_give_its_cost_and_exactness_basis(
-        root, cost, priced, unpriced, expected):
+        root, usd_shown, cost, priced, unpriced, expected):
     job = JobPlan(job_title="priced-job", project_id="proj-1",
                   first_running_at=ACTUALS_STARTED_AT,
                   budget_actuals=_priced_actuals(cost=cost, priced=priced, unpriced=unpriced))
@@ -433,7 +440,19 @@ def test_a_jobs_persisted_actuals_give_its_cost_and_exactness_basis(
     assert entry["cost"] == expected
 
 
-def test_a_job_whose_actuals_are_damaged_marks_degraded_and_nulls_only_its_cost(root):
+def test_a_measured_jobs_dollars_read_null_while_the_key_is_false(root):
+    """amend1024 Part E: the key stays, the dollars read null and the basis still says measured."""
+    job = JobPlan(job_title="priced-job", project_id="proj-1",
+                  first_running_at=ACTUALS_STARTED_AT,
+                  budget_actuals=_priced_actuals(cost=1.25, priced=3, unpriced=0))
+    save_job_plan(job)
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    assert entry["cost"] == {"value_usd": None, "basis": "actual"}
+
+
+def test_a_job_whose_actuals_are_damaged_marks_degraded_and_nulls_only_its_cost(root, usd_shown):
     bad_job = JobPlan(job_title="bad-actuals", project_id="proj-1",
                       budget_actuals={"schema_version": "9.9.9"})
     save_job_plan(bad_job)
@@ -477,7 +496,7 @@ def test_a_jobs_evidence_names_the_files_that_exist_and_nulls_the_one_that_does_
 
 
 def test_a_projects_cost_today_sums_the_ledgers_calls_of_the_utc_day_of_read_at(
-        root, tmp_path):
+        root, tmp_path, monkeypatch):
     from packages.orchestration.project_registry import register_project_repo
     from packages.orchestration.token_ledger import (
         COST_BASIS_PROVIDER_REPORTED,
@@ -493,6 +512,16 @@ def test_a_projects_cost_today_sums_the_ledgers_calls_of_the_utc_day_of_read_at(
                                       tokens_in=tokens_in, tokens_out=20, cache_read=5),
                            project_id=project.id)
 
+    [entry] = build_client_digest(now=NOW)["projects"]
+
+    # amend1024 Part E: by default the day's dollars read null; its calls and tokens stay.
+    assert entry["cost_today"] == {
+        "day": "2026-01-01", "value_usd": None, "basis": "actual", "harness_invocations": 1,
+        "tokens": {"input": 100, "output": 20, "cache_read": 5, "cache_creation": None},
+    }
+
+    monkeypatch.setenv("REMEDY_COST_SHOW_USD", "true")
+    reset_config()
     [entry] = build_client_digest(now=NOW)["projects"]
 
     assert entry["cost_today"] == {

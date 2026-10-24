@@ -311,17 +311,21 @@ def test_a_reviewer_pass_on_an_empty_diff_is_rejected_before_completion():
 
 # --- 7. the default resolution --------------------------------------------------------------
 
-def test_with_no_flags_every_mutating_role_resolves_to_pi_on_the_local_model():
+def test_with_no_flags_every_mutating_role_resolves_to_claude_cli_and_pi_stays_a_choice():
+    """amend1024 A1: the Claude Code CLI is the default; Pi on the local model is chosen by name."""
     from packages.orchestration.execution_config import resolve_job_execution_config
     from packages.orchestration.role_config import resolve_role_config
 
     for role in ("builder", "reviewer", "repair"):
         cfg = resolve_role_config(role)
-        assert (cfg.provider, cfg.model) == ("pi", "muse-glimmer:latest")
+        assert (cfg.provider, cfg.model) == ("claude-cli", resolve_model_alias("claude-flagship"))
+        assert resolve_role_config(role, cli_args={"provider": "pi"}).model == "muse-glimmer:latest"
     ec = resolve_job_execution_config(None)
-    assert (ec.builder, ec.reviewer) == ("pi", "pi")
+    assert (ec.builder, ec.reviewer) == ("claude-cli", "claude-cli")
     assert PI_DEFAULT_MODEL == resolve_model_alias("ollama-default")
-    assert resolve_role_config("planner").provider == "ollama"       # the structured roles stay direct
+    assert resolve_role_config("planner").provider == "claude-cli"
+    chosen = resolve_job_execution_config(None, builder_name="pi", reviewer_name="pi")
+    assert (chosen.builder, chosen.reviewer, chosen.builder_source) == ("pi", "pi", "cli")
     explicit = resolve_job_execution_config(None, builder_name="claude-cli", reviewer_name="fake")
     assert (explicit.builder, explicit.reviewer, explicit.builder_source) == ("claude-cli", "fake", "cli")
 

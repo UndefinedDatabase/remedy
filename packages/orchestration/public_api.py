@@ -56,6 +56,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote
 
+# Operator amendment amend1024-one-real-order Part E: every answer's dollar fields read null
+# unless `cost.show_usd` is true, one rule for every route (`docs/system/cost-currency-v1.md`).
+from packages.orchestration.cost_currency import visible_cost_usd
+
 # Operator amendment amend1023-universe-trust (DECISION amend1023 D11): an order's story.
 from packages.orchestration.order_story import order_story_answer
 
@@ -572,6 +576,8 @@ def answer_public_api_get(
         if route.twin in _CALLER_AWARE_TWINS:
             scope["client"] = client
         body = _TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments, **scope)
+        # amend1024 E1: an answer's dollars obey `cost.show_usd`; the interface only DESCRIBES keys.
+        body = body if route.twin == "client.interface" else visible_cost_usd(body)
         if body.get("ok"):
             status = 200
         else:
@@ -833,7 +839,7 @@ def answer_public_api_post(
         status = 200 if envelope.get("ok") else dict(route.refusals).get(
             envelope.get("error", ""), route.refusal_default or 500)
         headers = {"Deprecation": "true"} if route.deprecated else {}
-        return status, envelope, headers
+        return status, visible_cost_usd(envelope), headers
 
     if any(_match_route_path(route.path, path) is not None for route in PUBLIC_API_ROUTES):
         return (*public_api_method_refusal(), {})

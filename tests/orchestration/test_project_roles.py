@@ -83,8 +83,10 @@ class TestTheRefusals:
         with pytest.raises(ProjectRolesError, match="cannot write files"):
             read_project_roles(tmp_path)
 
-    def test_a_planner_key_is_refused(self, tmp_path: Path) -> None:
-        """DECISION F314 D5 (2): the table does not yet choose the planner (R-1448)."""
+    def test_a_planner_key_chooses_the_planner_and_refuses_what_is_no_planner(self, tmp_path: Path) -> None:
+        """amend1024 A2 (R-1448): the table chooses the planner too, one of the planners only."""
         _write_config(tmp_path, '[roles]\nplanner = "ollama"\n')
-        with pytest.raises(ProjectRolesError, match="--planner-provider"):
+        assert read_project_roles(tmp_path) == {"planner": "ollama"}
+        _write_config(tmp_path, '[roles]\nplanner = "pi"\n')
+        with pytest.raises(ProjectRolesError, match="not a planner"):
             read_project_roles(tmp_path)

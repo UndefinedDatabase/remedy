@@ -24,7 +24,7 @@ from tests.orchestration.test_job_stop_integration import _ONE_TASK_JOB
 _PARKED_RUN_ARGS = [
     "--builder-provider", "claude-cli", "--reviewer-provider", "claude-cli",
     "--builder-model", "claude-sonnet-4-6", "--reviewer-model", "claude-sonnet-4-6",
-    "--repair-rounds", "0", "--json",
+    "--repair-rounds", "0", "--no-stream-evidence", "--json",    # the fake answers JSON (amend1024 D5)
 ]
 
 

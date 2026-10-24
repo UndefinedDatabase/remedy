@@ -85,14 +85,22 @@ def no_model_call(monkeypatch):
     monkeypatch.setattr("packages.orchestration.study.study_call_fn", tripwire)
 
 
-def _walk(monkeypatch, capsys, order: str) -> tuple[dict, list[str]]:
-    """`remedy do <order> --plan-only --json` with the fake workers; the names of the planner calls made."""
+def _walk(monkeypatch, capsys, order: str, scope: dict | None = None) -> tuple[dict, list[str]]:
+    """`remedy do <order> --plan-only --json` with the fake workers; the names of the planner calls made.
+
+    SCOPE is the scripted planner's answer to the scope decision (amend1024 B1); None makes that
+    planner unreachable, so the walk falls back to the regex lanes (B3).
+    """
     from packages.orchestration.mission_plan_schema import MissionPlanDraft
     from packages.orchestration.schemas.models import TaskPlan
+    from packages.orchestration.scope_decision import OrderScopeDecision
 
     asked: list[str] = []
 
     def _structured(model_cls, **kwargs):
+        if model_cls is OrderScopeDecision:
+            asked.append("scope_decision")
+            return None if scope is None else (lambda prompt, attempt: json.dumps(scope))
         if model_cls is MissionPlanDraft:
             asked.append("mission_plan")
             return lambda prompt, attempt: _probe_mission_plan_json()
@@ -153,10 +161,42 @@ def test_a_criterion_naming_an_ordered_or_tracked_file_or_the_tasks_own_delivera
 # -- Rule 2: `shape: single-job`, or exactly one named file, is one job without milestones --------
 
 
-def test_without_a_header_the_probe_still_walks_as_the_planners_milestones(repo, capsys, monkeypatch):
-    data, asked = _walk(monkeypatch, capsys, PROBE_ORDER)
+def test_without_a_header_the_probe_is_one_job_when_the_planner_says_one_job(repo, capsys, monkeypatch):
+    """amend1024 B4: no header, no file path, and the planner's scope decision makes it ONE job."""
+    import packages.orchestration.data_paths as data_paths
+
+    answer = {"single_job": True, "files": ["src/chat/MemoryPanel.tsx"],
+              "reason": "Ein Knopf in einer Datei wird angeglichen."}
+    data, asked = _walk(monkeypatch, capsys, PROBE_ORDER, scope=answer)
+    assert (data["shape"], data["shape_source"]) == ("one job", "the planner's scope decision")
+    assert len(data["job_ids"]) == 1
+    assert asked[0] == "scope_decision" and "mission_plan" not in asked and "task_plan" in asked
+    plan_step = next(step for step in data["steps"] if step["name"] == "plan")
+    assert "the planner's scope decision says one job (Ein Knopf in einer Datei wird angeglichen.)" in (
+        plan_step["detail"])
+    evidence = json.loads((data_paths.job_evidence_dir(data["job_ids"][0]) / "scope_decision.json").read_text())
+    assert (evidence["decided"], evidence["single_job"], evidence["outcome"]) == ("one_job", True, "answered")
+    assert evidence["files"] == ["src/chat/MemoryPanel.tsx"] and evidence["paths_shown"] == 3
+
+
+def test_the_planners_several_jobs_with_a_reason_still_make_the_probe_a_mission(repo, capsys, monkeypatch):
+    """amend1024 B4: `single_job: false` WITH a reason keeps the mission and its milestones."""
+    answer = {"single_job": False, "files": [], "reason": "Erst dokumentieren, dann angleichen, dann prüfen."}
+    data, asked = _walk(monkeypatch, capsys, PROBE_ORDER, scope=answer)
     assert (data["shape"], data["shape_source"]) == ("milestones", "planner")
-    assert "mission_plan" in asked and len(data["job_ids"]) == 4
+    assert asked[:2] == ["scope_decision", "mission_plan"] and len(data["job_ids"]) == 4
+
+
+def test_several_jobs_without_a_reason_keep_the_default_one_job(repo, capsys, monkeypatch):
+    """amend1024 B2: `single_job: false` with no reason is no reason to split; one job holds."""
+    data, _asked = _walk(monkeypatch, capsys, PROBE_ORDER, scope={"single_job": False, "files": [], "reason": " "})
+    assert (data["shape"], len(data["job_ids"])) == ("one job", 1)
+
+
+def test_an_unreachable_planner_leaves_the_probe_to_the_regex_lanes(repo, capsys, monkeypatch):
+    data, asked = _walk(monkeypatch, capsys, PROBE_ORDER, scope=None)
+    assert asked[0] == "scope_decision"
+    assert (data["shape"], data["shape_source"]) == ("milestones", "planner") and len(data["job_ids"]) == 4
 
 
 def test_the_header_shape_single_job_makes_the_probe_one_job_the_planner_cannot_split(

@@ -47,7 +47,8 @@ Who may do what with which token:
 
 ## What is deleted, and when
 
-Only after the three gates of the amendment are green in the same run: the React app `apps/ui`,
+Planned for after the three gates of the amendment were green in the same run, and done on
+2026-10-15 (commit `a4d285aaf`; the directory no longer exists): the former React app `apps/ui`,
 its static serving and auto-build in the supervisor, its bundle guard in the wheel build, the `ui`
 step of `remedy do`, and the tests whose subject is the deleted app. The public API, its
 authentication and project scopes, every JSON route a client still reads, the tests of those, the

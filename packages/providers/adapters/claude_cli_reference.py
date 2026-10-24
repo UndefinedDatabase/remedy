@@ -40,11 +40,18 @@ _ISOLATION_ADR_REF = "docs/adr/0002-claude-cli-worker-isolation.md"
 _ISOLATION_TOOL_ARGS = ("--setting-sources", "project,local", "--strict-mcp-config")
 
 #: D3 (2)'s process names, in its own order: the shell/process names every worker needs plus
-#: the model credential and both spellings of the four proxy variables.
+#: the model credential and both spellings of the four proxy variables. Operator amendment
+#: amend1024-one-real-order (D1) adds what the real `claude` program reads to find its login, its
+#: model and its certificates: the config folder an operator's profile selects, the two token
+#: spellings, the API endpoint and model, the XDG folders, the TLS certificate paths and Node's
+#: own options (docs/adr/0002-claude-cli-worker-isolation.md records the real call).
 _ISOLATION_ENV_ALLOWLIST = (
     "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "SHELL", "TERM", "TMPDIR", "TZ",
     "USER", "ANTHROPIC_API_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
     "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+    "CLAUDE_CONFIG_DIR", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+    "ANTHROPIC_MODEL", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "SSL_CERT_FILE",
+    "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "NODE_OPTIONS",
 )
 
 #: D4 (2)'s exact default profile, TOML text parsed by `parse_sandbox_profile` elsewhere (this
@@ -105,12 +112,14 @@ class ClaudeCliReferenceAdapter:
     # flag and configuration, so a caller states them once instead of on every invocation.
     def __init__(
         self, *, claude_path: str = "claude", write_mode: str = "none",
-        streaming: bool = True, config: Any = None,
+        streaming: bool = True, config: Any = None, workspace: str | None = None,
     ) -> None:
         self._claude_path = claude_path
         self._write_mode = write_mode
         self._streaming = streaming
         self._config = config
+        # amend1024 C1: the job workspace whose project test command the builder's Bash may run.
+        self._workspace = workspace
 
     # WHY: the adapter's stable name is the provider's own, so the registry linkage reaches this
     # class through the same string `provider_names.py` already uses (DECISION F151 D5).
@@ -142,7 +151,7 @@ class ClaudeCliReferenceAdapter:
             self._claude_path, prompt,
             write_mode=write_mode, model=options.model, stream_evidence=self._streaming,
             json_schema=json_schema, resume_session=options.resume_ref or "",
-            config=self._config,
+            config=self._config, workspace=self._workspace,
         ))
         declaration = self.isolation()
         if declaration.applies:

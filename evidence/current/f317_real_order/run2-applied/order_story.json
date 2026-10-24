@@ -1,0 +1,35 @@
+{
+  "client": "real-order-client",
+  "missions": [
+    {
+      "milestones": [
+        {
+          "goal": "The mission goal is met in full: Die Funktion, die den Gruß baut, soll den Namen auch dann groß schreiben, wenn er klein getippt wurde. Die README bekommt einen Satz dazu.",
+          "id": "M001",
+          "jobs": [
+            {
+              "job_id": "24270f620da248bc",
+              "number": 1,
+              "round": null,
+              "state": "applied",
+              "state_detail": {},
+              "story": "/api/v1/jobs/24270f620da248bc/story",
+              "tasks": {
+                "done": 3,
+                "total": 3
+              },
+              "title": "Die Funktion, die den Gruß baut, soll den Namen auch dann groß schreiben, wenn…",
+              "tool": null
+            }
+          ]
+        }
+      ],
+      "mission_id": "1bdc428c44904f3cb95fb528bdebae51"
+    }
+  ],
+  "ok": true,
+  "order_id": "e4eaaaa9cebd3304",
+  "phase": "done",
+  "schema_version": 1,
+  "state": "ended"
+}

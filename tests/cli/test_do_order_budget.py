@@ -51,7 +51,7 @@ def test_every_planner_call_of_a_full_walk_is_on_the_orders_ledger(repo, planner
     assert ledger["planner_calls"] == planner.count() > 0
     assert ledger["planner_calls_by_reason"] == {
         {"JobIntake": "intake", "TaskPlan": "task_plan", "MissionPlanDraft": "mission_plan",
-         "StudyCategoryNarration": "study_narration"}[schema]: n
+         "StudyCategoryNarration": "study_narration", "OrderScopeDecision": "scope_decision"}[schema]: n
         for schema, n in planner.by_schema().items()}
     for entry in ledger["calls"]:
         assert entry["role"] == "planner" and entry["outcome"] == "ok" and entry["attempt"] in (0, 1)

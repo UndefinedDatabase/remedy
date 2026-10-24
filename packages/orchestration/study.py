@@ -24,7 +24,7 @@ from pydantic import BaseModel
 from packages.core.models import JobBudgets
 from packages.memory.local_gateway import store_memory
 from packages.orchestration.budget_guard import BudgetCounters
-from packages.orchestration.intake import make_structured_call_fn
+from packages.orchestration.intake import make_structured_call_fn, planner_service_of
 from packages.orchestration.role_config import resolve_role_config
 from packages.orchestration.safe_points import should_stop
 
@@ -76,7 +76,9 @@ def study_call_fn() -> Callable[[str, int], str] | None:
     try/except around every call_fn invocation, which already exists.
     """
     role_cfg = resolve_role_config("study")
-    raw_fn = make_structured_call_fn(StudyCategoryNarration, model=role_cfg.model)
+    # amend1024 A1: the study role keeps its own provider; the planner's default is no longer its own.
+    raw_fn = make_structured_call_fn(StudyCategoryNarration, model=role_cfg.model,
+                                     provider=planner_service_of(role_cfg.provider))
     if raw_fn is None:
         return None
 

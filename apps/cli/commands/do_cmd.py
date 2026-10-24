@@ -16,7 +16,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 # DECISION F205 D3: what `remedy do` reads before any step lives in a module of its own.
-from apps.cli.commands.do_order_input import _order_repo, read_do_order
+from apps.cli.commands.do_order_input import _order_repo, project_roles_planner, read_do_order
 from apps.cli.commands.run_invocation import (
     RunInvocation,
 )
@@ -425,6 +425,7 @@ def _cmd_do(
 
     # DECISION F304 D2: an order that names a project runs in that project's repository.
     repo = _order_repo(project, repo, json_output=json_output)
+    planner_provider = planner_provider or project_roles_planner(repo, json_output=json_output)  # amend1024 A2
     # DECISION F270 D4 (1): the commit and push flags are refused before any step.
     mode, push_source = _resolve_do_commit_flags(
         repo, commit=commit, commit_auto=commit_auto,

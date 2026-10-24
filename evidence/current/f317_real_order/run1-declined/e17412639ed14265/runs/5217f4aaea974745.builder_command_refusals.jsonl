@@ -1,0 +1,2 @@
+{"command": "printf '\\nNames are automatically capitalised in the greeting, so `build_greeting('\"'\"'ada'\"'\"')` returns `Hallo, Ada!`.\\n' >> README.md && git diff && python3 -c \"from greet.core import build_greeting; print(build_greeting('ada'))\" && python3 -m pytest -q 2>&1 | tail -3", "reason": "outside the builder's command list", "tool": "Bash"}
+{"command": "python3 -c \"from greet.core import build_greeting; print(build_greeting('ada'))\"", "reason": "outside the builder's command list", "tool": "Bash"}
