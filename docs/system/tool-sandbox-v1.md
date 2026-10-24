@@ -50,7 +50,10 @@ A sandboxed process sees:
 - **Environment:** only the caller's allowlist (`exec_guard` floors and allowlists), with `HOME`
   and `TMPDIR` replaced; `--clearenv` drops everything else.
 - **Network:** a private network namespace with its own loopback only. A test suite can still
-  start and probe its own server; host services and the internet are unreachable.
+  start and probe its own server; host services and the internet are unreachable. A caller may
+  instead keep the host's network (the share_network field of the sandbox spec, DECISION F162
+  D3): only a sandbox profile with a host allowlist does, and its enforcement record then calls
+  the network unenforced.
 
 ## The model connection
 

@@ -4,8 +4,10 @@ Every adapter's own test suite imports this and runs ``run_adapter_conformance``
 against a real instance plus recorded :class:`AdapterSamples`. A dimension that
 conforms returns no failures; a broken adapter fails on exactly the dimension
 its break belongs to. The kit catches no exception of its own except the one
-``build_invocation("planner", ...)`` is contracted to raise — an adapter that
-raises anywhere else fails its caller's test loudly, by design.
+``build_invocation("planner", ...)`` is contracted to raise, and the
+``SandboxProfileError`` ``parse_sandbox_profile`` raises for a default that does
+not parse (DECISION F162 D4 (3)) — an adapter that raises anywhere else fails
+its caller's test loudly, by design.
 """
 from __future__ import annotations
 
@@ -27,14 +29,16 @@ from packages.contracts.adapter_contract import (
     InvocationOptions,
     WorkerAdapter,
     WorkerIsolation,
+    WorkerSandboxDefault,
 )
 from packages.orchestration.failure_postmortem import FailureClass
+from packages.orchestration.sandbox_profiles import SandboxProfileError, parse_sandbox_profile
 from packages.orchestration.token_actuals import UsageActuals
 from packages.orchestration.worker_isolation import has_isolation_record
 
-#: The seven faces a worker adapter is checked against, in the order every run checks them.
+#: The eight faces a worker adapter is checked against, in the order every run checks them.
 CONFORMANCE_DIMENSIONS = (
-    "capabilities", "invocation", "stream", "usage", "errors", "isolation", "transport",
+    "capabilities", "invocation", "stream", "usage", "errors", "isolation", "sandbox", "transport",
 )
 
 #: Three short, ASCII, quote-and-newline-free sentences every conforming invocation must carry.
@@ -287,6 +291,22 @@ def _check_isolation(adapter: WorkerAdapter, samples: AdapterSamples) -> list[Co
     return failures
 
 
+def _check_sandbox(adapter: WorkerAdapter, samples: AdapterSamples) -> list[ConformanceFailure]:
+    # The protocol types sandbox_default() as always returning a WorkerSandboxDefault; this
+    # runtime check exists precisely to catch a broken implementation that violates that promise
+    # (DECISION F162 D4 (3)).
+    result = adapter.sandbox_default()
+    if not isinstance(result, WorkerSandboxDefault):
+        return [ConformanceFailure(
+            "sandbox", f"sandbox_default() must return a WorkerSandboxDefault, got {result!r}")]
+    try:
+        parse_sandbox_profile(adapter.adapter_id, result.profile_toml)
+    except SandboxProfileError as exc:
+        return [ConformanceFailure(
+            "sandbox", f"sandbox default profile does not parse: {exc}")]
+    return []
+
+
 def _lowered_contains_forbidden(text: str) -> bool:
     lowered = text.lower()
     return any(bad in lowered for bad in _FORBIDDEN_NAME_SUBSTRINGS)
@@ -399,6 +419,7 @@ _DIMENSION_CHECKS = {
     "usage": _check_usage,
     "errors": _check_errors,
     "isolation": _check_isolation,
+    "sandbox": _check_sandbox,
     "transport": _check_transport,
 }
 

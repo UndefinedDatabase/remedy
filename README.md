@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-164 of 316 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+165 of 316 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -44,7 +44,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 4 | 17 |
-| 8 | Worker Ecosystem & Neutrality | 4 | 13 |
+| 8 | Worker Ecosystem & Neutrality | 5 | 13 |
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
@@ -934,7 +934,16 @@ starts with the operator's user settings and MCP servers switched off and with a
 environment, while its login under the operator's home keeps working; each build writes a
 `worker_isolation.jsonl` line naming the method and a digest of the environment that prints no
 value; `remedy worker doctor` checks each worker's isolation; the page
-`docs/system/worker-adapter-contract-v2.md` describes it).
+`docs/system/worker-adapter-contract-v2.md` describes it),
+F162 sandbox profiles per adapter (a named profile declares what a worker process may touch — its
+writable paths, its network, its CPU, memory and open-files limits, its allowed programs and its
+temporary-space quota — with the built-ins strict, standard and net-local; each worker adapter
+declares its default profile, a project may only tighten it with `claude_cli.sandbox_profile`, and
+a looser choice is refused naming the minimum; each claude-cli build writes a `worker_sandbox.jsonl`
+line saying which limits are enforced and which are not; `remedy worker doctor` warns about every
+unenforced one; an optional container runner applies the same profile when podman or docker is
+installed; the generated page `docs/system/sandbox-model.md` tables what each profile does and does
+not prevent, every row linked to the test that proves it).
 
 Accepted in Tier 12 so far:
 F200 daemon mode (`remedy serve start` runs one long-lived supervisor for a data root, and

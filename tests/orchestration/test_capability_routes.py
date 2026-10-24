@@ -7,7 +7,11 @@ from __future__ import annotations
 
 import json
 
-from packages.contracts.adapter_contract import AdapterCapabilities, WorkerIsolation
+from packages.contracts.adapter_contract import (
+    AdapterCapabilities,
+    WorkerIsolation,
+    WorkerSandboxDefault,
+)
 from packages.orchestration import worker_adapter_slot
 from packages.orchestration.capability_routes import (
     CAPABILITY_DECISIONS_FILENAME,
@@ -19,6 +23,7 @@ from packages.orchestration.capability_routes import (
 from packages.orchestration.pingpong_loop import resume_declined_reasons
 from packages.orchestration.pingpong_provider import ReviewerOutput, StructuredCliOutcome
 from packages.orchestration.role_provider_factory import create_role_provider
+from packages.orchestration.sandbox_profiles import WORKER_SANDBOX_FILENAME
 from packages.orchestration.worker_isolation import WORKER_ISOLATION_FILENAME
 from packages.providers.adapters.claude_cli_reference import ClaudeCliReferenceAdapter
 
@@ -43,6 +48,11 @@ class _ReducedClaudeCliAdapter:
     def isolation(self) -> WorkerIsolation:
         return ClaudeCliReferenceAdapter().isolation()
 
+    # WHY: a conforming adapter must declare a sandbox default too (DECISION F162 D4 (1)); this
+    # fixture has no sandbox policy of its own to test, so it borrows the registry adapter's.
+    def sandbox_default(self) -> WorkerSandboxDefault:
+        return ClaudeCliReferenceAdapter().sandbox_default()
+
 
 class _ResumeAndSchemaReducedAdapter:
     """A small claude-cli adapter, taking `**settings`, whose capabilities declare
@@ -65,6 +75,11 @@ class _ResumeAndSchemaReducedAdapter:
     # no isolation policy of its own to test, so it borrows the registry adapter's declaration.
     def isolation(self) -> WorkerIsolation:
         return ClaudeCliReferenceAdapter().isolation()
+
+    # WHY: a conforming adapter must declare a sandbox default too (DECISION F162 D4 (1)); this
+    # fixture has no sandbox policy of its own to test, so it borrows the registry adapter's.
+    def sandbox_default(self) -> WorkerSandboxDefault:
+        return ClaudeCliReferenceAdapter().sandbox_default()
 
 
 class TestRoutedClaudeCliBuild:
@@ -267,10 +282,10 @@ class TestCreateRoleProviderRoutesTheStreamSetting:
 
     def test_stream_evidence_false_writes_no_capability_decision(self, tmp_path):
         """R-1455: `create_role_provider` now writes `worker_isolation.jsonl` for every
-        claude-cli build with an evidence directory (DECISION F152 D3 (4)), so the property this
-        test guards is narrower than "the directory stays empty": no `capability_decisions.jsonl`
-        when nothing degraded and nothing is streamed, and the directory then holds exactly the
-        isolation line."""
+        claude-cli build with an evidence directory (DECISION F152 D3 (4)), and since DECISION
+        F162 D5 also `worker_sandbox.jsonl`, so the property this test guards is narrower than
+        "the directory stays empty": no `capability_decisions.jsonl` when nothing degraded and
+        nothing is streamed, and the directory then holds exactly those two lines."""
         evidence_dir = tmp_path / "evidence3"
         provider = create_role_provider(
             "claude-cli", role="builder", staging_dir=str(tmp_path / "staging"),
@@ -279,7 +294,8 @@ class TestCreateRoleProviderRoutesTheStreamSetting:
         )
         assert provider.stream_evidence is False
         assert not (evidence_dir / CAPABILITY_DECISIONS_FILENAME).exists()
-        assert [p.name for p in evidence_dir.iterdir()] == [WORKER_ISOLATION_FILENAME]
+        assert sorted(p.name for p in evidence_dir.iterdir()) == sorted(
+            [WORKER_ISOLATION_FILENAME, WORKER_SANDBOX_FILENAME])
 
 
 class TestRoutedReviewerSchema:

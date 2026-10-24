@@ -24,6 +24,7 @@ from packages.contracts.adapter_contract import (
     HttpInvocation,
     InvocationOptions,
     WorkerIsolation,
+    WorkerSandboxDefault,
 )
 from packages.orchestration import worker_isolation
 from packages.orchestration.failure_postmortem import FailureClass
@@ -41,6 +42,22 @@ _TOY_ISOLATION = WorkerIsolation(
 _TOY_ISOLATION_NO_FLAGS = WorkerIsolation(
     method="clean_env", adr_ref="docs/adr/0002-claude-cli-worker-isolation.md",
     env_allowlist=("PATH",))
+
+#: A valid WorkerSandboxDefault every conforming toy below answers from sandbox_default()
+#: (DECISION F162 D4 (1)); its TOML text is not this file's job to parse (the kit's own tests do).
+_TOY_SANDBOX_DEFAULT = WorkerSandboxDefault(
+    profile_toml=(
+        'fs_scope = ["{workspace}"]\n'
+        'net = "deny"\n'
+        'allowed_binaries = "any"\n'
+        'tmp_quota_mb = "unlimited"\n'
+        "[ulimits]\n"
+        'cpu_s = "unlimited"\n'
+        'mem_mb = "unlimited"\n'
+        'nofile = "unlimited"\n'
+    ),
+    tool_sandbox=True,
+)
 
 #: Literal pin of the kit's forbidden name substrings (R-1437's last two survivors): a word
 #: dropped from the kit's own list must turn this comparison red instead of silently dropping
@@ -97,6 +114,9 @@ class _ConformingCliToy:
     def isolation(self):
         return _TOY_ISOLATION
 
+    def sandbox_default(self):
+        return _TOY_SANDBOX_DEFAULT
+
 
 class _ConformingHttpToy:
     """An HTTP-shaped adapter conforming on every dimension; declares no streaming."""
@@ -138,6 +158,9 @@ class _ConformingHttpToy:
 
     def isolation(self):
         return _TOY_ISOLATION
+
+    def sandbox_default(self):
+        return _TOY_SANDBOX_DEFAULT
 
 
 _CLI_USAGE = AdapterUsage(
@@ -518,6 +541,31 @@ class _BrokenIsolationDropsFlagToy(_ConformingCliToy):
         return CliInvocation(argv=("toy-cli", "--model", options.model, *prompt_parts))
 
 
+class _BrokenSandboxNotADefaultToy(_ConformingCliToy):
+    """sandbox (D4 (3)): sandbox_default() answers something other than a WorkerSandboxDefault."""
+
+    def sandbox_default(self):
+        return {"profile_toml": "x", "tool_sandbox": True}
+
+
+class _BrokenSandboxUnparsableToy(_ConformingCliToy):
+    """sandbox (D4 (3)): a declared profile missing the required `fs_scope` key."""
+
+    def sandbox_default(self):
+        return WorkerSandboxDefault(
+            profile_toml=(
+                'net = "deny"\n'
+                'allowed_binaries = "any"\n'
+                'tmp_quota_mb = "unlimited"\n'
+                "[ulimits]\n"
+                'cpu_s = "unlimited"\n'
+                'mem_mb = "unlimited"\n'
+                'nofile = "unlimited"\n'
+            ),
+            tool_sandbox=True,
+        )
+
+
 class _RetryingBaseToy:
     """A base class a conforming toy below inherits from; only the base holds a retry loop."""
 
@@ -608,6 +656,10 @@ _BROKEN_CASES = (
      "isolation record docs/adr/9999-does-not-exist.md is missing or has no status line"),
     ("isolation", _BrokenIsolationDropsFlagToy(), _CLI_SAMPLES,
      "the command line does not end with the declared tool_args"),
+    ("sandbox", _BrokenSandboxNotADefaultToy(), _CLI_SAMPLES,
+     "sandbox_default() must return a WorkerSandboxDefault"),
+    ("sandbox", _BrokenSandboxUnparsableToy(), _CLI_SAMPLES,
+     "sandbox default profile does not parse: sandbox profile 'cli-toy' key 'fs_scope'"),
     ("transport", _BrokenTransportBaseClassRetriesToy(), _CLI_SAMPLES, "_RetryingBaseToy:"),
     ("transport", _BrokenTransportModuleFunctionToy(), _CLI_SAMPLES,
      "_BrokenTransportModuleFunctionToy calls _toy_fetch_helper: import of 'time'"),
@@ -685,9 +737,10 @@ def test_check_conformance_dimension_raises_for_unknown_dimension():
         check_conformance_dimension(_ConformingCliToy(), _CLI_SAMPLES, "bogus")
 
 
-def test_conformance_dimensions_is_exactly_the_seven_in_order():
+def test_conformance_dimensions_is_exactly_the_eight_in_order():
     assert CONFORMANCE_DIMENSIONS == (
-        "capabilities", "invocation", "stream", "usage", "errors", "isolation", "transport")
+        "capabilities", "invocation", "stream", "usage", "errors", "isolation", "sandbox",
+        "transport")
 
 
 # -- the kit's forbidden-word and module-root constants, pinned to literal values --------

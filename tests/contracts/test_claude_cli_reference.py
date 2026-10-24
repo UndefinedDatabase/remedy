@@ -19,10 +19,22 @@ from packages.contracts.adapter_conformance_kit import (
     ErrorSample,
     run_adapter_conformance,
 )
-from packages.contracts.adapter_contract import AdapterCapabilities, InvocationOptions, WorkerIsolation
+from packages.contracts.adapter_contract import (
+    AdapterCapabilities,
+    InvocationOptions,
+    WorkerAdapter,
+    WorkerIsolation,
+    WorkerSandboxDefault,
+)
 from packages.orchestration.claude_cli_command import build_claude_cli_args
 from packages.orchestration.failure_postmortem import FailureClass, _classify_error_text
 from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
+from packages.orchestration.sandbox_profiles import (
+    SandboxNet,
+    SandboxProfile,
+    SandboxUlimits,
+    parse_sandbox_profile,
+)
 from packages.orchestration.schemas import ReviewVerdict, to_json_schema, to_json_schema_str
 from packages.orchestration.stream_evidence import (
     EVENT_MALFORMED,
@@ -81,6 +93,38 @@ def test_isolation_does_not_apply_with_customizations_but_is_otherwise_equal():
     customized = _adapter(config={"claude_cli.customizations": True}).isolation()
     assert customized.applies is False
     assert dataclasses.replace(customized, applies=True) == plain
+
+
+# -- sandbox_default(): DECISION F162 D4 (2)'s exact declaration, spelled here independently ---
+
+
+def test_sandbox_default_equals_decision_f162_d4_2_exactly():
+    declaration = _adapter().sandbox_default()
+    assert isinstance(declaration, WorkerSandboxDefault)
+    assert declaration.tool_sandbox is False
+    assert declaration.reason == (
+        "the claude command line keeps its login in the operator's home, which the tool "
+        "sandbox hides (DECISION F152 D3)"
+    )
+    assert declaration == WorkerSandboxDefault(
+        profile_toml=declaration.profile_toml, tool_sandbox=False, reason=declaration.reason)
+
+
+def test_sandbox_default_profile_toml_parses_to_decision_f162_d4_2s_profile():
+    declaration = _adapter().sandbox_default()
+    profile = parse_sandbox_profile("claude-cli", declaration.profile_toml)
+    assert profile == SandboxProfile(
+        name="claude-cli",
+        fs_scope=("{workspace}",),
+        net=SandboxNet(mode="allowlist", hosts=("api.anthropic.com",)),
+        ulimits=SandboxUlimits(cpu_s=None, mem_mb=None, nofile=1024),
+        allowed_binaries=None,
+        tmp_quota_mb=None,
+    )
+
+
+def test_adapter_is_still_a_worker_adapter_by_isinstance():
+    assert isinstance(_adapter(), WorkerAdapter)
 
 
 # -- the kit: run_adapter_conformance reads () for a streaming and a non-streaming adapter ----

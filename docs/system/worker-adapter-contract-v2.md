@@ -29,7 +29,7 @@ hide attempts from the per-call evidence.
 
 ## The contract
 `WorkerAdapter` is a runtime-checkable protocol with an `adapter_id` (lower-case letters, digits
-and hyphens) and six methods:
+and hyphens) and seven methods:
 
 | Method | Answers |
 |---|---|
@@ -39,13 +39,14 @@ and hyphens) and six methods:
 | `map_usage(raw)` | `AdapterUsage`: the existing `UsageActuals` plus the provider's own usage counters unchanged, or `None` when the output holds no usage |
 | `classify_error(error_text, exit_code)` | a member of `FailureClass`: provider unavailable, provider timeout, provider non-zero exit, parse or unknown |
 | `isolation()` | a `WorkerIsolation` declaring how this adapter keeps the operator's own configuration and secrets out of a worker's call (DECISION F152 D3) |
+| `sandbox_default()` | a `WorkerSandboxDefault` declaring the adapter's default sandbox profile as TOML text and whether its process runs inside the tool sandbox (DECISION F162 D4) |
 
 Flags are declared honestly: an adapter declares only what its tests prove.
 
 ## The conformance kit
-`run_adapter_conformance(adapter, samples)` checks seven dimensions in order — capabilities,
-invocation, stream, usage, errors, isolation and transport — and returns every failure, each with
-its dimension and a detail; an empty answer means the adapter conforms.
+`run_adapter_conformance(adapter, samples)` checks eight dimensions in order — capabilities,
+invocation, stream, usage, errors, isolation, sandbox and transport — and returns every failure,
+each with its dimension and a detail; an empty answer means the adapter conforms.
 `check_conformance_dimension` checks one. The caller supplies `AdapterSamples`: recorded raw stream
 lines with their expected events, a recorded usage output with its expected answer, and error
 texts with their expected class, at least one unavailable and one timeout among them. The kit
@@ -142,6 +143,31 @@ reads. `worker doctor` adds four `isolation_<provider_id>_*` checks — declarat
 and flags — right after a worker's own executable check and only once that executable is found,
 reading the worker's `--help` through the replaceable `read_tool_help` rather than any paid call
 (DECISION F152 D5 (2) and (3)).
+
+## Sandbox default
+Every adapter declares `sandbox_default()` (DECISION F162 D4): a `WorkerSandboxDefault` carrying
+its default sandbox profile as TOML text and whether its process runs inside the tool sandbox,
+with a reason required whenever it does not. The claude-cli adapter's default is an API allowlist
+naming `api.anthropic.com`, every ulimit unlimited except `nofile` at 1024, and `tool_sandbox`
+false, because the claude command line keeps its login in the operator's home, which the tool
+sandbox hides (DECISION F152 D3). The allowlist is declarative, not enforced: DECISION F162 D3 (4)
+already records an allowlist as unenforced, so a host the tool also reaches makes no recorded
+promise false. The conformance kit's sandbox dimension refuses a `sandbox_default()` answer that
+is not a `WorkerSandboxDefault`, and refuses a declared profile whose TOML `parse_sandbox_profile`
+cannot parse, naming the parser's own refusal text.
+
+Both claude-cli spawn policies compile that default through `adapter_exec_policy` in the worker
+adapter slot (DECISION F162 D5): outside the tool sandbox, so for the claude-cli default it adds an
+open-files limit of 1024 and nothing else. Every claude-cli provider build writes one line to
+`worker_sandbox.jsonl` beside `worker_isolation.jsonl`, naming the profile, the runner, whether the
+process runs inside the tool sandbox, and each dimension's enforced or unenforced state with its
+reason.
+
+A project names a stricter built-in with `claude_cli.sandbox_profile`, a looser or unknown name is
+refused naming the adapter's default before any call, the call, its evidence line and
+`worker doctor` read the same resolved profile, and the doctor's `sandbox_<provider_id>` check
+passes with a warning naming each unenforced dimension and fails only on a refused choice
+(DECISION F162 D6).
 
 ## The capability matrix
 `packages/contracts/capability_matrix.py` holds a declarative register,

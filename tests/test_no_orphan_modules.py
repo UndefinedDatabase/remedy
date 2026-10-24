@@ -103,6 +103,9 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "answers\" (DECISION F313 D2)"),
     ("scripts/remedy_agent_tooling_doctor.py",
      "run by hand after tooling changes, per .claude/skills/remedy-agent-tooling/SKILL.md"),
+    ("scripts/render_sandbox_model.py",
+     "run by hand to regenerate docs/system/sandbox-model.md, its own test's import only "
+     "(DECISION F162 D8 (1))"),
     ("scripts/self_run_gauntlet.py",
      "the gauntlet campaign CLI, run by hand (docs/adr/0001, gauntlet_evaluator.py names it)"),
 )

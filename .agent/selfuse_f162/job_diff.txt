@@ -1,0 +1,92 @@
+$ git diff HEAD...remedy/job-0cdcfc43d6754774  (exit 0)
+diff --git a/tests/orchestration/test_config_key_spec.py b/tests/orchestration/test_config_key_spec.py
+new file mode 100644
+index 000000000..69014a722
+--- /dev/null
++++ b/tests/orchestration/test_config_key_spec.py
+@@ -0,0 +1,85 @@
++import pytest
++from packages.orchestration.config_key_spec import ConfigKeySpec
++
++
++def test_minimal_construction():
++    spec = ConfigKeySpec(key="my_key", env_var="MY_KEY", description="A test key")
++    assert spec.key == "my_key"
++    assert spec.env_var == "MY_KEY"
++    assert spec.description == "A test key"
++
++
++def test_defaults():
++    spec = ConfigKeySpec(key="k", env_var="K", description="d")
++    assert spec.value_type is str
++    assert spec.entry_type is None
++    assert spec.default is None
++    assert spec.env_only is False
++    assert spec.secret is False
++    assert spec.fallback_key is None
++
++
++def test_value_type_int():
++    spec = ConfigKeySpec(key="timeout", env_var="TIMEOUT", description="timeout", value_type=int, default=30)
++    assert spec.value_type is int
++    assert spec.default == 30
++
++
++def test_value_type_bool():
++    spec = ConfigKeySpec(key="flag", env_var="FLAG", description="a bool flag", value_type=bool, default=False)
++    assert spec.value_type is bool
++    assert spec.default is False
++
++
++def test_value_type_list():
++    spec = ConfigKeySpec(key="items", env_var="ITEMS", description="a list", value_type=list)
++    assert spec.value_type is list
++
++
++def test_value_type_dict_with_entry_type():
++    spec = ConfigKeySpec(
++        key="table", env_var="TABLE", description="a dict", value_type=dict, entry_type=str
++    )
++    assert spec.value_type is dict
++    assert spec.entry_type is str
++
++
++def test_entry_type_dict_for_record_table():
++    spec = ConfigKeySpec(
++        key="records", env_var="RECORDS", description="record table", value_type=dict, entry_type=dict
++    )
++    assert spec.entry_type is dict
++
++
++def test_env_only_flag():
++    spec = ConfigKeySpec(key="token", env_var="TOKEN", description="token", env_only=True)
++    assert spec.env_only is True
++
++
++def test_secret_flag():
++    spec = ConfigKeySpec(key="api_key", env_var="API_KEY", description="secret", secret=True)
++    assert spec.secret is True
++
++
++def test_fallback_key():
++    spec = ConfigKeySpec(key="new_key", env_var="NEW_KEY", description="with fallback", fallback_key="old_key")
++    assert spec.fallback_key == "old_key"
++
++
++def test_frozen_immutability():
++    spec = ConfigKeySpec(key="k", env_var="K", description="d")
++    with pytest.raises((AttributeError, TypeError)):
++        spec.key = "changed"  # type: ignore[misc]
++
++
++def test_equality_and_hashing():
++    spec1 = ConfigKeySpec(key="k", env_var="K", description="d")
++    spec2 = ConfigKeySpec(key="k", env_var="K", description="d")
++    assert spec1 == spec2
++    assert hash(spec1) == hash(spec2)
++
++
++def test_inequality():
++    spec1 = ConfigKeySpec(key="a", env_var="A", description="d")
++    spec2 = ConfigKeySpec(key="b", env_var="B", description="d")
++    assert spec1 != spec2

@@ -161,6 +161,31 @@ class WorkerIsolation:
             raise ValueError("throwaway_home is not allowed with tool_flag")
 
 
+# WHY: one declared shape for an adapter's own default sandbox profile and whether its process
+# runs inside the tool sandbox, so a route and the conformance kit read one typed answer instead
+# of trusting an adapter's prose (DECISION F162 D4 (1)).
+@dataclass(frozen=True)
+class WorkerSandboxDefault:
+    """An adapter's default sandbox profile: TOML text `parse_sandbox_profile` parses with the
+    adapter's own `adapter_id` as its name, and whether the adapter's process runs inside the
+    tool sandbox. `reason` is required whenever `tool_sandbox` is False, naming why the process
+    cannot run inside the sandbox's boundary."""
+
+    profile_toml: str
+    tool_sandbox: bool
+    reason: str = ""
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.profile_toml, str) or not self.profile_toml:
+            raise ValueError(f"profile_toml must be a non-empty string: {self.profile_toml!r}")
+        if not isinstance(self.tool_sandbox, bool):
+            raise ValueError(f"tool_sandbox must be a bool: {self.tool_sandbox!r}")
+        if not isinstance(self.reason, str):
+            raise ValueError(f"reason must be a string: {self.reason!r}")
+        if not self.tool_sandbox and not self.reason:
+            raise ValueError("tool_sandbox False requires a non-empty reason")
+
+
 @runtime_checkable
 class WorkerAdapter(Protocol):
     """What every provider adapter promises the ping-pong loop (D2 (3))."""
@@ -195,4 +220,9 @@ class WorkerAdapter(Protocol):
     def isolation(self) -> WorkerIsolation:
         """Declare how this adapter keeps the operator's own configuration and secrets out of a
         worker's call (DECISION F152 D3 (1))."""
+        ...
+
+    def sandbox_default(self) -> WorkerSandboxDefault:
+        """Declare this adapter's default sandbox profile as TOML text, and whether its process
+        runs inside the tool sandbox (DECISION F162 D4 (1))."""
         ...

@@ -1,0 +1,8 @@
+fs_scope = ["{workspace}"]
+net = { allow = ["127.0.0.1", "::1", "localhost"] }
+allowed_binaries = "any"
+tmp_quota_mb = 512
+[ulimits]
+cpu_s = 1800
+mem_mb = "unlimited"
+nofile = 1024

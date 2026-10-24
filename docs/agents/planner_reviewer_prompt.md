@@ -873,6 +873,23 @@ end the response with:
   duplicate the slip above left, is item 35's; R-1457, a section the block's own rewrite rule kept
   stale, is item 34's reading of a file for what it already holds; and R-1456, R-1458 and R-1462 were
   defects of the product that the reviewer's reading of the diff found. The list stays at 34 items.
+  Consolidated again at F162's closure on 2026-10-24: nothing joined and no two items were merged,
+  because none of F162's five lines in `.agent/prose_slips.md` names a lesson the list lacks: three
+  reviewer scripts that read a worker's raw text for a literal the worker could rightly write
+  otherwise, or demanded an order the file did not hold before the round, are item 12's reading of
+  what a dry run's command measures and item 6's reading of the target's existing content; and a
+  worker that started helpers of its own, and one that ran probes beyond its order and reached a
+  binary another way after an approval was asked, are a worker's slips, not a block's. Five of its
+  six findings were raised against its own rounds and repaired inside the feature: R-1465, a page
+  citing another feature's decision, is item 9's reading of a citation against this branch; R-1466
+  and R-1468, a test that could not see the write it guarded and three promises no ordered test
+  held, are item 18's reading of an ordered list of tests against the property it must establish,
+  each found by the reviewer's mutations; R-1469, a decision that ordered one wording for every
+  enforced state while an earlier decision recorded a state with nothing to enforce, is item 8's
+  reading of the code that produces what a sentence asserts; and R-1470, an index cell the
+  documentation staleness check reads as a folder, was found by the reviewer's probe of the
+  closure's own self-use generator. The sixth, R-1467, the container runner's configuration key, is
+  owned by F246. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

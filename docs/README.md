@@ -7,7 +7,7 @@
 
 | Keyword | File | Category |
 |---------|------|----------|
-| ADR / decision record | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md), [0002-claude-cli-worker-isolation.md](adr/0002-claude-cli-worker-isolation.md) | adr |
+| ADR / decision record | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md), [0002-claude-cli-worker-isolation.md](adr/0002-claude-cli-worker-isolation.md), [0003-sandbox-container-runner.md](adr/0003-sandbox-container-runner.md) | adr |
 | agent conventions | [worker_conventions.md](agents/worker_conventions.md), [reviewer_conventions.md](agents/reviewer_conventions.md), [teacher_conventions.md](agents/teacher_conventions.md) | agents |
 | handback template | [handback_template.md](agents/handback_template.md) | agents |
 | integration gate | [integration_gate.md](agents/integration_gate.md) | agents |
@@ -42,6 +42,7 @@
 | environment variable | [environment.md](guides/environment.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
 | sandbox / Bubblewrap / Pi isolation | [tool-sandbox-v1.md](system/tool-sandbox-v1.md) | system |
+| sandbox model / profile honesty table | [sandbox-model.md](system/sandbox-model.md) | system |
 | exit code | [exit-codes.md](guides/exit-codes.md) | guide |
 | explanations / terms | [explanation-layer-user-guide-v1.md](archive/explanation-layer-user-guide-v1.md) | archive |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
@@ -121,6 +122,7 @@ Specifications and design documents for the built system.
 | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
 | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | What the F085 stage-1 execution guard does NOT prevent |
 | [tool-sandbox-v1.md](system/tool-sandbox-v1.md) | The Bubblewrap boundary around Pi and untrusted project commands: what is inside, the model relay, deadlines, fail-closed states, platforms, install and rollback |
+| [sandbox-model.md](system/sandbox-model.md) | GENERATED: the sandbox profile honesty table — strict, standard, net-local and the claude-cli default, one row per dimension, what the process runner and the container runner each prevent and do not, and the test that proves each cell |
 | [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone — command deleted by F280 round 3 |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
@@ -255,6 +257,7 @@ conformance kit requires every adapter to name its record.
 |------|-------------|--------|
 | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md) | Raise `CYCLE_SAFETY_CAP` 1 → 8 on the F075 10/10 gate evidence; the shipped default stays 1 | ACCEPTED & APPLIED 2026-08-07 |
 | [0002-claude-cli-worker-isolation.md](adr/0002-claude-cli-worker-isolation.md) | How the claude-cli worker keeps the operator's personal configuration out of a run: its flags, its environment and its login | RESEARCH RECORD, partly verified 2026-10-24 |
+| [0003-sandbox-container-runner.md](adr/0003-sandbox-container-runner.md) | The container sandbox runner against the process one, per dimension: the daemon, image provenance, measured costs, cleanup and why no worker uses it yet | RESEARCH RECORD, fully verified 2026-10-24 |
 
 ## Contract Templates (`docs/contracts/`)
 
