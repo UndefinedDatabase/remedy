@@ -31,6 +31,7 @@ from packages.contracts.capability_matrix import (
     capability_degradation_entries,
     capability_matrix_for,
     capability_present,
+    format_capability_degradations,
     require_or_degrade,
 )
 
@@ -193,6 +194,36 @@ def test_capability_degradation_entries_drops_native_and_dedupes_in_first_seen_o
         capability_decision_record(degraded_a),
         capability_decision_record(degraded_b),
     ]
+
+
+# -- format_capability_degradations ---------------------------------------------------------------
+
+def test_format_capability_degradations_of_an_empty_list_is_none():
+    assert format_capability_degradations([]) == "none"
+
+
+def test_format_capability_degradations_of_a_degraded_entry():
+    entry = capability_decision_record(CapabilityDecision(
+        feature_key="a", mode=CAPABILITY_MODE_DEGRADED, strategy="s", missing=("json_schema",),
+    ))
+    assert format_capability_degradations([entry]) == "a as s"
+
+
+def test_format_capability_degradations_of_an_unavailable_entry():
+    entry = capability_decision_record(CapabilityDecision(
+        feature_key="b", mode=CAPABILITY_MODE_UNAVAILABLE, strategy=None, missing=("vision",),
+    ))
+    assert format_capability_degradations([entry]) == "b unavailable"
+
+
+def test_format_capability_degradations_of_two_entries_joined():
+    degraded = capability_decision_record(CapabilityDecision(
+        feature_key="a", mode=CAPABILITY_MODE_DEGRADED, strategy="s", missing=("json_schema",),
+    ))
+    unavailable = capability_decision_record(CapabilityDecision(
+        feature_key="b", mode=CAPABILITY_MODE_UNAVAILABLE, strategy=None, missing=("vision",),
+    ))
+    assert format_capability_degradations([degraded, unavailable]) == "a as s, b unavailable"
 
 
 # -- completeness ----------------------------------------------------------------------------------

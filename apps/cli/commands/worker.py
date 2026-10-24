@@ -55,10 +55,10 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     import dataclasses
 
     from packages.contracts.capability_matrix import (
-        CAPABILITY_MODE_DEGRADED,
-        CAPABILITY_MODE_NATIVE,
         capability_decision_record,
+        capability_degradation_entries,
         capability_matrix_for,
+        format_capability_degradations,
     )
     from packages.orchestration.worker_adapters import (
         export_worker_specs_json,
@@ -97,12 +97,7 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
         ]
         print(f"  Adapter: {match.adapter_ref}")
         print(f"  Capabilities: {', '.join(flags) if flags else 'none'}")
-        degradations = [
-            f"{d.feature_key} as {d.strategy}" if d.mode == CAPABILITY_MODE_DEGRADED
-            else f"{d.feature_key} unavailable"
-            for d in decisions if d.mode != CAPABILITY_MODE_NATIVE
-        ]
-        print(f"  Degradations: {', '.join(degradations) if degradations else 'none'}")
+        print(f"  Degradations: {format_capability_degradations(capability_degradation_entries(decisions))}")
 
 
 def _cmd_worker_resources(*, json_output: bool = False) -> None:

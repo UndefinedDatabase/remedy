@@ -112,24 +112,27 @@ def routed_claude_cli_build(
     return stream_decision.mode == CAPABILITY_MODE_NATIVE
 
 
-# WHY: the run's degradations, read back from the evidence file this module writes.
-def read_capability_degradations(evidence_dir: str | None) -> list[dict]:
-    if not evidence_dir:
-        return []
-    path = Path(evidence_dir) / CAPABILITY_DECISIONS_FILENAME
-    if not path.is_file():
-        return []
+# WHY: the run's degradations, read back from the evidence file this module writes, over however
+# many directories a run's build wrote to — a job task's own directory as well as the run's own
+# (DECISION F157 D5 (2)); a falsy or absent directory is skipped, never raised on.
+def read_capability_degradations(*evidence_dirs: str | None) -> list[dict]:
     decisions: list[CapabilityDecision] = []
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        try:
-            parsed = json.loads(raw_line)
-        except json.JSONDecodeError:
+    for evidence_dir in evidence_dirs:
+        if not evidence_dir:
             continue
-        if not isinstance(parsed, dict):
+        path = Path(evidence_dir) / CAPABILITY_DECISIONS_FILENAME
+        if not path.is_file():
             continue
-        for record in parsed.get("decisions", []):
-            decisions.append(CapabilityDecision(
-                feature_key=record["feature_key"], mode=record["mode"],
-                strategy=record["strategy"], missing=tuple(record["missing"]),
-            ))
+        for raw_line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                parsed = json.loads(raw_line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(parsed, dict):
+                continue
+            for record in parsed.get("decisions", []):
+                decisions.append(CapabilityDecision(
+                    feature_key=record["feature_key"], mode=record["mode"],
+                    strategy=record["strategy"], missing=tuple(record["missing"]),
+                ))
     return capability_degradation_entries(decisions)

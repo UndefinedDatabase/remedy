@@ -167,5 +167,18 @@ def capability_degradation_entries(
     return entries
 
 
+# WHY: the one wording a degradation prints everywhere it is shown — `remedy worker show`'s text
+# line, the job report's per-task line and `remedy run show`'s line alike (DECISION F157 D5 (1)).
+def format_capability_degradations(entries: list[dict]) -> str:
+    if not entries:
+        return "none"
+    return ", ".join(
+        f"{entry['feature_key']} as {entry['strategy']}"
+        if entry["mode"] == CAPABILITY_MODE_DEGRADED
+        else f"{entry['feature_key']} unavailable"
+        for entry in entries
+    )
+
+
 # WHY: the run-record key this evidence lives under; never the generic `degraded` other sites use.
 CAPABILITY_DEGRADATIONS_FIELD = "capability_degradations"

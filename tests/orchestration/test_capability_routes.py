@@ -17,7 +17,7 @@ from packages.orchestration.capability_routes import (
     routed_reviewer_schema,
 )
 from packages.orchestration.pingpong_loop import resume_declined_reasons
-from packages.orchestration.pingpong_provider import ReviewerOutput
+from packages.orchestration.pingpong_provider import ReviewerOutput, StructuredCliOutcome
 from packages.orchestration.role_provider_factory import create_role_provider
 
 
@@ -151,6 +151,80 @@ class TestReadCapabilityDegradations:
         path = tmp_path / CAPABILITY_DECISIONS_FILENAME
         path.write_text("[1, 2, 3]\n", encoding="utf-8")
         assert read_capability_degradations(str(tmp_path)) == []
+
+
+class TestReadCapabilityDegradationsOverManyDirectories:
+    """DECISION F157 D5 (2): `read_capability_degradations` takes any number of evidence
+    directories and answers the degradations over all their lines together."""
+
+    def test_two_directories_each_with_one_distinct_line_and_a_repeat_give_the_distinct_entries_in_order(
+        self, tmp_path,
+    ):
+        dir_a = tmp_path / "a"
+        dir_b = tmp_path / "b"
+        dir_a.mkdir()
+        dir_b.mkdir()
+        line_x = json.dumps({"role": "builder", "provider": "claude-cli", "model": "m", "decisions": [
+            {"feature_key": "stream_evidence_capture", "mode": "degraded",
+             "strategy": "buffered_output", "missing": ["streaming"]},
+        ]})
+        line_y = json.dumps({"role": "reviewer", "provider": "claude-cli", "model": "m", "decisions": [
+            {"feature_key": "reviewer_schema_gate", "mode": "degraded",
+             "strategy": "schema_in_prompt", "missing": ["json_schema"]},
+        ]})
+        (dir_a / CAPABILITY_DECISIONS_FILENAME).write_text(f"{line_x}\n", encoding="utf-8")
+        (dir_b / CAPABILITY_DECISIONS_FILENAME).write_text(f"{line_x}\n{line_y}\n", encoding="utf-8")
+        assert read_capability_degradations(str(dir_a), str(dir_b)) == [
+            {"feature_key": "stream_evidence_capture", "mode": "degraded",
+             "strategy": "buffered_output", "missing": ["streaming"]},
+            {"feature_key": "reviewer_schema_gate", "mode": "degraded",
+             "strategy": "schema_in_prompt", "missing": ["json_schema"]},
+        ]
+
+    def test_falsy_and_absent_directories_are_skipped(self, tmp_path):
+        assert read_capability_degradations(None, "", str(tmp_path / "absent")) == []
+
+
+class TestReviewImplRoutesTheSchemaCall:
+    """R-1453: `_review_impl` reaches the branch `routed_reviewer_schema` names, proved by which
+    stub actually ran — a stub that raised on the wrong branch would be swallowed by
+    `_review_impl`'s own `except Exception`, which is the authoring defect R-1453 registers."""
+
+    def _reviewer_with_stubbed_calls(self, tmp_path, calls: list[str]):
+        reviewer = create_role_provider(
+            "claude-cli", role="reviewer", staging_dir=str(tmp_path / "staging"),
+            model="m", with_failover=False,
+        )
+
+        def native_stub(*args, **kwargs):
+            calls.append("native")
+            return StructuredCliOutcome(value_text=json.dumps({
+                "schema_v": "rv1", "verdict": "pass", "findings": [],
+                "confidence": "high", "summary": "ok",
+            }))
+
+        def legacy_stub(*args, **kwargs):
+            calls.append("legacy")
+            text = json.dumps({"verdict": "pass", "findings": [], "confidence": "high", "summary": "ok"})
+            return (text, 0, 0, None, "")
+
+        reviewer._call_reviewer_structured = native_stub
+        reviewer._call = legacy_stub
+        return reviewer
+
+    def test_the_reduced_adapter_reaches_only_the_legacy_stub(self, monkeypatch, tmp_path):
+        monkeypatch.setitem(worker_adapter_slot._INSTALLED_WORKER_ADAPTERS, "claude-cli",
+                             _ResumeAndSchemaReducedAdapter)
+        calls: list[str] = []
+        reviewer = self._reviewer_with_stubbed_calls(tmp_path, calls)
+        reviewer._review_impl("prompt text")
+        assert calls == ["legacy"]
+
+    def test_the_registrys_adapter_reaches_only_the_native_stub(self, tmp_path):
+        calls: list[str] = []
+        reviewer = self._reviewer_with_stubbed_calls(tmp_path, calls)
+        reviewer._review_impl("prompt text")
+        assert calls == ["native"]
 
 
 class TestCreateRoleProviderRoutesTheStreamSetting:
