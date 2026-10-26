@@ -1,0 +1,26 @@
+{
+  "answer": "**Kurz:** Das entscheidet nicht eine einzelne Datei, sondern zwei zusammen. `packages/orchestration/do_lane.py` steuert die Entscheidung und trifft das letzte Wort. `packages/orchestration/scope_decision.py` stellt dem Planner die eigentliche Frage „ein Job oder mehrere?“.\n\n## Ablauf: `settle_do_lane` in `packages/orchestration/do_lane.py:398-420`\n\n1. **Regex-Routing zuerst.** `select_do_lane` (`do_lane.py:209-244`) wählt eine Lane:\n   - `bounded`: ein Job mit wenigen, ausdrücklich genannten Dateien.\n   - `full`: der Planner plant Milestones.\n   - `hold`: eine Rückfrage statt einer Vermutung.\n\n   Ein Auftrag mit mehreren Projekten oder mit `--force-mission` geht immer auf `full`. Mit `--force-job` wird er `bounded`, außer bei einem `hold`.\n\n2. **„Ein Job“ ohne Nachfrage.** `order_single_job_reason` (`do_lane.py:188-206`) prüft zwei Fälle:\n   - Der Kopf der Auftragsdatei sagt `shape: single-job`. Die Konstante `ORDER_SHAPE_SINGLE_JOB` steht in `packages/orchestration/order_file.py:44`.\n   - Der Text nennt genau eine Datei.\n\n   Trifft einer davon zu, wird der Auftrag ein Job ohne Milestones, und der Planner wird nicht gefragt.\n\n3. **Wann der Planner gefragt wird.** `asks_scope_decision` (`do_lane.py:357-368`) entscheidet das. Nicht gefragt wird:\n   - bei `--no-llm`, `--force-job`, `--force-mission` oder mehreren Projekten,\n   - bei einem `hold`,\n   - bei einem Auftrag, der keine Änderung verlangt,\n   - wenn Schritt 2 schon „ein Job“ ergeben hat,\n   - bei einem `bounded`-Auftrag, dessen Text seine Dateien selbst nennt.\n\n4. **Die Frage an den Planner.** `decide_order_scope` (`scope_decision.py:70-115`) schickt dem Planner (Standard `claude-cli`) den Auftrag, höchstens 2000 getrackte Pfade (`SCOPE_DECISION_MAX_PATHS`) und eine feste Frage, die einen Job bevorzugt. Die Antwort ist genau ein JSON-Objekt:\n   - `single_job`\n   - `files`\n   - `reason` (ein deutscher Satz)\n\n   Daraus wird das Ergebnis `decided`:\n   - **`several_jobs`** nur, wenn `single_job: false` **und** ein nicht leerer `reason` vorliegt (`scope_decision.py:110-113`).\n   - **`one_job`** sonst, also der Standard. Das gilt auch bei `false` ohne Begründung.\n   - **`regex_fallback`**, wenn der Planner nicht erreichbar ist, der Aufruf fehlschlägt oder die Antwort auch nach einem erneuten Parse-Versuch ungültig bleibt. Aus einer unbrauchbaren Antwort wird keine Größe geraten (`scope_decision.py:11-13`).\n\n5. **Das Ergebnis anwenden.** `lane_after_scope_decision` (`do_lane.py:371-395`) setzt das Ergebnis um:\n   - `several_jobs`: die `full`-Lane mit Milestones, also mehrere Jobs.\n   - `one_job`: Eine `bounded`-Lane bleibt `bounded`, wenn die Dateien des Planners darin enthalten sind. Sonst wird der Auftrag `full`, aber als **ein** Job ohne Milestones, dessen Tasks der Planner plant.\n   - `regex_fallback`: Die Lane aus Schritt 1 bleibt unverändert.\n\nDie Entscheidung wird als Beleg in `scope_decision.json` im Evidence-Ordner jedes Jobs gespeichert (`record_scope_decision`, `scope_decision.py:118-127`).\n\n## Dateien, auf denen die Antwort beruht\n- `packages/orchestration/scope_decision.py`\n- `packages/orchestration/do_lane.py`\n- `packages/orchestration/order_file.py` (nur die Konstante `shape: single-job`)",
+  "ask_id": "ask-20261026T121928Z-59affd79",
+  "calls_used": 1,
+  "evidence": "evidence/asks/ask-20261026T121928Z-59affd79",
+  "model": "claude-opus-5-5",
+  "ok": true,
+  "project": "remedy",
+  "repo_unchanged": true,
+  "schema_version": 1,
+  "status": 200,
+  "tokens": {
+    "cache_creation": 14167,
+    "cache_read": 35329,
+    "input": 10,
+    "output": 2189
+  },
+  "tokens_used": 2199,
+  "tool_calls": [
+    "Grep",
+    "Read",
+    "Grep",
+    "Read"
+  ],
+  "turns": 5
+}

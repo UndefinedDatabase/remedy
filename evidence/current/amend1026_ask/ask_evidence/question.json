@@ -1,0 +1,34 @@
+{
+  "argv": [
+    "-p",
+    "<prompt>",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--tools",
+    "Read,Glob,Grep",
+    "--allowedTools",
+    "Read,Glob,Grep",
+    "--restricted",
+    "--strict-mcp-config",
+    "--safe-mode",
+    "--no-session-persistence"
+  ],
+  "ask_id": "ask-20261026T121928Z-59affd79",
+  "asked_by": "orb-universe",
+  "max_total_tokens": 150000,
+  "project": "remedy",
+  "question": "Welche Datei entscheidet, ob ein Auftrag ein Job oder mehrere wird, und wie?",
+  "repo_before": {
+    "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "head": "1e7cc4462c8dcd5e12ab90dcc98992bfabdb063d",
+    "status": [
+      "?? evidence/current/amend1026_ask/ask_request.json",
+      "?? evidence/current/amend1026_ask/execution_offer.json",
+      "?? evidence/current/amend1026_ask/interface_version.json",
+      "?? evidence/current/amend1026_ask/projects.json"
+    ]
+  },
+  "repo_path": "/home/decodeux/Repos/remedy",
+  "started_at": "2026-10-26T12:19:28.209969+00:00"
+}

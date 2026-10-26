@@ -1,0 +1,39 @@
+{
+  "ask_id": "ask-20261026T121928Z-59affd79",
+  "calls_used": 1,
+  "ended_at": "2026-10-26T12:19:53.570718+00:00",
+  "error": null,
+  "evidence": "evidence/asks/ask-20261026T121928Z-59affd79",
+  "model": "claude-opus-5-5",
+  "permission_denials": [],
+  "project": "remedy",
+  "repo_after": {
+    "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "head": "1e7cc4462c8dcd5e12ab90dcc98992bfabdb063d",
+    "status": [
+      "?? evidence/current/amend1026_ask/ask_request.json",
+      "?? evidence/current/amend1026_ask/execution_offer.json",
+      "?? evidence/current/amend1026_ask/interface_version.json",
+      "?? evidence/current/amend1026_ask/projects.json"
+    ]
+  },
+  "repo_unchanged": true,
+  "returncode": 0,
+  "stderr": "",
+  "tokens": {
+    "cache_creation": 14167,
+    "cache_read": 35329,
+    "input": 10,
+    "output": 2189
+  },
+  "tokens_used": 2199,
+  "tool_calls": [
+    "Grep",
+    "Read",
+    "Grep",
+    "Read"
+  ],
+  "tripped_limit": null,
+  "turns": 5,
+  "wall_seconds": 25.146
+}

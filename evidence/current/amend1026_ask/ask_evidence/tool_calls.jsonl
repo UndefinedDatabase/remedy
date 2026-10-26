@@ -1,0 +1,4 @@
+{"input": {"head_limit": 60, "output_mode": "files_with_matches", "pattern": "(?i)(split|aufteil|one job|multiple jobs|mehrere jobs|ein job)"}, "tool": "Grep"}
+{"input": {"file_path": "/home/decodeux/Repos/remedy/packages/orchestration/scope_decision.py"}, "tool": "Read"}
+{"input": {"output_mode": "content", "path": "/home/decodeux/Repos/remedy/packages", "pattern": "decide_order_scope|SCOPE_SEVERAL_JOBS|SCOPE_REGEX_FALLBACK|single-job"}, "tool": "Grep"}
+{"input": {"file_path": "/home/decodeux/Repos/remedy/packages/orchestration/do_lane.py", "limit": 280, "offset": 170}, "tool": "Read"}

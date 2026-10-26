@@ -1,0 +1,97 @@
+{
+  "ok": true,
+  "projects": [
+    {
+      "description": "",
+      "last_job_at": null,
+      "last_test": null,
+      "name": "gaia",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/universe/gaia",
+      "slug": "gaia"
+    },
+    {
+      "description": "",
+      "last_job_at": null,
+      "last_test": null,
+      "name": "luna",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/universe/luna",
+      "slug": "luna"
+    },
+    {
+      "description": "",
+      "last_job_at": null,
+      "last_test": null,
+      "name": "luna-avatar",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/universe/luna-avatar",
+      "slug": "luna-avatar"
+    },
+    {
+      "description": "",
+      "last_job_at": null,
+      "last_test": null,
+      "name": "remedy",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/remedy",
+      "slug": "remedy"
+    },
+    {
+      "description": "",
+      "last_job_at": null,
+      "last_test": null,
+      "name": "sol",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/universe/sol",
+      "slug": "sol"
+    },
+    {
+      "description": "",
+      "last_job_at": "2026-10-24T02:20:54.795266+00:00",
+      "last_test": null,
+      "name": "universe-chat",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/universe/universe-chat",
+      "slug": "universe-chat"
+    },
+    {
+      "description": "",
+      "last_job_at": null,
+      "last_test": null,
+      "name": "universe-engine",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/universe/universe-engine",
+      "slug": "universe-engine"
+    },
+    {
+      "description": "",
+      "last_job_at": null,
+      "last_test": null,
+      "name": "universe-gate",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/universe/universe-gate",
+      "slug": "universe-gate"
+    },
+    {
+      "description": "",
+      "last_job_at": null,
+      "last_test": null,
+      "name": "universe-kit",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/universe/universe-kit",
+      "slug": "universe-kit"
+    },
+    {
+      "description": "",
+      "last_job_at": null,
+      "last_test": null,
+      "name": "universe-voice",
+      "open_jobs": 0,
+      "repo_path": "/home/decodeux/Repos/universe/universe-voice",
+      "slug": "universe-voice"
+    }
+  ],
+  "schema_version": 1,
+  "status": 200
+}

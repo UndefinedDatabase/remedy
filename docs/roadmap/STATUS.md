@@ -336,6 +336,10 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F317 — One real order lands (built and accepted 2026-10-24 by operator amendment amend1024-one-real-order, Parts A to G · evidence: evidence/current/f317_real_order/README.md · order e4eaaaa9cebd3304 · job 24270f620da248bc · real claude-cli calls, no manual operator repair)
 
+## Tier 2 — Questions to a project, read-only (operator amendment amend1026-go-live-and-ask)
+
+- [x] F318 — Fragen an ein Projekt, nur lesend (built and accepted 2026-10-26 by operator amendment amend1026-go-live-and-ask, Parts A to E · evidence: evidence/current/amend1026_ask/README.md · ask ask-20261026T121928Z-59affd79 · client orb-universe · real claude-cli call, no manual operator repair)
+
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
 - [ ] F316 — Findings paydown v11

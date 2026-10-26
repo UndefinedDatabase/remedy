@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-167 of 317 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+168 of 318 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -38,7 +38,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 50 | 51 |
+| 2 | Minimal Self-Build Runtime | 51 | 52 |
 | 3 | Full Token Economy & Autonomy | 16 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
@@ -370,7 +370,12 @@ reviewer, decided it was one job, planned it, built it, ran the project's tests
 itself, accepted it, and `remedy job apply` brought the change into the project.
 The planner now decides how many jobs an order is, one by default, and reads the
 project's `[roles]` table; the builder may run the project's tests and a short list
-of reading commands, and every command refused is kept as evidence).
+of reading commands, and every command refused is kept as evidence),
+F318 questions to a project, read-only (a client the operator granted the host's
+tools asked over the public HTTP API which file decides whether an order is one job
+or several, and the Claude Code CLI, allowed only to read, search and look up files,
+answered it from Remedy's own repository without changing a byte of it; the question,
+the answer and every tool call are kept beside Remedy's data, never in the project).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
