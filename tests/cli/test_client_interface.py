@@ -591,6 +591,10 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({"client", "missions", "order_id", "phase", "scope", "state"}),
         "the keys order_client_story in packages/orchestration/order_story.py returns (amend1023 D11)",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_projects:**listing": (
+        frozenset({"projects"}),
+        "the one key client_projects in packages/orchestration/client_projects.py returns (amend1026 C1)",
+    ),
     "apps.cli.commands.client_cmd:_cmd_client_order_review:**review": (
         frozenset({"markdown", "order_id", "report_id", "status"}),
         "the keys order_review.order_review_answer passes to build_ok (amend1026 D3)",
@@ -1521,6 +1525,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # amend1026 D3: no order here either; the review report's real answers are tests/orchestration/test_order_review.py's.
     assert answer("client.order-review", ["client", "order-review", "0123456789abcdef"], 3)["error"] == (
         "order_not_found")
+    # amend1026 C1: the run's own project is listed with its job, which has ended.
+    listed = answer("client.projects", ["client", "projects"], 0)["projects"]
+    assert listed and all(project["open_jobs"] == 0 for project in listed), listed
     # Remedy's own health passes or fails on this machine's state, so the run accepts either exit
     # code; its answer's keys are the same in both (DECISION F199 D3).
     health_code, health_body = _remedy(["doctor", "health", "--json"], repo, env)

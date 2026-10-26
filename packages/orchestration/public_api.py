@@ -56,6 +56,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote
 
+# Operator amendment amend1026-go-live-and-ask, Part C1: the projects a client may see.
+from packages.orchestration.client_projects import client_projects_answer
+
 # Operator amendment amend1024-one-real-order Part E: every answer's dollar fields read null
 # unless `cost.show_usd` is true, one rule for every route (`docs/system/cost-currency-v1.md`).
 from packages.orchestration.cost_currency import visible_cost_usd
@@ -493,6 +496,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "client.insight": _client_insight_answer,
     "client.order-story": order_story_answer,
     "client.order-review": order_review_answer,
+    "client.projects": client_projects_answer,
 }
 
 
@@ -512,8 +516,9 @@ _CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes", "client.now"
 #: (`client_scope.client_order_read_refusal`); the review report joined them (amend1026 D3).
 _CLIENT_ORDER_TWINS = frozenset({"client.order", "client.order-story", "client.order-review"})
 #: The read routes whose answer depends on who calls: the execution offer, which a client granted
-#: `host_tools` reads with `claude-cli` and the planner offered (DECISION amend1023 D6).
-_CALLER_AWARE_TWINS = frozenset({"client.execution"})
+#: `host_tools` reads with `claude-cli` and the planner offered (DECISION amend1023 D6), and the
+#: projects, which a client token reads only as far as its entry names them (amend1026 C1).
+_CALLER_AWARE_TWINS = frozenset({"client.execution", "client.projects"})
 
 
 def answer_public_api_get(

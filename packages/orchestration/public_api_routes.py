@@ -90,6 +90,19 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="GET",
+        path="/api/v1/projects",
+        twin="client.projects",
+        description=(
+            "The projects the calling token may see, as `remedy client projects --json` prints them for "
+            "the server's own token (since 1.30): `projects`, sorted by `slug`, each with its `name`, "
+            "`repo_path`, `description`, `open_jobs` (its jobs that have not ended), `last_job_at` (when "
+            "its newest job was made, or null) and `last_test` (`status` `passed` or `failed`, `job_id` "
+            "and `at` of its newest job whose tests ran, or null). A client token lists only the "
+            "projects its entry names. It changes nothing."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
         path="/api/v1/digest",
         twin="status.run",
         twin_key="client",

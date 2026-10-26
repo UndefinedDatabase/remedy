@@ -50,6 +50,7 @@ SERVER_TOKEN = "f253-public-api-test-token"
 PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/interface"): "test_interface_route_answers_the_command_envelope",
     ("GET", "/api/v1/execution"): "test_the_execution_route_answers_the_client_execution_command",
+    ("GET", "/api/v1/projects"): "test_the_projects_route_lists_only_a_clients_own_projects",
     ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
     ("GET", "/api/v1/jobs/{job}/proof"): "test_proof_route_answers_the_change_proof_command",
     ("GET", "/api/v1/changes"): "test_changes_route_answers_the_client_changes_command",
@@ -3369,3 +3370,31 @@ def test_the_execution_route_answers_the_client_execution_command(monkeypatch):
     status, body, _headers = public_api.answer_public_api_get("/api/v1/execution")
     assert status == 200 and body == {"ok": True, **execution_capabilities()} | {
         key: body[key] for key in body if key not in execution_capabilities()}
+
+
+def test_the_projects_route_lists_only_a_clients_own_projects(tmp_path):
+    """amend1026 C1: the server's token lists every project, a client token only those it names, each
+    with its open jobs, its newest job and its newest test run."""
+    from packages.orchestration.api_clients import ApiClient
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+    from packages.orchestration.project_registry import register_project_repo
+
+    projects = {}
+    for name in ("listed-mine", "listed-theirs"):
+        repo = tmp_path / name
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        projects[name] = register_project_repo(name, repo)
+    open_job = JobPlan(job_title="open", user_prompt="p", tasks=[TaskEntry(title="t")],
+                       repo_path=str(tmp_path / "listed-mine"), project_id=str(projects["listed-mine"].id))
+    save_job_plan(open_job)
+    client = ApiClient(name="lister", token="projects-route-test-token-0123456789", projects=("listed-mine",),
+                       max_total_tokens=None, max_provider_calls=None, may_apply=False)
+
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/projects", client=client)
+    assert status == 200
+    [entry] = body["projects"]
+    assert (entry["slug"], entry["open_jobs"], entry["last_test"]) == ("listed-mine", 1, None)
+    assert entry["repo_path"] == str((tmp_path / "listed-mine").resolve()) and entry["last_job_at"]
+    _status, every, _headers = public_api.answer_public_api_get("/api/v1/projects")
+    assert {"listed-mine", "listed-theirs"} <= {project["slug"] for project in every["projects"]}

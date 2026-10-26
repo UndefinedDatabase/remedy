@@ -280,6 +280,21 @@ def _cmd_client_order_review(order_id: str, *, json_output: bool = False) -> Non
     print(review["markdown"], end="")
 
 
+def _cmd_client_projects(*, json_output: bool = False) -> None:
+    """`remedy client projects`: every registered project, the answer `GET /api/v1/projects` sends the
+    server's own token; a client token's answer holds only its own projects (amend1026 C1)."""
+    from packages.orchestration.client_projects import client_projects
+
+    listing = client_projects()
+    if json_output:
+        emit_ok(**listing)
+        return
+    for project in listing["projects"]:
+        test = project["last_test"]["status"] if project["last_test"] else "none"
+        print(f"{project['slug']}: {project['open_jobs']} open, last job {project['last_job_at'] or 'none'}, "
+              f"last test {test} — {project['repo_path'] or '(no repository)'}")
+
+
 def _client_entry(client: Any) -> dict[str, Any]:
     """One client as `remedy client show` answers it: its policy and its token's fingerprint, never the token."""
     from packages.orchestration.serve_http_handler import token_fingerprint
@@ -350,6 +365,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.order, json_output=getattr(args, "json", False)),
     "client.order-review": lambda args: _cmd_client_order_review(
         args.order, json_output=getattr(args, "json", False)),
+    "client.projects": lambda args: _cmd_client_projects(json_output=getattr(args, "json", False)),
     "client.show": lambda args: _cmd_client_show(
         getattr(args, "client", None), json_output=getattr(args, "json", False)),
     "client.grant-host-tools": lambda args: _cmd_client_host_tools(

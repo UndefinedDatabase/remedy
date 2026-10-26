@@ -1217,6 +1217,23 @@ Refusal tokens: `order_not_found`, `review_report_not_found`.
 Answer keys: `markdown`, `order_id`, `report_id`, `status`.
 Keys under the answer keys: none.
 
+#### `remedy client projects`
+
+Command id: `client.projects`.
+Description: List the registered projects with their slug, name, repository and description, how many of their Jobs are open, when their newest Job was made and the result of their newest test run (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: none.
+Answer keys: `projects`.
+Keys under the answer keys: see below.
+
+- `projects`: `description`, `last_job_at`, `last_test`, `name`, `open_jobs`, `repo_path`, `slug`
+  - `last_test`: `at`, `job_id`, `status`
+
 #### `remedy doctor health`
 
 Command id: `doctor.health`.

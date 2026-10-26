@@ -36,6 +36,17 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("client.interface", "do.run"),
     ),
+    # Operator amendment amend1026-go-live-and-ask, Part C1: the projects a client may see.
+    CommandEntry(
+        command_id="client.projects",
+        group_id="client",
+        subcommand="projects",
+        description="List the registered projects with their slug, name, repository and description, how many of their Jobs are open, when their newest Job was made and the result of their newest test run (read-only).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("client.interface", "status.run"),
+    ),
     # F253 S3a (DECISION F253 D4 (3)): what changed since a cursor the client holds.
     CommandEntry(
         command_id="client.changes",
