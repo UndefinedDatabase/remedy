@@ -584,14 +584,14 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         "job_status and stopped _print_status stores into that payload",
     ),
     "apps.cli.commands.client_cmd:_cmd_client_order_story:**story": (
-        frozenset({"client", "missions", "order_id", "phase", "state"}),
+        frozenset({"client", "missions", "order_id", "phase", "scope", "state"}),
         "the keys order_client_story in packages/orchestration/order_story.py returns (amend1023 D11)",
     ),
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
             "changes", "dirty_start", "end", "ended_at", "job_id", "next", "note_open", "numbers",
-            "order", "scope_findings", "started_at", "state", "state_detail", "steps", "updated_at",
-            "verification",
+            "order", "scope", "scope_findings", "started_at", "state", "state_detail", "steps",
+            "updated_at", "verification",
         }),
         "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
         "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",

@@ -103,3 +103,18 @@ def test_the_decision_is_kept_in_the_jobs_evidence_folder(tmp_path, monkeypatch)
     assert kept == {"decided": SCOPE_ONE_JOB, "reason": "Ein Satz."}
     record_scope_decision(None, "a1b2c3d4e5f60719")
     assert not (job_evidence_dir("a1b2c3d4e5f60719") / "scope_decision.json").exists()
+
+
+def test_a_story_reads_the_kept_scope_decision_and_none_without_one(tmp_path, monkeypatch):
+    """amend1026 D2: both stories carry `scope` from the job's `scope_decision.json`."""
+    from packages.orchestration.scope_decision import story_scope
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    assert story_scope("0123456789abcdef") is None
+    record_scope_decision({"single_job": True, "files": ["greet/core.py"], "reason": "Eine Änderung.",
+                           "decided": SCOPE_ONE_JOB, "planner": "claude-cli"}, "0123456789abcdef")
+    assert story_scope("0123456789abcdef") == {
+        "single_job": True, "files": ["greet/core.py"], "reason": "Eine Änderung.", "decided": SCOPE_ONE_JOB}
+    record_scope_decision({"single_job": None, "files": [], "reason": "", "decided": SCOPE_REGEX_FALLBACK},
+                          "fedcba9876543210")
+    assert story_scope("fedcba9876543210")["single_job"] is None

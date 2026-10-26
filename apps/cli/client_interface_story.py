@@ -15,7 +15,7 @@ from typing import Any
 #: `build_client_story`'s keys, and `matches` of the `ambiguous_job_id` refusal.
 CLIENT_STORY_ANSWER_KEYS: tuple[str, ...] = (
     "changes", "dirty_start", "end", "ended_at", "job_id", "matches", "next", "note_open", "numbers",
-    "order", "scope_findings",
+    "order", "scope", "scope_findings",
     "started_at", "state", "state_detail", "steps", "updated_at", "verification",
 )
 
@@ -42,6 +42,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
     "numbers": {"duration_s": {}, "tokens_in": {}, "tokens_out": {}, "calls": {}, "model_turns": {}, "rounds": {}},
     "verification": {"status": {}, "required": {}},
     "scope_findings": {"key": {}, "path": {}, "text": {}},
+    "scope": {"single_job": {}, "files": {}, "reason": {}, "decided": {}},
 }
 
 #: The keys of the interface's `story` key, `client_story_words.story_words()`; under `phrases`

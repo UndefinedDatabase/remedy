@@ -11,7 +11,7 @@ from typing import Any
 
 #: The top-level keys `remedy client execution --json` answers beside the envelope's own.
 CLIENT_EXECUTION_ANSWER_KEYS: tuple[str, ...] = (
-    "budgets", "host_tools", "lanes", "observability", "order_flags", "phases", "review_report", "roles",
+    "autonomy", "budgets", "host_tools", "lanes", "observability", "order_flags", "phases", "review_report", "roles",
     "verification",
 )
 
@@ -30,4 +30,5 @@ CLIENT_EXECUTION_KEY_TREE: dict[str, Any] = {
     "verification": {"statuses": {}, "command": {}, "command_over_http": {}},
     "review_report": {"body_flag": {}, "cli_flag": {}, "zip_newest": {}},
     "phases": {"do_steps": {}, "story_steps": {}},
+    "autonomy": {"push_allowed": {}},
 }

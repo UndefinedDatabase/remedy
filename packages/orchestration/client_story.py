@@ -35,6 +35,7 @@ from urllib.parse import quote
 from packages.orchestration.client_story_words import STORY_QUESTIONS
 from packages.orchestration.job_run_ending import job_is_retryable
 from packages.orchestration.order_verification import job_verification
+from packages.orchestration.scope_decision import story_scope
 from packages.orchestration.task_lifecycle import task_lifecycle_or_empty
 
 #: The run-log events that end one task's run.
@@ -502,6 +503,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
         },
         "note_open": _note_open(plan),
         "scope_findings": _scope_findings(plan),
+        "scope": story_scope(str(plan.job_id)),
     }
 
 

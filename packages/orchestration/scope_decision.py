@@ -125,3 +125,23 @@ def record_scope_decision(record: dict[str, Any] | None, job_id: str) -> None:
     folder.mkdir(parents=True, exist_ok=True)
     (folder / SCOPE_DECISION_FILENAME).write_text(
         json.dumps(record, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+
+# WHY: a client shows why an order became one job or several without reading the evidence folder.
+def story_scope(job_id: str) -> dict[str, Any] | None:
+    """JOB_ID's scope decision as a story carries it: `single_job` (null when the regex lanes
+    decided), `files`, `reason` and `decided`; None when the job keeps no readable decision."""
+    from packages.orchestration.data_paths import job_evidence_dir
+
+    try:
+        record = json.loads((Path(job_evidence_dir(job_id)) / SCOPE_DECISION_FILENAME).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(record, dict):
+        return None
+    single = record.get("single_job")
+    files = record.get("files")
+    return {"single_job": single if isinstance(single, bool) else None,
+            "files": [str(path) for path in files] if isinstance(files, list) else [],
+            "reason": str(record.get("reason") or ""), "decided": str(record.get("decided") or "") or None}

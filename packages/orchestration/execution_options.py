@@ -161,6 +161,19 @@ def _available(provider: str, ollama_models: list[str] | None) -> bool:
     return provider == "fake"
 
 
+# WHY: Universe shows whether a push can happen at all; `remedy status --json` reads the same rule.
+def _push_allowed() -> bool | None:
+    """`autonomy.push_allowed` as `autonomy_status_summary` answers it: `autonomy.allow_push`, or None
+    when the configuration cannot be read (operator amendment amend1026-go-live-and-ask, Part D1)."""
+    from packages.orchestration.autonomy_gate import AutonomyConfigError
+    from packages.orchestration.permission_matrix import push_allowed_by_config
+
+    try:
+        return push_allowed_by_config()
+    except AutonomyConfigError:
+        return None
+
+
 def _offered_over_http(role: str, provider: str, client: Any) -> bool:
     """Whether CLIENT may have PROVIDER serve ROLE over HTTP. Repair is never named over HTTP: it runs
     on the builder's provider unless the server configures one, so a client with `host_tools` that
@@ -239,6 +252,7 @@ def execution_capabilities(client: Any = None) -> dict[str, Any]:
     limits = pi_loop_limits()
     return {
         HOST_TOOLS_PROPERTY: client_has_host_tools(client),
+        "autonomy": {"push_allowed": _push_allowed()},
         "roles": roles,
         "lanes": [DO_LANE_BOUNDED, DO_LANE_FULL, DO_LANE_HOLD],
         "order_flags": list(_ORDER_CREATE_FLAGS),

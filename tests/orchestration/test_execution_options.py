@@ -158,3 +158,21 @@ def test_the_route_answers_the_calling_clients_offer(offline_ollama, tmp_path, m
     assert status == 200 and body["host_tools"] is True
     status, body, _headers = answer_public_api_get("/api/v1/execution", "", _client(False))
     assert status == 200 and body["host_tools"] is False
+
+
+@pytest.mark.parametrize("reading, expected", [(True, True), (False, False), ("unreadable", None)])
+def test_the_offer_says_whether_a_push_is_allowed_at_all(offline_ollama, tmp_path, monkeypatch, reading, expected):
+    """amend1026 D1: `autonomy.push_allowed` reads `autonomy.allow_push` as `remedy status --json`
+    does, and null when the configuration cannot be read."""
+    from packages.orchestration.autonomy_gate import AutonomyConfigError
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+
+    def _reading():
+        if reading == "unreadable":
+            raise AutonomyConfigError("autonomy.allow_push must be true or false")
+        return reading
+
+    monkeypatch.setattr("packages.orchestration.permission_matrix.push_allowed_by_config", _reading)
+
+    assert EO.execution_capabilities()["autonomy"] == {"push_allowed": expected}

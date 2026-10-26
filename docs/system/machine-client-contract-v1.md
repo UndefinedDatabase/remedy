@@ -975,9 +975,10 @@ Description: Show what this server offers an execution: each role's providers wi
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `budgets`, `host_tools`, `lanes`, `observability`, `order_flags`, `phases`, `review_report`, `roles`, `verification`.
+Answer keys: `autonomy`, `budgets`, `host_tools`, `lanes`, `observability`, `order_flags`, `phases`, `review_report`, `roles`, `verification`.
 Keys under the answer keys: see below.
 
+- `autonomy`: `push_allowed`
 - `budgets`: `an_order_needs_one_cap`, `body_strings`, `order_header_caps`, `pi_per_call`, `profiles`
   - `pi_per_call`: `max_input_tokens`, `max_turns`
   - `profiles`: `local`, `paid`
@@ -1066,7 +1067,7 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
+Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
@@ -1077,6 +1078,7 @@ Keys under the answer keys: see below.
 - `next`: `action`, `route`
   - `route`: `method`, `path`
 - `numbers`: `calls`, `duration_s`, `model_turns`, `rounds`, `tokens_in`, `tokens_out`
+- `scope`: `decided`, `files`, `reason`, `single_job`
 - `scope_findings`: `key`, `path`, `text`
 - `state_detail`: `changed_files`, `decision_id`, `file`, `question`, `reason`, `round`
   - `reason`: `args`, `key`
@@ -1189,7 +1191,7 @@ Description: Read the story of an order (an order file or text) the supervisor s
 
 Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `order_not_found`.
-Answer keys: `client`, `missions`, `order_id`, `phase`, `state`.
+Answer keys: `client`, `missions`, `order_id`, `phase`, `scope`, `state`.
 Keys under the answer keys: see below.
 
 - `missions`: `milestones`, `mission_id`
@@ -1198,6 +1200,7 @@ Keys under the answer keys: see below.
       - `round`: `max`, `n`
       - `state_detail`: `after_job`, `after_job_id`, `criterion`
       - `tasks`: `done`, `total`
+- `scope`: `decided`, `files`, `reason`, `single_job`
 
 #### `remedy doctor health`
 
