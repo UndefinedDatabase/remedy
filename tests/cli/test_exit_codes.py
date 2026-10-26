@@ -60,6 +60,12 @@ class _UnresolvedSite:
 #: found exactly one: ``ci run``'s ``sys.exit(ci_exit_code(results))``. An
 #: unresolved site absent from this mapping fails the test with its location.
 UNRESOLVED_SITES: dict[str, tuple[frozenset[int], str]] = {
+    "client.ask": (
+        frozenset({1, 2, 3}),
+        "fail(..., exit_code=_ASK_EXIT_CODES.get(exc.error, 1)) in apps/cli/commands/client_cmd.py — "
+        "_ASK_EXIT_CODES maps invalid_argument to 2 and project_not_found and ask_repo_unknown to 3, "
+        "every other ProjectAskError token to 1 (amend1026 C2).",
+    ),
     "ci.run": (
         frozenset({0, 1}),
         "sys.exit(ci_exit_code(results)) in apps/cli/commands/ci_cmd.py — "

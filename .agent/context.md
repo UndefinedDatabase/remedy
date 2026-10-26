@@ -22,3 +22,6 @@ The non-human content policy; the write tools of any claude-cli role other than 
 ## Constraints
 - At most 500 insertions per commit; no leading-slash tokens in commit subjects.
 - One full pytest run at the end, then review and repair until green.
+
+## Steps
+The item-status table lives in the handback, `~/.remedy-loop/amend1026-go-live-and-ask.handback.md`.

@@ -1,8 +1,8 @@
 {
  "schema": "remedy_api_release_matrix_v1",
  "baseline": "1.17",
- "current": "1.29",
- "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.29 but `orders.plan_source`, a key no record ever carried (1.27); a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
+ "current": "1.30",
+ "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.30 but `orders.plan_source`, a key no record ever carried (1.27); a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
  "versions": [
   {
    "version": "1.18",
@@ -382,6 +382,20 @@
      "after": "`one job` from `the order`; the plan step's lane reason names the rule (DECISION amend1023 D7)"
     }
    ]
+  },
+  {
+   "version": "1.30",
+   "pr": null,
+   "branch": "feature/amend1026-go-live-and-ask",
+   "added": [
+    "route `GET /api/v1/projects` and its twin `remedy client projects`: the projects a client may see, with their open jobs, newest job and newest test run (amend1026-go-live-and-ask, DECISION amend1026 D5)",
+    "route `POST /api/v1/projects/{project}/ask` and its twin `remedy client ask`: a question answered by the Claude Code CLI that may only read, for a client granted `host_tools` (DECISION amend1026 D4)",
+    "route `GET /api/v1/orders/{order}/review` and its twin `remedy client order-review`: an order's captured review report as Markdown (DECISION amend1026 D3)",
+    "story key `scope` in `GET /api/v1/jobs/{job}/story` and `GET /api/v1/orders/{order}/story`: the size decision's `single_job`, `files`, `reason` and `decided` (DECISION amend1026 D2)",
+    "execution answer key `autonomy` with `push_allowed` (amend1026 Part D1)",
+    "body kind `integer`, for the ask's `max_total_tokens` (DECISION amend1026 D4)"
+   ],
+   "value_changes": []
   }
  ],
  "inventory": {
@@ -476,7 +490,10 @@
    "POST /api/v1/jobs/{job}/stop": "1.18",
    "POST /api/v1/orders": "1.17",
    "POST /api/v1/orders/{order}/cancel": "1.19",
-   "GET /api/v1/orders/{order}/story": "1.29"
+   "GET /api/v1/orders/{order}/story": "1.29",
+   "GET /api/v1/projects": "1.30",
+   "POST /api/v1/projects/{project}/ask": "1.30",
+   "GET /api/v1/orders/{order}/review": "1.30"
   },
   "story.end_actions": {
    "abandon": "1.21",
@@ -585,7 +602,8 @@
    "steps": "1.17",
    "updated_at": "1.17",
    "verification": "1.17",
-   "scope_findings": "1.29"
+   "scope_findings": "1.29",
+   "scope": "1.30"
   },
   "story.scope_findings": {
    "criterion_dropped": "1.29",

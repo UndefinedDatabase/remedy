@@ -198,7 +198,7 @@ def ask_project(selector: str, question: str, *, max_total_tokens: int = ASK_MAX
         raise ProjectAskError("ask_provider_unavailable", "the Claude Code CLI is not on this server's PATH")
     started = datetime.now(timezone.utc)
     ask_id = f"ask-{started:%Y%m%dT%H%M%SZ}-{secrets.token_hex(4)}"
-    folder = data_class_dir(ASK_EVIDENCE_CLASS, root) / ASK_EVIDENCE_FOLDER / ask_id
+    folder = data_class_dir("evidence", root) / ASK_EVIDENCE_FOLDER / ask_id     # ASK_EVIDENCE_CLASS
     folder.mkdir(parents=True, mode=0o700)
     prompt = ask_prompt(question)
     argv = build_ask_argv(claude, prompt)

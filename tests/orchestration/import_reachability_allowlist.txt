@@ -156,6 +156,7 @@ packages.orchestration.claude_cli_command
 packages.orchestration.client_changes
 packages.orchestration.client_diff
 packages.orchestration.client_digest
+packages.orchestration.client_projects
 packages.orchestration.client_scope
 packages.orchestration.client_story
 packages.orchestration.client_story_words
@@ -301,6 +302,7 @@ packages.orchestration.order_file
 packages.orchestration.order_intent
 packages.orchestration.order_jobs
 packages.orchestration.order_ledger
+packages.orchestration.order_review
 packages.orchestration.order_scope
 packages.orchestration.order_story
 packages.orchestration.order_verification
@@ -332,6 +334,7 @@ packages.orchestration.preview_control
 packages.orchestration.preview_runner
 packages.orchestration.price_catalog
 packages.orchestration.product_smoke
+packages.orchestration.project_ask
 packages.orchestration.project_brain
 packages.orchestration.project_brain_aggregate
 packages.orchestration.project_cockpit

@@ -56,15 +56,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote
 
-# Operator amendment amend1026-go-live-and-ask, Part C1: the projects a client may see.
-from packages.orchestration.client_projects import client_projects_answer
+from packages.orchestration.client_projects import client_projects_answer  # amend1026 C1
 
 # Operator amendment amend1024-one-real-order Part E: every answer's dollar fields read null
 # unless `cost.show_usd` is true, one rule for every route (`docs/system/cost-currency-v1.md`).
 from packages.orchestration.cost_currency import visible_cost_usd
-
-# Operator amendment amend1026-go-live-and-ask, Part D3: an order's review report.
-from packages.orchestration.order_review import order_review_answer
+from packages.orchestration.order_review import order_review_answer  # amend1026 D3
 
 # Operator amendment amend1023-universe-trust (DECISION amend1023 D11): an order's story.
 from packages.orchestration.order_story import order_story_answer
@@ -516,12 +513,9 @@ _CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof",
 #: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2); `client.now`
 #: joined them under F311 (DECISION F311 D6).
 _CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes", "client.now"})
-#: The read routes of one order: a client token reads only an order of one of its projects
-#: (`client_scope.client_order_read_refusal`); the review report joined them (amend1026 D3).
-_CLIENT_ORDER_TWINS = frozenset({"client.order", "client.order-story", "client.order-review"})
+_CLIENT_ORDER_TWINS = frozenset({"client.order", "client.order-story", "client.order-review"})  # one order's reads
 #: The read routes whose answer depends on who calls: the execution offer, which a client granted
-#: `host_tools` reads with `claude-cli` and the planner offered (DECISION amend1023 D6), and the
-#: projects, which a client token reads only as far as its entry names them (amend1026 C1).
+#: `host_tools` reads with `claude-cli` and the planner offered (DECISION amend1023 D6); the projects (amend1026 C1).
 _CALLER_AWARE_TWINS = frozenset({"client.execution", "client.projects"})
 
 
@@ -696,8 +690,7 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
             valid = isinstance(value, bool)
             wanted = "true or false"
         elif kinds[key] == "integer":   # amend1026 C2: a whole number above zero, never a flag
-            valid = isinstance(value, int) and not isinstance(value, bool) and value > 0
-            wanted = "a whole number above zero"
+            valid, wanted = type(value) is int and value > 0, "a whole number above zero"
         else:
             valid = (isinstance(value, list) and all(isinstance(item, str) and item
                                                      for item in value))
@@ -873,8 +866,7 @@ PUBLIC_API_LEDGER_NAME = "calls.jsonl"
 
 
 def public_api_call_host_tools(raw_body: bytes, path: str = "") -> bool:
-    """True when a write's body names `claude-cli` under a provider key (DECISION amend1023 D6), and
-    for every ask, which always runs the Claude Code CLI (amend1026 C2).
+    """True for a write naming `claude-cli` under a provider key (amend1023 D6), and for an ask (amend1026 C2).
 
     The ledger marks such a call `host_tools`, whether it was started or refused, so the operator
     reads every request for the Claude Code CLI with its status beside it. A body that is not a
