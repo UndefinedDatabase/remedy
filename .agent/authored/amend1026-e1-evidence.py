@@ -82,9 +82,9 @@ def main() -> int:
         "status_before": status_before.splitlines(),
         "status_after": [line for line in _git("status", "--porcelain=v1", "-uall").splitlines()
                          if not line[3:].startswith(str(OUT))]})
-    print(json.dumps({"status": status, "tokens_used": answer.get("tokens_used"),
+    sys.stdout.write(json.dumps({"status": status, "tokens_used": answer.get("tokens_used"),
                       "calls_used": answer.get("calls_used"), "model": answer.get("model"),
-                      "names_scope_decision": "scope_decision.py" in str(answer.get("answer"))}))
+                      "names_scope_decision": "scope_decision.py" in str(answer.get("answer"))}) + "\n")
     return 0 if status == 200 and "scope_decision.py" in str(answer.get("answer")) else 1
 
 
