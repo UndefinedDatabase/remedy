@@ -64,6 +64,7 @@ from apps.cli.commands.job_steer_cmd import JOB_STEER_ANSWER_KEYS, JOB_STEER_ANS
 from apps.cli.commands.job_stop_cmd import JOB_STOP_ANSWER_KEYS, JOB_STOP_ANSWER_TREE, JOB_STOP_REFUSAL_TOKENS
 from packages.orchestration.order_cancel import ORDER_PHASES
 from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_TREE
+from packages.orchestration.order_review import ORDER_REVIEW_ANSWER_KEYS
 from packages.orchestration.order_story import ORDER_STORY_ANSWER_KEYS, ORDER_STORY_KEY_TREE
 
 #: The document's own version. Its major number changes only when a name is removed or changes
@@ -114,7 +115,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "mission.abandon",
     "client.interface", "client.execution", "client.changes", "client.order", "client.run", "client.story",
     "client.now", "client.insight",
-    "client.diff", "client.cancel-order", "client.order-story",
+    "client.diff", "client.cancel-order", "client.order-story", "client.order-review",
     "doctor.health",
     "doctor.logs",
 )
@@ -179,6 +180,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.interface": (), "client.execution": (),
     "client.changes": ("invalid_cursor",),
     "client.order": ("order_not_found",), "client.order-story": ("order_not_found",),
+    "client.order-review": ("order_not_found", "review_report_not_found"),
     "client.run": ("run_not_found",),
     "client.story": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
     "client.now": (),
@@ -277,7 +279,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "client.story": CLIENT_STORY_ANSWER_KEYS, "client.execution": CLIENT_EXECUTION_ANSWER_KEYS,
     "client.now": CLIENT_NOW_ANSWER_KEYS, "client.insight": CLIENT_INSIGHT_ANSWER_KEYS,
     "client.diff": ("files", "job", "matches", "state", "truncated"),
-    "client.order-story": ORDER_STORY_ANSWER_KEYS,
+    "client.order-story": ORDER_STORY_ANSWER_KEYS, "client.order-review": ORDER_REVIEW_ANSWER_KEYS,
     "doctor.health": ("checks", "verdict"),
     "doctor.logs": ("entries", "files", "job_id", "matches", "run_id", "unreadable"),
 }
@@ -701,6 +703,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     # F253 D13: `answer` is what `remedy do` printed once the order ended (no tree); `jobs`: order_jobs_view.
     "client.order": {"jobs": ORDER_JOBS_KEY_TREE, "cancel": CANCEL_ANSWER_TREES["client.cancel-order"]["cancel"]},
     "client.order-story": ORDER_STORY_KEY_TREE,     # amend1023 D11
+    "client.order-review": {},                      # amend1026 D3: `markdown` is one string
     # F253 D20: `answer` is the envelope `remedy job run` printed once the run ended; no tree under it.
     "client.run": {},
     "client.story": CLIENT_STORY_KEY_TREE, "client.execution": CLIENT_EXECUTION_KEY_TREE,

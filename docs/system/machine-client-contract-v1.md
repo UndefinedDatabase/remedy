@@ -1202,6 +1202,21 @@ Keys under the answer keys: see below.
       - `tasks`: `done`, `total`
 - `scope`: `decided`, `files`, `reason`, `single_job`
 
+#### `remedy client order-review`
+
+Command id: `client.order-review`.
+Description: Read the review report an order (an order file or text) sent with capture_review kept, as Markdown a person reads: its outcome, its configuration, each Job with its tasks, rounds and verdicts, its usage and what it cannot measure (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `order` | no | yes | yes | no | The order id the supervisor answered when it started your order file or text |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `order_not_found`, `review_report_not_found`.
+Answer keys: `markdown`, `order_id`, `report_id`, `status`.
+Keys under the answer keys: none.
+
 #### `remedy doctor health`
 
 Command id: `doctor.health`.

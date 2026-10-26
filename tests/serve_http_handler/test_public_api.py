@@ -70,6 +70,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_order_poll_route_is_pinned_with_its_statuses",
     ("GET", "/api/v1/orders/{order}/story"):
         "test_the_order_story_route_is_pinned_with_its_statuses",
+    ("GET", "/api/v1/orders/{order}/review"):
+        "test_the_order_review_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/orders"):
         "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/jobs/{job}/logs"): "test_the_logs_route_answers_the_doctor_logs_command",
@@ -442,6 +444,15 @@ def test_the_order_story_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/orders/{order}/story")
     assert (route.method, route.twin, route.refusals) == ("GET", "client.order-story", (("order_not_found", 404),))
     assert route.body == () and route.query == () and route.query_values == ()
+
+
+def test_the_order_review_route_is_pinned_with_its_statuses():
+    """amend1026 D3: an order's review report; `tests/orchestration/test_order_review.py` drives its answers."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/orders/{order}/review")
+    assert (route.method, route.twin, route.refusals) == (
+        "GET", "client.order-review", (("order_not_found", 404), ("review_report_not_found", 404)))
+    assert route.body == () and route.query == () and route.query_values == ()
+    assert "client.order-review" in public_api._CLIENT_ORDER_TWINS
 
 
 def test_command_is_excluded_matches_a_wildcard_entry():

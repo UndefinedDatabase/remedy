@@ -89,6 +89,23 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         # A value that names no order is absent, which exit 3's `not_ready` meaning covers.
         exit_codes=(0, 1, 2, 3),
     ),
+    # Operator amendment amend1026-go-live-and-ask, Part D3: an order's captured review report.
+    CommandEntry(
+        command_id="client.order-review",
+        group_id="client",
+        subcommand="order-review",
+        description="Read the review report an order (an order file or text) sent with capture_review kept, as Markdown a person reads: its outcome, its configuration, each Job with its tasks, rounds and verdicts, its usage and what it cannot measure (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("order", "The order id the supervisor answered when it started your order "
+                  "file or text"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.order", "client.order-story"),
+        # A value that names no order, or an order that kept no report, is absent (exit 3).
+        exit_codes=(0, 1, 2, 3),
+    ),
     # exec-1017c: cancel an order the supervisor started, whatever it is doing (`order_cancel.py`).
     CommandEntry(
         command_id="client.cancel-order",

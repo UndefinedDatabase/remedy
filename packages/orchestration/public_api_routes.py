@@ -311,6 +311,20 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         ),
     ),
     PublicApiRoute(
+        method="GET",
+        path="/api/v1/orders/{order}/review",
+        twin="client.order-review",
+        refusals=(("order_not_found", 404), ("review_report_not_found", 404)),
+        description=(
+            "The review report an order a `POST` to `/api/v1/orders` started with `capture_review` true "
+            "kept, as `remedy client order-review <order> --json` prints it (since 1.30): `order_id`, "
+            "`report_id`, `status` (the walk's outcome, `running` while it runs) and `markdown`, the report "
+            "rendered for a person. An order that kept no report answers 404 `review_report_not_found`. It "
+            "changes nothing. A client token reads only an order of one of its projects (403 "
+            "`api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
         method="POST",
         path="/api/v1/orders",
         twin="client.order",

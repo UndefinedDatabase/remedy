@@ -265,6 +265,21 @@ def _cmd_client_order_story(order_id: str, *, json_output: bool = False) -> None
                 print(f"  {job['number']}. {job['state']} {job['tasks']['done']}/{job['tasks']['total']} {job['title']}")
 
 
+def _cmd_client_order_review(order_id: str, *, json_output: bool = False) -> None:
+    """`remedy client order-review <order>`: the order's review report as Markdown, the answer
+    `GET /api/v1/orders/{order}/review` sends (amend1026 D3)."""
+    from packages.orchestration.order_review import order_review_answer
+
+    answer = order_review_answer(order=order_id)
+    if not answer["ok"]:
+        fail(answer["error"], answer["message"], json_output=json_output, exit_code=3)
+    review = {key: value for key, value in answer.items() if key not in ("ok", "schema_version")}
+    if json_output:
+        emit_ok(**review)
+        return
+    print(review["markdown"], end="")
+
+
 def _client_entry(client: Any) -> dict[str, Any]:
     """One client as `remedy client show` answers it: its policy and its token's fingerprint, never the token."""
     from packages.orchestration.serve_http_handler import token_fingerprint
@@ -332,6 +347,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "client.diff": lambda args: _cmd_client_diff(
         args.job, json_output=getattr(args, "json", False)),
     "client.order-story": lambda args: _cmd_client_order_story(
+        args.order, json_output=getattr(args, "json", False)),
+    "client.order-review": lambda args: _cmd_client_order_review(
         args.order, json_output=getattr(args, "json", False)),
     "client.show": lambda args: _cmd_client_show(
         getattr(args, "client", None), json_output=getattr(args, "json", False)),

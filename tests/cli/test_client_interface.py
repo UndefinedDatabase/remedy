@@ -305,6 +305,10 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({"order_not_found"}),
         "the one refusal order_story.order_story_answer builds (amend1023 D11)",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_order_review:answer['error']": (
+        frozenset({"order_not_found", "review_report_not_found"}),
+        "the two refusals order_review.order_review_answer builds (amend1026 D3)",
+    ),
     "apps.cli.commands.client_cmd:_cmd_client_diff:exc.token": (
         frozenset({"diff_not_ready", "diff_unavailable"}),
         "a ClientDiffRefusal's token; every ClientDiffRefusal(...) in "
@@ -586,6 +590,10 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     "apps.cli.commands.client_cmd:_cmd_client_order_story:**story": (
         frozenset({"client", "missions", "order_id", "phase", "scope", "state"}),
         "the keys order_client_story in packages/orchestration/order_story.py returns (amend1023 D11)",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_order_review:**review": (
+        frozenset({"markdown", "order_id", "report_id", "status"}),
+        "the keys order_review.order_review_answer passes to build_ok (amend1026 D3)",
     ),
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
@@ -1509,6 +1517,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # amend1023 D11: no order here either; the order story's real answers are
     # tests/orchestration/test_order_story.py's and the recorded client-order-story-running.json.
     assert answer("client.order-story", ["client", "order-story", "0123456789abcdef"], 3)["error"] == (
+        "order_not_found")
+    # amend1026 D3: no order here either; the review report's real answers are tests/orchestration/test_order_review.py's.
+    assert answer("client.order-review", ["client", "order-review", "0123456789abcdef"], 3)["error"] == (
         "order_not_found")
     # Remedy's own health passes or fails on this machine's state, so the run accepts either exit
     # code; its answer's keys are the same in both (DECISION F199 D3).

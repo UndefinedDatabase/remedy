@@ -60,6 +60,9 @@ from urllib.parse import parse_qs, unquote
 # unless `cost.show_usd` is true, one rule for every route (`docs/system/cost-currency-v1.md`).
 from packages.orchestration.cost_currency import visible_cost_usd
 
+# Operator amendment amend1026-go-live-and-ask, Part D3: an order's review report.
+from packages.orchestration.order_review import order_review_answer
+
 # Operator amendment amend1023-universe-trust (DECISION amend1023 D11): an order's story.
 from packages.orchestration.order_story import order_story_answer
 
@@ -489,6 +492,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "client.now": _client_now_answer,
     "client.insight": _client_insight_answer,
     "client.order-story": order_story_answer,
+    "client.order-review": order_review_answer,
 }
 
 
@@ -504,6 +508,9 @@ _CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof",
 #: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2); `client.now`
 #: joined them under F311 (DECISION F311 D6).
 _CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes", "client.now"})
+#: The read routes of one order: a client token reads only an order of one of its projects
+#: (`client_scope.client_order_read_refusal`); the review report joined them (amend1026 D3).
+_CLIENT_ORDER_TWINS = frozenset({"client.order", "client.order-story", "client.order-review"})
 #: The read routes whose answer depends on who calls: the execution offer, which a client granted
 #: `host_tools` reads with `claude-cli` and the planner offered (DECISION amend1023 D6).
 _CALLER_AWARE_TWINS = frozenset({"client.execution"})
@@ -562,7 +569,7 @@ def answer_public_api_get(
             refusal = _client_read_refusal(client, segments.get("job", ""))
             if refusal is not None:
                 return 403, build_error("api_client_policy_refused", refusal), {}
-        if client is not None and route.twin in ("client.order", "client.order-story"):
+        if client is not None and route.twin in _CLIENT_ORDER_TWINS:
             from packages.orchestration.client_scope import client_order_read_refusal
 
             refusal = client_order_read_refusal(client, segments.get("order", ""))

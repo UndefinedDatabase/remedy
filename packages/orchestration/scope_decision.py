@@ -127,7 +127,6 @@ def record_scope_decision(record: dict[str, Any] | None, job_id: str) -> None:
         json.dumps(record, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-
 # WHY: a client shows why an order became one job or several without reading the evidence folder.
 def story_scope(job_id: str) -> dict[str, Any] | None:
     """JOB_ID's scope decision as a story carries it: `single_job` (null when the regex lanes
