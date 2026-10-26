@@ -1,26 +1,24 @@
-# Context — operator amendment amend1024-one-real-order
+# Context — operator amendment amend1026-go-live-and-ask
 
 ## Active Branch
-`feature/amend1024-one-real-order`, from `main` at `6caeb480c` (the merge of pull request 390,
-F158, merged by the Open PR Gate at the start of this session).
+`feature/amend1026-go-live-and-ask`, from `main` at `3ea458349` (no open pull request).
 
 ## Scope
-Parts A to G of the operator's order of 2026-10-24 exactly: the claude-cli default, the scope
-decision, the builder's Bash allowlist, the real isolation check, tokens before dollars, the
-roadmap alignment (F317 registered and closed here) and one real run over the public API.
+Parts A to E of the operator's order of 2026-10-26: go live on this machine, contract 1.30 and
+the changelog, the projects list and the read-only ask, Universe's three small asks, and one
+real ask as F318's evidence.
 
 ## Do not touch
-Anything that does not serve the one goal; the non-human content policy; `dangerous-skip`.
+The non-human content policy; the write tools of any claude-cli role other than the ask.
 
 ## Active assumptions
-- The order's real run uses a temporary project under `/tmp` and a supervisor started for it,
-  never the operator's long-running supervisor.
-- A provider call made by the real run (G) and the real binary check (D2) is ordered by name.
+- Remedy's own project is the slug `remedy` (registered 2026-10-26 11:31:58 UTC, repo
+  `~/Repos/remedy`); Universe's alias `remedy-backend` names no project here. The real ask uses
+  `remedy`, which `orb-universe` lists.
+- `luna` was found holding `host_tools`; the order says it stays without, so it was revoked.
+- `max_total_tokens` counts input plus output tokens, the budget's own measure (F317's
+  `order_budget_used`); the four kinds are reported beside it.
 
 ## Constraints
 - At most 500 insertions per commit; no leading-slash tokens in commit subjects.
-- No test runs per part: one full pytest run at the end, capped by `tests/conftest.py` (resource
-  safety), then review and repair until green.
-
-## Steps
-The item-status table lives in the handback, `~/.remedy-loop/amend1024-one-real-order.handback.md`.
+- One full pytest run at the end, then review and repair until green.
