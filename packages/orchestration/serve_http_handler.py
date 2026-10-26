@@ -1629,7 +1629,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                     path, raw_body, self.command_runner.run, start_order, client=client,
                     start_run=start_run)
         self._send_public_api_answer("POST", path, status, body, headers, client_name=client.name if client else "",
-                                     host_tools=public_api_call_host_tools(raw_body))
+                                     host_tools=public_api_call_host_tools(raw_body, path))
 
     def _send_public_api_refused_method(self, method: str, path: str) -> None:
         """Answer a method no route takes under the public HTTP API namespace: a POST with no runner,

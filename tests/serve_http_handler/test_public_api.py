@@ -50,6 +50,8 @@ SERVER_TOKEN = "f253-public-api-test-token"
 PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/interface"): "test_interface_route_answers_the_command_envelope",
     ("GET", "/api/v1/execution"): "test_the_execution_route_answers_the_client_execution_command",
+    ("GET", "/api/v1/projects"): "test_the_projects_route_lists_only_a_clients_own_projects",
+    ("POST", "/api/v1/projects/{project}/ask"): "test_the_ask_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
     ("GET", "/api/v1/jobs/{job}/proof"): "test_proof_route_answers_the_change_proof_command",
     ("GET", "/api/v1/changes"): "test_changes_route_answers_the_client_changes_command",
@@ -70,6 +72,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_order_poll_route_is_pinned_with_its_statuses",
     ("GET", "/api/v1/orders/{order}/story"):
         "test_the_order_story_route_is_pinned_with_its_statuses",
+    ("GET", "/api/v1/orders/{order}/review"):
+        "test_the_order_review_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/orders"):
         "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/jobs/{job}/logs"): "test_the_logs_route_answers_the_doctor_logs_command",
@@ -396,7 +400,7 @@ def test_every_route_is_well_formed():
         flag_options = {arg.name for arg in entry.args if arg.is_option and arg.is_flag}
         positional_names = {arg.name for arg in entry.args if not arg.is_option}
         for key, kind in route.body:
-            assert kind in ("string", "strings", "flag")
+            assert kind in ("string", "strings", "flag", "integer")
             # A `starts_order` route's body maps to `remedy do run`'s own flags, not its twin
             # `client.order`'s (which takes none): checked by its own dedicated test instead.
             if route.starts_order:
@@ -415,14 +419,14 @@ def test_every_route_is_well_formed():
     assert public_api.PUBLIC_API_VERSION.split(".")[0] == major
 
 
-def test_only_the_note_route_sets_a_positional_body_key():
-    """DECISION F303 D3 (1): the exemption is for the note route's `text` alone, not a general
-    escape hatch — a future route still names every other body key as a `--option`."""
+def test_only_the_note_and_the_ask_routes_set_a_positional_body_key():
+    """DECISION F303 D3 (1): the exemption is for the note route's `text` and, by the operator's own
+    command line `remedy client ask <project> "<question>"` (DECISION amend1026 D4), the ask route's
+    `question` alone, not a general escape hatch — a future route still names every other body key as
+    a `--option`."""
+    exempt = {"/api/v1/jobs/{job}/note": ("text",), "/api/v1/projects/{project}/ask": ("question",)}
     for route in public_api.PUBLIC_API_ROUTES:
-        if route.path == "/api/v1/jobs/{job}/note":
-            assert route.positional_body == ("text",)
-        else:
-            assert route.positional_body == ()
+        assert route.positional_body == exempt.get(route.path, ()), route.path
 
 
 # -- E: the exclusion list -----------------------------------------------------
@@ -442,6 +446,15 @@ def test_the_order_story_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/orders/{order}/story")
     assert (route.method, route.twin, route.refusals) == ("GET", "client.order-story", (("order_not_found", 404),))
     assert route.body == () and route.query == () and route.query_values == ()
+
+
+def test_the_order_review_route_is_pinned_with_its_statuses():
+    """amend1026 D3: an order's review report; `tests/orchestration/test_order_review.py` drives its answers."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/orders/{order}/review")
+    assert (route.method, route.twin, route.refusals) == (
+        "GET", "client.order-review", (("order_not_found", 404), ("review_report_not_found", 404)))
+    assert route.body == () and route.query == () and route.query_values == ()
+    assert "client.order-review" in public_api._CLIENT_ORDER_TWINS
 
 
 def test_command_is_excluded_matches_a_wildcard_entry():
@@ -689,7 +702,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
     assert (route.method, route.twin, route.refusals) == (
         "GET", "doctor.health", (("health_failed", 503),))
-    assert public_api.PUBLIC_API_VERSION == "1.29"
+    assert public_api.PUBLIC_API_VERSION == "1.30"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
                         ("check_disk_floor", "disk"), ("check_providers", "providers"),
@@ -1156,7 +1169,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.29"
+    assert public_api.PUBLIC_API_VERSION == "1.30"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1346,7 +1359,7 @@ def test_the_stop_route_is_pinned_with_its_body_and_its_statuses():
     assert (route.refusal_default, route.refusals) == (
         409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
     assert "`api`" in route.description and "job_not_stoppable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.29"
+    assert public_api.PUBLIC_API_VERSION == "1.30"
 
 
 @pytest.mark.parametrize("body, reason", [({"reason": "obsolete"}, "obsolete"), ({}, "")])
@@ -1364,7 +1377,7 @@ def test_the_cancel_route_is_pinned_with_its_body_and_its_statuses():
     assert (route.refusal_default, route.refusals) == (
         409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
     assert "`api`" in route.description and "job_not_cancellable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.29"
+    assert public_api.PUBLIC_API_VERSION == "1.30"
 
 
 def test_a_cancel_post_runs_the_command_with_its_reason_and_the_api_door():
@@ -1529,7 +1542,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.29"
+    assert public_api.PUBLIC_API_VERSION == "1.30"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -2730,7 +2743,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.29"
+    assert public_api.PUBLIC_API_VERSION == "1.30"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
@@ -2994,7 +3007,7 @@ def test_the_note_route_is_pinned_with_its_body_and_its_statuses():
         ("invalid_message", 400), ("unknown_task", 404),
     )
     assert "`api`" in route.description and "job_not_steerable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.29"
+    assert public_api.PUBLIC_API_VERSION == "1.30"
 
 
 def test_the_note_route_takes_a_steering_note_for_one_task(tmp_path):
@@ -3174,7 +3187,7 @@ def test_the_story_route_answers_the_client_story_command(tcp_server, unix_serve
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.story",
         (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.29"
+    assert public_api.PUBLIC_API_VERSION == "1.30"
     job_id = _saved_job_with_id("abc1230000000000")
     expected = build_ok(**job_client_story(job_id, require_job_plan(job_id)))
     assert expected["state"] == "queued" and story_problems(expected) == []     # exec-1017c: not "planning"
@@ -3255,7 +3268,7 @@ def test_the_now_route_answers_the_running_jobs_entry_and_workers(tcp_server, un
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/now")
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.now", (), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.29"
+    assert public_api.PUBLIC_API_VERSION == "1.30"
     job_id = _running_job_with_id("abc1234444444444")
     _write_insight_pulse(job_id)
 
@@ -3358,3 +3371,40 @@ def test_the_execution_route_answers_the_client_execution_command(monkeypatch):
     status, body, _headers = public_api.answer_public_api_get("/api/v1/execution")
     assert status == 200 and body == {"ok": True, **execution_capabilities()} | {
         key: body[key] for key in body if key not in execution_capabilities()}
+
+
+def test_the_projects_route_lists_only_a_clients_own_projects(tmp_path):
+    """amend1026 C1: the server's token lists every project, a client token only those it names, each
+    with its open jobs, its newest job and its newest test run."""
+    from packages.orchestration.api_clients import ApiClient
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+    from packages.orchestration.project_registry import register_project_repo
+
+    projects = {}
+    for name in ("listed-mine", "listed-theirs"):
+        repo = tmp_path / name
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        projects[name] = register_project_repo(name, repo)
+    open_job = JobPlan(job_title="open", user_prompt="p", tasks=[TaskEntry(title="t")],
+                       repo_path=str(tmp_path / "listed-mine"), project_id=str(projects["listed-mine"].id))
+    save_job_plan(open_job)
+    client = ApiClient(name="lister", token="projects-route-test-token-0123456789", projects=("listed-mine",),
+                       max_total_tokens=None, max_provider_calls=None, may_apply=False)
+
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/projects", client=client)
+    assert status == 200
+    [entry] = body["projects"]
+    assert (entry["slug"], entry["open_jobs"], entry["last_test"]) == ("listed-mine", 1, None)
+    assert entry["repo_path"] == str((tmp_path / "listed-mine").resolve()) and entry["last_job_at"]
+    _status, every, _headers = public_api.answer_public_api_get("/api/v1/projects")
+    assert {"listed-mine", "listed-theirs"} <= {project["slug"] for project in every["projects"]}
+
+
+def test_the_ask_route_is_pinned_with_its_body_and_its_statuses():
+    """amend1026 C2: the read-only ask; `tests/orchestration/test_project_ask.py` drives its answers."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/projects/{project}/ask")
+    assert (route.method, route.twin, route.body, route.refusal_default, route.command_timeout) == (
+        "POST", "client.ask", (("question", "string"), ("max_total_tokens", "integer")), 409, 960)
+    assert route.refusals == (("project_not_found", 404), ("invalid_argument", 400),
+                              ("ask_provider_unavailable", 503), ("ask_failed", 503))

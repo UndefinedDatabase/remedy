@@ -352,7 +352,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.29`.
+Interface version: `1.30`.
 
 ### Envelope
 
@@ -975,9 +975,10 @@ Description: Show what this server offers an execution: each role's providers wi
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `budgets`, `host_tools`, `lanes`, `observability`, `order_flags`, `phases`, `review_report`, `roles`, `verification`.
+Answer keys: `autonomy`, `budgets`, `host_tools`, `lanes`, `observability`, `order_flags`, `phases`, `review_report`, `roles`, `verification`.
 Keys under the answer keys: see below.
 
+- `autonomy`: `push_allowed`
 - `budgets`: `an_order_needs_one_cap`, `body_strings`, `order_header_caps`, `pi_per_call`, `profiles`
   - `pi_per_call`: `max_input_tokens`, `max_turns`
   - `profiles`: `local`, `paid`
@@ -1066,7 +1067,7 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
+Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
@@ -1077,6 +1078,7 @@ Keys under the answer keys: see below.
 - `next`: `action`, `route`
   - `route`: `method`, `path`
 - `numbers`: `calls`, `duration_s`, `model_turns`, `rounds`, `tokens_in`, `tokens_out`
+- `scope`: `decided`, `files`, `reason`, `single_job`
 - `scope_findings`: `key`, `path`, `text`
 - `state_detail`: `changed_files`, `decision_id`, `file`, `question`, `reason`, `round`
   - `reason`: `args`, `key`
@@ -1189,7 +1191,7 @@ Description: Read the story of an order (an order file or text) the supervisor s
 
 Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `order_not_found`.
-Answer keys: `client`, `missions`, `order_id`, `phase`, `state`.
+Answer keys: `client`, `missions`, `order_id`, `phase`, `scope`, `state`.
 Keys under the answer keys: see below.
 
 - `missions`: `milestones`, `mission_id`
@@ -1198,6 +1200,59 @@ Keys under the answer keys: see below.
       - `round`: `max`, `n`
       - `state_detail`: `after_job`, `after_job_id`, `criterion`
       - `tasks`: `done`, `total`
+- `scope`: `decided`, `files`, `reason`, `single_job`
+
+#### `remedy client order-review`
+
+Command id: `client.order-review`.
+Description: Read the review report an order (an order file or text) sent with capture_review kept, as Markdown a person reads: its outcome, its configuration, each Job with its tasks, rounds and verdicts, its usage and what it cannot measure (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `order` | no | yes | yes | no | The order id the supervisor answered when it started your order file or text |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `order_not_found`, `review_report_not_found`.
+Answer keys: `markdown`, `order_id`, `report_id`, `status`.
+Keys under the answer keys: none.
+
+#### `remedy client projects`
+
+Command id: `client.projects`.
+Description: List the registered projects with their slug, name, repository and description, how many of their Jobs with their tasks are still open, when their newest Job was made and whether the tests of the newest Job that tested passed (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: none.
+Answer keys: `projects`.
+Keys under the answer keys: see below.
+
+- `projects`: `description`, `last_job_at`, `last_test`, `name`, `open_jobs`, `repo_path`, `slug`
+  - `last_test`: `at`, `job_id`, `status`
+
+#### `remedy client ask`
+
+Command id: `client.ask`.
+Description: Ask a question about a project's repository: the Claude Code CLI reads it with Read, Glob and Grep only, never edits, writes or runs a command, and answers in Markdown with the tokens and calls it used; the question, the answer and every tool call are kept under the data root.
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `project` | no | yes | yes | no | The slug or id of the project whose repo is asked about, as remedy client projects lists it |
+| `question` | no | yes | yes | no | The question, in any language |
+| `--max-total-tokens` | yes | no | yes | no | The most input and output tokens the ask may use (default: 150000) |
+| `--asked-by` | yes | no | yes | no | Who asks, kept in the evidence folder (default: cli) |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `ask_budget_exhausted`, `ask_failed`, `ask_provider_unavailable`, `ask_repo_changed`, `ask_repo_unknown`, `invalid_argument`, `project_not_found`.
+Answer keys: `answer`, `ask_id`, `calls_used`, `evidence`, `model`, `project`, `repo_unchanged`, `tokens`, `tokens_used`, `tool_calls`, `turns`.
+Keys under the answer keys: see below.
+
+- `tokens`: `cache_creation`, `cache_read`, `input`, `output`
 
 #### `remedy doctor health`
 

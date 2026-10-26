@@ -1,0 +1,25 @@
+{
+  "autonomy": {
+    "push_allowed": true
+  },
+  "defaults": {
+    "builder": {
+      "claude_cli_available": true,
+      "default_provider": "claude-cli"
+    },
+    "planner": {
+      "claude_cli_available": true,
+      "default_provider": "claude-cli"
+    },
+    "repair": {
+      "claude_cli_available": true,
+      "default_provider": "claude-cli"
+    },
+    "reviewer": {
+      "claude_cli_available": true,
+      "default_provider": "claude-cli"
+    }
+  },
+  "host_tools": true,
+  "status": 200
+}

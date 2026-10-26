@@ -163,6 +163,9 @@ DURABLE_CLASSES: tuple[DataRootClass, ...] = (
                   "which is never evidence (F203)"),
     DataRootClass("autonomy", "packages.orchestration.autonomy_gate",
                   "never; the record of every accepted change of the autonomy level (F078)"),
+    DataRootClass("evidence", "packages.orchestration.project_ask",
+                  "never; the evidence of each question asked of a project under `asks/<ask id>`, "
+                  "kept in the data root and never in the project (amend1026 C2)"),
 )
 
 _DATA_CLASS_KINDS: dict[str, DataClassKind] = {

@@ -100,6 +100,8 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy chat ask` | 3 |
 | `remedy client order` | 3 |
 | `remedy client order-story` | 3 |
+| `remedy client order-review` | 3 |
+| `remedy client ask` | 3 |
 | `remedy client cancel-order` | 3 |
 | `remedy client show` | 3 |
 | `remedy client grant-host-tools` | 3 |

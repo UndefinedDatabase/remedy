@@ -56,9 +56,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote
 
+from packages.orchestration.client_projects import client_projects_answer  # amend1026 C1
+
 # Operator amendment amend1024-one-real-order Part E: every answer's dollar fields read null
 # unless `cost.show_usd` is true, one rule for every route (`docs/system/cost-currency-v1.md`).
 from packages.orchestration.cost_currency import visible_cost_usd
+from packages.orchestration.order_review import order_review_answer  # amend1026 D3
 
 # Operator amendment amend1023-universe-trust (DECISION amend1023 D11): an order's story.
 from packages.orchestration.order_story import order_story_answer
@@ -71,10 +74,11 @@ from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES, PublicAp
 # their own; this module imports the names it uses, and every other consumer imports from it
 # (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.public_api_writes import (
-    _TWIN_ARGV,
     PublicApiWriteRefusal,
     _client_write_refusal,
     _order_text_and_options,
+    _runner_options,
+    _twin_argv,
     _write_lock_key,
 )
 
@@ -105,8 +109,11 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: running job, measured to now instead of to its last safe point, and operator amendment
 #: amend1023-universe-trust (DECISIONs amend1023 D6, D8, D11) to `1.29` for the client property
 #: `host_tools`, `GET /api/v1/orders/{order}/story`, the order jobs' `mission_id` and
-#: `blocking_criterion`, and the story's `scope_findings`.
-PUBLIC_API_VERSION = "1.29"
+#: `blocking_criterion`, and the story's `scope_findings`, and operator amendment
+#: amend1026-go-live-and-ask (DECISIONs amend1026 D2 to D5) to `1.30` for `GET /api/v1/projects`,
+#: `POST /api/v1/projects/{project}/ask`, `GET /api/v1/orders/{order}/review`, the execution offer's
+#: `autonomy.push_allowed` and both stories' `scope`.
+PUBLIC_API_VERSION = "1.30"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -489,6 +496,8 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "client.now": _client_now_answer,
     "client.insight": _client_insight_answer,
     "client.order-story": order_story_answer,
+    "client.order-review": order_review_answer,
+    "client.projects": client_projects_answer,
 }
 
 
@@ -504,9 +513,10 @@ _CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof",
 #: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2); `client.now`
 #: joined them under F311 (DECISION F311 D6).
 _CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes", "client.now"})
+_CLIENT_ORDER_TWINS = frozenset({"client.order", "client.order-story", "client.order-review"})  # one order's reads
 #: The read routes whose answer depends on who calls: the execution offer, which a client granted
-#: `host_tools` reads with `claude-cli` and the planner offered (DECISION amend1023 D6).
-_CALLER_AWARE_TWINS = frozenset({"client.execution"})
+#: `host_tools` reads with `claude-cli` and the planner offered (DECISION amend1023 D6); the projects (amend1026 C1).
+_CALLER_AWARE_TWINS = frozenset({"client.execution", "client.projects"})
 
 
 def answer_public_api_get(
@@ -562,7 +572,7 @@ def answer_public_api_get(
             refusal = _client_read_refusal(client, segments.get("job", ""))
             if refusal is not None:
                 return 403, build_error("api_client_policy_refused", refusal), {}
-        if client is not None and route.twin in ("client.order", "client.order-story"):
+        if client is not None and route.twin in _CLIENT_ORDER_TWINS:
             from packages.orchestration.client_scope import client_order_read_refusal
 
             refusal = client_order_read_refusal(client, segments.get("order", ""))
@@ -679,6 +689,8 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
         elif kinds[key] == "flag":
             valid = isinstance(value, bool)
             wanted = "true or false"
+        elif kinds[key] == "integer":   # amend1026 C2: a whole number above zero, never a flag
+            valid, wanted = type(value) is int and value > 0, "a whole number above zero"
         else:
             valid = (isinstance(value, list) and all(isinstance(item, str) and item
                                                      for item in value))
@@ -687,7 +699,7 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
             return None, f"'{key}' must be {wanted}"
         if kinds[key] == "string":
             texts = [value]
-        elif kinds[key] == "flag":
+        elif kinds[key] in ("flag", "integer"):
             texts = []
         else:
             texts = value
@@ -826,10 +838,10 @@ def answer_public_api_post(
         if route.starts_run:
             return _start_run_answer(path, segments["job"], checked, start_run, client)
         try:
-            argv = _TWIN_ARGV[route.twin](segments, checked)
+            argv = _twin_argv(route.twin, client)(segments, checked)
         except PublicApiWriteRefusal as refusal:
             return refusal.status, build_error(refusal.error, refusal.message), {}
-        envelope = run_command(_write_lock_key(segments), argv)
+        envelope = run_command(_write_lock_key(segments), argv, **_runner_options(route))
         if envelope is None:
             return 500, build_error(
                 "api_command_failed",
@@ -853,8 +865,8 @@ def answer_public_api_post(
 PUBLIC_API_LEDGER_NAME = "calls.jsonl"
 
 
-def public_api_call_host_tools(raw_body: bytes) -> bool:
-    """True when a write's body names `claude-cli` under a provider key (DECISION amend1023 D6).
+def public_api_call_host_tools(raw_body: bytes, path: str = "") -> bool:
+    """True for a write naming `claude-cli` under a provider key (amend1023 D6), and for an ask (amend1026 C2).
 
     The ledger marks such a call `host_tools`, whether it was started or refused, so the operator
     reads every request for the Claude Code CLI with its status beside it. A body that is not a
@@ -862,6 +874,8 @@ def public_api_call_host_tools(raw_body: bytes) -> bool:
     """
     from packages.orchestration.execution_options import PROVIDER_BODY_KEYS
 
+    if _match_route_path("/api/v1/projects/{project}/ask", path) is not None:
+        return True
     try:
         parsed = json.loads(raw_body.decode("utf-8")) if raw_body.strip() else {}
     except (UnicodeDecodeError, ValueError, RecursionError):

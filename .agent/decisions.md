@@ -32079,3 +32079,45 @@ Part F2's own rule: a dependency that would tear is written down, not improvised
 ## DECISION amend1024 D9 — the operator's answer to Q28 (2026-10-25): park the rest, keep no dependency torn
 
 The operator answered Q28 with "take what you think is right", which is its recommendation. Parked in one move, under their own tier headings at the end of Package 2: the 33 lines kept on 2026-10-24 and every active Package 1 line whose Depends on line names one of them or one of the 22 parked then, computed to a fixed point: F164, F171, F187, F192, F193, F194, F196, F224 to F226, F228 to F232, F244, F248 and F250 (51 lines). F223 stays: it only "later integrates" F226. F195 and F227, named in Q28's recommendation, stay too: neither depends on a parked line. Q28 is deleted. Reverse by moving the Q28 block back from git history.
+
+## DECISION amend1026 D1 — Part A on this machine: the supervisor runs as a user unit of its own
+
+THE PROBLEM: the supervisor (pid 1916907, started 2026-10-25 00:38) ran from a terminal tab, and the
+F200 unit `remedy-serve.service` is not installed. THE DECISION: it was stopped with `remedy serve
+stop` and started again with `systemd-run --user --unit=remedy-serve-live`, with the same data root
+(`REMEDY_DATA_DIR=~/Repos/remedy/.data`), the same port (`REMEDY_SERVE_API_PORT=8450`), the same
+working folder and the terminal's own `PATH`, so the Claude Code CLI is found; the unit outlives
+any session. `luna` was found holding `host_tools` and the order says it stays without, so it was
+revoked; `orb-universe` and `orb-remedy` hold it. Remedy's own repository is the project `remedy`;
+no project is named `remedy-backend`, which is Universe's alias. HOW TO REVERSE: `systemctl --user
+stop remedy-serve-live`, then start the supervisor as before.
+
+## DECISION amend1026 D2 — both stories carry the scope decision; the order's is its first job's
+
+`scope` is `{single_job, files, reason, decided}` read from `scope_decision.json`, or null. Every job
+of one walk keeps the same decision, so the order's story names the first one it finds.
+
+## DECISION amend1026 D3 — the review report is rendered from the report Remedy kept, never summarised
+
+The report is found by the id the walk's answer names, else by the newest report whose
+`order.supervisor_order_id` is the order's id (a walk that still runs). A figure the report does not
+hold reads `—`.
+
+## DECISION amend1026 D4 — the ask: three reading tools, one cap in budget tokens, no attachments
+
+(1) The CLI's command line names `Read,Glob,Grep` under `--tools` and `--allowedTools`, adds
+`--restricted`, `--safe-mode` and `--strict-mcp-config`, and names no other tool. (2) `max_total_tokens`
+counts input plus output tokens, the order budget's own measure; the stream is read live and the CLI
+ended once the count passes the cap. (3) The repository's git state (HEAD, status, a digest of the
+diff) is read before and after; a change answers `ask_repo_changed`. (4) Evidence lives under the data
+root's new class `evidence`, `asks/<ask id>/`. (5) The question is the twin's positional argument, as
+the operator wrote the command line, so the ask route is the second exemption of DECISION F303 D3 (1)
+beside the note route's `text`; the body kind `integer` is new for `max_total_tokens`. (6) There is no
+upload route, so `attachments` is not offered and a body naming it is refused as an unknown key.
+(7) The route waits up to 960 seconds (`command_timeout`), and asks of one project wait on one lock.
+HOW TO REVERSE: delete `project_ask.py`, the route and the catalog entry.
+
+## DECISION amend1026 D5 — the projects list reads the registry and the job records at the call
+
+Open jobs are the jobs that have not ended; `last_test` is the newest job whose verification is
+`passed` or `failed`. A client token lists only the projects its entry names.

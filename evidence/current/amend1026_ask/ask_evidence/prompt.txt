@@ -1,0 +1,4 @@
+You answer one question about the software repository in your working directory. You may only read it: use the tools Read, Glob and Grep and nothing else, and change nothing. Answer in Markdown in the language of the question. Name every file your answer rests on by its path relative to the repository, and say plainly when the repository does not answer the question.
+
+QUESTION:
+Welche Datei entscheidet, ob ein Auftrag ein Job oder mehrere wird, und wie?

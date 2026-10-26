@@ -1,21 +1,21 @@
-# Plan — operator amendment amend1024-one-real-order
+# Plan — operator amendment amend1026-go-live-and-ask
 
 ## Goal
-An everyday order with no header and no file path is read by a strong model, built as ONE job
-by default, tried out by its builder, and lands as an applicable change (2026-10-24).
+The live supervisor on this machine runs current code with claude-cli for Universe's two
+clients; the HTTP API gains `GET /api/v1/projects` and the read-only
+`POST /api/v1/projects/{project}/ask`; Universe's small asks (push_allowed, the story's scope,
+the order's review report) are met; contract 1.30; F318 closed with a real ask (2026-10-26).
 
 ## Current Step
-Parts A to G built on `feature/amend1024-one-real-order`; F317 registered and accepted with the
-real run's evidence (`evidence/current/f317_real_order/`). The closing step: the full suite green,
-the merge into `main`, the push and the handback
-`~/.remedy-loop/amend1024-one-real-order.handback.md`.
+Parts A to E are done on `feature/amend1026-go-live-and-ask`: F318 is accepted with the real ask
+(`evidence/current/amend1026_ask/`). The closing step: the last full suite on the final tree, the
+merge into `main`, the push, the supervisor restarted on main and the handback
+`~/.remedy-loop/amend1026-go-live-and-ask.handback.md`.
 
 ## Next Steps
 1. The next session: Phase 1 rule 1 (`.agent/STOP`), then Rule A5, which reads F316 (findings
-   paydown v11, narrowed by Part F3) as the next line.
-2. The operator: restart the long-running supervisor so its HTTP route runs this code, grant
-   `host_tools` to the universe's client, and answer Q28 (the 33 features not parked).
+   paydown v11) as the next line.
 
 ## Risks
-- The operator's supervisor started 2026-10-20 runs the old HTTP route in memory until restarted,
-  while every walk it spawns already runs this code (editable install).
+- `answer_public_api_post` is a ratchet row (151 lines): every edit there stays line-neutral.
+- There is no upload route, so `attachments` is left out (a finding for the handback).

@@ -1,0 +1,9 @@
+{
+  "body": {
+    "max_total_tokens": 150000,
+    "question": "Welche Datei entscheidet, ob ein Auftrag ein Job oder mehrere wird, und wie?"
+  },
+  "client": "orb-universe",
+  "method": "POST",
+  "path": "/api/v1/projects/remedy/ask"
+}

@@ -265,6 +265,64 @@ def _cmd_client_order_story(order_id: str, *, json_output: bool = False) -> None
                 print(f"  {job['number']}. {job['state']} {job['tasks']['done']}/{job['tasks']['total']} {job['title']}")
 
 
+def _cmd_client_order_review(order_id: str, *, json_output: bool = False) -> None:
+    """`remedy client order-review <order>`: the order's review report as Markdown, the answer
+    `GET /api/v1/orders/{order}/review` sends (amend1026 D3)."""
+    from packages.orchestration.order_review import order_review_answer
+
+    answer = order_review_answer(order=order_id)
+    if not answer["ok"]:
+        fail(answer["error"], answer["message"], json_output=json_output, exit_code=3)
+    review = {key: value for key, value in answer.items() if key not in ("ok", "schema_version")}
+    if json_output:
+        emit_ok(**review)
+        return
+    print(review["markdown"], end="")
+
+
+def _cmd_client_projects(*, json_output: bool = False) -> None:
+    """`remedy client projects`: every registered project, the answer `GET /api/v1/projects` sends the
+    server's own token; a client token's answer holds only its own projects (amend1026 C1)."""
+    from packages.orchestration.client_projects import client_projects
+
+    listing = client_projects()
+    if json_output:
+        emit_ok(**listing)
+        return
+    for project in listing["projects"]:
+        test = project["last_test"]["status"] if project["last_test"] else "none"
+        print(f"{project['slug']}: {project['open_jobs']} open, last job {project['last_job_at'] or 'none'}, "
+              f"last test {test} — {project['repo_path'] or '(no repository)'}")
+
+
+#: The exit code of each refusal of `remedy client ask` that is not 1: a wrong argument, and an absent project.
+_ASK_EXIT_CODES = {"invalid_argument": 2, "project_not_found": 3, "ask_repo_unknown": 3}
+
+
+def _cmd_client_ask(project: str, question: str, *, max_total_tokens: str, asked_by: str,
+                    json_output: bool = False) -> None:
+    """`remedy client ask <project> <question>`: the read-only Claude Code CLI answers, the answer
+    `POST /api/v1/projects/{project}/ask` sends (amend1026 C2)."""
+    from packages.orchestration.project_ask import ProjectAskError, ask_project
+
+    try:
+        cap = int(max_total_tokens)
+    except ValueError:
+        fail("invalid_argument", f"--max-total-tokens must be a whole number, not {max_total_tokens!r}",
+             json_output=json_output, exit_code=2)
+    try:
+        answer = ask_project(project, question, max_total_tokens=cap, asked_by=asked_by)
+    except ProjectAskError as exc:
+        fail(exc.error, exc.message, json_output=json_output, exit_code=_ASK_EXIT_CODES.get(exc.error, 1),
+             **exc.fields)
+    if json_output:
+        emit_ok(**answer)
+        return
+    print(answer["answer"])
+    print(f"({answer['tokens_used']} tokens, {answer['calls_used']} call, model {answer['model']}; "
+          f"evidence {answer['evidence']})")
+
+
 def _client_entry(client: Any) -> dict[str, Any]:
     """One client as `remedy client show` answers it: its policy and its token's fingerprint, never the token."""
     from packages.orchestration.serve_http_handler import token_fingerprint
@@ -333,6 +391,12 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job, json_output=getattr(args, "json", False)),
     "client.order-story": lambda args: _cmd_client_order_story(
         args.order, json_output=getattr(args, "json", False)),
+    "client.order-review": lambda args: _cmd_client_order_review(
+        args.order, json_output=getattr(args, "json", False)),
+    "client.projects": lambda args: _cmd_client_projects(json_output=getattr(args, "json", False)),
+    "client.ask": lambda args: _cmd_client_ask(
+        args.project, args.question, max_total_tokens=getattr(args, "max_total_tokens", None) or "150000",
+        asked_by=getattr(args, "asked_by", None) or "cli", json_output=getattr(args, "json", False)),
     "client.show": lambda args: _cmd_client_show(
         getattr(args, "client", None), json_output=getattr(args, "json", False)),
     "client.grant-host-tools": lambda args: _cmd_client_host_tools(

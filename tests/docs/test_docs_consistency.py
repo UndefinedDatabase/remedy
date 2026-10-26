@@ -179,7 +179,10 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F317 (one real order lands), was registered on 2026-10-24 by
 #: operator amendment amend1024-one-real-order (Part F1) directly after the
 #: last accepted line, under its own Tier 2 heading; see T2_F317.md.
-TOTAL_FEATURES = 317
+#: One more, F318 (questions to a project, read-only), was registered on
+#: 2026-10-26 by operator amendment amend1026-go-live-and-ask (Part E2)
+#: directly after F317, under its own Tier 2 heading; see T2_F318.md.
+TOTAL_FEATURES = 318
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

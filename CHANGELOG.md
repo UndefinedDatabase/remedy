@@ -12,6 +12,35 @@ fails the gate rather than shipping an unexplained release.
 ## [Unreleased]
 
 ### Added
+- 2026-10-26, amend1026-go-live-and-ask (feature F318); the public API and the client interface move
+  to 1.30:
+  - `GET /api/v1/projects` and its twin `remedy client projects` list the projects a client may see,
+    each with its slug, name, repository, description, the number of its open jobs, the time of its
+    newest job and the result of its newest test run.
+  - `POST /api/v1/projects/{project}/ask` and its twin `remedy client ask <project> "<question>"` let
+    a client granted `host_tools` ask a question about a project. Remedy starts the Claude Code CLI
+    only reading, with the tools Read, Glob and Grep and no other, under a required token cap; the
+    answer comes as Markdown with the tokens and calls it used and its model. The question, the
+    answer, every tool call and the repository's git state before and after are kept under the data
+    root's new folder `evidence/asks/`, never in the project. Attachments are not offered, because the
+    API has no upload route.
+  - `GET /api/v1/orders/{order}/review` and its twin `remedy client order-review` answer the review
+    report an order sent with `capture_review` kept, rendered as Markdown.
+  - `GET /api/v1/execution` says under `autonomy.push_allowed` whether a push may happen at all, and
+    both stories, a job's and an order's, carry `scope`, the planner's decision whether the order is
+    one job or several, with its files and its reason.
+- 2026-10-24, amend1024-one-real-order (feature F317):
+  - The Claude Code CLI (`claude-cli`) is the product default for planning, building and reviewing an
+    order of a client granted `host_tools` that names no provider; every other caller keeps the local
+    defaults Pi and Ollama.
+  - Before anything is planned, the planner decides whether an order is one job or several and keeps
+    its answer as `scope_decision.json` beside each job; one job is the default, and the regex lanes
+    decide only when the planner gives no usable answer.
+  - A claude-cli builder may run the project's own test command and a short list of reading commands
+    itself, streams by default so its commands are evidence, and every command the CLI refused is
+    logged beside the run.
+  - An everyday order with no file path and no shape landed as one applied change with real
+    claude-cli calls and no manual repair (`evidence/current/f317_real_order/`).
 - 2026-10-23, amend1023-universe-trust; the public API and the client interface move to 1.29:
   - The client property `host_tools`, granted and revoked only on this machine's command line
     (`remedy client grant-host-tools`, `revoke-host-tools`, `show`): a client holding it may name
@@ -26,6 +55,10 @@ fails the gate rather than shipping an unexplained release.
     files" gets that criterion, and a new file outside the named ones leaves the result.
 
 ### Changed
+- 2026-10-24, amend1024-one-real-order: dollar figures are hidden unless `cost.show_usd` is true in
+  `remedy.toml`; every answer of the public API and of the command line reports tokens first, and
+  the per-project switch `[cockpit] show_cost_usd` is gone. Seventy-three self-use features were
+  parked until F317 has worked three times in a row on Luna.
 - 2026-10-23, amend1023-universe-trust: F133's format-error rate also reads the post-mortems under
   the task's run directory; the worker list names its adapters honestly and `remedy worker show
   --json` carries the capabilities; the conformance kit fails a class whose source it cannot read

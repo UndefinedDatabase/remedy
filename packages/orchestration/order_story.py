@@ -30,10 +30,11 @@ _STATE_OF_PHASE = {
 }
 
 #: The top-level keys of the answer beside the envelope's own.
-ORDER_STORY_ANSWER_KEYS: tuple[str, ...] = ("client", "missions", "order_id", "phase", "state")
+ORDER_STORY_ANSWER_KEYS: tuple[str, ...] = ("client", "missions", "order_id", "phase", "scope", "state")
 
 #: The keys under them, as the machine client interface declares them.
 ORDER_STORY_KEY_TREE: dict[str, Any] = {
+    "scope": {"single_job": {}, "files": {}, "reason": {}, "decided": {}},
     "missions": {"mission_id": {}, "milestones": {"id": {}, "goal": {}, "jobs": {
         "job_id": {}, "number": {}, "title": {}, "state": {},
         "state_detail": {"after_job": {}, "after_job_id": {}, "criterion": {}},
@@ -89,6 +90,7 @@ def order_client_story(paths: Any, record: Any) -> dict[str, Any]:
     who gave it, and its missions with their milestones and jobs, in planned order."""
     from packages.orchestration.mission_contract import JOB_MILESTONE_KEY
     from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.scope_decision import story_scope
     from packages.orchestration.serve_runs import order_record_payload
 
     payload = order_record_payload(paths, record)
@@ -103,6 +105,8 @@ def order_client_story(paths: Any, record: Any) -> dict[str, Any]:
     return {
         "order_id": record.order_id, "client": record.client or None,
         "state": payload["state"], "phase": payload["phase"],
+        # amend1026 D2: each job of one walk keeps the same scope decision, so the first one found speaks.
+        "scope": next((found for found in (story_scope(str(entry["job_id"])) for entry in entries) if found), None),
         "missions": [{"mission_id": mission_id, "milestones": [
             {"id": milestone, "goal": goals.get(str(mission_id), {}).get(str(milestone)) if milestone else None,
              "jobs": jobs} for milestone, jobs in milestones.items()]}
