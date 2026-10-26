@@ -1234,6 +1234,26 @@ Keys under the answer keys: see below.
 - `projects`: `description`, `last_job_at`, `last_test`, `name`, `open_jobs`, `repo_path`, `slug`
   - `last_test`: `at`, `job_id`, `status`
 
+#### `remedy client ask`
+
+Command id: `client.ask`.
+Description: Ask a question about a project's repository: the Claude Code CLI reads it with Read, Glob and Grep only, never edits, writes or runs a command, and answers in Markdown with the tokens and calls it used; the question, the answer and every tool call are kept under the data root.
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `project` | no | yes | yes | no | The slug or id of the project, as remedy client projects lists it |
+| `question` | no | yes | yes | no | The question, in any language |
+| `--max-total-tokens` | yes | no | yes | no | The most input and output tokens the ask may use (default: 150000) |
+| `--asked-by` | yes | no | yes | no | Who asks, kept with the evidence (default: cli) |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `ask_budget_exhausted`, `ask_failed`, `ask_provider_unavailable`, `ask_repo_changed`, `ask_repo_unknown`, `invalid_argument`, `project_not_found`.
+Answer keys: `answer`, `ask_id`, `calls_used`, `evidence`, `model`, `project`, `repo_unchanged`, `tokens`, `tokens_used`, `tool_calls`, `turns`.
+Keys under the answer keys: see below.
+
+- `tokens`: `cache_creation`, `cache_read`, `input`, `output`
+
 #### `remedy doctor health`
 
 Command id: `doctor.health`.

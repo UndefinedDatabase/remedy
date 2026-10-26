@@ -305,6 +305,12 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({"order_not_found"}),
         "the one refusal order_story.order_story_answer builds (amend1023 D11)",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_ask:exc.error": (
+        frozenset({"ask_budget_exhausted", "ask_failed", "ask_provider_unavailable", "ask_repo_changed",
+                   "ask_repo_unknown", "invalid_argument", "project_not_found"}),
+        "a ProjectAskError's token; every ProjectAskError(...) in packages/orchestration/project_ask.py "
+        "names one of PROJECT_ASK_REFUSAL_TOKENS (amend1026 C2)",
+    ),
     "apps.cli.commands.client_cmd:_cmd_client_order_review:answer['error']": (
         frozenset({"order_not_found", "review_report_not_found"}),
         "the two refusals order_review.order_review_answer builds (amend1026 D3)",
@@ -590,6 +596,18 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     "apps.cli.commands.client_cmd:_cmd_client_order_story:**story": (
         frozenset({"client", "missions", "order_id", "phase", "scope", "state"}),
         "the keys order_client_story in packages/orchestration/order_story.py returns (amend1023 D11)",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_ask:**answer": (
+        frozenset({"answer", "ask_id", "calls_used", "evidence", "model", "project", "repo_unchanged",
+                   "tokens", "tokens_used", "tool_calls", "turns"}),
+        "the keys ask_project in packages/orchestration/project_ask.py returns: its `used` and "
+        "`answer` (amend1026 C2)",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_ask:**exc.fields": (
+        frozenset({"ask_id", "calls_used", "evidence", "model", "project", "repo_unchanged", "tokens",
+                   "tokens_used", "tool_calls", "turns"}),
+        "the `used` keys ask_project in packages/orchestration/project_ask.py hands a ProjectAskError "
+        "raised after the call ran (amend1026 C2)",
     ),
     "apps.cli.commands.client_cmd:_cmd_client_projects:**listing": (
         frozenset({"projects"}),
@@ -1525,6 +1543,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # amend1026 D3: no order here either; the review report's real answers are tests/orchestration/test_order_review.py's.
     assert answer("client.order-review", ["client", "order-review", "0123456789abcdef"], 3)["error"] == (
         "order_not_found")
+    # amend1026 C2: no project of that name; the ask's real answers are tests/orchestration/test_project_ask.py's
+    # (a scripted CLI) and evidence/current/amend1026_ask (the real one).
+    assert answer("client.ask", ["client", "ask", "no-such-project", "Was?"], 3)["error"] == "project_not_found"
     # amend1026 C1: the run's own project is listed with its job, which has ended.
     listed = answer("client.projects", ["client", "projects"], 0)["projects"]
     assert listed and all(project["open_jobs"] == 0 for project in listed), listed

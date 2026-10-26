@@ -45,7 +45,29 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
-        related=("client.interface", "status.run"),
+        related=("client.ask", "status.run"),
+    ),
+    # Operator amendment amend1026-go-live-and-ask, Part C2: a question to a project, answered by the
+    # Claude Code CLI that may only read (Read, Glob, Grep); its evidence lands in the data root.
+    CommandEntry(
+        command_id="client.ask",
+        group_id="client",
+        subcommand="ask",
+        description="Ask a question about a project's repository: the Claude Code CLI reads it with Read, Glob and Grep only, never edits, writes or runs a command, and answers in Markdown with the tokens and calls it used; the question, the answer and every tool call are kept under the data root.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("project", "The slug or id of the project, as remedy client projects lists it"),
+            ArgDef("question", "The question, in any language"),
+            ArgDef("--max-total-tokens", "The most input and output tokens the ask may use (default: 150000)",
+                   required=False, is_option=True, default="150000"),
+            ArgDef("--asked-by", "Who asks, kept with the evidence (default: cli)", required=False,
+                   is_option=True, default="cli"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.projects", "client.execution"),
+        # A project no registry entry names, or one with no repository, is absent (exit 3).
+        exit_codes=(0, 1, 2, 3),
     ),
     # F253 S3a (DECISION F253 D4 (3)): what changed since a cursor the client holds.
     CommandEntry(

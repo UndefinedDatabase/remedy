@@ -67,6 +67,7 @@ from packages.orchestration.order_cancel import ORDER_PHASES
 from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_TREE
 from packages.orchestration.order_review import ORDER_REVIEW_ANSWER_KEYS
 from packages.orchestration.order_story import ORDER_STORY_ANSWER_KEYS, ORDER_STORY_KEY_TREE
+from packages.orchestration.project_ask import PROJECT_ASK_ANSWER_KEYS, PROJECT_ASK_KEY_TREE, PROJECT_ASK_REFUSAL_TOKENS
 
 #: The document's own version. Its major number changes only when a name is removed or changes
 #: its meaning; adding a name raises the minor number. F253 S3a (DECISION F253 D4 (3)) raises it
@@ -117,6 +118,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "client.interface", "client.execution", "client.changes", "client.order", "client.run", "client.story",
     "client.now", "client.insight",
     "client.diff", "client.cancel-order", "client.order-story", "client.order-review", "client.projects",
+    "client.ask",
     "doctor.health",
     "doctor.logs",
 )
@@ -182,6 +184,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.changes": ("invalid_cursor",),
     "client.order": ("order_not_found",), "client.order-story": ("order_not_found",),
     "client.order-review": ("order_not_found", "review_report_not_found"), "client.projects": (),
+    "client.ask": PROJECT_ASK_REFUSAL_TOKENS,
     "client.run": ("run_not_found",),
     "client.story": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
     "client.now": (),
@@ -281,7 +284,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "client.now": CLIENT_NOW_ANSWER_KEYS, "client.insight": CLIENT_INSIGHT_ANSWER_KEYS,
     "client.diff": ("files", "job", "matches", "state", "truncated"),
     "client.order-story": ORDER_STORY_ANSWER_KEYS, "client.order-review": ORDER_REVIEW_ANSWER_KEYS,
-    "client.projects": CLIENT_PROJECTS_ANSWER_KEYS,
+    "client.projects": CLIENT_PROJECTS_ANSWER_KEYS, "client.ask": PROJECT_ASK_ANSWER_KEYS,
     "doctor.health": ("checks", "verdict"),
     "doctor.logs": ("entries", "files", "job_id", "matches", "run_id", "unreadable"),
 }
@@ -707,6 +710,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     "client.order-story": ORDER_STORY_KEY_TREE,     # amend1023 D11
     "client.order-review": {},                      # amend1026 D3: `markdown` is one string
     "client.projects": CLIENT_PROJECTS_KEY_TREE,    # amend1026 C1
+    "client.ask": PROJECT_ASK_KEY_TREE,             # amend1026 C2
     # F253 D20: `answer` is the envelope `remedy job run` printed once the run ended; no tree under it.
     "client.run": {},
     "client.story": CLIENT_STORY_KEY_TREE, "client.execution": CLIENT_EXECUTION_KEY_TREE,
