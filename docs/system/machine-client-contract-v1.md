@@ -352,7 +352,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.29`.
+Interface version: `1.30`.
 
 ### Envelope
 
@@ -1220,7 +1220,7 @@ Keys under the answer keys: none.
 #### `remedy client projects`
 
 Command id: `client.projects`.
-Description: List the registered projects with their slug, name, repository and description, how many of their Jobs are open, when their newest Job was made and the result of their newest test run (read-only).
+Description: List the registered projects with their slug, name, repository and description, how many of their Jobs with their tasks are still open, when their newest Job was made and whether the tests of the newest Job that tested passed (read-only).
 
 | Argument | Option | Required | Takes a value | Repeatable | Help |
 |---|---|---|---|---|---|
@@ -1241,10 +1241,10 @@ Description: Ask a question about a project's repository: the Claude Code CLI re
 
 | Argument | Option | Required | Takes a value | Repeatable | Help |
 |---|---|---|---|---|---|
-| `project` | no | yes | yes | no | The slug or id of the project, as remedy client projects lists it |
+| `project` | no | yes | yes | no | The slug or id of the project whose repo is asked about, as remedy client projects lists it |
 | `question` | no | yes | yes | no | The question, in any language |
 | `--max-total-tokens` | yes | no | yes | no | The most input and output tokens the ask may use (default: 150000) |
-| `--asked-by` | yes | no | yes | no | Who asks, kept with the evidence (default: cli) |
+| `--asked-by` | yes | no | yes | no | Who asks, kept in the evidence folder (default: cli) |
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.

@@ -89,7 +89,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "the offer is the calling token's: `host_tools` says whether the client holds the "
             "property the operator grants on this machine's command line, and for such a client "
             "`claude-cli` is offered for `builder`, `reviewer` and `repair` and the `planner` is "
-            "selectable."
+            "selectable. Since 1.30 `autonomy.push_allowed` says whether a push may happen at all, as "
+            "`remedy status --json` reads it."
         ),
     ),
     PublicApiRoute(
@@ -353,8 +354,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "`order_job_states` under `story` in `GET /api/v1/interface`), `state_detail` (`after_job` and "
             "`after_job_id` while it waits, the `criterion` it did not meet while blocked or failed), "
             "`tasks` with `done` and `total`, the `round` and the last `tool` of a running job's worker, "
-            "and its `story` route. It changes nothing. A client token reads only an order of one of its "
-            "projects (403 `api_client_policy_refused`)."
+            "and its `story` route; since 1.30 `scope`, the size decision its jobs keep, or null. It changes "
+            "nothing. A client token reads only an order of one of its projects (403 "
+            "`api_client_policy_refused`)."
         ),
     ),
     PublicApiRoute(
@@ -457,7 +459,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "next step and the route that takes it, `end` with the way out of a job that is still open "
             "(since 1.21), the five `steps` with the job's tasks under "
             "`building`, `changes`, `dirty_start` (since 1.27), `numbers` (null where not "
-            "measured) and `note_open`. Every "
+            "measured), `note_open`, `scope_findings` (since 1.29) and `scope` (since 1.30: the size "
+            "decision's `single_job`, `files`, `reason` and `decided`, or null). Every "
             "word is in the `story` key of `GET /api/v1/interface`. A job id prefix is accepted, "
             "and a client token reads only a job of one of its projects (403 "
             "`api_client_policy_refused`)."

@@ -112,8 +112,11 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: running job, measured to now instead of to its last safe point, and operator amendment
 #: amend1023-universe-trust (DECISIONs amend1023 D6, D8, D11) to `1.29` for the client property
 #: `host_tools`, `GET /api/v1/orders/{order}/story`, the order jobs' `mission_id` and
-#: `blocking_criterion`, and the story's `scope_findings`.
-PUBLIC_API_VERSION = "1.29"
+#: `blocking_criterion`, and the story's `scope_findings`, and operator amendment
+#: amend1026-go-live-and-ask (DECISIONs amend1026 D2 to D5) to `1.30` for `GET /api/v1/projects`,
+#: `POST /api/v1/projects/{project}/ask`, `GET /api/v1/orders/{order}/review`, the execution offer's
+#: `autonomy.push_allowed` and both stories' `scope`.
+PUBLIC_API_VERSION = "1.30"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.

@@ -146,6 +146,26 @@ one again, unchanged, with `already_declined` true. A job whose result already l
 `job_already_applied`, and one that is not completed 409 `job_not_declinable`. The story then
 reads `stopped` with the reason `declined`.
 
+## 6. List the projects and ask about one
+
+```
+curl -s http://127.0.0.1:<port>/api/v1/projects -H "Authorization: Bearer <token>"
+curl -s -X POST http://127.0.0.1:<port>/api/v1/projects/<project>/ask \
+  -H "Authorization: Bearer <token>" \
+  --data '{"question": "Which file decides whether an order is one job or several?", "max_total_tokens": 150000}'
+```
+
+The first answer lists the projects the token may see, each with its open jobs, its newest job and
+its newest test run. The second asks the Claude Code CLI a question about one of them, and only a
+token whose client was granted `host_tools` may ask (otherwise 400 `api_provider_not_offered`). The
+CLI may only read the repository, with Read, Glob and Grep, and changes nothing; the call waits for
+the answer, which is `answer` in Markdown with `tokens_used`, `calls_used` and `model`. The ask's
+evidence stays under the data root, in the folder its `evidence` names. The command line's twin is
+`remedy client ask <project> "Which file decides whether an order is one job or several?" --json`.
+
+An order sent with `capture_review` true keeps a review report, which
+`GET /api/v1/orders/<order>/review` answers as Markdown.
+
 ## Answers and codes
 
 Every answer is one JSON envelope: `ok` is true with the answer's keys, or false with `error`, a
