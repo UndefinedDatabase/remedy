@@ -135,3 +135,10 @@ def test_an_unknown_project_and_an_empty_question_are_refused(project):
     with pytest.raises(ProjectAskError) as empty:
         ask_project("ask-repo", "  ", claude_path="/bin/false")
     assert empty.value.error == "invalid_argument"
+
+
+def test_a_cli_that_cannot_start_is_a_failed_ask(project):
+    _repo, tmp_path = project
+    with pytest.raises(ProjectAskError) as failed:
+        ask_project("ask-repo", "Was?", claude_path=str(tmp_path / "no-such-claude"))
+    assert failed.value.error == "ask_failed"

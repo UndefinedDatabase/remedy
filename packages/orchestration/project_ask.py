@@ -209,9 +209,12 @@ def ask_project(selector: str, question: str, *, max_total_tokens: int = ASK_MAX
         "argv": [part if part != prompt else "<prompt>" for part in argv[1:]], "repo_before": before})
     (folder / "prompt.txt").write_text(prompt + "\n", encoding="utf-8")
     reading = _StreamReading(cap=max_total_tokens)
-    guarded = run_guarded(argv, ExecGuardPolicy(
-        wall_timeout_seconds=ASK_TIMEOUT_SECONDS, cwd=str(repo), output_cap_bytes=ASK_STREAM_CAP_BYTES,
-        stdout_observer=reading.feed, cancel_check=reading.over_cap))
+    try:
+        guarded = run_guarded(argv, ExecGuardPolicy(
+            wall_timeout_seconds=ASK_TIMEOUT_SECONDS, cwd=str(repo), output_cap_bytes=ASK_STREAM_CAP_BYTES,
+            stdout_observer=reading.feed, cancel_check=reading.over_cap))
+    except OSError as exc:   # the CLI could not be started at all
+        raise ProjectAskError("ask_failed", f"the Claude Code CLI could not be started: {exc}") from exc
     reading.finish()
     after = repository_state(repo)
     (folder / "stream.jsonl").write_text("".join(redact_stream_line(line) + "\n" for line in reading.lines),
