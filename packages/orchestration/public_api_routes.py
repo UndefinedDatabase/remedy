@@ -33,8 +33,9 @@ class PublicApiRoute:
     #: with (DECISION F253 D3 (2)); `()` for a route that never refuses.
     refusals: tuple[tuple[str, int], ...] = ()
     #: The keys of a write route's JSON body, each with its kind: `"string"`, `"strings"` (a list
-    #: of non-empty strings) (DECISION F253 D9 (3)), or `"flag"` (`true` or `false`) (DECISION
-    #: F253 D12); `()` for a route that takes no body.
+    #: of non-empty strings) (DECISION F253 D9 (3)), `"flag"` (`true` or `false`) (DECISION
+    #: F253 D12), or `"integer"` (a whole number above zero, amend1026 C2); `()` for a route that
+    #: takes no body.
     body: tuple[tuple[str, str], ...] = ()
     #: The HTTP status of a refusal token `refusals` does not list, or None when every refusal
     #: must be listed (DECISION F253 D9 (4)); also None for a `starts_order` route, whose every
@@ -53,6 +54,9 @@ class PublicApiRoute:
     #: The options a `starts_run` route always passes to its twin, before the ones its body gives
     #: (DECISION F307 D22); `()` for every other route.
     run_options: tuple[str, ...] = ()
+    #: The longest a write route's twin may run before the command runner ends it, or None for the
+    #: runner's own `PUBLIC_API_COMMAND_TIMEOUT_SECONDS` (amend1026 C2: an ask may read for minutes).
+    command_timeout: float | None = None
 
 
 #: Every route this registry publishes. A test pins each one by name, so an unpinned addition
@@ -99,6 +103,36 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "its newest job was made, or null) and `last_test` (`status` `passed` or `failed`, `job_id` "
             "and `at` of its newest job whose tests ran, or null). A client token lists only the "
             "projects its entry names. It changes nothing."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/projects/{project}/ask",
+        twin="client.ask",
+        body=(("question", "string"), ("max_total_tokens", "integer")),
+        positional_body=("question",),
+        refusal_default=409,
+        refusals=(
+            ("project_not_found", 404),
+            ("invalid_argument", 400),
+            ("ask_provider_unavailable", 503),
+            ("ask_failed", 503),
+        ),
+        command_timeout=960,
+        description=(
+            "Asks a question about a project, as `remedy client ask <project> <question> --json` does "
+            "(since 1.30): the Claude Code CLI reads the project's repository with the tools `Read`, "
+            "`Glob` and `Grep` only, and never edits, writes, runs a command or calls git. `question` and "
+            "`max_total_tokens`, the most input and output tokens the ask may use, are required (400 "
+            "`api_body_invalid`); the CLI is ended once it passes the cap (409 `ask_budget_exhausted`). "
+            "The answer: `answer` in Markdown, `tokens_used`, `tokens` by kind, `calls_used`, `turns`, "
+            "`model`, `tool_calls` (the tools it called, in order), `repo_unchanged` and `evidence`, the "
+            "folder under the data root that keeps the question, the answer and every tool call, never "
+            "the project. A client without `host_tools` is refused with 400 `api_provider_not_offered`, a "
+            "project outside its entry or a cap above its ceiling with 403 `api_client_policy_refused`; "
+            "a project with no repository answers 409 `ask_repo_unknown`, and one the ask left changed "
+            "409 `ask_repo_changed`. The call waits for the answer, at most 16 minutes. Attachments are "
+            "not offered: this API has no upload route."
         ),
     ),
     PublicApiRoute(

@@ -109,6 +109,62 @@ def _job_apply_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]
     return ["job", "apply", *options, "--json", "--", job]
 
 
+def _project_ask_argv(segments: dict[str, str], body: dict[str, Any], *, client: Any = None) -> list[str]:
+    """The command line `remedy client ask` is run with (amend1026 C2): `--max-total-tokens`, who asks,
+    `--json`, `--`, the project and the question. A client needs `host_tools` (400
+    `api_provider_not_offered`), the project in its entry and a cap within its ceiling (403
+    `api_client_policy_refused`); the question and the cap are required (400 `api_body_invalid`)."""
+    from packages.orchestration.api_clients import client_lists_project
+    from packages.orchestration.execution_options import (
+        API_PROVIDER_NOT_OFFERED,
+        CLI_ONLY_PROVIDERS,
+        client_has_host_tools,
+    )
+
+    question, cap = str(body.get("question") or ""), body.get("max_total_tokens")
+    if not question.strip() or cap is None:
+        raise PublicApiWriteRefusal(400, "api_body_invalid", "'question' and 'max_total_tokens' are required")
+    if client is not None:
+        if not client_has_host_tools(client):
+            raise PublicApiWriteRefusal(400, API_PROVIDER_NOT_OFFERED, (
+                f"an ask runs the Claude Code CLI: {CLI_ONLY_PROVIDERS['claude-cli']}; nothing was run"))
+        if not client_lists_project(client, _project_keys(segments["project"])):
+            raise PublicApiWriteRefusal(403, "api_client_policy_refused", (
+                f"the client {client.name!r} may not ask about project {segments['project']!r}; nothing was run"))
+        if client.max_total_tokens is not None and cap > client.max_total_tokens:
+            raise PublicApiWriteRefusal(403, "api_client_policy_refused", (
+                f"the client {client.name!r} may set 'max_total_tokens' to at most {client.max_total_tokens}, "
+                f"and the ask's is {cap}; nothing was run"))
+    return ["client", "ask", f"--max-total-tokens={cap}", f"--asked-by={client.name if client else 'api'}",
+            "--json", "--", segments["project"], question]
+
+
+def _project_keys(selector: str) -> list[str]:
+    """The keys the project SELECTOR names answers to in a client's policy: its slug and its id."""
+    from packages.orchestration.project_registry import list_projects_readonly
+
+    for project in list_projects_readonly():
+        if selector in (project.slug or "", str(project.id)):
+            return [project.slug or "", str(project.id)]
+    return [selector]
+
+
+#: The write routes whose builder reads the calling client (amend1026 C2).
+_CLIENT_AWARE_ARGV = frozenset({"client.ask"})
+
+
+def _twin_argv(twin: str, client: Any) -> Callable[[dict[str, str], dict[str, Any]], list[str]]:
+    """TWIN's argument builder, bound to CLIENT when it reads the caller (`_CLIENT_AWARE_ARGV`)."""
+    builder = _TWIN_ARGV[twin]
+    return (lambda segments, body: builder(segments, body, client=client)) if twin in _CLIENT_AWARE_ARGV else builder
+
+
+def _runner_options(route: Any) -> dict[str, Any]:
+    """The keyword options a route hands the command runner: its own `command_timeout`, when it has one."""
+    timeout = getattr(route, "command_timeout", None)
+    return {} if timeout is None else {"timeout": timeout}
+
+
 #: Twin command id of a write route to the function that builds the argument list its command
 #: runs with, from the route's bound path segments and its checked body (DECISION F253 D9). A
 #: builder may raise `PublicApiWriteRefusal` instead (DECISION F253 D12).
@@ -120,6 +176,7 @@ _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
     "job.abandon": _job_cancel_argv,
     "client.cancel-order": _order_cancel_argv,
     "job.steer": _job_steer_argv,
+    "client.ask": _project_ask_argv,
 }
 
 #: The flags of the order-create route's body, each passed as its `remedy do` option when
@@ -257,8 +314,10 @@ def _client_write_refusal(client: Any, segments: dict[str, str]) -> str | None:
 
 
 def _write_lock_key(segments: dict[str, str]) -> str:
-    """The key a write waits on: the job's (`_job_lock_key`), or the order's own id."""
-    return _job_lock_key(segments["job"]) if "job" in segments else f"order:{segments['order']}"
+    """The key a write waits on: the job's (`_job_lock_key`), the order's own id, or the project's."""
+    if "job" in segments:
+        return _job_lock_key(segments["job"])
+    return f"order:{segments['order']}" if "order" in segments else f"project:{segments.get('project', '')}"
 
 
 def _client_job_refusal(client: Any, job: str) -> str | None:

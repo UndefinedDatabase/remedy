@@ -77,10 +77,11 @@ from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES, PublicAp
 # their own; this module imports the names it uses, and every other consumer imports from it
 # (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.public_api_writes import (
-    _TWIN_ARGV,
     PublicApiWriteRefusal,
     _client_write_refusal,
     _order_text_and_options,
+    _runner_options,
+    _twin_argv,
     _write_lock_key,
 )
 
@@ -691,6 +692,9 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
         elif kinds[key] == "flag":
             valid = isinstance(value, bool)
             wanted = "true or false"
+        elif kinds[key] == "integer":   # amend1026 C2: a whole number above zero, never a flag
+            valid = isinstance(value, int) and not isinstance(value, bool) and value > 0
+            wanted = "a whole number above zero"
         else:
             valid = (isinstance(value, list) and all(isinstance(item, str) and item
                                                      for item in value))
@@ -699,7 +703,7 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
             return None, f"'{key}' must be {wanted}"
         if kinds[key] == "string":
             texts = [value]
-        elif kinds[key] == "flag":
+        elif kinds[key] in ("flag", "integer"):
             texts = []
         else:
             texts = value
@@ -838,10 +842,10 @@ def answer_public_api_post(
         if route.starts_run:
             return _start_run_answer(path, segments["job"], checked, start_run, client)
         try:
-            argv = _TWIN_ARGV[route.twin](segments, checked)
+            argv = _twin_argv(route.twin, client)(segments, checked)
         except PublicApiWriteRefusal as refusal:
             return refusal.status, build_error(refusal.error, refusal.message), {}
-        envelope = run_command(_write_lock_key(segments), argv)
+        envelope = run_command(_write_lock_key(segments), argv, **_runner_options(route))
         if envelope is None:
             return 500, build_error(
                 "api_command_failed",
@@ -865,8 +869,9 @@ def answer_public_api_post(
 PUBLIC_API_LEDGER_NAME = "calls.jsonl"
 
 
-def public_api_call_host_tools(raw_body: bytes) -> bool:
-    """True when a write's body names `claude-cli` under a provider key (DECISION amend1023 D6).
+def public_api_call_host_tools(raw_body: bytes, path: str = "") -> bool:
+    """True when a write's body names `claude-cli` under a provider key (DECISION amend1023 D6), and
+    for every ask, which always runs the Claude Code CLI (amend1026 C2).
 
     The ledger marks such a call `host_tools`, whether it was started or refused, so the operator
     reads every request for the Claude Code CLI with its status beside it. A body that is not a
@@ -874,6 +879,8 @@ def public_api_call_host_tools(raw_body: bytes) -> bool:
     """
     from packages.orchestration.execution_options import PROVIDER_BODY_KEYS
 
+    if _match_route_path("/api/v1/projects/{project}/ask", path) is not None:
+        return True
     try:
         parsed = json.loads(raw_body.decode("utf-8")) if raw_body.strip() else {}
     except (UnicodeDecodeError, ValueError, RecursionError):

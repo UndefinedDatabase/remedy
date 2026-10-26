@@ -807,18 +807,19 @@ class CommandRunner:
         with self._guard:
             return self._job_locks.setdefault(job_id, threading.Lock())
 
-    def run(self, job_id: str, argv: Sequence[str]) -> dict[str, Any] | None:
+    def run(self, job_id: str, argv: Sequence[str], timeout: float | None = None) -> dict[str, Any] | None:
         """The envelope the command prints, or None when it prints none or outlives the timeout.
 
         The envelope is the last non-empty line of standard output, parsed as
-        JSON, when that is an object holding the key `ok`.
+        JSON, when that is an object holding the key `ok`. TIMEOUT, when given,
+        replaces the runner's own for this one call (amend1026 C2: an ask).
         """
         with self._lock_for(job_id):
             try:
                 done = subprocess.run([*self._prefix, *argv], stdin=subprocess.DEVNULL,
                                       capture_output=True, text=True, errors="replace",
                                       env=child_environment(self._paths),
-                                      timeout=self.timeout)
+                                      timeout=self.timeout if timeout is None else timeout)
             except (subprocess.TimeoutExpired, OSError):
                 return None
         return _last_envelope(done.stdout)

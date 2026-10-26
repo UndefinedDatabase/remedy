@@ -51,6 +51,7 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/interface"): "test_interface_route_answers_the_command_envelope",
     ("GET", "/api/v1/execution"): "test_the_execution_route_answers_the_client_execution_command",
     ("GET", "/api/v1/projects"): "test_the_projects_route_lists_only_a_clients_own_projects",
+    ("POST", "/api/v1/projects/{project}/ask"): "test_the_ask_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
     ("GET", "/api/v1/jobs/{job}/proof"): "test_proof_route_answers_the_change_proof_command",
     ("GET", "/api/v1/changes"): "test_changes_route_answers_the_client_changes_command",
@@ -399,7 +400,7 @@ def test_every_route_is_well_formed():
         flag_options = {arg.name for arg in entry.args if arg.is_option and arg.is_flag}
         positional_names = {arg.name for arg in entry.args if not arg.is_option}
         for key, kind in route.body:
-            assert kind in ("string", "strings", "flag")
+            assert kind in ("string", "strings", "flag", "integer")
             # A `starts_order` route's body maps to `remedy do run`'s own flags, not its twin
             # `client.order`'s (which takes none): checked by its own dedicated test instead.
             if route.starts_order:
@@ -418,14 +419,14 @@ def test_every_route_is_well_formed():
     assert public_api.PUBLIC_API_VERSION.split(".")[0] == major
 
 
-def test_only_the_note_route_sets_a_positional_body_key():
-    """DECISION F303 D3 (1): the exemption is for the note route's `text` alone, not a general
-    escape hatch — a future route still names every other body key as a `--option`."""
+def test_only_the_note_and_the_ask_routes_set_a_positional_body_key():
+    """DECISION F303 D3 (1): the exemption is for the note route's `text` and, by the operator's own
+    command line `remedy client ask <project> "<question>"` (DECISION amend1026 D4), the ask route's
+    `question` alone, not a general escape hatch — a future route still names every other body key as
+    a `--option`."""
+    exempt = {"/api/v1/jobs/{job}/note": ("text",), "/api/v1/projects/{project}/ask": ("question",)}
     for route in public_api.PUBLIC_API_ROUTES:
-        if route.path == "/api/v1/jobs/{job}/note":
-            assert route.positional_body == ("text",)
-        else:
-            assert route.positional_body == ()
+        assert route.positional_body == exempt.get(route.path, ()), route.path
 
 
 # -- E: the exclusion list -----------------------------------------------------
@@ -3398,3 +3399,12 @@ def test_the_projects_route_lists_only_a_clients_own_projects(tmp_path):
     assert entry["repo_path"] == str((tmp_path / "listed-mine").resolve()) and entry["last_job_at"]
     _status, every, _headers = public_api.answer_public_api_get("/api/v1/projects")
     assert {"listed-mine", "listed-theirs"} <= {project["slug"] for project in every["projects"]}
+
+
+def test_the_ask_route_is_pinned_with_its_body_and_its_statuses():
+    """amend1026 C2: the read-only ask; `tests/orchestration/test_project_ask.py` drives its answers."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/projects/{project}/ask")
+    assert (route.method, route.twin, route.body, route.refusal_default, route.command_timeout) == (
+        "POST", "client.ask", (("question", "string"), ("max_total_tokens", "integer")), 409, 960)
+    assert route.refusals == (("project_not_found", 404), ("invalid_argument", 400),
+                              ("ask_provider_unavailable", 503), ("ask_failed", 503))
