@@ -95,8 +95,9 @@ _WIDER_SCOPE = re.compile(
     r"in\s+allen\s+(?:anderen\s+)?dateien|im\s+(?:ganzen|gesamten)\s+(?:projekt|repo\w*|code))\b",
     re.IGNORECASE)
 #: Wording that asks for a new file; without it a named file the repository does not track is a question.
+#: amend1027: German's separable "anlegen" too ("leg sie an", "anlegen", "angelegt").
 _CREATES = re.compile(r"\b(?:create|add|write|generate|new|introduce|erstell\w*|schreib\w*|"
-                      r"neu\w*|ergänz\w*|füg\w*|lege)\b", re.IGNORECASE)
+                      r"neu\w*|ergänz\w*|füg\w*|lege|leg|anleg\w*|angelegt\w*)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
