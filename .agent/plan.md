@@ -6,14 +6,15 @@ one_job counts, A3 the 16-character order id of a job made elsewhere), the featu
 (Package 3 "Nach v1"), and improvements come only from reports and failed runs.
 
 ## Current Step
-A1, A2 (dc69345ff) and A3 (758077b7c) done. B2: STATUS.md reads "V1 — abgeschlossen am
-2026-10-27" after F319; Package 1's 20 open lines moved to Package 3; Rule A5 reads Package 1 only
-(bafb89737). B3 is committed in ~/Repos/system (9d85dff). B1 and B4: V1.md, README, CHANGELOG
-1.0.0, pyproject 1.0.0.
+Done. A1 and A2 (dc69345ff), A3 (758077b7c), B2 (bafb89737), B1 and B4 (2bdeb922c), repairs of
+the full runs (24701fb03, f2d26d40a); B3 in ~/Repos/system (9d85dff). Full suite green on
+f2d26d40a (24433 passed, 11 skipped). Closing: merge, push, supervisor restart, handback
+`~/.remedy-loop/amend1027b-v1.handback.md`.
 
 ## Next Steps
-1. Full suite run 3 (run 1: 6 red, run 2: 1 red, the F295 gate digest); after run 1 repairs (release matrix 1.32, contract test,
-   context.md, an advertised-command comment); then merge, push, supervisor restart, handback.
+1. None by Rule A5: Package 1 has no open line (F319 was its last; F316 waits in Package 3). The next work is an order to the project remedy
+   from a report over Universe or a failed run (docs/roadmap/V1.md).
 
 ## Risks
-- The client answers are recorded (client-answers-v1): a changed answer is re-recorded.
+- The installed metadata of the editable install still says 0.1.0 until it is reinstalled;
+  pyproject declares 1.0.0.
