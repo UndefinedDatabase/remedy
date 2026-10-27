@@ -1,21 +1,26 @@
-# Plan — operator amendment amend1026-go-live-and-ask
+# Plan — operator amendment amend1027-green-builds
 
 ## Goal
-The live supervisor on this machine runs current code with claude-cli for Universe's two
-clients; the HTTP API gains `GET /api/v1/projects` and the read-only
-`POST /api/v1/projects/{project}/ask`; Universe's small asks (push_allowed, the story's scope,
-the order's review report) are met; contract 1.30; F318 closed with a real ask (2026-10-26).
+A claude-cli build order whose change is right ends green: the builder may run the project's
+tests, the harness counts that run, no call dies after 120 seconds, and every project has its
+own slug (2026-10-27). F319 closed with two real orders (universe-chat, remedy-edition).
 
 ## Current Step
-Parts A to E are done on `feature/amend1026-go-live-and-ask`: F318 is accepted with the real ask
-(`evidence/current/amend1026_ask/`). The closing step: the last full suite on the final tree, the
-merge into `main`, the push, the supervisor restarted on main and the handback
-`~/.remedy-loop/amend1026-go-live-and-ask.handback.md`.
+Part A: the builder's Bash rules take the project's found test command and its runner
+spellings; its environment carries the project's tool folders; `--permission-mode dontAsk`.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then Rule A5, which reads F316 (findings
-   paydown v11) as the next line.
+1. Part A4/B: the builder's own test runs read from its stream (builder_bash_calls.json); the
+   DoD always runs the project's test command; tests_not_run only with a reason.
+2. Part C: providers.claude_cli.call_timeout_minutes (30), planner and scope 10 minutes; one
+   retry after a timeout, named in the story.
+3. Part D: remedy-edition registered and listed for orb-universe and orb-remedy; scope.files
+   expected/touched/match in the story.
+4. Part E: GET /api/v1/jobs/{job}/evidence, the story's order_id, contract 1.31, docs, changelog.
+5. Part F: the two real orders green; F319 registered and closed; the full suite; merge, push,
+   supervisor restart, handback.
 
 ## Risks
-- `answer_public_api_post` is a ratchet row (151 lines): every edit there stays line-neutral.
-- There is no upload route, so `attachments` is left out (a finding for the handback).
+- universe-chat's suite reads the sibling universe-kit (UNIVERSE_TEST_KIT); a job worktree and
+  the tool sandbox both hide it, so the project's test settings must name it.
+- The repo's settings deny reading `.data/**`; evidence is read through `remedy` commands.
