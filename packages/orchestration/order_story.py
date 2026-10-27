@@ -119,10 +119,10 @@ def order_story_answer(*, order: str) -> dict[str, Any]:
     the order's story, or `order_not_found` for an id no record names."""
     from apps.cli.json_envelope import build_error, build_ok
     from packages.orchestration.serve_paths import serve_paths
-    from packages.orchestration.serve_runs import order_not_found_message, read_order_record
+    from packages.orchestration.serve_runs import order_not_found_message, resolve_order_record
 
     paths = serve_paths()
-    record = read_order_record(paths, order)
+    record = resolve_order_record(paths, order)
     if record is None:
         return build_error("order_not_found", order_not_found_message(order))
     return build_ok(**order_client_story(paths, record))

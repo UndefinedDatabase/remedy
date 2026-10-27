@@ -445,11 +445,11 @@ def _order_answer(*, order: str) -> dict[str, Any]:
     from packages.orchestration.serve_runs import (
         order_not_found_message,
         order_record_payload,
-        read_order_record,
+        resolve_order_record,
     )
 
     paths = serve_paths()
-    record = read_order_record(paths, order)
+    record = resolve_order_record(paths, order)
     if record is None:
         return build_error("order_not_found", order_not_found_message(order))
     return build_ok(**order_record_payload(paths, record))

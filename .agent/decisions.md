@@ -32159,3 +32159,18 @@ test). The job story's `scope` carries `tasks` and, for a `one_job` decision wit
 more, `tasks_text`, one German sentence; two tasks of which exactly one touches test files only
 read "Ein Job mit zwei Aufgaben: der Code und sein Test."
 HOW TO REVERSE: drop `scope_tasks_text` and the two keys.
+
+## DECISION amend1027b D3 — a job made elsewhere names its order by its batch's first 16 characters
+
+The order routes take only the 16-character id `POST /api/v1/orders` answers; a job of a terminal
+walk had only its batch's 32-character id. Remedy writes no order record for a terminal walk,
+because the supervisor's listings read every `orders/<id>/order.json` as an order it started
+(`job_runner_alive`, the now view) and a terminal walk is no such process. Instead the routes and
+their twins read an order through `serve_runs.resolve_order_record`: the supervisor's record, else
+a `BatchOrderRecord` built from the mission batch whose id begins with the 16 characters. It reads
+`ended`; its jobs are the batch's; a cancel writes `cancel.json` into a folder of its own with no
+`order.json`, and treats each job as possibly run by a terminal (`job_runner_alive`), so a running
+one gets a stop request instead of an end. The terminal walk itself reads no cancel request. The
+digest's `jobs[].order_id` changes meaning from the batch to that id, and the batch moves to
+`order_batch_id`; the universe used the old value only to group jobs, which still works.
+HOW TO REVERSE: drop `resolve_order_record`, `BatchOrderRecord` and `http_order_id_of_batch`.

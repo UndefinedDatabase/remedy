@@ -121,29 +121,72 @@ def job_mission_ids(job_ids: list[str]) -> dict[str, str]:
     return found
 
 
+#: How many characters of a batch's id name its order over HTTP: the length of the id
+#: `POST /api/v1/orders` answers, so `POST /api/v1/orders/{order}/cancel` takes it (amend1027b A3).
+ORDER_ID_LENGTH = 16
+
+
+# WHY: a job made on the command line had only its batch's 32-character id, which no order route
+# takes, so an app could not cancel its order (amend1027b A3, the remedy edition's F036).
+def http_order_id_of_batch(batch_id: str, source_path: str, job_id: str) -> str:
+    """The 16-character order id of the batch BATCH_ID that JOB_ID belongs to.
+
+    An order the supervisor started has its own id: the folder of its order file under `orders/`,
+    or, for an order sent with a key (its file under `order-keys/`), the newest order record that
+    lists JOB_ID. Every other batch is named by the first `ORDER_ID_LENGTH` characters of its id,
+    which the order routes resolve back to it (`serve_runs.resolve_order_record`).
+    """
+    from packages.orchestration.serve_paths import ORDER_KEYS_NAME, serve_paths
+    from packages.orchestration.serve_runs import order_record_for_job
+
+    paths = serve_paths()
+    source = Path(source_path) if source_path else None
+    if source is not None and source.parent.parent.resolve() == paths.orders_dir.resolve():
+        return source.parent.name
+    if source is not None and source.parent.resolve() == (paths.root / ORDER_KEYS_NAME).resolve():
+        record = order_record_for_job(paths, job_id)
+        if record is not None:
+            return record.order_id
+    return batch_id[:ORDER_ID_LENGTH]
+
+
 def order_id_of_job(job: Any) -> str | None:
     """The order JOB serves (operator amendment amend1027-green-builds E1), or None.
 
-    The batch its mission links it under: when that batch's order file lies in the supervisor's
-    orders folder (`serve_paths`), the id of the HTTP order (`<orders>/<order>/order.md`), else
-    the batch's own id, so a job started from the command line names its order too.
+    The batch its mission links it under, named by `http_order_id_of_batch`: the id of the HTTP
+    order the supervisor started, or the batch's 16-character id for a job made elsewhere, which
+    the order routes take as well (amend1027b A3).
     """
     from packages.orchestration.mission_state import list_missions, project_ids_with_missions
-    from packages.orchestration.serve_paths import serve_paths
 
     job_id, project = str(job.job_id), str(getattr(job, "project_id", "") or "")
     for project_id in [project] if project else project_ids_with_missions():
         for mission in list_missions(project_id):
             batch_id = next((link.order_id for link in mission.job_links if link.job_id == job_id), None)
-            if batch_id is None:
+            if not batch_id:
                 continue
             batch = next((b for b in mission.orders if b.order_id == batch_id), None)
-            source = Path(batch.source_path) if batch is not None and batch.source_path else None
-            orders = serve_paths().orders_dir
-            if source is not None and source.parent.parent.resolve() == orders.resolve():
-                return source.parent.name
-            return batch_id or None
+            return http_order_id_of_batch(batch_id, batch.source_path if batch is not None else "", job_id)
     return None
+
+
+def order_batch_by_http_id(order_id: str) -> tuple[Any, list[str], list[str]] | None:
+    """The mission batch whose id begins with the 16-character ORDER_ID, with the ids of its jobs
+    and of the projects that hold it, or None (amend1027b A3)."""
+    from packages.orchestration.mission_state import list_missions, project_ids_with_missions
+
+    if len(order_id) != ORDER_ID_LENGTH:
+        return None
+    found, job_ids, project_ids = None, [], []
+    for project_id in project_ids_with_missions():
+        for mission in list_missions(project_id):
+            batch = next((b for b in mission.orders if b.order_id[:ORDER_ID_LENGTH] == order_id), None)
+            if batch is None:
+                continue
+            found = found or batch
+            job_ids += [link.job_id for link in mission.job_links if link.order_id == batch.order_id]
+            project_ids.append(str(project_id))
+    return (found, list(dict.fromkeys(job_ids)), project_ids) if found is not None else None
 
 
 def _missing(job_id: str) -> dict[str, Any]:

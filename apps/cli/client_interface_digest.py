@@ -52,6 +52,7 @@ DIGEST_KEY_TREE: dict[str, Any] = {
         "repo_path": {},
         "mission_id": {},
         "order_id": {},
+        "order_batch_id": {},
         "title": {},
         "state": {},
         "waits_for_apply": {},

@@ -351,8 +351,8 @@ def _pi_model_turns(run_ids: list[str]) -> int | None:
     return sum(figures["model_turns"] for figures in per_role.values()) if per_role else None
 
 
-def _job_order_id(plan: Any, mission: Mission | None) -> str | None:
-    """The order_id of the mission link naming this job, or None when there is none."""
+def _job_order_batch_id(plan: Any, mission: Mission | None) -> str | None:
+    """The batch id of the mission link naming this job, or None when there is none."""
     if mission is None:
         return None
     job_id = str(plan.job_id)
@@ -360,6 +360,17 @@ def _job_order_id(plan: Any, mission: Mission | None) -> str | None:
         if link.job_id == job_id:
             return link.order_id or None
     return None
+
+
+def _job_order_id(plan: Any, mission: Mission | None) -> str | None:
+    """The 16-character order id the order routes take for this job, or None (amend1027b A3)."""
+    from packages.orchestration.order_jobs import http_order_id_of_batch
+
+    batch_id = _job_order_batch_id(plan, mission)
+    if batch_id is None or mission is None:
+        return None
+    batch = next((b for b in mission.orders if b.order_id == batch_id), None)
+    return http_order_id_of_batch(batch_id, batch.source_path if batch is not None else "", str(plan.job_id))
 
 
 def _job_dirty_start(plan: Any) -> dict[str, list[str]] | None:
@@ -382,6 +393,7 @@ def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
         "repo_path": plan.repo_path,
         "mission_id": mission.id if mission is not None else None,
         "order_id": _job_order_id(plan, mission),
+        "order_batch_id": _job_order_batch_id(plan, mission),
         "title": plan.job_title,
         "state": plan.state.value,
         "waits_for_apply": waits_for_apply,

@@ -160,9 +160,19 @@ def cancel_order(paths: Any, record: Any, *, reason: str, source: str,
     Raises `OrderCancelError` when the request cannot be written; nothing is cancelled then.
     """
     from packages.orchestration.pingpong_job import load_job_plan
-    from packages.orchestration.serve_runs import order_record_job_ids, order_state
+    from packages.orchestration.serve_runs import (
+        BatchOrderRecord,
+        job_runner_alive,
+        order_record_job_ids,
+        order_state,
+    )
 
     order_dir = paths.orders_dir / record.order_id
+    elsewhere = isinstance(record, BatchOrderRecord)
+    if elsewhere:
+        # amend1027b A3: an order made on the command line keeps its cancel request in a folder of
+        # its own, beside no `order.json`, so no listing of the supervisor's orders reads it as one.
+        order_dir.mkdir(parents=True, exist_ok=True)
     request, already = _publish_order_cancel(order_dir, reason=reason, source=source)
     state = order_state(paths, record)
     jobs: list[dict[str, str]] = []
@@ -171,8 +181,9 @@ def cancel_order(paths: Any, record: Any, *, reason: str, source: str,
         if job is None:
             continue
         before = getattr(job.state, "value", str(job.state))
-        outcome = _cancel_one(job, request, runner_alive=_runner_alive(paths, job_id, state == "running"),
-                              decline_results=decline_results)
+        # A terminal may run such a job, so it counts as alive unless a run of the supervisor ended.
+        alive = job_runner_alive(paths, job_id) if elsewhere else _runner_alive(paths, job_id, state == "running")
+        outcome = _cancel_one(job, request, runner_alive=alive, decline_results=decline_results)
         after = load_job_plan(job_id)
         jobs.append({"job_id": job_id, "before": before, "outcome": outcome,
                      "job_status": getattr(after.state, "value", str(after.state)) if after else before})

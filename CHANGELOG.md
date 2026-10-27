@@ -18,6 +18,11 @@ fails the gate rather than shipping an unexplained release.
     `changed_files_match` is null the same way when it was given no expected files.
   - A job story's `scope` counts the job's tasks (`tasks`) and says in one sentence what a one-job
     decision's job holds (`tasks_text`), such as "Ein Job mit zwei Aufgaben: der Code und sein Test."
+  - Every job names its order by the 16 characters the order routes take, in the digest, in what
+    changed and in its story; a job made by `remedy do` in a terminal by the first 16 characters of
+    its batch's id. `GET /api/v1/orders/{order}`, its story and review and `POST
+    /api/v1/orders/{order}/cancel` take that id, so an app can cancel such an order. The digest's
+    `jobs[].order_id` named the 32-character batch before; the batch is now `order_batch_id`.
 
 ### Added
 - 2026-10-27, amend1027-green-builds (feature F319); the public API and the client interface move
