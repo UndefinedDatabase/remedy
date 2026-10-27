@@ -182,7 +182,10 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F318 (questions to a project, read-only), was registered on
 #: 2026-10-26 by operator amendment amend1026-go-live-and-ask (Part E2)
 #: directly after F317, under its own Tier 2 heading; see T2_F318.md.
-TOTAL_FEATURES = 318
+#: One more, F319 (build orders with Claude Code end green), was registered on
+#: 2026-10-27 by operator amendment amend1027-green-builds (Part F3) directly
+#: after F318, under its own Tier 2 heading; see T2_F319.md.
+TOTAL_FEATURES = 319
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
