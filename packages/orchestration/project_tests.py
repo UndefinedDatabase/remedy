@@ -216,6 +216,105 @@ def project_environment(cwd: Path) -> dict[str, str]:
     return env
 
 
+#: Operator amendment amend1027-green-builds: the two further keys of the `[tests]` table. `env`
+#: names variables the project's tests read (universe-chat's `UNIVERSE_TEST_KIT`), `read_only_paths`
+#: the folders outside the project they read (a sibling repository), both read from the
+#: repository's own checkout, never from a job's worktree (R-1236).
+PROJECT_TESTS_ENV_KEY = "env"
+PROJECT_TESTS_READ_ONLY_KEY = "read_only_paths"
+
+
+@dataclass(frozen=True)
+class ProjectTestSettings:
+    """The `[tests]` table's `env` and `read_only_paths`, checked; both empty when unset."""
+
+    env: tuple[tuple[str, str], ...] = ()
+    read_only_paths: tuple[str, ...] = ()
+
+
+def read_test_settings(cwd: Path) -> ProjectTestSettings:
+    """`env` and `read_only_paths` of the `[tests]` table where `base_lookup_dirs` says.
+
+    Raises :class:`ProjectTestConfigError` when either key has the wrong shape: `env` a table of
+    strings with names of letters, digits and underscores, none of them a key the exec guard
+    forbids (`FORBIDDEN_ENV_KEYS`) or a loader's (`LD_*`, `DYLD_*`), `read_only_paths` a list of absolute paths of existing
+    folders that are neither the root, the home nor one of its ancestors.
+    """
+    from packages.orchestration.exec_guard import FORBIDDEN_ENV_KEYS
+
+    table = _tests_table(base_lookup_dirs(cwd)[0])
+    env = table.get(PROJECT_TESTS_ENV_KEY, {})
+    if not isinstance(env, dict) or not all(
+            isinstance(k, str) and k.replace("_", "a").isalnum() and isinstance(v, str)
+            and k not in FORBIDDEN_ENV_KEYS and not k.startswith(("LD_", "DYLD_"))
+            for k, v in env.items()):
+        raise ProjectTestConfigError(
+            f"{CONFIG_RELPATH}: [{PROJECT_TESTS_TABLE}].{PROJECT_TESTS_ENV_KEY} must be a table "
+            f"of strings, got {env!r}")
+    paths = table.get(PROJECT_TESTS_READ_ONLY_KEY, [])
+    home = Path(os.path.expanduser("~")).resolve()
+    if not isinstance(paths, list) or not all(
+            isinstance(p, str) and os.path.isabs(p) and Path(p).is_dir()
+            and Path(p).resolve() not in (Path("/"), home, *home.parents) for p in paths):
+        raise ProjectTestConfigError(
+            f"{CONFIG_RELPATH}: [{PROJECT_TESTS_TABLE}].{PROJECT_TESTS_READ_ONLY_KEY} must list "
+            f"absolute paths of existing folders, never the root, the home or above, got {paths!r}")
+    return ProjectTestSettings(env=tuple(sorted(env.items())),
+                               read_only_paths=tuple(str(Path(p).resolve()) for p in paths))
+
+
+def project_sandbox_read_paths(cwd: Path) -> tuple[str, ...]:
+    """The folders a project's test command reads inside the tool sandbox, read-only.
+
+    The checkout's `node_modules`, whose `.bin` tools link into it and which a job's worktree
+    below the checkout resolves its packages from, and the `[tests]` table's `read_only_paths`.
+    """
+    node_bin = find_node_bin(base_lookup_dirs(cwd))
+    extra = (str(node_bin.parent.resolve()),) if node_bin is not None else ()
+    return (*extra, *read_test_settings(cwd).read_only_paths)
+
+
+#: The cache folders of a project's `node_modules` that its test tools write (Vite bundles its
+#: config into `.vite-temp`, Vitest caches under `.vite`); inside the sandbox each is a scratch folder.
+NODE_SCRATCH_DIRNAMES = (".vite-temp", ".vite", ".cache")
+
+
+def project_sandbox_scratch_dirs(cwd: Path) -> tuple[str, ...]:
+    """The checkout's `node_modules` cache folders, created when missing so they can be mounted over."""
+    node_bin = find_node_bin(base_lookup_dirs(cwd))
+    if node_bin is None:
+        return ()
+    found = []
+    for name in NODE_SCRATCH_DIRNAMES:
+        folder = node_bin.parent / name
+        try:
+            folder.mkdir(exist_ok=True)
+        except OSError:
+            continue
+        found.append(str(folder.resolve()))
+    return tuple(found)
+
+
+def project_tool_environment(cwd: Path, path: str) -> dict[str, str]:
+    """The environment a builder runs the project's tools under (amend1027 A2).
+
+    `PATH` is the project's virtual environment's `bin` and its `node_modules/.bin`, each when
+    found where `base_lookup_dirs` says, then *path*; `VIRTUAL_ENV` when a virtual environment
+    was found; and the `[tests]` table's `env`. A table that cannot be read adds no variable.
+    """
+    dirs = base_lookup_dirs(cwd)
+    venv, node_bin = find_virtualenv(dirs), find_node_bin(dirs)
+    front = [str(d) for d in (venv / "bin" if venv else None, node_bin) if d is not None]
+    env = {"PATH": os.pathsep.join([*front, path] if path else front)}
+    if venv is not None:
+        env["VIRTUAL_ENV"] = str(venv)
+    try:
+        env.update(dict(read_test_settings(cwd).env))
+    except ProjectTestConfigError:
+        pass
+    return env
+
+
 def project_python(cwd: Path, default: str) -> str:
     """The virtual environment's `bin/python` where `base_lookup_dirs` says, else `default`."""
     venv = find_virtualenv(base_lookup_dirs(cwd))
@@ -230,24 +329,7 @@ def read_configured_command(cwd: Path) -> tuple[str, ...] | None:
     readable TOML, when `tests` is not a table, or when `command` is not a
     non-empty list of non-empty strings.
     """
-    path = cwd / CONFIG_RELPATH
-    if not path.is_file():
-        return None
-    try:
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError) as exc:
-        raise ProjectTestConfigError(
-            f"{CONFIG_RELPATH} is not readable TOML: {exc}") from exc
-
-    table = data.get(PROJECT_TESTS_TABLE)
-    if table is None:
-        return None
-    if not isinstance(table, dict):
-        raise ProjectTestConfigError(
-            f"{CONFIG_RELPATH}: [{PROJECT_TESTS_TABLE}] must be a table, "
-            f"got {type(table).__name__}")
-
-    command = table.get(PROJECT_TESTS_KEY)
+    command = _tests_table(cwd).get(PROJECT_TESTS_KEY)
     if command is None:
         return None
     if (not isinstance(command, list) or not command
@@ -256,6 +338,27 @@ def read_configured_command(cwd: Path) -> tuple[str, ...] | None:
             f"{CONFIG_RELPATH}: [{PROJECT_TESTS_TABLE}].{PROJECT_TESTS_KEY} must be "
             f"a non-empty list of non-empty strings, got {command!r}")
     return tuple(command)
+
+
+def _tests_table(cwd: Path) -> dict:
+    """The `[tests]` table of *cwd*'s `.remedy/config.toml`; {} when the file or the table is absent.
+
+    Raises :class:`ProjectTestConfigError` when the file is not readable TOML or `tests` is no table.
+    """
+    path = cwd / CONFIG_RELPATH
+    if not path.is_file():
+        return {}
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        raise ProjectTestConfigError(
+            f"{CONFIG_RELPATH} is not readable TOML: {exc}") from exc
+    table = data.get(PROJECT_TESTS_TABLE, {})
+    if not isinstance(table, dict):
+        raise ProjectTestConfigError(
+            f"{CONFIG_RELPATH}: [{PROJECT_TESTS_TABLE}] must be a table, "
+            f"got {type(table).__name__}")
+    return table
 
 
 def find_project_test_command(cwd: Path, python: str) -> ProjectTestCommand | None:

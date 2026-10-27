@@ -488,3 +488,30 @@ class TestRestoreTree:
                 W.restore_tree(h, before)
         finally:
             W.remove(h)
+
+
+class TestInstalledPackagesAreLinked:
+    """amend1027: a Node project's job worktree sees the checkout's installed packages."""
+
+    def test_a_node_projects_worktree_links_node_modules_and_stays_clean(self, repo):
+        (repo / "package.json").write_text("{}\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "node")
+        (repo / "node_modules" / "pkg").mkdir(parents=True)
+        h = W.create("job-node", repo)
+        try:
+            link = Path(h.path) / "node_modules"
+            assert link.is_symlink() and link.resolve() == (repo / "node_modules").resolve()
+            assert (link / "pkg").is_dir()
+            assert _git(Path(h.path), "status", "--porcelain") == ""
+            assert _status(repo) == ""
+        finally:
+            W.remove(h)
+        assert (repo / "node_modules" / "pkg").is_dir()
+
+    def test_a_project_without_installed_packages_gets_no_link(self, repo):
+        h = W.create("job-plain", repo)
+        try:
+            assert not os.path.lexists(Path(h.path) / "node_modules")
+        finally:
+            W.remove(h)

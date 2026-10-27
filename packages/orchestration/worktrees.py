@@ -157,15 +157,14 @@ def is_git_repo(repo_path: str | Path) -> bool:
         return False
 
 
-def ensure_ignored(root: Path) -> None:
-    """Make sure ``.remedy-wt/`` never shows up as a change in the main checkout.
+def ensure_ignored(root: Path, entry: str = f"{WORKTREE_DIRNAME}/") -> None:
+    """Make sure ``.remedy-wt/`` (or *entry*) never shows up as a change in the main checkout.
 
     Written to ``.git/info/exclude`` rather than ``.gitignore``: the ignore rule
     must not itself dirty the working tree of the repository we are protecting.
     """
     git_dir = _git(root, "rev-parse", "--git-common-dir").strip()
     exclude = (Path(git_dir) if os.path.isabs(git_dir) else root / git_dir) / "info" / "exclude"
-    entry = f"{WORKTREE_DIRNAME}/"
     try:
         existing = exclude.read_text(encoding="utf-8") if exclude.is_file() else ""
         if entry not in existing.split():
@@ -176,6 +175,30 @@ def ensure_ignored(root: Path) -> None:
                 fh.write(f"{entry}\n")
     except OSError:
         pass  # best effort: a read-only git dir must not fail the run
+
+
+#: The folder of a Node project's installed packages; a job's worktree links to the checkout's.
+NODE_MODULES_DIRNAME = "node_modules"
+
+
+def link_installed_packages(root: Path, path: Path) -> bool:
+    """Link the checkout's `node_modules` into a new job worktree; whether a link was made.
+
+    Operator amendment amend1027-green-builds: a worktree holds only tracked files, so a Node
+    project's tests found no installed packages there (universe-chat reads
+    `node_modules/@luna/kit` by path). The link is excluded through `.git/info/exclude` without a
+    trailing slash, because a `node_modules/` rule matches folders and a link is none. Inside the
+    tool sandbox the checkout's `node_modules` is mounted read-only (`project_sandbox_read_paths`).
+    """
+    source, link = root / NODE_MODULES_DIRNAME, path / NODE_MODULES_DIRNAME
+    if not (root / "package.json").is_file() or not source.is_dir() or os.path.lexists(link):
+        return False
+    ensure_ignored(root, NODE_MODULES_DIRNAME)
+    try:
+        link.symlink_to(source, target_is_directory=True)
+    except OSError:
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +411,7 @@ def create(job_id: str, repo: str | Path) -> WorktreeHandle:
             _git(root, "worktree", "add", str(path), branch)
         else:
             _git(root, "worktree", "add", "-b", branch, str(path), base_commit)
+        link_installed_packages(root, path)
 
         handle = WorktreeHandle(
             job_id=jid, repo_path=str(root), path=str(path), branch=branch,

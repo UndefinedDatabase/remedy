@@ -264,8 +264,8 @@ class TestProjectTestsKind:
 
         seen: dict = {}
 
-        def _capture(cmd, *, timeout_sec, cwd, env_overlay=None):
-            seen.update(cmd=list(cmd), env_overlay=env_overlay)
+        def _capture(cmd, *, timeout_sec, cwd, env_overlay=None, **extras):
+            seen.update(cmd=list(cmd), env_overlay=env_overlay, extras=extras)
             return sp.CompletedProcess(list(cmd), 0, b"", b"")
 
         monkeypatch.setattr(dod_runners, "run_guarded_dod_process_command", _capture)
@@ -274,6 +274,8 @@ class TestProjectTestsKind:
         expected = build_argv(check("pytest", {"selector": "tests"}))
         assert seen["cmd"] == expected
         assert ev.status == STATUS_PASSED
+        # amend1027: a project with no [tests] env and no node_modules adds nothing to the sandbox.
+        assert seen["extras"] == {"project_env": {}, "read_only_paths": (), "scratch_dirs": ()}
 
     def test_the_python_target_runs_for_real_in_its_own_venv_and_pytest_alone_fails(
             self, tmp_path: Path):

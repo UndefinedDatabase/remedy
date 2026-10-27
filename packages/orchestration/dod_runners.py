@@ -76,6 +76,9 @@ from packages.orchestration.project_tests import (
     find_project_test_command,
     project_environment,
     project_python,
+    project_sandbox_read_paths,
+    project_sandbox_scratch_dirs,
+    read_test_settings,
 )
 from packages.orchestration.test_runner import _EXECUTION_SAFE_EXECUTABLES
 from packages.runtimes.dev_server import (
@@ -317,7 +320,8 @@ def _refused(check: DoDCheck, reason: str, argv: list[str], cwd: str,
 
 def _spawn_check(check: DoDCheck, ctx: _RunContext, argv: list[str], cwd: Path,
                  declared_cwd: str,
-                 env_overlay: Mapping[str, str] | None = None) -> CheckEvidence:
+                 env_overlay: Mapping[str, str] | None = None,
+                 sandbox_extras: Mapping[str, Any] | None = None) -> CheckEvidence:
     """Spawn ``argv`` in ``cwd`` under the guard, and judge what it did.
 
     The spawn-and-judge half of a single-process check, shared by
@@ -334,6 +338,7 @@ def _spawn_check(check: DoDCheck, ctx: _RunContext, argv: list[str], cwd: Path,
             timeout_sec=ctx.timeout_sec,
             cwd=str(cwd),
             env_overlay=env_overlay,
+            **(sandbox_extras or {}),
         )
     except FileNotFoundError:
         # The tool is not installed. A missing linter is a RED check with a
@@ -445,8 +450,14 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
             check, REASON_EXECUTABLE_NOT_ALLOWED, argv, declared_cwd,
             f"executable {argv[0]!r} is not in the allowed set; nothing was run")
 
+    try:   # amend1027: the [tests] table's env and the folders its command reads, read-only
+        settings = read_test_settings(cwd)
+        extras = {"project_env": dict(settings.env), "read_only_paths": project_sandbox_read_paths(cwd),
+                  "scratch_dirs": project_sandbox_scratch_dirs(cwd)}
+    except ProjectTestConfigError as exc:
+        return _refused(check, REASON_TEST_COMMAND_INVALID, argv, declared_cwd, str(exc))
     return _spawn_check(check, ctx, argv, cwd, declared_cwd,
-                        env_overlay=project_environment(cwd))
+                        env_overlay=project_environment(cwd), sandbox_extras=extras)
 
 
 # ---------------------------------------------------------------------------

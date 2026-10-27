@@ -693,6 +693,8 @@ DOD_PROCESS_OUTPUT_CAP_BYTES: int = TEST_COMMAND_OUTPUT_CAP_BYTES
 def dod_process_exec_policy(
     timeout_sec: float, cwd: str | None,
     env_overlay: Mapping[str, str] | None = None,
+    *, project_env: Mapping[str, str] | None = None, read_only_paths: Sequence[str] = (),
+    scratch_dirs: Sequence[str] = (),
 ) -> ExecGuardPolicy:
     """The stage-1 policy every `dod-process` check runs under.
 
@@ -726,17 +728,34 @@ def dod_process_exec_policy(
 
     A DoD check runs the project's own command over the job's worktree, so it always runs
     inside the tool sandbox (DECISION amend1016sb D4), as `test_command_exec_policy` states.
+
+    Operator amendment amend1027-green-builds: `project_env` is the `[tests]` table's `env`, SET
+    like `test_command_exec_policy`'s `extra_env` (its keys join the allowlist, the forbidden keys
+    stay the floor), and `read_only_paths` are mounted read-only inside the sandbox: the
+    checkout's `node_modules` and the table's `read_only_paths` (`project_sandbox_read_paths`);
+    `scratch_dirs`, the cache folders inside them, are memory-backed scratch folders there.
     """
+    extra = dict(project_env or {})
+    workspace = workspace_root_for(cwd or os.getcwd())
     return ExecGuardPolicy(
         wall_timeout_seconds=float(timeout_sec),
         output_cap_bytes=DOD_PROCESS_OUTPUT_CAP_BYTES,
         cwd=cwd,
         core_file_bytes=0,
-        env={**os.environ, **(env_overlay or {}), "PYTHONDONTWRITEBYTECODE": "1"},
-        env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
+        env={**os.environ, **(env_overlay or {}), **extra, "PYTHONDONTWRITEBYTECODE": "1"},
+        env_allowlist=DOD_PROCESS_ENV_ALLOWLIST + tuple(sorted(extra)),
         deny_network=True,
-        sandbox=SandboxSpec(workspace_root_for(cwd or os.getcwd())),
+        sandbox=SandboxSpec(workspace, mounts=tuple(
+            (p, p, False) for p in read_only_paths
+            if not _inside(p, workspace)), scratch_dirs=tuple(
+            d for d in scratch_dirs if not _inside(d, workspace))),
     )
+
+
+def _inside(path: str, folder: str) -> bool:
+    """Whether *path* is *folder* or lies below it, both read with their links resolved."""
+    real = os.path.realpath(folder)
+    return os.path.commonpath([os.path.realpath(path), real]) == real
 
 
 def run_guarded_dod_process_command(
@@ -745,6 +764,9 @@ def run_guarded_dod_process_command(
     timeout_sec: float,
     cwd: str | None,
     env_overlay: Mapping[str, str] | None = None,
+    project_env: Mapping[str, str] | None = None,
+    read_only_paths: Sequence[str] = (),
+    scratch_dirs: Sequence[str] = (),
 ) -> subprocess.CompletedProcess[bytes]:
     """Run one `dod-process` check under the guard, shaped like `subprocess.run`.
 
@@ -761,7 +783,9 @@ def run_guarded_dod_process_command(
     translations; what stays per-seam is the policy each wrapper builds, and the
     `check` knob `runtime-build` alone asks for.
     """
-    guarded = run_guarded(cmd, dod_process_exec_policy(timeout_sec, cwd, env_overlay))
+    guarded = run_guarded(cmd, dod_process_exec_policy(
+        timeout_sec, cwd, env_overlay, project_env=project_env, read_only_paths=read_only_paths,
+        scratch_dirs=scratch_dirs))
     return _completed_process_from_guarded(cmd, timeout_sec, guarded)
 
 
