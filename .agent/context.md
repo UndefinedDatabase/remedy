@@ -20,3 +20,6 @@ The non-human content policy; `dangerous-skip` stays opt-in only.
 ## Constraints
 - At most 500 insertions per commit; no leading-slash tokens in commit subjects.
 - One full pytest run at the end, then review and repair until green.
+
+## Steps
+The item-status table lives in the handback, `~/.remedy-loop/amend1027-green-builds.handback.md`.

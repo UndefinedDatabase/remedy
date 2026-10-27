@@ -1238,11 +1238,11 @@ Keys under the answer keys: see below.
 #### `remedy client evidence`
 
 Command id: `client.evidence`.
-Description: Read the files of one Job's evidence folder, each with its path, its size and its text cut to its last 20,000 characters: the scope decision, the DoD and its result, the builder's commands and test runs, the raw streams (read-only).
+Description: Read the files of one Job's evidence folder, kept for each of its task runs, each file with its path, its size and its text cut to its last 20,000 characters: the size choice, the DoD and its result, the builder's commands and test runs, the raw streams (read-only).
 
 | Argument | Option | Required | Takes a value | Repeatable | Help |
 |---|---|---|---|---|---|
-| `job` | no | yes | yes | no | The id of the job, or a prefix of it, whose evidence is read |
+| `job` | no | yes | yes | no | The id of the job, or a prefix of it, whose task runs' evidence folder is read |
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`.

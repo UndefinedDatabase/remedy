@@ -164,7 +164,8 @@ def test_the_requested_test_command_runs_and_its_pass_is_reported(tmp_path, monk
     story = job_client_story(str(job.job_id), job)
     checking = next(step for step in story["steps"] if step["id"] == "checking")
     assert checking["phrase"] == {"key": "tests_passed", "args": {"n": 1}}
-    assert story["verification"] == {"status": "passed", "required": True}
+    assert story["verification"] == {"status": "passed", "required": True, "reason": "", "reason_key": "",
+                                     "tested_by": ["final_check"], "output": ""}
 
 
 def test_a_failing_requested_test_holds_the_job_instead_of_completing_it(tmp_path, monkeypatch):

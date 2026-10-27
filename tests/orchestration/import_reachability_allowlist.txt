@@ -134,6 +134,7 @@ packages.orchestration.budget_stop
 packages.orchestration.builder_bridge
 packages.orchestration.builder_context
 packages.orchestration.builder_models
+packages.orchestration.builder_test_runs
 packages.orchestration.burn_detector
 packages.orchestration.call_identity
 packages.orchestration.call_tokens
@@ -258,6 +259,7 @@ packages.orchestration.job_certificate_sources
 packages.orchestration.job_certificate_verify
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
+packages.orchestration.job_evidence_files
 packages.orchestration.job_report
 packages.orchestration.job_report_task_lines
 packages.orchestration.job_retry
@@ -352,6 +354,7 @@ packages.orchestration.prompt_trace
 packages.orchestration.proof_chain
 packages.orchestration.proposed_tasks
 packages.orchestration.provider_names
+packages.orchestration.provider_retry
 packages.orchestration.provider_timeouts
 packages.orchestration.provider_token_evidence
 packages.orchestration.public_api

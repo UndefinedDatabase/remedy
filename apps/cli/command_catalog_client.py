@@ -249,10 +249,10 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         command_id="client.evidence",
         group_id="client",
         subcommand="evidence",
-        description="Read the files of one Job's evidence folder, each with its path, its size and its text cut to its last 20,000 characters: the scope decision, the DoD and its result, the builder's commands and test runs, the raw streams (read-only).",
+        description="Read the files of one Job's evidence folder, kept for each of its task runs, each file with its path, its size and its text cut to its last 20,000 characters: the size choice, the DoD and its result, the builder's commands and test runs, the raw streams (read-only).",
         action_class="read_only",
         args=(
-            ArgDef("job", "The id of the job, or a prefix of it, whose evidence is read"),
+            ArgDef("job", "The id of the job, or a prefix of it, whose task runs' evidence folder is read"),
             _JSON_OPT,
         ),
         supports_json=True,

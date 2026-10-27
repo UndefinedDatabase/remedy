@@ -107,8 +107,9 @@ def read_test_result(text: str, is_error: bool | None) -> tuple[bool | None, str
     """(passed, summary) of one test run's output: True green, False red, None unknown.
 
     Counts the runner's own summary words (`5 passed`, `1 failed`, `2 errors`) on its summary line,
-    cargo's `test result:` lines, or go's `ok`/`FAIL` package lines; a run with failures or errors, or one the tool reported as an error
-    with no passing count, is red; one with passes and neither is green; anything else unknown.
+    cargo's `test result:` lines, or go's `ok`/`FAIL` package lines; a run with failures or errors,
+    or one the tool reported as an error with no passing count, is red; one with passes and neither
+    is green; anything else unknown.
     """
     cargo = _CARGO.findall(text)
     lines = [line for line in text.splitlines() if _PASSED.search(line) or _FAILED.search(line)]

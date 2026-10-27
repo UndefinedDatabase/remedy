@@ -1,8 +1,8 @@
 {
  "schema": "remedy_api_release_matrix_v1",
  "baseline": "1.17",
- "current": "1.30",
- "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.30 but `orders.plan_source`, a key no record ever carried (1.27); a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
+ "current": "1.31",
+ "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.31 but `orders.plan_source`, a key no record ever carried (1.27); a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
  "versions": [
   {
    "version": "1.18",
@@ -396,6 +396,24 @@
     "body kind `integer`, for the ask's `max_total_tokens` (DECISION amend1026 D4)"
    ],
    "value_changes": []
+  },
+  {
+   "version": "1.31",
+   "pr": null,
+   "branch": "feature/amend1027-green-builds",
+   "added": [
+    "route `GET /api/v1/jobs/{job}/evidence` and its twin `remedy client evidence`: a job's evidence files as text, for a client granted `host_tools` (amend1027-green-builds E1)",
+    "story keys `order_id` and `retries` in `GET /api/v1/jobs/{job}/story`: the order the job serves and each call repeated after a time-out (amend1027 E1, C2)",
+    "story `verification` keys `reason`, `reason_key`, `tested_by` and `output`, and `scope` keys `files_expected`, `files_touched` and `match` (amend1027 B, D2)"
+   ],
+   "value_changes": [
+    {
+     "field": "story.verification.status",
+     "case": "a project that names a test command, in an order that did not ask for tests",
+     "before": "not_required",
+     "after": "passed, failed or not_run: the project's own tests always run (amend1027 B2)"
+    }
+   ]
   }
  ],
  "inventory": {
@@ -473,6 +491,7 @@
    "GET /api/v1/health": "1.17",
    "GET /api/v1/interface": "1.17",
    "GET /api/v1/jobs/{job}/diff": "1.17",
+   "GET /api/v1/jobs/{job}/evidence": "1.31",
    "GET /api/v1/jobs/{job}/insight": "1.22",
    "GET /api/v1/jobs/{job}/logs": "1.17",
    "GET /api/v1/jobs/{job}/proof": "1.17",
@@ -480,6 +499,9 @@
    "GET /api/v1/jobs/{job}/story": "1.17",
    "GET /api/v1/now": "1.22",
    "GET /api/v1/orders/{order}": "1.17",
+   "GET /api/v1/orders/{order}/review": "1.30",
+   "GET /api/v1/orders/{order}/story": "1.29",
+   "GET /api/v1/projects": "1.30",
    "POST /api/v1/jobs/{job}/abandon": "1.19",
    "POST /api/v1/jobs/{job}/apply": "1.17",
    "POST /api/v1/jobs/{job}/decisions/{decision}": "1.17",
@@ -490,10 +512,7 @@
    "POST /api/v1/jobs/{job}/stop": "1.18",
    "POST /api/v1/orders": "1.17",
    "POST /api/v1/orders/{order}/cancel": "1.19",
-   "GET /api/v1/orders/{order}/story": "1.29",
-   "GET /api/v1/projects": "1.30",
-   "POST /api/v1/projects/{project}/ask": "1.30",
-   "GET /api/v1/orders/{order}/review": "1.30"
+   "POST /api/v1/projects/{project}/ask": "1.30"
   },
   "story.end_actions": {
    "abandon": "1.21",
@@ -596,14 +615,16 @@
    "note_open": "1.17",
    "numbers": "1.17",
    "order": "1.17",
+   "order_id": "1.31",
+   "retries": "1.31",
+   "scope": "1.30",
+   "scope_findings": "1.29",
    "started_at": "1.17",
    "state": "1.17",
    "state_detail": "1.17",
    "steps": "1.17",
    "updated_at": "1.17",
-   "verification": "1.17",
-   "scope_findings": "1.29",
-   "scope": "1.30"
+   "verification": "1.17"
   },
   "story.scope_findings": {
    "criterion_dropped": "1.29",
