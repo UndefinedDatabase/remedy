@@ -144,3 +144,16 @@ def test_an_order_file_and_a_typed_order_walk_the_same_lane(tmp_path):
                       order_source_path=str(tmp_path / "order.md"))
     assert settle_do_lane(typed) == settle_do_lane(filed)
     assert settle_do_lane(filed).bounded and settle_do_lane(filed).deliverable == "README.md"
+
+
+@pytest.mark.parametrize("order", [
+    "Dieses Repository hat noch keine CHANGELOG.md: leg sie im Wurzelordner an.",
+    "Die CHANGELOG.md soll angelegt werden.",
+    "CHANGELOG.md anlegen und den Eintrag nachtragen.",
+])
+def test_german_anlegen_asks_for_the_untracked_file(order):
+    """amend1027: the separable "anlegen" asks for a new file, so it is no question to the operator."""
+    from packages.orchestration.do_lane import _resolved_target
+
+    assert _resolved_target(order, "CHANGELOG.md", ["README.md"]) == ("CHANGELOG.md", "")
+    assert _resolved_target("Trag den Eintrag in CHANGELOG.md nach.", "CHANGELOG.md", ["README.md"])[1]
