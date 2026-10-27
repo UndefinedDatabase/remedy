@@ -32121,3 +32121,20 @@ HOW TO REVERSE: delete `project_ask.py`, the route and the catalog entry.
 
 Open jobs are the jobs that have not ended; `last_test` is the newest job whose verification is
 `passed` or `failed`. A client token lists only the projects its entry names.
+
+## DECISION amend1027 D1 — a red the project already had releases the job, never a push
+
+universe-chat's `main` failed three Vitest tests on 2026-10-27 from merges unrelated to Remedy.
+Since B2 every order's final check runs the project's tests, blocking, so every job of the project
+would have been held. `project_test_baseline.judged_against_base` runs the same command once more
+on the job's base commit when a run is red, and passes the check (`preexisting_failures`) only when
+the failing tests can be read completely and every one of them fails there too. The mission's
+criterion stays unmet for such a check (`mission_contract`), so `--push` still needs a green suite.
+HOW TO REVERSE: drop the `judged_against_base` call in `dod_runners._run_project_tests`.
+
+## DECISION amend1027 D2 — F2's order text was extended twice
+
+The edition `~/Repos/universe/remedy` has no CHANGELOG.md, and the builder cannot read Remedy's own
+changelog outside its workspace. Order 5a42873746467117 (the operator's words alone) was blocked
+honestly; the accepted order 67f912f1e5b9ab21 says to create the file and states amend1024's three
+facts. Order f72f138b0f2a9e76 named a file in its facts and delivered that file; it was declined.

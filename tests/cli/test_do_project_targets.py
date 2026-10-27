@@ -159,9 +159,9 @@ def test_a_python_projects_own_failing_test_refuses_the_push(tmp_path, monkeypat
     """T004 (4): F270's rule, unchanged — a criterion that really is unmet refuses the push,
     even though the check that found it is the project's own, not Remedy's.
 
-    Since operator amendment amend1027-green-builds B2 the project's own command is a blocking
-    check of every job, so its red run already holds the job's last task before the contract is
-    judged: the criterion is never met and nothing is pushed."""
+    Since operator amendment amend1027-green-builds the project's own command is a blocking check
+    of every job, and a red that was already red on the job's base commit releases the job
+    (`preexisting_failures`) but never meets a criterion: the push is still refused."""
     repo = _new_project(tmp_path, monkeypatch)
     (repo / "pyproject.toml").write_text('[project]\nname = "target"\nversion = "0.1.0"\n')
     (repo / ".gitignore").write_text(".venv/\n")
@@ -177,7 +177,6 @@ def test_a_python_projects_own_failing_test_refuses_the_push(tmp_path, monkeypat
 
     assert code == 1, (err, data)
     criterion = _one_criterion(data)
-    assert criterion["status"] in ("unmet", "open")
+    assert criterion["status"] == "unmet"
     assert _pushes(repo) == []
-    [job] = data["jobs"]
-    assert (job["verification"]["status"], job["verification"]["required"]) == ("failed", True)
+    assert "are unmet, so nothing is pushed" in data["push"]["error"]

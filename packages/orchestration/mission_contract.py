@@ -696,8 +696,11 @@ def record_contract_results(project_id: str, mission_id: str, job_id: str,
     if result is None or dod is None:
         return None
     checks = result.get("checks") or []
+    # amend1027 F4: a check that passed only because its failures were already red on the job's base
+    # releases the job, but never meets a criterion: a push needs the project's tests green.
     passed = {str(e.get("check_id")) for e in checks
-              if isinstance(e, dict) and e.get("status") == STATUS_PASSED}
+              if isinstance(e, dict) and e.get("status") == STATUS_PASSED
+              and e.get("reason") != "preexisting_failures"}
     no_check_ran = {str(e.get("check_id")) for e in checks
                     if isinstance(e, dict) and e.get("reason") == REASON_NO_TEST_COMMAND}
     in_slice = {c.id for c in job_contract_slice(contract, milestone_id)}

@@ -27,6 +27,9 @@ fails the gate rather than shipping an unexplained release.
     Node project links the checkout's `node_modules`, the tool sandbox mounts it read-only, and the
     `[tests]` table of a project's `.remedy/config.toml` may name variables (`env`) and folders
     (`read_only_paths`) its tests read outside the project.
+  - A red run of the project's tests is compared with the job's base commit: when every failing test
+    already failed there, the final check passes with the reason `preexisting_failures` and names
+    them, so a job is never held for a red it did not cause; one failure more keeps it red.
   - A project without a test command is no longer reported as `tests_not_run`; a round says so, and
     `tests_not_run` comes with its reason, such as a refused permission, a missing command or a time
     limit.
