@@ -16,6 +16,10 @@ from typing import Any
 _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 
 _ALLOWED_TOOLS_ARGS = ["--allowedTools", "Edit,Write,MultiEdit"]
+#: Operator amendment amend1027-green-builds A3: a builder in `-p` mode is never asked; a command
+#: its `--allowedTools` rules allow runs, every other one is refused at once and logged, instead of
+#: waiting for an approval nobody gives. `--dangerously-skip-permissions` stays its own write mode.
+_NO_PROMPT_ARGS = ["--permission-mode", "dontAsk"]
 _DANGEROUS_SKIP_ARGS = ["--dangerously-skip-permissions"]
 
 #: Operator amendment amend1024-one-real-order, C1: the commands a claude-cli builder with
@@ -29,23 +33,94 @@ BUILDER_COMMAND_ALLOWLIST: tuple[str, ...] = (
 #: The test commands a builder may run when the project names none of its own: pytest under
 #: either spelling of the interpreter (a machine may carry only `python3`) and `pnpm test`.
 BUILDER_FALLBACK_TEST_COMMANDS: tuple[str, ...] = ("python -m pytest", "python3 -m pytest", "pnpm test")
+#: amend1027 A1: the spellings a `package.json` project's tests run under, each with any arguments.
+BUILDER_NODE_TEST_COMMANDS: tuple[str, ...] = (
+    "pnpm test", "pnpm run test", "pnpm vitest", "pnpm exec vitest", "pnpm exec playwright test",
+    "npx vitest", "npx playwright test", "npm test", "npm run test", "vitest", "playwright test",
+)
+#: amend1027 A1: the spellings a Python project's tests run under, the project's own venv included.
+BUILDER_PYTHON_TEST_COMMANDS: tuple[str, ...] = (
+    "pytest", "python -m pytest", "python3 -m pytest", "uv run pytest", ".venv/bin/pytest",
+    ".venv/bin/python -m pytest",
+)
+#: What each source of `find_project_test_command` adds beside the found command.
+_RUNNERS_BY_SOURCE: dict[str, tuple[str, ...]] = {
+    "package_json": BUILDER_NODE_TEST_COMMANDS, "tests_folder": BUILDER_PYTHON_TEST_COMMANDS,
+    "go_module": ("go test",), "cargo_manifest": ("cargo test",),
+}
+#: A `package.json` script whose name starts so runs tests (`test`, `test:unit`, `e2e`).
+_TEST_SCRIPT_PREFIXES = ("test", "e2e")
 #: The evidence file a builder's refused commands are appended to, beside the run's isolation line.
 BUILDER_COMMAND_REFUSALS_FILENAME = "builder_command_refusals.jsonl"
 
 
 def builder_test_commands(workspace: str | None) -> tuple[str, ...]:
-    """The project's own test command (`project_tests.find_project_test_command`, which reads the
-    `[tests]` table of `.remedy/config.toml` first) followed by `BUILDER_FALLBACK_TEST_COMMANDS`."""
+    """The test commands the builder may run: the project's found one first, then its spellings.
+
+    The found command is `project_tests.find_project_test_command`'s, in its order (the `[tests]`
+    table, the `package.json` test script, go, cargo, pytest); a Python interpreter path in it is
+    written `python`. Then, by where it was found, the runner spellings (`_RUNNERS_BY_SOURCE`, a
+    configured pytest command counting as Python), a `package.json`'s test scripts under `pnpm`,
+    `pnpm run` and `npm run` (amend1027 A1), and `BUILDER_FALLBACK_TEST_COMMANDS` last.
+    """
     from packages.orchestration.project_tests import ProjectTestConfigError, find_project_test_command
 
     found = None
     if workspace:
         try:
-            found = find_project_test_command(Path(workspace), "python3")
+            found = find_project_test_command(Path(workspace), "python")
         except (ProjectTestConfigError, OSError):
             found = None
     own = (" ".join(found.argv),) if found is not None and not found.unrunnable else ()
-    return tuple(dict.fromkeys((*own, *BUILDER_FALLBACK_TEST_COMMANDS)))
+    source = found.source if found is not None else ""
+    if source == "config" and "pytest" in own[0]:
+        source = "tests_folder"
+    scripts = _package_test_scripts(Path(workspace)) if workspace else ()
+    named = tuple(f"{runner} {name}" for name in scripts for runner in ("pnpm", "pnpm run", "npm run"))
+    runners = _RUNNERS_BY_SOURCE.get(source, ())
+    if scripts and source != "package_json":
+        runners = (*runners, *BUILDER_NODE_TEST_COMMANDS)
+    return tuple(dict.fromkeys((*own, *runners, *named, *BUILDER_FALLBACK_TEST_COMMANDS)))
+
+
+def _package_test_scripts(workspace: Path) -> tuple[str, ...]:
+    """The names of *workspace*'s `package.json` scripts that run tests (`_TEST_SCRIPT_PREFIXES`).
+
+    A name is kept only when it is one plain word (letters, digits, `:`, `-`, `_`), so it can
+    never widen a `Bash(<command>:*)` rule; a file that does not parse names none.
+    """
+    try:
+        data = json.loads((workspace / "package.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ()
+    scripts = data.get("scripts") if isinstance(data, dict) else None
+    if not isinstance(scripts, dict):
+        return ()
+    return tuple(name for name in scripts if isinstance(name, str)
+                 and name.startswith(_TEST_SCRIPT_PREFIXES) and re.fullmatch(r"[\w:-]+", name))
+
+
+def with_project_tools(policy: Any, cwd: str | None) -> Any:
+    """*policy* with the project's tools first on `PATH` and its tests' variables (amend1027 A2).
+
+    The child's environment is the operator's (`policy.env`, else this process's own) with
+    `project_tests.project_tool_environment` of *cwd* laid over it: the project's `.venv/bin` and
+    `node_modules/.bin` in front, `VIRTUAL_ENV`, and the `[tests]` table's `env`. The isolation's
+    allowlist (DECISION F152 D3) is otherwise unchanged; no *cwd*, no change.
+    """
+    if not cwd:
+        return policy
+    import dataclasses
+    import os
+
+    from packages.orchestration.project_tests import project_tool_environment
+
+    env = dict(policy.env if policy.env is not None else os.environ)
+    extra = project_tool_environment(Path(cwd), env.get("PATH", ""))
+    allow = policy.env_allowlist
+    if allow is not None:
+        allow = tuple(dict.fromkeys((*allow, *extra)))
+    return dataclasses.replace(policy, env={**env, **extra}, env_allowlist=allow)
 
 
 def builder_command_allowed(command: str, allowlist: tuple[str, ...]) -> bool:
@@ -150,7 +225,8 @@ def build_claude_cli_args(
     write_mode:
       none: no write tools (reviewer mode, or builder without permission)
       allowed-tools: --allowedTools Edit,Write,MultiEdit and the builder's Bash rules
-        (`builder_bash_rules` of ``workspace``, amend1024 C1)
+        (`builder_bash_rules` of ``workspace``, amend1024 C1), then ``--permission-mode dontAsk``
+        (amend1027 A3)
       dangerous-skip: --dangerously-skip-permissions (explicit opt-in only)
     model: if non-empty, passed as --model <model> to claude CLI.
     stream_evidence: opt-in F004 mode. Uses ``--output-format stream-json``
@@ -178,7 +254,7 @@ def build_claude_cli_args(
             )
         argv.extend(["--resume", resume_session])
     if write_mode == "allowed-tools":
-        argv.extend([*_ALLOWED_TOOLS_ARGS, *builder_bash_rules(workspace)])
+        argv.extend([*_ALLOWED_TOOLS_ARGS, *builder_bash_rules(workspace), *_NO_PROMPT_ARGS])
     elif write_mode == "dangerous-skip":
         argv.extend(_DANGEROUS_SKIP_ARGS)
     argv.extend(claude_cli_launch_switches(write_mode, config=config))
