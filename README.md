@@ -1,5 +1,12 @@
 # Remedy
 
+## Stand: Version 1
+
+Remedy ist seit dem 27. Oktober 2026 als Version 1 abgeschlossen. Es nimmt Aufträge über die
+Kommandozeile und die HTTP-Schnittstelle an, baut sie mit Claude Code, prüft sie mit den Tests des
+Projekts und wartet vor jeder Übernahme auf einen Menschen. Neue Arbeit entsteht nur noch aus Reports
+und eigenen Fehlläufen; was v1 kann und was nicht, steht in [V1.md](docs/roadmap/V1.md).
+
 Remedy is a **local-first orchestration kernel** for artifact-driven software work.
 It plans a job, runs it through a Builder / Reviewer loop inside an isolated git
 worktree, collects verifiable evidence, and stops at a human approval gate. Nothing
@@ -29,7 +36,8 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-169 of 319 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+169 of 319 registered items accepted. Remedy is version 1: Package 1 of docs/roadmap/STATUS.md has no
+open line, so Rule A5 names no next item; the lines still open wait in Package 3 for a report.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).

@@ -11,20 +11,17 @@ fails the gate rather than shipping an unexplained release.
 
 ## [Unreleased]
 
-### Changed
-- 2026-10-27, amend1027b-v1; the public API and the client interface move to 1.32:
-  - A job story's `scope.match` is null, not true, when the size decision or the job's diff names
-    no file, and `scope.match_text` then says "nicht ermittelt"; the final review's
-    `changed_files_match` is null the same way when it was given no expected files.
-  - A job story's `scope` counts the job's tasks (`tasks`) and says in one sentence what a one-job
-    decision's job holds (`tasks_text`), such as "Ein Job mit zwei Aufgaben: der Code und sein Test."
-  - Every job names its order by the 16 characters the order routes take, in the digest, in what
-    changed and in its story; a job made by `remedy do` in a terminal by the first 16 characters of
-    its batch's id. `GET /api/v1/orders/{order}`, its story and review and `POST
-    /api/v1/orders/{order}/cancel` take that id, so an app can cancel such an order. The digest's
-    `jobs[].order_id` named the 32-character batch before; the batch is now `order_batch_id`.
+## [1.0.0] - 2026-10-27
 
 ### Added
+- 2026-10-27, amend1027b-v1: Remedy is closed as version 1. `docs/roadmap/V1.md` says in plain
+  German what v1 can do, what it deliberately does not (no push without the operator, no automatic
+  merge, no parallel jobs, no further adapters) and how improvements come from now on: from reports
+  over Universe and from failed runs, each as an order to the project remedy with claude-cli.
+- 2026-10-27, amend1027b-v1: the feature loop stops. `docs/roadmap/STATUS.md` reads
+  "V1 — abgeschlossen am 2026-10-27" after F319, the lines Package 1 still had open moved unchanged
+  into Package 3 "Nach v1: nur auf Report oder Fehllauf", and Rule A5 (`remedy roadmap next`)
+  reads Package 1 only, so it proposes no line of Package 2 or 3.
 - 2026-10-27, amend1027-green-builds (feature F319); the public API and the client interface move
   to 1.31:
   - A Claude Code builder may now run the project's own tests. Its list of allowed commands takes the
@@ -96,6 +93,18 @@ fails the gate rather than shipping an unexplained release.
     files" gets that criterion, and a new file outside the named ones leaves the result.
 
 ### Changed
+- 2026-10-27, amend1027b-v1; the public API and the client interface move to 1.32:
+  - A job story's `scope.match` is null, not true, when the size decision or the job's diff names
+    no file, and `scope.match_text` then says "nicht ermittelt"; the final review's
+    `changed_files_match` is null the same way when it was given no expected files.
+  - A job story's `scope` counts the job's tasks (`tasks`) and says in one sentence what a one-job
+    decision's job holds (`tasks_text`), such as "Ein Job mit zwei Aufgaben: der Code und sein Test."
+  - Every job names its order by the 16 characters the order routes take, in the digest, in what
+    changed and in its story; a job made by `remedy do` in a terminal by the first 16 characters of
+    its batch's id. `GET /api/v1/orders/{order}`, its story and review and `POST
+    /api/v1/orders/{order}/cancel` take that id, so an app can cancel such an order. The digest's
+    `jobs[].order_id` named the 32-character batch before; the batch is now `order_batch_id`.
+
 - 2026-10-24, amend1024-one-real-order: dollar figures are hidden unless `cost.show_usd` is true in
   `remedy.toml`; every answer of the public API and of the command line reports tokens first, and
   the per-project switch `[cockpit] show_cost_usd` is gone. Seventy-three self-use features were
