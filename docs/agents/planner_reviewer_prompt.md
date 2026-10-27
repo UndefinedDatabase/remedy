@@ -20,7 +20,9 @@
 ## 1. Bootstrap — FAST PATH (do not read the whole project)
 Read, in order, and nothing more unless a step below demands it:
 1. docs/roadmap/STATUS.md → active feature: exactly one `[~]` → resume;
-   else Rule A5 → first `[ ]`. Never touch `[x]`; surface `[!]`.
+   else Rule A5 → first `[ ]` of Package 1 (since amend1027b-v1 Rule A5
+   reads Package 1 only; none open means Remedy is v1 and nothing is
+   claimed, see docs/roadmap/V1.md). Never touch `[x]`; surface `[!]`.
 2. The active feature's file in docs/roadmap/features/ — COMPLETELY
    (Goal & Done, Design, Task slicing, Acceptance, Orchestrator brief —
    addressed to YOU — Do-not-touch, Built State).

@@ -82,6 +82,12 @@ remedy roadmap next   [--repo <path>] [--json]
 
 Both follow STATUS **Rule A5**: an in-progress `[~]` line is the active
 feature and is reported as such; otherwise the first `[ ]` line is next.
+Since operator amendment amend1027b-v1 (2026-10-27) both read the lines
+under `## Package 1` only: Package 2 rests until the operator moves a line
+back, and Package 3 holds what version 1 left open. With no open line in
+Package 1 there is no next feature, and both say "No open feature"; each
+feature of the index carries its `package` (0 when STATUS.md does not
+schedule it).
 
 `roadmap status` — the active feature, its blockers with their states, the
 milestone it serves, the roadmap size, the consistency report, and where

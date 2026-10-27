@@ -12,7 +12,8 @@ A1, A2 (dc69345ff) and A3 (758077b7c) done. B2: STATUS.md reads "V1 — abgeschl
 1.0.0, pyproject 1.0.0.
 
 ## Next Steps
-1. Full suite, review loop, ruff, merge, push, supervisor restart, handback.
+1. Full suite run 2 after the review repairs of run 1 (6 red: release matrix 1.32, contract test,
+   context.md, an advertised-command comment); then merge, push, supervisor restart, handback.
 
 ## Risks
 - The client answers are recorded (client-answers-v1): a changed answer is re-recorded.

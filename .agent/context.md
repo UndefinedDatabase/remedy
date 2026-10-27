@@ -15,6 +15,12 @@ The non-human content policy; ROADMAP.md; the rest of ~/Repos/system.
 - The operator deleted every job and order of the data root; no old job id exists.
 - Rule A5 reads Package 1 only: Package 2 already rests until moved back, Package 3 by this order.
 
+## Features
+F319 is the last accepted line of Package 1; F316 and the other open lines moved to Package 3.
+
 ## Constraints
 - At most 500 insertions per commit; no leading-slash tokens in commit subjects.
 - One full pytest run at the end, then review and repair until green. No measurement series.
+
+## Steps
+The item-status table lives in the handback, `~/.remedy-loop/amend1027b-v1.handback.md`.

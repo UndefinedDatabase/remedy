@@ -127,7 +127,7 @@ ORDER_ID_LENGTH = 16
 
 
 # WHY: a job made on the command line had only its batch's 32-character id, which no order route
-# takes, so an app could not cancel its order (amend1027b A3, the remedy edition's F036).
+# takes, so an app could not cancel its order (amend1027b A3; F036 of the edition, review 1).
 def http_order_id_of_batch(batch_id: str, source_path: str, job_id: str) -> str:
     """The 16-character order id of the batch BATCH_ID that JOB_ID belongs to.
 
