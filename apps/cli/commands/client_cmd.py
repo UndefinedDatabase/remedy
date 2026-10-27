@@ -120,11 +120,11 @@ def _cmd_client_order(order_id: str, *, json_output: bool = False) -> None:
     from packages.orchestration.serve_runs import (
         order_not_found_message,
         order_record_payload,
-        read_order_record,
+        resolve_order_record,
     )
 
     paths = serve_paths()
-    record = read_order_record(paths, order_id)
+    record = resolve_order_record(paths, order_id)
     if record is None:
         fail(
             "order_not_found",

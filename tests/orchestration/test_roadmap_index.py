@@ -132,20 +132,29 @@ class TestThisRepository:
         assert {f.status for f in index.features} <= known
 
     def test_plan_next_target_matches_rule_a5(self):
-        """Rule A5: the `[~]` line is active; otherwise the first `[ ]`."""
+        """Rule A5: the `[~]` line of Package 1 is active; otherwise its first `[ ]`; else none."""
         index = build_index(REPO_ROOT)
         feature, reason = proposed_feature(index)
-        assert feature is not None
         if reason == "in_progress":
             assert feature is active_feature(index)
-        else:
-            assert reason == "next_unchecked"
+        elif reason == "next_unchecked":
             assert feature is next_feature(index)
+        else:
+            # amend1027b-v1: Remedy is v1 while Package 1 has no open line.
+            assert (feature, reason) == (None, "none")
+            assert not [f for f in index.features if f.package == 1 and f.status in ("todo", "in_progress")]
 
-    def test_next_unchecked_is_the_first_todo_in_file_order(self):
+    def test_next_unchecked_is_the_first_todo_of_package_one_in_file_order(self):
         index = build_index(REPO_ROOT)
-        todo = [f for f in index.ordered_features() if f.status == "todo"]
-        assert next_feature(index) is todo[0]
+        todo = [f for f in index.ordered_features() if f.status == "todo" and f.package == 1]
+        assert next_feature(index) is (todo[0] if todo else None)
+
+    def test_rule_a5_never_proposes_a_line_of_package_two_or_three(self):
+        index = build_index(REPO_ROOT)
+        parked = {f.id for f in index.features if f.package in (2, 3)}
+        assert {"F316", "F156"} <= parked
+        feature, _reason = proposed_feature(index)
+        assert feature is None or feature.id not in parked
 
     def test_blockers_carry_their_states(self):
         index = build_index(REPO_ROOT)
@@ -188,6 +197,20 @@ class TestGrammarViolations:
         index = build_index(_make_repo(tmp_path))
         assert [f.id for f in index.ordered_features()] == ["F001", "F002"]
         assert next_feature(index).id == "F002"
+        assert [f.package for f in index.ordered_features()] == [1, 1]
+
+    def test_a_line_moved_to_package_three_is_never_proposed(self, tmp_path):
+        """amend1027b-v1: with Package 1 empty there is no next feature, whatever Package 3 holds."""
+        root = _make_repo(tmp_path)
+        status = root / "docs" / "roadmap" / "STATUS.md"
+        status.write_text(status.read_text(encoding="utf-8").replace(
+            "- [ ] F002 — Second feature\n",
+            "\n## Package 3 — Nach v1: nur auf Report oder Fehllauf\n\n## Tier 0 — Foundation\n\n"
+            "- [ ] F002 — Second feature\n"), encoding="utf-8")
+        index = build_index(root)
+        assert index.by_id("F002").package == 3 and index.by_id("F002").status == "todo"
+        assert next_feature(index) is None
+        assert proposed_feature(index) == (None, "none")
 
     def test_missing_title_line(self, tmp_path):
         root = _make_repo(tmp_path)

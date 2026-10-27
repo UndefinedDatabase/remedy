@@ -299,8 +299,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "or a job still runs and `cancelled` once nothing does; `jobs` names what the cancel "
             "did to each job. An applied result stays applied; a result waiting for its apply stays "
             "for the person's decision unless `decline_results` is `true`. A second cancel answers "
-            "`already_cancelled` true. A client token cancels only an order of one of its projects "
-            "(403 `api_client_policy_refused`)."
+            "`already_cancelled` true. Since 1.32 it also takes the 16-character `order_id` a job "
+            "made elsewhere names, and cancels that order's jobs. A client token cancels only an "
+            "order of one of its projects (403 `api_client_policy_refused`)."
         ),
     ),
     PublicApiRoute(
@@ -335,7 +336,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "order is doing (see `order_phases` in `GET /api/v1/interface`), `cancel` its cancel "
             "request or null, `jobs` its jobs (since 1.29 each with its `mission_id` and, while blocked "
             "or failed, its `blocking_criterion`), and `answer` "
-            "holds what `remedy do` printed once the order is not `running`. A client token "
+            "holds what `remedy do` printed once the order is not `running`. Since 1.32 it also "
+            "takes the 16-character `order_id` a job made elsewhere names, read `ended` from its "
+            "batch's jobs. A client token "
             "reads only an order whose order file names its projects (403 "
             "`api_client_policy_refused`)."
         ),
@@ -460,7 +463,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "(since 1.21), the five `steps` with the job's tasks under "
             "`building`, `changes`, `dirty_start` (since 1.27), `numbers` (null where not "
             "measured), `note_open`, `scope_findings` (since 1.29) and `scope` (since 1.30: the size "
-            "decision's `single_job`, `files`, `reason` and `decided`, or null). Every "
+            "decision's `single_job`, `files`, `reason` and `decided`, or null; since 1.32 also `tasks`, "
+            "`tasks_text` and `match_text`). Every "
             "word is in the `story` key of `GET /api/v1/interface`. A job id prefix is accepted, "
             "and a client token reads only a job of one of its projects (403 "
             "`api_client_policy_refused`)."

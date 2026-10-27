@@ -421,6 +421,32 @@ class OrderRecord:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class BatchOrderRecord(OrderRecord):
+    """An order no supervisor started, read from the mission batch its 16-character id names
+    (amend1027b A3): a `remedy do` on the command line. It is never written; no process of the
+    supervisor runs it, so it reads `ended`, and its jobs are the batch's."""
+
+    batch_id: str = ""
+
+
+def resolve_order_record(paths: ServePaths, order_id: str) -> OrderRecord | None:
+    """The record of ORDER_ID's order: the supervisor's own, else the `BatchOrderRecord` of the
+    mission batch whose id begins with ORDER_ID, else None. The order routes and their twins read
+    an order through it, so an app may poll and cancel the order of a job made elsewhere."""
+    record = read_order_record(paths, order_id)
+    if record is not None or not _ORDER_ID_RE.fullmatch(order_id):
+        return record
+    from packages.orchestration.order_jobs import order_batch_by_http_id
+
+    found = order_batch_by_http_id(order_id)
+    if found is None:
+        return None
+    batch = found[0]
+    return BatchOrderRecord(order_id=order_id, pid=0, started_at=batch.created_at, order_file=batch.source_path,
+                            out_log="", err_log="", batch_id=batch.order_id)
+
+
 def read_order_record(paths: ServePaths, order_id: str) -> OrderRecord | None:
     """The record of ORDER_ID's order, or None when ORDER_ID is malformed or there is none,
     or it cannot be read."""
@@ -459,8 +485,8 @@ def _process_is_this_order(pid: int, order_dir: Path) -> bool:
 
 
 def order_state(paths: ServePaths, record: OrderRecord) -> str:
-    """`ended`, `running` or `lost` for RECORD (DECISION F253 D13 (3))."""
-    if record.ended_at is not None:
+    """`ended`, `running` or `lost` for RECORD (DECISION F253 D13 (3)); a `BatchOrderRecord` is `ended`."""
+    if record.ended_at is not None or isinstance(record, BatchOrderRecord):
         return "ended"
     order_dir = paths.orders_dir / record.order_id
     if _process_is_this_order(record.pid, order_dir):
@@ -486,8 +512,10 @@ def order_answer(record: OrderRecord) -> dict[str, Any] | None:
     """The envelope `remedy do` printed to RECORD's `out.log`, or None (DECISION F253 D13 (3)).
 
     The caller decides whether to call this at all: an order's answer is read only
-    while its state is not `running`.
+    while its state is not `running`. A record with no log (a `BatchOrderRecord`) has none.
     """
+    if not record.out_log:
+        return None
     try:
         text = Path(record.out_log).read_text(encoding="utf-8", errors="replace")
     except OSError:
@@ -584,8 +612,13 @@ def order_record_payload(paths: ServePaths, record: OrderRecord) -> dict[str, An
 
 def order_record_job_ids(record: OrderRecord) -> list[str]:
     """The jobs of the order RECORD names, in planned order, read from the missions' batches
-    (`order_jobs.order_file_job_ids`); only those of this run of its order file."""
-    from packages.orchestration.order_jobs import order_file_job_ids
+    (`order_jobs.order_file_job_ids`); only those of this run of its order file. A
+    `BatchOrderRecord`'s are the jobs its batch links."""
+    from packages.orchestration.order_jobs import order_batch_by_http_id, order_file_job_ids
+
+    if isinstance(record, BatchOrderRecord):
+        found = order_batch_by_http_id(record.order_id)
+        return found[1] if found is not None else []
 
     source = str(Path(record.order_file).resolve()) if record.order_file else ""
     return order_file_job_ids(source, since=record.started_at)

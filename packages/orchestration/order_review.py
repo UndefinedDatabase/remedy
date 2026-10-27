@@ -119,10 +119,10 @@ def order_review_answer(*, order: str) -> dict[str, Any]:
     `review_report_not_found` when its walk kept no report."""
     from apps.cli.json_envelope import build_error, build_ok
     from packages.orchestration.serve_paths import serve_paths
-    from packages.orchestration.serve_runs import order_not_found_message, read_order_record
+    from packages.orchestration.serve_runs import order_not_found_message, resolve_order_record
 
     paths = serve_paths()
-    record = read_order_record(paths, order)
+    record = resolve_order_record(paths, order)
     if record is None:
         return build_error("order_not_found", order_not_found_message(order))
     report = find_order_review_report(paths, record)

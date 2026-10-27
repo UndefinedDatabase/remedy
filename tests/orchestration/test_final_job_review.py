@@ -46,7 +46,9 @@ def test_pass_case_no_findings():
     assert report["findings"] == []
     assert report["task_count"] == 3
     assert report["tasks_reviewed"] == 3
-    assert report["changed_files_match"] is True
+    # amend1027b A1: no expected set, so nothing was compared and the match is unknown.
+    assert report["changed_files_match"] is None
+    assert report["scope_check"]["in_scope"] is None
 
 
 def test_findings_case_needs_repair():

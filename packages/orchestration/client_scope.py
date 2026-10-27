@@ -46,13 +46,15 @@ def client_order_read_refusal(client: Any, order: str) -> str | None:
         select_project,
     )
     from packages.orchestration.serve_paths import serve_paths
-    from packages.orchestration.serve_runs import read_order_record
+    from packages.orchestration.serve_runs import BatchOrderRecord, resolve_order_record
 
-    record = read_order_record(serve_paths(), order)
+    record = resolve_order_record(serve_paths(), order)
     if record is None:
         return None
     refusal = (f"the client {client.name!r} may not read order {order!r}, which is not an order "
                "of one of its projects")
+    if isinstance(record, BatchOrderRecord):     # amend1027b A3: the projects whose missions hold it
+        return None if _client_lists_batch_projects(client, order) else refusal
     try:
         parsed = parse_order_file_text(Path(record.order_file).read_text(encoding="utf-8"),
                                        "order.md")
@@ -68,3 +70,12 @@ def client_order_read_refusal(client: Any, order: str) -> str | None:
         if not client_lists_project(client, (project.slug or "", str(project.id))):
             return refusal
     return None
+
+
+def _client_lists_batch_projects(client: Any, order: str) -> bool:
+    """True when every project whose mission holds the batch ORDER names is one CLIENT lists."""
+    from packages.orchestration.order_jobs import order_batch_by_http_id
+
+    found = order_batch_by_http_id(order)
+    allowed = client_project_ids(client)
+    return found is not None and bool(found[2]) and all(project_id in allowed for project_id in found[2])

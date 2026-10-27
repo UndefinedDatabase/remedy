@@ -141,7 +141,10 @@ def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tm
     assert order["job_ids"] == [job_id]
     job = _digest_job(digest, job_id)
     assert job["mission_id"] == mission_id
-    assert job["order_id"] == order["order_id"]
+    # amend1027b A3: the digest names the batch under `order_batch_id`, and `order_id` is the 16
+    # characters the order routes take, the batch's first 16 for an order file run in a terminal.
+    assert job["order_batch_id"] == order["order_id"]
+    assert job["order_id"] == order["order_id"][:16]
     assert job["state"] == "stopped"
     assert set(job["cost"]) == {"basis", "value_usd"}
     assert Path(job["evidence"]["run_manifest_path"]).is_file()

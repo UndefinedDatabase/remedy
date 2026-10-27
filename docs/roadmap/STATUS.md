@@ -2,6 +2,7 @@
 
 > Grammar: see ROADMAP.md Part C. States: `[ ]` todo · `[~]` in progress · `[x]` done (PR/evidence ref REQUIRED) · `[!]` blocked (reason).
 > Rule A5: the next feature is the first unchecked line, top to bottom. Update this file in the same PR as the work (A4).
+> Version 1 (operator amendment amend1027b-v1, 2026-10-27): Remedy is closed as version 1 (`docs/roadmap/V1.md`); the line "V1 — abgeschlossen am 2026-10-27" stands directly after F319. Package 3 "Nach v1: nur auf Report oder Fehllauf" at the end of this file holds every line Package 1 still had open then, unchanged. Rule A5 does not apply to Package 3, and it reads Package 1 only: with Package 1 empty there is no next feature, and the loop helpers end with "Remedy ist v1. Es gibt keine offene Feature-Zeile; Verbesserungen kommen über Reports." When a report needs a feature of Package 3, the operator moves its line back into Package 1.
 > Packages (operator decision 2026-08-10): Package 1 "Self-Use" below is the active execution order. Package 2 "Parked: Product & Governance" holds registered features deliberately scheduled last, so Rule A5 never selects them while Package 1 has open lines. Every registered feature appears exactly once in this file; parking or unparking a feature means moving its line between the packages by operator decision, in a reviewed docs round. New registrations land in Package 1 (Self-Use) by default, at the operator-chosen position or, absent one, at the end of the matching tier block; registering directly into Package 2 requires an explicit parking note in the registration commit. Grammar is identical in both packages; F080 parses this file unchanged. Operator amendment amend1024-one-real-order (2026-10-24, Part F2) parked a further 22 self-use lines, geparkt bis F317 dreimal in Folge auf Luna geklappt hat, and the operator's answer to its question Q28 (2026-10-25) parked 51 more, the lines those depend on and their dependents, so no dependency is torn; they are the last blocks of Package 2.
 
 ## Package 1 — Self-Use (active execution order)
@@ -344,43 +345,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F319 — Bauaufträge mit Claude Code werden grün (built and accepted 2026-10-27 by operator amendment amend1027-green-builds, Parts A to F · evidence: evidence/current/amend1027_green_builds/README.md · order 2318f04b3a65e952 · job 967b13a7bbb44b9c (universe-chat) · order 67f912f1e5b9ab21 · job 98c1f2692d004e3e (remedy-edition) · real claude-cli calls, no manual operator repair)
 
-## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
-
-- [ ] F316 — Findings paydown v11
-
-## Tier 3 — Full Token Economy & Autonomy Extension (the rest)
-
-- [ ] F054 — Auto-revert proposal
-- [ ] F059 — Notifications
-- [ ] F068 — Autonomy balance (on demand)
-- [ ] F072 — Spec-first (living specification)
-- [ ] F049 — Parallelism
-- [ ] F076 — Vision-capable planner
-- [ ] F084 — Demo mode
-
-## Tier 12 — Observability & Operations (the rest)
-
-- [ ] F202 — Backup/restore & schema migrations
-- [ ] F201 — Remote access & mobile view
-- [ ] F198 — Prometheus metrics endpoint
-- [ ] F204 — Update channel & change transparency
-
-## Tier 11 — Verification v2
-
-- [ ] F188 — API compatibility guard
-- [ ] F189 — Service contract tests
-- [ ] F190 — Test environment provisioning
-- [ ] F191 — Migration safety
-- [ ] F195 — Budgeted fuzzing
-
-## Tier 15 — Intelligence v2
-
-- [ ] F223 — Best-of-N builds
-- [ ] F227 — Prompt regression tests
-
-## Tier 13 — Multi-Repo & Organization
-
-- [ ] F208 — Monorepo workspaces
+V1 — abgeschlossen am 2026-10-27
 
 ## Package 2 — Parked: Product & Governance
 
@@ -583,3 +548,45 @@ Registered, counted and tier-assigned like every other feature — deliberately 
 - [ ] F244 — Security self-audit routine (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
 - [ ] F248 — Remedy builds Remedy: the full loop (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
 - [ ] F250 — Long-term consolidation into a project handbook (geparkt bis F317 dreimal in Folge auf Luna geklappt hat)
+
+## Package 3 — Nach v1: nur auf Report oder Fehllauf
+
+Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/roadmap/V1.md`) and moved every line Package 1 still had open here, unchanged and in their order, with their tier headings. Rule A5 does not apply to this package: no session, no loop helper and no `remedy roadmap next` selects a line from it. Improvements come from a report (over Universe) or from a failed run (the tile Selbstverbesserung), each as an order to the project remedy with claude-cli. When such an order needs a feature listed here, the operator moves its line back into Package 1, in a reviewed docs round.
+
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F316 — Findings paydown v11
+
+## Tier 3 — Full Token Economy & Autonomy Extension (the rest)
+
+- [ ] F054 — Auto-revert proposal
+- [ ] F059 — Notifications
+- [ ] F068 — Autonomy balance (on demand)
+- [ ] F072 — Spec-first (living specification)
+- [ ] F049 — Parallelism
+- [ ] F076 — Vision-capable planner
+- [ ] F084 — Demo mode
+
+## Tier 12 — Observability & Operations (the rest)
+
+- [ ] F202 — Backup/restore & schema migrations
+- [ ] F201 — Remote access & mobile view
+- [ ] F198 — Prometheus metrics endpoint
+- [ ] F204 — Update channel & change transparency
+
+## Tier 11 — Verification v2
+
+- [ ] F188 — API compatibility guard
+- [ ] F189 — Service contract tests
+- [ ] F190 — Test environment provisioning
+- [ ] F191 — Migration safety
+- [ ] F195 — Budgeted fuzzing
+
+## Tier 15 — Intelligence v2
+
+- [ ] F223 — Best-of-N builds
+- [ ] F227 — Prompt regression tests
+
+## Tier 13 — Multi-Repo & Organization
+
+- [ ] F208 — Monorepo workspaces

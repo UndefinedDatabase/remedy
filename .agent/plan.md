@@ -1,21 +1,20 @@
-# Plan — operator amendment amend1027-green-builds
+# Plan — operator amendment amend1027b-v1
 
 ## Goal
-A claude-cli build order whose change is right ends green: the builder may run the project's
-tests, the harness counts that run, no call dies after 120 seconds, and every project has its
-own slug (2026-10-27). F319 closed with two real orders (universe-chat, remedy-edition).
+Remedy closes as version 1 (2026-10-27): three truth defects fixed (A1 scope.match, A2 what
+one_job counts, A3 the 16-character order id of a job made elsewhere), the feature loop stops
+(Package 3 "Nach v1"), and improvements come only from reports and failed runs.
 
 ## Current Step
-Parts A to F are done: F319 accepted with order 2318f04b3a65e952 (universe-chat, job
-967b13a7bbb44b9c) and order 67f912f1e5b9ab21 (remedy-edition, job 98c1f2692d004e3e), both
-awaiting the operator's apply. The closing step: the last full suite, the merge, the push, the
-supervisor restart and the handback `~/.remedy-loop/amend1027-green-builds.handback.md`.
+Done. A1 and A2 (dc69345ff), A3 (758077b7c), B2 (bafb89737), B1 and B4 (2bdeb922c), repairs of
+the full runs (24701fb03, f2d26d40a); B3 in ~/Repos/system (9d85dff). Full suite green on
+f2d26d40a (24433 passed, 11 skipped). Closing: merge, push, supervisor restart, handback
+`~/.remedy-loop/amend1027b-v1.handback.md`.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then Rule A5, which reads F316 (findings
-   paydown v11) as the next line.
+1. None by Rule A5: Package 1 has no open line (F319 was its last; F316 waits in Package 3). The next work is an order to the project remedy
+   from a report over Universe or a failed run (docs/roadmap/V1.md).
 
 ## Risks
-- universe-chat's `main` is red on three tests of its own (DECISION amend1027 D1); its
-  `.remedy/config.toml` and remedy-edition's are untracked files the operator keeps.
-- The repo's settings deny reading `.data/**`; evidence is read through `remedy` commands.
+- The installed metadata of the editable install still says 0.1.0 until it is reinstalled;
+  pyproject declares 1.0.0.

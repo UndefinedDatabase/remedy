@@ -90,10 +90,10 @@ def _cmd_order_cancel(order_id: str, *, reason: str = "", source: str = "cli",
                       decline_results: bool = False, json_output: bool = False) -> None:
     from packages.orchestration.order_cancel import OrderCancelError, cancel_order
     from packages.orchestration.serve_paths import serve_paths
-    from packages.orchestration.serve_runs import order_not_found_message, read_order_record
+    from packages.orchestration.serve_runs import order_not_found_message, resolve_order_record
 
     paths = serve_paths()
-    record = read_order_record(paths, (order_id or "").strip())
+    record = resolve_order_record(paths, (order_id or "").strip())
     if record is None:
         fail("order_not_found", order_not_found_message(order_id), json_output=json_output, exit_code=3)
     try:

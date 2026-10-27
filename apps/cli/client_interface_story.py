@@ -46,7 +46,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
                      "output": {}},
     "scope_findings": {"key": {}, "path": {}, "text": {}},
     "scope": {"single_job": {}, "files": {}, "reason": {}, "decided": {}, "files_expected": {},
-              "files_touched": {}, "match": {}},
+              "files_touched": {}, "match": {}, "match_text": {}, "tasks": {}, "tasks_text": {}},
     "retries": {"task_id": {}, "role": {}, "attempt": {}, "reason": {}},
 }
 

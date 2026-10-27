@@ -814,6 +814,9 @@ def test_a_job_entry_names_its_order(root, tmp_path):
     assert order_ids[str(ordered.job_id)] == "o2"
     assert order_ids[str(legacy.job_id)] is None
     assert order_ids[str(unlinked.job_id)] is None
+    # amend1027b A3: the batch keeps its own key; `order_id` is the 16 characters the order routes take.
+    batches = {entry["job_id"]: entry["order_batch_id"] for entry in digest["jobs"]}
+    assert (batches[str(ordered.job_id)], batches[str(legacy.job_id)]) == ("o2", None)
 
 
 def test_a_mission_with_no_order_batches_reads_orders_empty(root, tmp_path):

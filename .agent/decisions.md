@@ -32138,3 +32138,58 @@ The edition `~/Repos/universe/remedy` has no CHANGELOG.md, and the builder canno
 changelog outside its workspace. Order 5a42873746467117 (the operator's words alone) was blocked
 honestly; the accepted order 67f912f1e5b9ab21 says to create the file and states amend1024's three
 facts. Order f72f138b0f2a9e76 named a file in its facts and delivered that file; it was declined.
+
+## DECISION amend1027b D1 — a comparison that compared nothing is null, never true
+
+The universe's report of 2026-10-27 (U267): the green universe-chat order read
+`changed_files_match: true` with two empty file lists. The cause was the final job review: both
+production callers (`pingpong_job._write_final_job_review`, `job_evidence`) pass no expected
+files, and the review then counted the job as matching. The story's `scope.match` had the same
+flaw in reserve: it compared two empty sets as equal. Both read `null` now when nothing was
+compared, and the story says `match_text` "nicht ermittelt". The scope decision's files are not
+passed into the final review as its expected set, because that set raises a repairable finding
+and the final verifier blocks the apply on any finding; the size decision is a guess, never a
+verdict (amend1027 D2). The story keeps the comparison of the decision with the diff.
+HOW TO REVERSE: restore `changed_files_match = True` and the set equality without the guard.
+
+## DECISION amend1027b D2 — one job may hold several tasks, and the story says so
+
+`one_job` counts jobs, not tasks: the planner may split the one job into tasks (the code and its
+test). The job story's `scope` carries `tasks` and, for a `one_job` decision with two tasks or
+more, `tasks_text`, one German sentence; two tasks of which exactly one touches test files only
+read "Ein Job mit zwei Aufgaben: der Code und sein Test."
+HOW TO REVERSE: drop `scope_tasks_text` and the two keys.
+
+## DECISION amend1027b D3 — a job made elsewhere names its order by its batch's first 16 characters
+
+The order routes take only the 16-character id `POST /api/v1/orders` answers; a job of a terminal
+walk had only its batch's 32-character id. Remedy writes no order record for a terminal walk,
+because the supervisor's listings read every `orders/<id>/order.json` as an order it started
+(`job_runner_alive`, the now view) and a terminal walk is no such process. Instead the routes and
+their twins read an order through `serve_runs.resolve_order_record`: the supervisor's record, else
+a `BatchOrderRecord` built from the mission batch whose id begins with the 16 characters. It reads
+`ended`; its jobs are the batch's; a cancel writes `cancel.json` into a folder of its own with no
+`order.json`, and treats each job as possibly run by a terminal (`job_runner_alive`), so a running
+one gets a stop request instead of an end. The terminal walk itself reads no cancel request. The
+digest's `jobs[].order_id` changes meaning from the batch to that id, and the batch moves to
+`order_batch_id`; the universe used the old value only to group jobs, which still works.
+HOW TO REVERSE: drop `resolve_order_record`, `BatchOrderRecord` and `http_order_id_of_batch`.
+
+## DECISION amend1027b D4 — Rule A5 reads Package 1 only
+
+The order says Rule A5 does not apply to Package 3. Package 2's header already said its lines rest
+until the operator moves them back into Package 1, yet the index read the whole file top to
+bottom, so with Package 1 empty `remedy roadmap next` would have proposed F156 of Package 2 and
+the loop would not have stopped. `roadmap_index.next_feature` and `active_feature` now read the
+lines under `## Package 1` only (`RULE_A5_PACKAGE`); each feature carries its `package`. The loop
+helpers of ~/Repos/system end with the order's sentence when Package 1 has no open line.
+HOW TO REVERSE: drop the package filter in the two functions and move Package 3 back.
+
+## DECISION amend1027b D5 — F295's gate test reads the batch under `order_batch_id`
+
+The digest's `jobs[].order_id` changed meaning in 1.32 (D3), so F295's gate test
+`tests/cli/test_machine_client_contract.py` compares the digest job's `order_batch_id` with the
+mission's batch and its `order_id` with the batch's first 16 characters. The gate test is pinned by
+`F295_GATE_TEST_SHA256` (R-1179); the digest is updated in the commit after the change, because the
+first full run found the pin. Nothing else in the gate test changed.
+HOW TO REVERSE: revert the two assertions and the digest together with D3.

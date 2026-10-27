@@ -228,7 +228,8 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
 | `orders` | digest missions | every order the mission was given, oldest first, each with the jobs it asked for |
 | `jobs` | digest | every job |
 | `job_id` | digest jobs and decisions; `remedy change proof` | the job |
-| `order_id` | digest jobs | the order the job belongs to; null for a job of no order |
+| `order_id` | digest jobs | the order the job belongs to, as the 16-character id the order routes take (since 1.32); null for a job of no order |
+| `order_batch_id` | digest jobs | the batch of the mission that holds the job, the `order_id` of the mission's `orders` (since 1.32) |
 | `state` | digest jobs | the job's state: `stopped`, `completed` and the others |
 | `cost` | digest jobs | `value_usd` and its `basis`, measured, never guessed; `value_usd` reads null unless `cost.show_usd` is true |
 | `evidence` | digest jobs | the job's evidence references |
@@ -250,9 +251,12 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
 | `job_applies` | `remedy change proof` | every apply of the job, oldest first, never called verified |
 | `overall_status` | `remedy change proof` | the verdict over the job's patch intents |
 
-Two different ids are both called `order_id`. In the answer of `remedy do run` it names the
-order's batch in the repository's mission; in the answer of `remedy client order` it names the
-order process the supervisor started.
+Two different ids are both called `order_id`. In the answer of `remedy do run` and in the
+digest's `orders` it names the order's batch in the repository's mission (32 characters); in the
+answer of `remedy client order`, in a story and, since 1.32, in the digest's `jobs` it names the
+order by the 16 characters the order routes take: the order process the supervisor started, or,
+for a job made elsewhere (a `remedy do` on the command line), the first 16 characters of its
+batch's id. The digest's `jobs` name the batch under `order_batch_id`.
 
 ### Exit codes
 
@@ -352,7 +356,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.31`.
+Interface version: `1.32`.
 
 ### Envelope
 
@@ -543,7 +547,7 @@ Keys under the answer keys: see below.
   - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `job_window`: `ended_limit`, `left_out`
-  - `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+  - `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_batch_id`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
     - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
       - `blocking_criteria`: `id`, `status`, `text`
       - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -1010,7 +1014,7 @@ Keys under the answer keys: see below.
 - `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
 - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
-- `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_batch_id`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -1079,7 +1083,7 @@ Keys under the answer keys: see below.
   - `route`: `method`, `path`
 - `numbers`: `calls`, `duration_s`, `model_turns`, `rounds`, `tokens_in`, `tokens_out`
 - `retries`: `attempt`, `reason`, `role`, `task_id`
-- `scope`: `decided`, `files`, `files_expected`, `files_touched`, `match`, `reason`, `single_job`
+- `scope`: `decided`, `files`, `files_expected`, `files_touched`, `match`, `match_text`, `reason`, `single_job`, `tasks`, `tasks_text`
 - `scope_findings`: `key`, `path`, `text`
 - `state_detail`: `changed_files`, `decision_id`, `file`, `question`, `reason`, `round`
   - `reason`: `args`, `key`
@@ -1315,7 +1319,7 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
 - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `job_window`: `ended_limit`, `left_out`
-- `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `dirty_start`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `order_batch_id`, `order_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`

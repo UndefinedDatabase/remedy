@@ -33,6 +33,13 @@ SCOPE_DECISION_FILENAME = "scope_decision.json"
 SCOPE_ONE_JOB = "one_job"
 SCOPE_SEVERAL_JOBS = "several_jobs"
 SCOPE_REGEX_FALLBACK = "regex_fallback"
+#: What a story says when the expected and the touched files could not be compared (amend1027b A1).
+SCOPE_MATCH_UNKNOWN_TEXT = "nicht ermittelt"
+#: What a story says of a one-job decision whose job holds the code and its test (amend1027b A2).
+SCOPE_CODE_AND_TEST_TEXT = "Ein Job mit zwei Aufgaben: der Code und sein Test."
+#: The number words a scope sentence counts tasks with; a larger count is written in digits.
+_TASK_COUNT_WORDS = {2: "zwei", 3: "drei", 4: "vier", 5: "fünf", 6: "sechs", 7: "sieben", 8: "acht",
+                     9: "neun", 10: "zehn", 11: "elf", 12: "zwölf"}
 
 
 class OrderScopeDecision(_Strict):
@@ -127,14 +134,37 @@ def record_scope_decision(record: dict[str, Any] | None, job_id: str) -> None:
         json.dumps(record, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+# WHY: one job may hold several tasks, and a reader of "ein Job" could not tell (amend1027b A2).
+def scope_tasks_text(decided: str | None, task_files: list[list[str]]) -> str | None:
+    """The one German sentence saying how many tasks a one-job decision's job holds, or None.
+
+    TASK_FILES holds each task's files. Only a `SCOPE_ONE_JOB` job with two tasks or more gets a
+    sentence: two tasks of which exactly one touches test files only are "the code and its test".
+    """
+    from packages.orchestration.order_scope import is_test_path
+
+    if decided != SCOPE_ONE_JOB or len(task_files) < 2:
+        return None
+    tests = sorted(bool(files) and all(is_test_path(path) for path in files) for files in task_files)
+    if tests == [False, True]:
+        return SCOPE_CODE_AND_TEST_TEXT
+    count = len(task_files)
+    return f"Ein Job mit {_TASK_COUNT_WORDS.get(count, str(count))} Aufgaben."
+
+
 # WHY: a client shows why an order became one job or several without reading the evidence folder.
-def story_scope(job_id: str, touched: list[str] | None = None) -> dict[str, Any] | None:
+def story_scope(job_id: str, touched: list[str] | None = None,
+                task_files: list[list[str]] | None = None) -> dict[str, Any] | None:
     """JOB_ID's scope decision as a story carries it: `single_job` (null when the regex lanes
     decided), `files`, `reason` and `decided`; None when the job keeps no readable decision.
 
     Operator amendment amend1027-green-builds D2: with TOUCHED, the files the job's result
     changes, it also carries `files_expected` (the decision's files), `files_touched` and
     `match`, true when both name the same files; transparency only, never a verdict.
+    amend1027b A1: when either list is empty nothing was compared, so `match` is null and
+    `match_text` says `SCOPE_MATCH_UNKNOWN_TEXT`; two empty lists are no agreement.
+    amend1027b A2: with TOUCHED it also carries `tasks`, how many tasks the job holds (TASK_FILES
+    holds each one's files), and `tasks_text`, `scope_tasks_text`'s sentence or null.
     """
     from packages.orchestration.data_paths import job_evidence_dir
 
@@ -151,5 +181,18 @@ def story_scope(job_id: str, touched: list[str] | None = None) -> dict[str, Any]
              "reason": str(record.get("reason") or ""), "decided": str(record.get("decided") or "") or None}
     if touched is None:
         return found
-    return {**found, "files_expected": expected, "files_touched": sorted(touched),
-            "match": sorted({path.strip("./") for path in expected}) == sorted({path.strip("./") for path in touched})}
+    match = None
+    if expected and touched:
+        match = {_scope_path(path) for path in expected} == {_scope_path(path) for path in touched}
+    tasks = list(task_files or [])
+    return {**found, "files_expected": expected, "files_touched": sorted(touched), "match": match,
+            "match_text": SCOPE_MATCH_UNKNOWN_TEXT if match is None else None,
+            "tasks": len(tasks), "tasks_text": scope_tasks_text(found["decided"], tasks)}
+
+
+def _scope_path(path: str) -> str:
+    """PATH as the comparison reads it: without a leading `./` (a `.gitignore` keeps its dot)."""
+    path = str(path).strip()
+    while path.startswith("./"):
+        path = path[2:]
+    return path

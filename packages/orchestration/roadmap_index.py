@@ -58,6 +58,11 @@ _DEPENDENCY_OPEN_RE = re.compile(r"^\*\*Tier (\d{1,2})\b")
 _STATUS_LINE_RE = re.compile(r"^- \[(.)\] F(\d{3}) — (\S.*)$")
 #: STATUS.md tier heading: ``## Tier 1 — Self-Build Bootstrap``.
 _TIER_HEADING_RE = re.compile(r"^## Tier (\d{1,2}) — (\S.*)$")
+#: STATUS.md package heading: ``## Package 3 — Nach v1: nur auf Report oder Fehllauf``.
+_PACKAGE_HEADING_RE = re.compile(r"^## Package (\d{1,2}) — (\S.*)$")
+#: The one package Rule A5 reads (operator amendment amend1027b-v1): Package 2 rests until the
+#: operator moves a line back, and Package 3 holds what v1 left open, built only on a report.
+RULE_A5_PACKAGE = 1
 #: ROADMAP.md Part G milestone row: ``| M2 | "It builds itself" | Tier 1 | … |``.
 _MILESTONE_ROW_RE = re.compile(r"^\|\s*(M\d+)\s*\|(.+?)\|(.+?)\|(.+?)\|\s*$")
 #: Any feature reference inside prose (``F070``, ``F031/F032``).
@@ -109,6 +114,8 @@ class RoadmapFeature:
     status_line: int = 0
     status_note: str = ""
     milestone: str = ""
+    #: The STATUS.md package the line stands in; 0 for a feature STATUS does not schedule.
+    package: int = 0
 
     def as_dict(self) -> dict:
         return {
@@ -122,6 +129,7 @@ class RoadmapFeature:
             "status_line": self.status_line,
             "status_note": self.status_note,
             "milestone": self.milestone,
+            "package": self.package,
         }
 
 
@@ -328,6 +336,7 @@ def _parse_status(repo_root: Path) -> tuple[list[dict], list[GrammarViolation]]:
 
     in_fence = False
     tier = 0
+    package = RULE_A5_PACKAGE        # a ledger without package headings is all Package 1
     seen: dict[str, int] = {}
     for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), start=1):
         if line.startswith("```"):
@@ -338,6 +347,10 @@ def _parse_status(repo_root: Path) -> tuple[list[dict], list[GrammarViolation]]:
         heading = _TIER_HEADING_RE.match(line)
         if heading is not None:
             tier = int(heading.group(1))
+            continue
+        package_heading = _PACKAGE_HEADING_RE.match(line)
+        if package_heading is not None:
+            package = int(package_heading.group(1))
             continue
         if not line.startswith("- "):
             continue
@@ -366,6 +379,7 @@ def _parse_status(repo_root: Path) -> tuple[list[dict], list[GrammarViolation]]:
             "status": STATUS_GLYPHS[glyph],
             "line": number,
             "note": note.rstrip(")").strip(),
+            "package": package,
         })
     return entries, violations
 
@@ -491,6 +505,7 @@ def build_index(repo_root: Path | str | None = None) -> RoadmapIndex:
             status_line=entry["line"] if entry else 0,
             status_note=entry["note"] if entry else "",
             milestone=_milestone_for_tier(milestones, parsed["tier"]),
+            package=entry["package"] if entry else 0,
         ))
 
     # STATUS entries with no feature file still belong in the execution order.
@@ -508,6 +523,7 @@ def build_index(repo_root: Path | str | None = None) -> RoadmapIndex:
             status_line=entry["line"],
             status_note=entry["note"],
             milestone=_milestone_for_tier(milestones, entry["tier"]),
+            package=entry["package"],
         ))
 
     index = RoadmapIndex(
@@ -542,17 +558,18 @@ def write_index(index: RoadmapIndex, data_root: Path | None = None) -> Path:
 
 
 def active_feature(index: RoadmapIndex) -> RoadmapFeature | None:
-    """The in-progress ``[~]`` feature, first in STATUS order, or None."""
+    """The in-progress ``[~]`` feature of Package 1, first in STATUS order, or None."""
     for feature in index.ordered_features():
-        if feature.status == "in_progress":
+        if feature.status == "in_progress" and feature.package == RULE_A5_PACKAGE:
             return feature
     return None
 
 
 def next_feature(index: RoadmapIndex) -> RoadmapFeature | None:
-    """The first unchecked ``[ ]`` feature in STATUS order, or None."""
+    """The first unchecked ``[ ]`` feature of Package 1 in STATUS order, or None: Remedy is v1
+    once Package 1 has none (amend1027b-v1), and no line of Package 2 or 3 is ever proposed."""
     for feature in index.ordered_features():
-        if feature.status == "todo":
+        if feature.status == "todo" and feature.package == RULE_A5_PACKAGE:
             return feature
     return None
 
