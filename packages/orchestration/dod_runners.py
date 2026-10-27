@@ -79,7 +79,7 @@ from packages.orchestration.project_tests import (
     project_python,
     project_sandbox_read_paths,
     project_sandbox_scratch_dirs,
-    read_test_settings,
+    project_test_env,
 )
 from packages.orchestration.test_runner import _EXECUTION_SAFE_EXECUTABLES
 from packages.runtimes.dev_server import (
@@ -454,14 +454,14 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
             f"executable {argv[0]!r} is not in the allowed set; nothing was run")
 
     try:   # amend1027: the [tests] table's env and the folders its command reads, read-only
-        settings = read_test_settings(cwd)
+        overlay = project_environment(cwd)
         extras = {key: value for key, value in (
-            ("project_env", dict(settings.env)), ("read_only_paths", project_sandbox_read_paths(cwd)),
+            ("project_env", project_test_env(cwd, ctx.root, overlay.get("PATH", os.environ.get("PATH", "")))),
+            ("read_only_paths", project_sandbox_read_paths(cwd)),
             ("scratch_dirs", project_sandbox_scratch_dirs(cwd))) if value}
     except ProjectTestConfigError as exc:
         return _refused(check, REASON_TEST_COMMAND_INVALID, argv, declared_cwd, str(exc))
-    return _spawn_check(check, ctx, argv, cwd, declared_cwd,
-                        env_overlay=project_environment(cwd), sandbox_extras=extras)
+    return _spawn_check(check, ctx, argv, cwd, declared_cwd, env_overlay=overlay, sandbox_extras=extras)
 
 
 # ---------------------------------------------------------------------------

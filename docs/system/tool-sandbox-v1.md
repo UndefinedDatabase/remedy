@@ -44,7 +44,10 @@ A sandboxed process sees:
   `.cache` replaced by empty memory-backed folders; and the folders the `[tests]` table of the
   project's `.remedy/config.toml` names under `read_only_paths` (absolute, existing, never the
   root, the home or one of its ancestors), with the variables it names under `env` set inside.
-  Both keys are read from the repository's own checkout, never from the job's worktree.
+  A value may hold `{workspace}`, the job's own copy of the repository, and a `PATH` there goes
+  in front of the command's own `PATH`, never in its place. Both keys are read from the
+  repository's own checkout, never from the job's worktree; a `.remedy/config.toml` the checkout
+  keeps out of git is no change of the job, because a worktree never holds it.
 - **Nothing else.** The operator's home, other repositories, SSH keys, cloud credentials,
   `/run/user`, Remedy's data root and its tokens do not exist inside. A workspace symlink to a
   private file leads nowhere. `PATH` directories inside a git working tree (another

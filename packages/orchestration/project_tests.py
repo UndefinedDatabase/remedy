@@ -151,16 +151,30 @@ def changed_source_file(cwd: Path, command: ProjectTestCommand) -> str:
 
     Empty for the tests folder's argv, which Remedy builds itself, and when `cwd`
     is no job's worktree. A file present on one side only counts as changed
-    (R-1236).
+    (R-1236), except a file the checkout keeps out of git (operator amendment
+    amend1027-green-builds: an untracked `.remedy/config.toml`), which the worktree
+    never holds and the job therefore never wrote.
     """
     relpath = PROJECT_TEST_SOURCE_FILES.get(command.source)
     [base] = base_lookup_dirs(cwd)
     if relpath is None or base == cwd:
         return ""
     mine, theirs = cwd / relpath, base / relpath
+    if not mine.exists() and theirs.is_file() and not _tracked(cwd, relpath):
+        return ""
     if (mine.read_bytes() if mine.is_file() else None) != (theirs.read_bytes() if theirs.is_file() else None):
         return str(relpath)
     return ""
+
+
+def _tracked(cwd: Path, relpath: Path) -> bool:
+    """Whether git tracks RELPATH in CWD's work tree (a missing git or any failure reads tracked)."""
+    try:
+        done = subprocess.run(["git", "ls-files", "--error-unmatch", "--", str(relpath)], cwd=str(cwd),
+                              capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return True
+    return done.returncode == 0
 
 
 def find_virtualenv(dirs: Sequence[Path]) -> Path | None:
@@ -263,6 +277,24 @@ def read_test_settings(cwd: Path) -> ProjectTestSettings:
                                read_only_paths=tuple(str(Path(p).resolve()) for p in paths))
 
 
+#: The placeholder an `env` value may hold for the job's workspace (the worktree a check runs in).
+WORKSPACE_PLACEHOLDER = "{workspace}"
+
+
+def project_test_env(cwd: Path, workspace: Path, path: str | None = None) -> dict[str, str]:
+    """The `[tests]` table's `env` with `WORKSPACE_PLACEHOLDER` replaced by WORKSPACE, so a value
+    names the job's own copy of the project, never the checkout; raises like `read_test_settings`.
+
+    A `PATH` in the table is put IN FRONT of PATH, the one the command would otherwise get, never in
+    its place, so the builder and a check keep their own tools.
+    """
+    env = {key: value.replace(WORKSPACE_PLACEHOLDER, str(workspace))
+           for key, value in read_test_settings(cwd).env}
+    if "PATH" in env and path:
+        env["PATH"] = os.pathsep.join([env["PATH"], path])
+    return env
+
+
 def project_sandbox_read_paths(cwd: Path) -> tuple[str, ...]:
     """The folders a project's test command reads inside the tool sandbox, read-only.
 
@@ -300,7 +332,8 @@ def project_tool_environment(cwd: Path, path: str) -> dict[str, str]:
 
     `PATH` is the project's virtual environment's `bin` and its `node_modules/.bin`, each when
     found where `base_lookup_dirs` says, then *path*; `VIRTUAL_ENV` when a virtual environment
-    was found; and the `[tests]` table's `env`. A table that cannot be read adds no variable.
+    was found; and the `[tests]` table's `env` (`project_test_env` of *cwd*), whose `PATH` goes in
+    front. A table that cannot be read adds no variable.
     """
     dirs = base_lookup_dirs(cwd)
     venv, node_bin = find_virtualenv(dirs), find_node_bin(dirs)
@@ -309,7 +342,7 @@ def project_tool_environment(cwd: Path, path: str) -> dict[str, str]:
     if venv is not None:
         env["VIRTUAL_ENV"] = str(venv)
     try:
-        env.update(dict(read_test_settings(cwd).env))
+        env.update(project_test_env(cwd, cwd, env["PATH"]))
     except ProjectTestConfigError:
         pass
     return env

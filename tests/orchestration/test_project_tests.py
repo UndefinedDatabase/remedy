@@ -27,6 +27,7 @@ from packages.orchestration.project_tests import (
     project_python,
     project_sandbox_read_paths,
     project_sandbox_scratch_dirs,
+    project_test_env,
     project_tool_environment,
     read_configured_command,
     read_test_settings,
@@ -358,3 +359,31 @@ class TestTheTestSettings:
         assert all(Path(d).is_dir() for d in scratch)
         env = project_tool_environment(tmp_path, "/usr/bin")
         assert env["PATH"].split(os.pathsep) == [str(tmp_path / "node_modules" / ".bin"), "/usr/bin"]
+
+
+class TestTheWorkspacePlaceholderAndPath:
+    """amend1027: `{workspace}` names the job's copy; a table's PATH goes in front, never in place."""
+
+    def test_the_placeholder_names_the_workspace_and_path_goes_in_front(self, tmp_path):
+        _config(tmp_path, '[tests]\nenv = { ROOT = "{workspace}/sub", PATH = "/opt/tool/bin" }\n')
+        env = project_test_env(tmp_path, Path("/w/job-1"), "/usr/bin")
+        assert env == {"ROOT": "/w/job-1/sub", "PATH": "/opt/tool/bin:/usr/bin"}
+        assert project_tool_environment(tmp_path, "/usr/bin")["PATH"] == "/opt/tool/bin:/usr/bin"
+
+    def test_an_untracked_config_only_the_checkout_holds_is_no_change_of_the_job(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        _git(repo, "init", "-q")
+        _git(repo, "config", "user.email", "t@e.com")
+        _git(repo, "config", "user.name", "T")
+        (repo / "README.md").write_text("x\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "init")
+        (repo / ".git" / "info" / "exclude").write_text(".remedy/\n.remedy-wt/\n")
+        _config(repo, '[tests]\ncommand = ["make", "check"]\n')
+        wt = repo / ".remedy-wt" / "job-1"
+        _git(repo, "worktree", "add", "-q", "--detach", str(wt))
+        command = ProjectTestCommand(argv=("make", "check"), source="config")
+        assert changed_source_file(wt, command) == ""
+        _config(wt, '[tests]\ncommand = ["true"]\n')                  # the job writes its own
+        assert changed_source_file(wt, command) == ".remedy/config.toml"
