@@ -346,6 +346,7 @@ packages.orchestration.project_registry
 packages.orchestration.project_roles
 packages.orchestration.project_scope
 packages.orchestration.project_summary
+packages.orchestration.project_test_baseline
 packages.orchestration.project_tests
 packages.orchestration.prompt_budget
 packages.orchestration.prompt_facts

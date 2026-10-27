@@ -322,7 +322,8 @@ def _refused(check: DoDCheck, reason: str, argv: list[str], cwd: str,
 def _spawn_check(check: DoDCheck, ctx: _RunContext, argv: list[str], cwd: Path,
                  declared_cwd: str,
                  env_overlay: Mapping[str, str] | None = None,
-                 sandbox_extras: Mapping[str, Any] | None = None) -> CheckEvidence:
+                 sandbox_extras: Mapping[str, Any] | None = None,
+                 full_output: list[str] | None = None) -> CheckEvidence:
     """Spawn ``argv`` in ``cwd`` under the guard, and judge what it did.
 
     The spawn-and-judge half of a single-process check, shared by
@@ -361,6 +362,8 @@ def _spawn_check(check: DoDCheck, ctx: _RunContext, argv: list[str], cwd: Path,
 
     duration_ms = int((time.monotonic() - start) * 1000)
     tail, truncated = _tail(proc.stdout + proc.stderr)
+    if full_output is not None:     # amend1027 F4: the whole output, for `project_test_baseline`
+        full_output.append((proc.stdout + proc.stderr).decode("utf-8", errors="replace"))
     if getattr(proc, TRIPPED_LIMIT_ATTR, None) == REASON_SANDBOX_UNAVAILABLE:
         return _refused(check, REASON_SANDBOX_UNAVAILABLE, argv, declared_cwd, tail)
     if proc.returncode in SHELL_NOT_RUN_EXITS:
@@ -408,6 +411,21 @@ def _run_process_check(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
 
 
 def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
+    """The project's own test command (`_run_project_tests_once`), and a red run judged against the
+    job's base commit (`project_test_baseline.judged_against_base`, operator amendment amend1027 F4)."""
+    from packages.orchestration.project_test_baseline import judged_against_base
+
+    full: list[str] = []
+    evidence = _run_project_tests_once(check, ctx, full)
+
+    def rerun(root: Path) -> tuple[CheckEvidence, str]:
+        again: list[str] = []
+        return _run_project_tests_once(check, dataclasses.replace(ctx, root=root), again), "".join(again)
+
+    return judged_against_base(evidence, "".join(full), ctx.root, rerun)
+
+
+def _run_project_tests_once(check: DoDCheck, ctx: _RunContext, full_output: list[str]) -> CheckEvidence:
     """F299, DECISION F299 D1 — a project's own test command, in its own environment.
 
     Never Remedy's: the command is found at run time, in the check's working
@@ -461,7 +479,8 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
             ("scratch_dirs", project_sandbox_scratch_dirs(cwd))) if value}
     except ProjectTestConfigError as exc:
         return _refused(check, REASON_TEST_COMMAND_INVALID, argv, declared_cwd, str(exc))
-    return _spawn_check(check, ctx, argv, cwd, declared_cwd, env_overlay=overlay, sandbox_extras=extras)
+    return _spawn_check(check, ctx, argv, cwd, declared_cwd, env_overlay=overlay, sandbox_extras=extras,
+                        full_output=full_output)
 
 
 # ---------------------------------------------------------------------------

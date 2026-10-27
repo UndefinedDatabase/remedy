@@ -494,7 +494,11 @@ Remedy ran the project's test command itself in the job's workspace (that run de
 and `reason_key` when no test ran (`permission_denied`, `command_not_found`, `timeout`,
 `sandbox_unavailable`, `no_test_command` or `not_attempted`); and `output`, a red run's output
 cut to its last 4,000 characters with the job's workspace and the home folder taken out. `output`
-is the one text in the story that is not Remedy's words: the test runner's own. `order_id` names
+is the one text in the story that is not Remedy's words: the test runner's own. A red run whose
+failing tests all failed on the job's base commit too (Remedy runs the same command once more in a
+throwaway worktree of that commit) releases the job as `passed`; its check keeps the reason
+`preexisting_failures` and names the tests, and the mission's criterion stays unmet, so no push
+follows a suite that is not green. `order_id` names
 the order the job serves (the HTTP order, else the order batch of its mission; `null` for none),
 and `retries` lists each provider call repeated after it ran into its time limit, as
 `{task_id, role, attempt, reason}`.
