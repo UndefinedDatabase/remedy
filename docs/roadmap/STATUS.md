@@ -340,6 +340,10 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F318 — Fragen an ein Projekt, nur lesend (built and accepted 2026-10-26 by operator amendment amend1026-go-live-and-ask, Parts A to E · evidence: evidence/current/amend1026_ask/README.md · ask ask-20261026T121928Z-59affd79 · client orb-universe · real claude-cli call, no manual operator repair)
 
+## Tier 2 — Build orders with Claude Code end green (operator amendment amend1027-green-builds)
+
+- [x] F319 — Bauaufträge mit Claude Code werden grün (built and accepted 2026-10-27 by operator amendment amend1027-green-builds, Parts A to F · evidence: evidence/current/amend1027_green_builds/README.md · order 2318f04b3a65e952 · job 967b13a7bbb44b9c (universe-chat) · order 67f912f1e5b9ab21 · job 98c1f2692d004e3e (remedy-edition) · real claude-cli calls, no manual operator repair)
+
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
 - [ ] F316 — Findings paydown v11

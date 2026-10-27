@@ -1,0 +1,18 @@
+{
+  "calls": 1,
+  "decided": "one_job",
+  "detail": "",
+  "files": [
+    "src/screens/Memory.tsx",
+    "src/components/InfoButton.tsx",
+    "src/state/memory.ts"
+  ],
+  "model": "claude-sonnet-4-6",
+  "outcome": "answered",
+  "paths_shown": 1769,
+  "paths_total": 1769,
+  "planner": "claude-cli",
+  "reason": "Es handelt sich um eine einzige kohärente Änderung: das (i)-Element im Gedächtnis-Screen wird auf denselben Namen und dasselbe Verhalten wie die bestehende InfoButton-Komponente angepasst.",
+  "schema_v": "order_scope_decision_v1",
+  "single_job": true
+}

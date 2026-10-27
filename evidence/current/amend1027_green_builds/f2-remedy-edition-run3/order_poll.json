@@ -1,0 +1,215 @@
+{
+  "answer": {
+    "contract": {
+      "amendments": [],
+      "criteria": [
+        {
+          "blocking": true,
+          "check": {
+            "acceptance_refs": [
+              "C001:0"
+            ],
+            "blocking": true,
+            "description": "The mission goal is met in full: Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased. Trag ihn in drei Sätzen nach. Dieses Repository h…",
+            "id": "ctr-C001",
+            "kind": "project_tests",
+            "source": "plan_acceptance",
+            "spec": {}
+          },
+          "evidence_ref": null,
+          "id": "C001",
+          "milestones": [
+            "M001"
+          ],
+          "origin": "planner",
+          "status": "open",
+          "text": "The mission goal is met in full: Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased. Trag ihn in drei Sätzen nach. Dieses Repository hat noch keine CHANGELOG.md: leg sie im Wurzelordner an, mit der Überschrift Changelog und dem Abschnitt Unreleased, und trag den Eintrag dort ein."
+        }
+      ],
+      "schema": "contract_v1",
+      "template": null
+    },
+    "cost": {
+      "cost_usd": null,
+      "job_ids": [
+        "6a3ee45119bf42fd"
+      ],
+      "mirror_errors": {},
+      "mirror_failed_job_ids": [],
+      "roles": [
+        {
+          "cache_read": 67607,
+          "cost_usd": null,
+          "harness_invocations": 1,
+          "model_turns": null,
+          "role": "builder",
+          "tokens_in": 10,
+          "tokens_out": 2015
+        },
+        {
+          "cache_read": 11795,
+          "cost_usd": null,
+          "harness_invocations": 1,
+          "model_turns": null,
+          "role": "reviewer",
+          "tokens_in": 4,
+          "tokens_out": 756
+        }
+      ],
+      "show_cost_usd": false
+    },
+    "error": "step_failed",
+    "failed_step": "run",
+    "job_ids": [
+      "6a3ee45119bf42fd"
+    ],
+    "jobs": [
+      {
+        "job_id": "6a3ee45119bf42fd",
+        "tasks": [
+          {
+            "deliverable": "CHANGELOG.md",
+            "title": "Deliver CHANGELOG.md"
+          }
+        ],
+        "verification": {
+          "output": "",
+          "reason": "",
+          "reason_key": "",
+          "request": "The project names a test command, so its own tests run before a result is offered.",
+          "required": true,
+          "runs": [
+            {
+              "source": "task",
+              "status": "passed",
+              "task_id": "e49fd6a23dff47ca"
+            }
+          ],
+          "status": "passed",
+          "tested_by": [
+            "final_check"
+          ]
+        }
+      }
+    ],
+    "landed": [],
+    "message": "run failed: job 6a3ee45119bf42fd ended blocked: task_e49fd6a23dff47ca_gate_failed: final_status=staged_blocked; reviewer_verdict=blocked",
+    "mission_id": "ee76884d807e4b2dbaec9b2bec91117c",
+    "mission_plan_path": "/home/decodeux/Repos/remedy/.data/missions/32769b0a-b490-46e8-8fca-a5f3fe4eaaf8/ee76884d807e4b2dbaec9b2bec91117c/evidence/orders/c8b7d7d9110146f293fb7e75082bc2de/mission_plan_v2.md",
+    "next": [
+      "remedy job show 6a3ee45119bf42fd",
+      "remedy serve start",
+      "remedy client story 6a3ee45119bf42fd"
+    ],
+    "ok": false,
+    "order_budget": {
+      "calls": [],
+      "caps": {
+        "deadline": null,
+        "max_cost_usd": null,
+        "max_provider_calls": 60,
+        "max_total_tokens": 400000,
+        "max_wall_clock_minutes": 120,
+        "min_free_disk_bytes": null
+      },
+      "cost": {
+        "cap_usd": null,
+        "enforced": false,
+        "measured_usd": null,
+        "unpriced_calls": 0
+      },
+      "estimated_planning_tokens": 0,
+      "jobs": {
+        "6a3ee45119bf42fd": {
+          "calls": 2,
+          "cost_usd": null,
+          "measured": true,
+          "tokens": 2785,
+          "unpriced_calls": 0
+        }
+      },
+      "planner_calls": 0,
+      "planner_calls_by_reason": {},
+      "refused_calls": 0,
+      "unmeasured_jobs": [],
+      "used": {
+        "calls": 2,
+        "cost_usd": null,
+        "elapsed_minutes": 0.676,
+        "tokens": 2785
+      }
+    },
+    "order_id": "c8b7d7d9110146f293fb7e75082bc2de",
+    "push": null,
+    "review_report": {
+      "file": "review_reports/rr-20261027T151546Z-92dd32c4.json",
+      "report_id": "rr-20261027T151546Z-92dd32c4",
+      "status": "failed"
+    },
+    "schema_version": 1,
+    "shape": "one job",
+    "shape_source": "bounded lane",
+    "steps": [
+      {
+        "detail": "project remedy-edition (32769b0a-b490-46e8-8fca-a5f3fe4eaaf8) selected by --project",
+        "name": "init",
+        "status": "done"
+      },
+      {
+        "detail": "already studied at 2026-10-27T15:11:25.895414+00:00 (head 15307bc9c6500e199c63934e53ce65b041a7075c); study again by hand: remedy study run --path /home/decodeux/Repos/universe/remedy",
+        "name": "study",
+        "status": "skipped"
+      },
+      {
+        "detail": "mission ee76884d807e4b2dbaec9b2bec91117c plan v2 (deterministic, 1 milestone(s)): /home/decodeux/Repos/remedy/.data/missions/32769b0a-b490-46e8-8fca-a5f3fe4eaaf8/ee76884d807e4b2dbaec9b2bec91117c/evidence/orders/c8b7d7d9110146f293fb7e75082bc2de/mission_plan_v2.md; lane: bounded (the order names one file, CHANGELOG.md, and asks for one thing); no contract template, none proposed from the order",
+        "name": "plan",
+        "status": "done"
+      },
+      {
+        "detail": "one job 6a3ee45119bf42fd linked to mission ee76884d807e4b2dbaec9b2bec91117c (shape: one job, from bounded lane): 1 task(s), plan: deterministic, one task per deliverable, intake: heuristic (bounded lane, no provider call)",
+        "name": "shape",
+        "status": "done"
+      },
+      {
+        "detail": "job 6a3ee45119bf42fd ended blocked: task_e49fd6a23dff47ca_gate_failed: final_status=staged_blocked; reviewer_verdict=blocked",
+        "name": "run",
+        "status": "failed"
+      }
+    ],
+    "stopped_before_apply": true,
+    "unmet_blocking_criteria": [
+      "C001"
+    ],
+    "waiting_job_ids": []
+  },
+  "cancel": null,
+  "ended_at": "2026-10-27T15:16:27Z",
+  "exit_code": 1,
+  "jobs": [
+    {
+      "blocking_criterion": "CHANGELOG.md is produced and meets the order: Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased. Trag ihn in drei Sätzen nach. Dieses Repository hat noch keine CHANGELOG.md: leg sie im Wurzelordner an, mit der Überschrift Changelog und dem Abschnitt Unreleased, und trag den Eintrag dort ein.",
+      "executable": false,
+      "job_id": "6a3ee45119bf42fd",
+      "mission_id": "ee76884d807e4b2dbaec9b2bec91117c",
+      "phase": "blocked",
+      "state": "blocked",
+      "story": "/api/v1/jobs/6a3ee45119bf42fd/story",
+      "tasks": {
+        "current": "",
+        "done": 0,
+        "total": 1
+      },
+      "title": "Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased.…",
+      "verification": "passed",
+      "waiting_reason": "",
+      "waits_for": null
+    }
+  ],
+  "ok": true,
+  "order_file": "/home/decodeux/Repos/remedy/.data/serve/orders/f97733cb176ec835/order.md",
+  "order_id": "f97733cb176ec835",
+  "phase": "blocked",
+  "schema_version": 1,
+  "started_at": "2026-10-27T15:15:46Z",
+  "state": "ended"
+}

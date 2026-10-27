@@ -1,0 +1,22 @@
+{
+  "released": true,
+  "blocking_red": [],
+  "reported_red": [],
+  "not_run": [],
+  "error": "",
+  "checks": [
+    {
+      "check_id": "ctr-C001",
+      "kind": "project_tests",
+      "source": "plan_acceptance",
+      "blocking": true,
+      "status": "passed",
+      "reason": "",
+      "command": "python -m pytest -q -p no:warnings -p no:cacheprovider --noconftest -p conftest /home/decodeux/Repos/universe/tests/edition tests",
+      "exit_code": 0,
+      "duration_ms": 1927,
+      "output_tail": ".................ssss.......                                             [100%]\n24 passed, 4 skipped in 1.57s\n",
+      "cwd": ""
+    }
+  ]
+}

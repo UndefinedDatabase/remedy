@@ -1,0 +1,78 @@
+{
+  "answer": {
+    "contract": null,
+    "cost": null,
+    "job_ids": [],
+    "jobs": [],
+    "landed": [],
+    "mission_id": null,
+    "mission_plan_path": null,
+    "next": [],
+    "ok": true,
+    "order_budget": {
+      "calls": [],
+      "caps": {
+        "deadline": null,
+        "max_cost_usd": null,
+        "max_provider_calls": 60,
+        "max_total_tokens": 400000,
+        "max_wall_clock_minutes": 120,
+        "min_free_disk_bytes": null
+      },
+      "cost": {
+        "cap_usd": null,
+        "enforced": false,
+        "measured_usd": null,
+        "unpriced_calls": 0
+      },
+      "estimated_planning_tokens": 0,
+      "jobs": {},
+      "planner_calls": 0,
+      "planner_calls_by_reason": {},
+      "refused_calls": 0,
+      "unmeasured_jobs": [],
+      "used": {
+        "calls": 0,
+        "cost_usd": null,
+        "elapsed_minutes": 0.001,
+        "tokens": 0
+      }
+    },
+    "order_id": null,
+    "push": null,
+    "review_report": {
+      "file": "review_reports/rr-20261027T151407Z-8d57eba3.json",
+      "report_id": "rr-20261027T151407Z-8d57eba3",
+      "status": "stopped"
+    },
+    "schema_version": 1,
+    "shape": null,
+    "shape_source": null,
+    "steps": [
+      {
+        "detail": "project remedy-edition (32769b0a-b490-46e8-8fca-a5f3fe4eaaf8) selected by --project",
+        "name": "init",
+        "status": "done"
+      },
+      {
+        "detail": "nothing was planned or run: CHANGELOG.md is not tracked and the order does not say to create it; which existing file is meant?",
+        "name": "study",
+        "status": "stopped"
+      }
+    ],
+    "stopped_before_apply": true,
+    "unmet_blocking_criteria": [],
+    "waiting_job_ids": []
+  },
+  "cancel": null,
+  "ended_at": "2026-10-27T15:14:07Z",
+  "exit_code": 0,
+  "jobs": [],
+  "ok": true,
+  "order_file": "/home/decodeux/Repos/remedy/.data/serve/orders/62f50ba6831ca68d/order.md",
+  "order_id": "62f50ba6831ca68d",
+  "phase": "ended",
+  "schema_version": 1,
+  "started_at": "2026-10-27T15:14:06Z",
+  "state": "ended"
+}

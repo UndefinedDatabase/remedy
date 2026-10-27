@@ -1,0 +1,204 @@
+{
+  "changes": [
+    {
+      "added": 5,
+      "path": "src/screens/KnowledgeNet.tsx",
+      "removed": 4
+    },
+    {
+      "added": 15,
+      "path": "src/screens/Memory.tsx",
+      "removed": 20
+    },
+    {
+      "added": 6,
+      "path": "src/screens/net/NetHeader.tsx",
+      "removed": 9
+    },
+    {
+      "added": 9,
+      "path": "src/styles/knowledge-net.css",
+      "removed": 2
+    },
+    {
+      "added": 0,
+      "path": "src/text/de-net.ts",
+      "removed": 1
+    },
+    {
+      "added": 3,
+      "path": "tests/e2e/memory-net-592.spec.ts",
+      "removed": 2
+    },
+    {
+      "added": 50,
+      "path": "tests/unit/memory-info-605.test.tsx",
+      "removed": 0
+    },
+    {
+      "added": 0,
+      "path": "tests/unit/text-golden.json",
+      "removed": 1
+    }
+  ],
+  "dirty_start": null,
+  "end": {
+    "action": "decline",
+    "route": {
+      "method": "POST",
+      "path": "/api/v1/jobs/967b13a7bbb44b9c/decline"
+    }
+  },
+  "ended_at": "2026-10-27T15:41:02.052700+00:00",
+  "job_id": "967b13a7bbb44b9c",
+  "next": {
+    "action": "apply",
+    "route": {
+      "method": "POST",
+      "path": "/api/v1/jobs/967b13a7bbb44b9c/apply"
+    }
+  },
+  "note_open": false,
+  "numbers": {
+    "calls": 8,
+    "duration_s": 450,
+    "model_turns": null,
+    "rounds": 4,
+    "tokens_in": 120,
+    "tokens_out": 28666
+  },
+  "ok": true,
+  "order": "Das (i) in Gedächtnis bekommt denselben Namen und dasselbe Verhalten wie jedes andere (i) der App.",
+  "order_id": "2318f04b3a65e952",
+  "retries": [],
+  "schema_version": 1,
+  "scope": {
+    "decided": "one_job",
+    "files": [
+      "src/screens/Memory.tsx",
+      "src/components/InfoButton.tsx",
+      "src/state/memory.ts"
+    ],
+    "files_expected": [
+      "src/screens/Memory.tsx",
+      "src/components/InfoButton.tsx",
+      "src/state/memory.ts"
+    ],
+    "files_touched": [
+      "src/screens/KnowledgeNet.tsx",
+      "src/screens/Memory.tsx",
+      "src/screens/net/NetHeader.tsx",
+      "src/styles/knowledge-net.css",
+      "src/text/de-net.ts",
+      "tests/e2e/memory-net-592.spec.ts",
+      "tests/unit/memory-info-605.test.tsx",
+      "tests/unit/text-golden.json"
+    ],
+    "match": false,
+    "reason": "Es handelt sich um eine einzige kohärente Änderung: das (i)-Element im Gedächtnis-Screen wird auf denselben Namen und dasselbe Verhalten wie die bestehende InfoButton-Komponente angepasst.",
+    "single_job": true
+  },
+  "scope_findings": [],
+  "started_at": "2026-10-27T15:33:31.459256+00:00",
+  "state": "done",
+  "state_detail": {
+    "changed_files": 8
+  },
+  "steps": [
+    {
+      "id": "reading",
+      "phrase": {
+        "args": {
+          "first": ".gitignore",
+          "n": 1769
+        },
+        "key": "found_files"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "planning",
+      "phrase": {
+        "args": {
+          "n": 2
+        },
+        "key": "planned_tasks"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "building",
+      "phrase": {
+        "args": {
+          "n": 8
+        },
+        "key": "changed_files"
+      },
+      "status": "done",
+      "tasks": [
+        {
+          "files": [
+            "src/screens/KnowledgeNet.tsx",
+            "src/screens/Memory.tsx",
+            "src/screens/net/NetHeader.tsx",
+            "src/styles/knowledge-net.css",
+            "src/text/de-net.ts",
+            "tests/e2e/memory-net-592.spec.ts",
+            "tests/unit/text-golden.json"
+          ],
+          "rounds": 2,
+          "status": "done",
+          "title": "Replace inline info button in MemoryPanel with shared InfoButton (3/3): Edit src/chat/MemoryPanel.tsx to remove any local info-button element or component and instead render the shared <InfoButton> from src/InfoButton.tsx, passing aria-haspopup and aria-label=\"Erkläung öffnen\" in alignment with every other (i) in the app.\nThis one task does all of these, in order:\nStep 1, Replace inline info button in MemoryPanel with shared InfoButton (1/3): Edit src/chat/MemoryPanel.tsx to remove any local info-button element or component and instead render the shared <InfoButton> from src/InfoButton.tsx, passing aria-haspopup and aria-label=\"Erkläung öffnen\" in alignment with every other (i) in the app.\nStep 2, Replace inline info button in MemoryPanel with shared InfoButton (2/3): Edit src/chat/MemoryPanel.tsx to remove any local info-button element or component and instead render the shared <InfoButton> from src/InfoButton.tsx, passing aria-haspopup and aria-label=\"Erkläung öffnen\" in alignment with every other (i) in the app.\nStep 3, Replace inline info button in MemoryPanel with shared InfoButton (3/3): Edit src/chat/MemoryPanel.tsx to remove any local info-button element or component and instead render the shared <InfoButton> from src/InfoButton.tsx, passing aria-haspopup and aria-label=\"Erkläung öffnen\" in alignment with every other (i) in the app."
+        },
+        {
+          "files": [
+            "tests/unit/memory-info-605.test.tsx"
+          ],
+          "rounds": 2,
+          "status": "done",
+          "title": "Add unit test asserting MemoryPanel info button ARIA attributes (3/3): Write or update a test file for MemoryPanel that mounts the component and asserts the info button has aria-haspopup and accessible text 'Erkläung öffnen', confirming the refactor meets ARIA requirements.\nThis one task does all of these, in order:\nStep 1, Add unit test asserting MemoryPanel info button ARIA attributes (1/3): Write or update a test file for MemoryPanel that mounts the component and asserts the info button has aria-haspopup and accessible text 'Erkläung öffnen', confirming the refactor meets ARIA requirements.\nStep 2, Add unit test asserting MemoryPanel info button ARIA attributes (2/3): Write or update a test file for MemoryPanel that mounts the component and asserts the info button has aria-haspopup and accessible text 'Erkläung öffnen', confirming the refactor meets ARIA requirements.\nStep 3, Add unit test asserting MemoryPanel info button ARIA attributes (3/3): Write or update a test file for MemoryPanel that mounts the component and asserts the info button has aria-haspopup and accessible text 'Erkläung öffnen', confirming the refactor meets ARIA requirements."
+        }
+      ],
+      "tokens": {
+        "in": 120,
+        "out": 28666
+      }
+    },
+    {
+      "id": "checking",
+      "phrase": {
+        "args": {
+          "n": 1
+        },
+        "key": "tests_passed"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "finished",
+      "phrase": {
+        "args": {
+          "n": 8
+        },
+        "key": "waiting_for_apply"
+      },
+      "status": "done",
+      "tokens": null
+    }
+  ],
+  "updated_at": "2026-10-27T15:41:02.052700+00:00",
+  "verification": {
+    "output": "",
+    "reason": "",
+    "reason_key": "",
+    "required": true,
+    "status": "passed",
+    "tested_by": [
+      "builder",
+      "final_check"
+    ]
+  }
+}

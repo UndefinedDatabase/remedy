@@ -1,0 +1,18 @@
+{
+  "checks": [
+    {
+      "acceptance_refs": [
+        "C001:0"
+      ],
+      "blocking": true,
+      "description": "The mission goal is met in full: Das (i) in Ged\u00e4chtnis bekommt denselben Namen und dasselbe Verhalten wie jedes andere (i) der App.",
+      "id": "ctr-C001",
+      "kind": "project_tests",
+      "source": "plan_acceptance",
+      "spec": {}
+    }
+  ],
+  "compiled": false,
+  "origin": "deterministic",
+  "schema_v": "dod_v1"
+}

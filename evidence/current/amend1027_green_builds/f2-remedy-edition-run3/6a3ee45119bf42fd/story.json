@@ -1,0 +1,117 @@
+{
+  "changes": [
+    {
+      "added": 6,
+      "path": "CHANGELOG.md",
+      "removed": 0
+    }
+  ],
+  "dirty_start": null,
+  "end": {
+    "action": "abandon",
+    "route": {
+      "method": "POST",
+      "path": "/api/v1/jobs/6a3ee45119bf42fd/abandon"
+    }
+  },
+  "ended_at": "2026-10-27T15:16:27.425640+00:00",
+  "job_id": "6a3ee45119bf42fd",
+  "next": {
+    "action": "retry",
+    "route": {
+      "method": "POST",
+      "path": "/api/v1/jobs/6a3ee45119bf42fd/retry"
+    }
+  },
+  "note_open": true,
+  "numbers": {
+    "calls": 2,
+    "duration_s": 40,
+    "model_turns": null,
+    "rounds": 1,
+    "tokens_in": 14,
+    "tokens_out": 2771
+  },
+  "ok": true,
+  "order": "Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased. Trag ihn in drei Sätzen nach. Dieses Repository hat noch keine CHANGELOG.md: leg sie im Wurzelordner an, mit der Überschrift Changelog und dem Abschnitt Unreleased, und trag den Eintrag dort ein.",
+  "order_id": "f97733cb176ec835",
+  "retries": [],
+  "schema_version": 1,
+  "scope": null,
+  "scope_findings": [],
+  "started_at": "2026-10-27T15:15:47.209787+00:00",
+  "state": "failed",
+  "state_detail": {
+    "reason": {
+      "args": {},
+      "key": "unknown"
+    }
+  },
+  "steps": [
+    {
+      "id": "reading",
+      "phrase": {
+        "args": {
+          "first": ".env.example",
+          "n": 164
+        },
+        "key": "found_files"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "planning",
+      "phrase": {
+        "args": {
+          "n": 1
+        },
+        "key": "planned_tasks"
+      },
+      "status": "done",
+      "tokens": null
+    },
+    {
+      "id": "building",
+      "phrase": null,
+      "status": "failed",
+      "tasks": [
+        {
+          "files": [
+            "CHANGELOG.md"
+          ],
+          "rounds": 1,
+          "status": "failed",
+          "title": "Deliver CHANGELOG.md"
+        }
+      ],
+      "tokens": {
+        "in": 14,
+        "out": 2771
+      }
+    },
+    {
+      "id": "checking",
+      "phrase": null,
+      "status": "skipped",
+      "tokens": null
+    },
+    {
+      "id": "finished",
+      "phrase": null,
+      "status": "failed",
+      "tokens": null
+    }
+  ],
+  "updated_at": "2026-10-27T15:16:27.425640+00:00",
+  "verification": {
+    "output": "",
+    "reason": "",
+    "reason_key": "",
+    "required": true,
+    "status": "passed",
+    "tested_by": [
+      "final_check"
+    ]
+  }
+}

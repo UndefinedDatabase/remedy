@@ -1,0 +1,105 @@
+{
+  "copied_here": [
+    ".run_manifest_control/append.lock",
+    "builder_test_runs.json",
+    "dod.json",
+    "dod_result.json",
+    "run_manifest.json",
+    "run_manifest_index.json",
+    "run_manifests/b739296d6a8c4642/call_ledgers/fb02a5961834386d1e68efe2d60461bedd33a425279259f27814dafbab05fd19.json",
+    "run_manifests/b739296d6a8c4642/calls/0001-builder-round01-attempt.json",
+    "run_manifests/b739296d6a8c4642/calls/0002-reviewer-round01-attempt.json",
+    "run_manifests/b739296d6a8c4642/run_manifest.json",
+    "task_runs/c21b255f097e4053/builder_bash_calls.json",
+    "task_runs/c21b255f097e4053/worker_isolation.jsonl",
+    "task_runs/c21b255f097e4053/worker_sandbox.jsonl"
+  ],
+  "files": [
+    {
+      "name": ".run_manifest_control/append.lock",
+      "size": 0,
+      "truncated": false
+    },
+    {
+      "name": "builder_test_runs.json",
+      "size": 204,
+      "truncated": false
+    },
+    {
+      "name": "dod.json",
+      "size": 492,
+      "truncated": false
+    },
+    {
+      "name": "dod_result.json",
+      "size": 648,
+      "truncated": false
+    },
+    {
+      "name": "run_manifest.json",
+      "size": 27530,
+      "truncated": true
+    },
+    {
+      "name": "run_manifest_index.json",
+      "size": 445,
+      "truncated": false
+    },
+    {
+      "name": "run_manifests/b739296d6a8c4642/call_ledgers/fb02a5961834386d1e68efe2d60461bedd33a425279259f27814dafbab05fd19.json",
+      "size": 845,
+      "truncated": false
+    },
+    {
+      "name": "run_manifests/b739296d6a8c4642/calls/0001-builder-round01-attempt.json",
+      "size": 853,
+      "truncated": false
+    },
+    {
+      "name": "run_manifests/b739296d6a8c4642/calls/0002-reviewer-round01-attempt.json",
+      "size": 918,
+      "truncated": false
+    },
+    {
+      "name": "run_manifests/b739296d6a8c4642/run_manifest.json",
+      "size": 27530,
+      "truncated": true
+    },
+    {
+      "name": "task_runs/c21b255f097e4053/builder_bash_calls.json",
+      "size": 453,
+      "truncated": false
+    },
+    {
+      "name": "task_runs/c21b255f097e4053/streams/builder/round-01/attempt-01/raw_stream.jsonl",
+      "size": 15623,
+      "truncated": false
+    },
+    {
+      "name": "task_runs/c21b255f097e4053/streams/builder/round-01/attempt-01/run_events.jsonl",
+      "size": 3427,
+      "truncated": false
+    },
+    {
+      "name": "task_runs/c21b255f097e4053/streams/reviewer/round-01/attempt-01/raw_stream.jsonl",
+      "size": 14087,
+      "truncated": false
+    },
+    {
+      "name": "task_runs/c21b255f097e4053/streams/reviewer/round-01/attempt-01/run_events.jsonl",
+      "size": 2544,
+      "truncated": false
+    },
+    {
+      "name": "task_runs/c21b255f097e4053/worker_isolation.jsonl",
+      "size": 799,
+      "truncated": false
+    },
+    {
+      "name": "task_runs/c21b255f097e4053/worker_sandbox.jsonl",
+      "size": 1385,
+      "truncated": false
+    }
+  ],
+  "files_omitted": 0
+}
