@@ -1,0 +1,17 @@
+{
+  "files": [
+    {
+      "added": 5,
+      "change": "added",
+      "patch": "diff --git a/CHANGELOG.md b/CHANGELOG.md\nnew file mode 100644\nindex 0000000..5dd43dd\n--- /dev/null\n+++ b/CHANGELOG.md\n@@ -0,0 +1,5 @@\n+# Changelog\n+\n+## Unreleased\n+\n+- amend1024-one-real-order (2026-10-24): Claude Code ist der Standard für Planen, Bauen und Prüfen eines Auftrags eines Clients mit dem Recht `host_tools`, der keinen Provider nennt. Bevor geplant wird, entscheidet der Planer, ob ein Auftrag ein Job oder mehrere ist, und hält seine Antwort beim Job fest. Ein Claude-Code-Bauer darf den Testbefehl des Projekts und einige lesende Befehle selbst ausführen, und jeder abgelehnte Befehl wird protokolliert.\n",
+      "path": "CHANGELOG.md",
+      "removed": 0,
+      "truncated": false
+    }
+  ],
+  "job": "98c1f2692d004e3e",
+  "ok": true,
+  "schema_version": 1,
+  "state": "prepared",
+  "truncated": false
+}

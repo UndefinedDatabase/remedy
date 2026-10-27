@@ -1,0 +1,218 @@
+{
+  "answer": {
+    "contract": {
+      "amendments": [],
+      "criteria": [
+        {
+          "blocking": true,
+          "check": {
+            "acceptance_refs": [
+              "C001:0"
+            ],
+            "blocking": true,
+            "description": "The mission goal is met in full: Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased. Trag ihn in drei Sätzen nach. Dieses Repository h…",
+            "id": "ctr-C001",
+            "kind": "project_tests",
+            "source": "plan_acceptance",
+            "spec": {}
+          },
+          "evidence_ref": "9444598bb9f648c1:ctr-C001",
+          "id": "C001",
+          "milestones": [
+            "M001"
+          ],
+          "origin": "planner",
+          "status": "met",
+          "text": "The mission goal is met in full: Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased. Trag ihn in drei Sätzen nach. Dieses Repository hat noch keine CHANGELOG.md: leg sie im Wurzelordner an, mit der Überschrift Changelog und dem Abschnitt Unreleased, und trag den Eintrag dort ein. Was amend1024-one-real-order (2026-10-24) in Remedy brachte, laut Remedys eigenem CHANGELOG: Claude Code (claude-cli) ist der Standard für Planen, Bauen und Prüfen eines Auftrags eines Clients mit host_tools, der keinen Provider nennt. Bevor geplant wird, entscheidet der Planer, ob ein Auftrag ein Job oder mehrere ist, und hält die Antwort als scope_decision.json fest. Ein claude-cli-Bauer darf den Testbefehl des Projekts und einige lesende Befehle selbst ausführen, und jeder abgelehnte Befehl wird protokolliert."
+        }
+      ],
+      "schema": "contract_v1",
+      "template": null
+    },
+    "cost": {
+      "cost_usd": null,
+      "job_ids": [
+        "9444598bb9f648c1"
+      ],
+      "mirror_errors": {},
+      "mirror_failed_job_ids": [],
+      "roles": [
+        {
+          "cache_read": 46213,
+          "cost_usd": null,
+          "harness_invocations": 1,
+          "model_turns": null,
+          "role": "builder",
+          "tokens_in": 8,
+          "tokens_out": 1655
+        },
+        {
+          "cache_read": 12627,
+          "cost_usd": null,
+          "harness_invocations": 1,
+          "model_turns": null,
+          "role": "reviewer",
+          "tokens_in": 4,
+          "tokens_out": 763
+        }
+      ],
+      "show_cost_usd": false
+    },
+    "job_ids": [
+      "9444598bb9f648c1"
+    ],
+    "jobs": [
+      {
+        "job_id": "9444598bb9f648c1",
+        "tasks": [
+          {
+            "deliverable": "scope_decision.json",
+            "title": "Deliver scope_decision.json"
+          }
+        ],
+        "verification": {
+          "output": "",
+          "reason": "",
+          "reason_key": "",
+          "request": "The project names a test command, so its own tests run before a result is offered.",
+          "required": true,
+          "runs": [
+            {
+              "blocking": true,
+              "check_id": "ctr-C001",
+              "command": "python -m pytest -q -p no:warnings -p no:cacheprovider --noconftest -p conftest edition tests",
+              "source": "dod",
+              "status": "passed"
+            }
+          ],
+          "status": "passed",
+          "tested_by": [
+            "final_check"
+          ]
+        }
+      }
+    ],
+    "landed": [],
+    "mission_id": "ee76884d807e4b2dbaec9b2bec91117c",
+    "mission_plan_path": "/home/decodeux/Repos/remedy/.data/missions/32769b0a-b490-46e8-8fca-a5f3fe4eaaf8/ee76884d807e4b2dbaec9b2bec91117c/evidence/orders/67622837f0d24493a2f0f4a0ecbe33a8/mission_plan_v3.md",
+    "next": [
+      "remedy job show 9444598bb9f648c1",
+      "remedy serve start",
+      "remedy client story 9444598bb9f648c1",
+      "remedy job apply 9444598bb9f648c1 --repo /home/decodeux/Repos/universe/remedy --approve"
+    ],
+    "ok": true,
+    "order_budget": {
+      "calls": [],
+      "caps": {
+        "deadline": null,
+        "max_cost_usd": null,
+        "max_provider_calls": 60,
+        "max_total_tokens": 400000,
+        "max_wall_clock_minutes": 120,
+        "min_free_disk_bytes": null
+      },
+      "cost": {
+        "cap_usd": null,
+        "enforced": false,
+        "measured_usd": null,
+        "unpriced_calls": 0
+      },
+      "estimated_planning_tokens": 0,
+      "jobs": {
+        "9444598bb9f648c1": {
+          "calls": 2,
+          "cost_usd": null,
+          "measured": true,
+          "tokens": 2430,
+          "unpriced_calls": 0
+        }
+      },
+      "planner_calls": 0,
+      "planner_calls_by_reason": {},
+      "refused_calls": 0,
+      "unmeasured_jobs": [],
+      "used": {
+        "calls": 2,
+        "cost_usd": null,
+        "elapsed_minutes": 0.646,
+        "tokens": 2430
+      }
+    },
+    "order_id": "67622837f0d24493a2f0f4a0ecbe33a8",
+    "push": null,
+    "review_report": {
+      "file": "review_reports/rr-20261027T151719Z-9885d456.json",
+      "report_id": "rr-20261027T151719Z-9885d456",
+      "status": "completed"
+    },
+    "schema_version": 1,
+    "shape": "one job",
+    "shape_source": "bounded lane",
+    "steps": [
+      {
+        "detail": "project remedy-edition (32769b0a-b490-46e8-8fca-a5f3fe4eaaf8) selected by --project",
+        "name": "init",
+        "status": "done"
+      },
+      {
+        "detail": "already studied at 2026-10-27T15:11:25.895414+00:00 (head 15307bc9c6500e199c63934e53ce65b041a7075c); study again by hand: remedy study run --path /home/decodeux/Repos/universe/remedy",
+        "name": "study",
+        "status": "skipped"
+      },
+      {
+        "detail": "mission ee76884d807e4b2dbaec9b2bec91117c plan v3 (deterministic, 1 milestone(s)): /home/decodeux/Repos/remedy/.data/missions/32769b0a-b490-46e8-8fca-a5f3fe4eaaf8/ee76884d807e4b2dbaec9b2bec91117c/evidence/orders/67622837f0d24493a2f0f4a0ecbe33a8/mission_plan_v3.md; lane: bounded (the order names 2 files, scope_decision.json, CHANGELOG.md, and they are one bounded job of at most 3 files, each of which must change but CHANGELOG.md, which its words do not clearly ask to change); no contract template, none proposed from the order",
+        "name": "plan",
+        "status": "done"
+      },
+      {
+        "detail": "one job 9444598bb9f648c1 linked to mission ee76884d807e4b2dbaec9b2bec91117c (shape: one job, from bounded lane): 1 task(s), plan: deterministic, one task per deliverable, intake: heuristic (bounded lane, no provider call)",
+        "name": "shape",
+        "status": "done"
+      },
+      {
+        "detail": "job 9444598bb9f648c1 ran 1 task(s) to completed",
+        "name": "run",
+        "status": "done"
+      },
+      {
+        "detail": "stopped before apply; /home/decodeux/Repos/universe/remedy is untouched. Apply the reviewed result with: remedy job apply 9444598bb9f648c1 --repo /home/decodeux/Repos/universe/remedy --approve",
+        "name": "apply",
+        "status": "stopped"
+      }
+    ],
+    "stopped_before_apply": true,
+    "unmet_blocking_criteria": [],
+    "waiting_job_ids": []
+  },
+  "cancel": null,
+  "ended_at": "2026-10-27T15:17:57Z",
+  "exit_code": 0,
+  "jobs": [
+    {
+      "blocking_criterion": null,
+      "executable": false,
+      "job_id": "9444598bb9f648c1",
+      "mission_id": "ee76884d807e4b2dbaec9b2bec91117c",
+      "phase": "awaiting_apply",
+      "state": "completed",
+      "story": "/api/v1/jobs/9444598bb9f648c1/story",
+      "tasks": {
+        "current": "",
+        "done": 1,
+        "total": 1
+      },
+      "title": "Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased.…",
+      "verification": "passed",
+      "waiting_reason": "",
+      "waits_for": null
+    }
+  ],
+  "ok": true,
+  "order_file": "/home/decodeux/Repos/remedy/.data/serve/orders/f72f138b0f2a9e76/order.md",
+  "order_id": "f72f138b0f2a9e76",
+  "phase": "awaiting_apply",
+  "schema_version": 1,
+  "started_at": "2026-10-27T15:17:18Z",
+  "state": "ended"
+}

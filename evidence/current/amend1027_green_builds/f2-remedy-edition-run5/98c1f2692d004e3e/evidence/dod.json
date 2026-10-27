@@ -1,0 +1,18 @@
+{
+  "checks": [
+    {
+      "acceptance_refs": [
+        "C001:0"
+      ],
+      "blocking": true,
+      "description": "The mission goal is met in full: Der Eintrag f\u00fcr das Amendment amend1024 fehlt im CHANGELOG unter Unreleased. Trag ihn in drei S\u00e4tzen nach. Dieses Repository h\u2026",
+      "id": "ctr-C001",
+      "kind": "project_tests",
+      "source": "plan_acceptance",
+      "spec": {}
+    }
+  ],
+  "compiled": false,
+  "origin": "deterministic",
+  "schema_v": "dod_v1"
+}

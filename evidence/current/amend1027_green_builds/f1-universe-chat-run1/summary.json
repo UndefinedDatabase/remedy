@@ -1,0 +1,66 @@
+{
+  "client": "orb-universe",
+  "exit_code": 0,
+  "jobs": {
+    "967b13a7bbb44b9c": {
+      "numbers": {
+        "calls": 8,
+        "duration_s": 450,
+        "model_turns": null,
+        "rounds": 4,
+        "tokens_in": 120,
+        "tokens_out": 28666
+      },
+      "order_id": "2318f04b3a65e952",
+      "retries": [],
+      "scope": {
+        "decided": "one_job",
+        "files": [
+          "src/screens/Memory.tsx",
+          "src/components/InfoButton.tsx",
+          "src/state/memory.ts"
+        ],
+        "files_expected": [
+          "src/screens/Memory.tsx",
+          "src/components/InfoButton.tsx",
+          "src/state/memory.ts"
+        ],
+        "files_touched": [
+          "src/screens/KnowledgeNet.tsx",
+          "src/screens/Memory.tsx",
+          "src/screens/net/NetHeader.tsx",
+          "src/styles/knowledge-net.css",
+          "src/text/de-net.ts",
+          "tests/e2e/memory-net-592.spec.ts",
+          "tests/unit/memory-info-605.test.tsx",
+          "tests/unit/text-golden.json"
+        ],
+        "match": false,
+        "reason": "Es handelt sich um eine einzige kohärente Änderung: das (i)-Element im Gedächtnis-Screen wird auf denselben Namen und dasselbe Verhalten wie die bestehende InfoButton-Komponente angepasst.",
+        "single_job": true
+      },
+      "state": "done",
+      "verification": {
+        "output": "",
+        "reason": "",
+        "reason_key": "",
+        "required": true,
+        "status": "passed",
+        "tested_by": [
+          "builder",
+          "final_check"
+        ]
+      }
+    }
+  },
+  "order_budget_used": {
+    "calls": 15,
+    "cost_usd": null,
+    "elapsed_minutes": 9.961,
+    "tokens": 46593
+  },
+  "order_id": "2318f04b3a65e952",
+  "phase": "awaiting_apply",
+  "shape": "one job",
+  "state": "ended"
+}

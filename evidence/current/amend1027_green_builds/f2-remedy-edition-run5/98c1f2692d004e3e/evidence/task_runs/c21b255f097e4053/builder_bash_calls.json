@@ -1,0 +1,16 @@
+[
+  {
+    "command": "ls CHANGELOG.md 2>&1; git status --short",
+    "result_tail": "ls: cannot access 'CHANGELOG.md': No such file or directory",
+    "is_error": false,
+    "round": 1,
+    "stream": "streams/builder/round-01/attempt-01/raw_stream.jsonl"
+  },
+  {
+    "command": "git status --short",
+    "result_tail": "?? CHANGELOG.md",
+    "is_error": false,
+    "round": 1,
+    "stream": "streams/builder/round-01/attempt-01/raw_stream.jsonl"
+  }
+]

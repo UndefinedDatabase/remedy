@@ -1,0 +1,60 @@
+[
+  {
+    "job_id": "967b13a7bbb44b9c",
+    "run_id": "307d5ae4bacf4eb5",
+    "task_id": "7ecc9ab615754461",
+    "round": 1,
+    "command": "",
+    "passed": null,
+    "reason_key": "not_attempted"
+  },
+  {
+    "job_id": "967b13a7bbb44b9c",
+    "run_id": "307d5ae4bacf4eb5",
+    "task_id": "7ecc9ab615754461",
+    "round": 2,
+    "command": "",
+    "passed": null,
+    "reason_key": "not_attempted"
+  },
+  {
+    "job_id": "967b13a7bbb44b9c",
+    "run_id": "abd7f63037d94d69",
+    "task_id": "859f11ae8e73444a",
+    "round": 1,
+    "command": "npx vitest run tests/unit/memory-info-605.test.tsx 2>&1 | tail -30",
+    "passed": true,
+    "summary": "2 passed, 0 failed",
+    "output_tail": " RUN  v5.0.2 /home/decodeux/Repos/universe/universe-chat/.remedy-wt/job-967b13a7bbb44b9c\n\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n   Start at  16:37:41\n   Duration  2.53s (transform 72%, import 17%, environment 5%, tests 4%, setup 2%)"
+  },
+  {
+    "job_id": "967b13a7bbb44b9c",
+    "run_id": "abd7f63037d94d69",
+    "task_id": "859f11ae8e73444a",
+    "round": 1,
+    "command": "npx vitest run tests/unit/edition-modes.test.tsx tests/unit/quiet-shared-605.test.tsx tests/unit/knowledge-net.test.tsx tests/unit/memory.test.ts tests/unit/memory-info-605.test.tsx 2>&1 | tail -8; npx tsc --noEmit -p . 2>&1 | grep memory-info | head",
+    "passed": null,
+    "summary": "0 passed, 0 failed",
+    "output_tail": "Permission to use Bash has been denied because Claude Code is running in don't ask mode. IMPORTANT: You *may* attempt to accomplish this action using other tools that might naturally be used to accomplish this goal, e.g. using head instead of cat. But you *should not* attempt to work around this denial in malicious ways, e.g. do not use your ability to run tests to execute non-test actions. You should only try to work around this restriction in reasonable ways that do not attempt to bypass the intent behind this denial. If you believe this capability is essential to complete the user's request, STOP and explain to the user what you were trying to do and why you need this permission. Let the user decide how to proceed."
+  },
+  {
+    "job_id": "967b13a7bbb44b9c",
+    "run_id": "abd7f63037d94d69",
+    "task_id": "859f11ae8e73444a",
+    "round": 2,
+    "command": "npx vitest run 2>&1 | grep -E \"FAIL|Test Files|Tests \" | head -20",
+    "passed": false,
+    "summary": "2096 passed, 3 failed",
+    "output_tail": "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯\n FAIL  tests/unit/motion-588.test.ts > T10_F588: only animations that mean something > names every keyframe from the allowed list\n FAIL  tests/unit/motion-588.test.ts > T10_F588: only animations that mean something > animates or transitions nothing outside the allowed list and her walk\n FAIL  tests/unit/text-golden.test.ts > T12_F248: the golden record of the app's texts > renders every text in Luna's edition as it was\n Test Files  2 failed | 290 passed (292)\n      Tests  3 failed | 2096 passed (2099)"
+  },
+  {
+    "job_id": "967b13a7bbb44b9c",
+    "run_id": "abd7f63037d94d69",
+    "task_id": "859f11ae8e73444a",
+    "round": 2,
+    "command": "npx vitest run tests/unit/motion-588.test.ts tests/unit/text-golden.test.ts 2>&1 | grep -vE \"^\\s*$\" | head -60",
+    "passed": false,
+    "summary": "0 passed, 1 failed",
+    "output_tail": " RUN  v5.0.2 /home/decodeux/Repos/universe/universe-chat/.remedy-wt/job-967b13a7bbb44b9c\n ❯ tests/unit/motion-588.test.ts (7 tests | 2 failed) 49ms\n   ❯ T10_F588: only animations that mean something (7)\n     × names every keyframe from the allowed list 8ms\n     × animates or transitions nothing outside the allowed list and her walk 25ms\n ❯ tests/unit/text-golden.test.ts (1 test | 1 failed) 112ms\n   ❯ T12_F248: the golden record of the app's texts (1)\n     × renders every text in Luna's edition as it was 109ms\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯\n FAIL  tests/unit/motion-588.test.ts > T10_F588: only animations that mean something > names every keyframe from the allowed list\nAssertionError: expected [ …(20) ] to deeply equal []\n- Expected\n+ Received\n- []\n+ [\n+   \"src/styles/pet-drawing.css: pet-breathe\",\n+   \"src/styles/pet-drawing.css: pet-bob\",\n+   \"src/styles/pet-drawing.css: pet-tilt\",\n+   \"src/styles/pet-drawing.css: pet-blink\",\n+   \"src/styles/pet-drawing.css: pet-look\",\n+   \"src/styles/pet-drawing.css: pet-sway\",\n+   \"src/styles/pet-drawing.css: pet-curl\",\n+   \"src/styles/pet-drawing.css: pet-wag\",\n+   \"src/styles/pet-drawing.css: pet-twitch\",\n+   \"src/styles/pet-drawing.css: pet-twitch-right\",\n+   \"src/styles/pet-drawing.css: pet-flop\",\n+   \"src/styles/pet-drawing.css: pet-flop-right\",\n+   \"src/styles/pet-drawing.css: pet-float\",\n+   \"src/styles/pet-drawing.css: pet-nibble\",\n+   \"src/styles/pet-drawing.css: pet-eaten\",\n+   \"src/styles/pet-drawing.css: pet-hop\",\n+   \"src/styles/pet-drawing.css: pet-ball\",\n+   \"src/styles/pet-drawing.css: pet-bounce\",\n+   \"src/styles/pet-drawing.css: pet-heart\",\n+   \"src/styles/pet-drawing.css: pet-purr\",\n+ ]\n ❯ tests/unit/motion-588.test.ts:56:23\n     54|     const names = SHEETS.flatMap(({ name, css }) => [...css.matchAll(/…\n     55|     const strangers = names.filter((entry) => !ALLOWED_KEYFRAMES.inclu…\n     56|     expect(strangers).toEqual([]);\n       |                       ^\n     57|   });\n     58|\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯\n FAIL  tests/unit/motion-588.test.ts > T10_F588: only animations that mean something > animates or transitions nothing outside the allowed list and her walk\nAssertionError: expected [ …(22) ] to deeply equal []\n- Expected\n+ Received\n- []\n+ [\n+   \"src/styles/pet-drawing.css:  .pet-drawing__body { animation: pet-breathe calc(3.4s * var(--pet-pace)) ease-in-out infinite }\",\n+   \"src/styles/pet-drawing.css:  .pet-drawing__head { animation: pet-tilt calc(9s * var(--pet-pace)) ease-in-out infinite }\",\n+   \"src/styles/pet-drawing.css:  .pet-drawing__face { animation: pet-bob calc(3.4s * var(--pet-pace)) ease-in-out infinite }\",\n+   \"src/styles/pet-drawing.css:  .pet-drawing__eye { animation: pet-blink calc(6.1s * var(--pet-pace)) linear infinite var(--pet-delay, 0s) }\",\n+   \"src/styles/pet-drawing.css:  .pet-drawing__look { animation: pet-look calc(8.6s * var(--pet-pace)) ease-in-out infinite var(--pet-delay, 0s) }\",\n+   \"src/styles/pet-drawing.css:  [data-kind=\\\"katze\\\"] .pet-drawing__tail { animation: pet-sway calc(3.2s * var(--pet-pace)) ease-in-out infinite alternate }\",\n+   \"src/styles/pet-drawing.css:  [data-kind=\\\"hund\\\"] .pet-drawing__tail { animation: pet-wag calc(0.5s * var(--pet-pace)) ease-in-out infinite alternate }\",\n+   \"src/styles/pet-drawing.css:  [data-kind=\\\"katze\\\"] .pet-drawing__ear--left { animation: pet-twitch 7.3s ease-in-out infinite }\",\n+   \"src/styles/pet-drawing.css:  [data-kind=\\\"katze\\\"] .pet-drawing__ear--right { animation: pet-twitch-right 11.7s ease-in-out infinite }\",\n+   \"src/styles/pet-drawing.css:  [data-kind=\\\"hund\\\"] .pet-drawing__ear--left { animation: pet-flop 8.3s ease-in-out infinite }\","
+  }
+]

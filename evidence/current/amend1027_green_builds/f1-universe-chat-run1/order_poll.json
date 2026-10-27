@@ -1,0 +1,308 @@
+{
+  "answer": {
+    "contract": {
+      "amendments": [],
+      "criteria": [
+        {
+          "blocking": true,
+          "check": {
+            "acceptance_refs": [
+              "C001:0"
+            ],
+            "blocking": true,
+            "description": "The mission goal is met in full: Das (i) in Gedächtnis bekommt denselben Namen und dasselbe Verhalten wie jedes andere (i) der App.",
+            "id": "ctr-C001",
+            "kind": "project_tests",
+            "source": "plan_acceptance",
+            "spec": {}
+          },
+          "evidence_ref": "967b13a7bbb44b9c:ctr-C001",
+          "id": "C001",
+          "milestones": [
+            "M001"
+          ],
+          "origin": "planner",
+          "status": "unmet",
+          "text": "The mission goal is met in full: Das (i) in Gedächtnis bekommt denselben Namen und dasselbe Verhalten wie jedes andere (i) der App."
+        }
+      ],
+      "schema": "contract_v1",
+      "template": null
+    },
+    "cost": {
+      "cost_usd": null,
+      "job_ids": [
+        "967b13a7bbb44b9c"
+      ],
+      "mirror_errors": {},
+      "mirror_failed_job_ids": [],
+      "roles": [
+        {
+          "cache_read": 1371423,
+          "cost_usd": null,
+          "harness_invocations": 4,
+          "model_turns": null,
+          "role": "builder",
+          "tokens_in": 90,
+          "tokens_out": 22040
+        },
+        {
+          "cache_read": 175841,
+          "cost_usd": null,
+          "harness_invocations": 4,
+          "model_turns": null,
+          "role": "reviewer",
+          "tokens_in": 30,
+          "tokens_out": 6626
+        }
+      ],
+      "show_cost_usd": false
+    },
+    "job_ids": [
+      "967b13a7bbb44b9c"
+    ],
+    "jobs": [
+      {
+        "job_id": "967b13a7bbb44b9c",
+        "tasks": [
+          {
+            "deliverable": "src/chat/MemoryPanel.tsx",
+            "title": "Replace inline info button in MemoryPanel with shared InfoButton (3/3): Edit src/chat/MemoryPanel.tsx to remove any local info-button element or component and instead render the shared <InfoButton> from src/InfoButton.tsx, passing aria-haspopup and aria-label=\"Erkläung öffnen\" in alignment with every other (i) in the app.\nThis one task does all of these, in order:\nStep 1, Replace inline info button in MemoryPanel with shared InfoButton (1/3): Edit src/chat/MemoryPanel.tsx to remove any local info-button element or component and instead render the shared <InfoButton> from src/InfoButton.tsx, passing aria-haspopup and aria-label=\"Erkläung öffnen\" in alignment with every other (i) in the app.\nStep 2, Replace inline info button in MemoryPanel with shared InfoButton (2/3): Edit src/chat/MemoryPanel.tsx to remove any local info-button element or component and instead render the shared <InfoButton> from src/InfoButton.tsx, passing aria-haspopup and aria-label=\"Erkläung öffnen\" in alignment with every other (i) in the app.\nStep 3, Replace inline info button in MemoryPanel with shared InfoButton (3/3): Edit src/chat/MemoryPanel.tsx to remove any local info-button element or component and instead render the shared <InfoButton> from src/InfoButton.tsx, passing aria-haspopup and aria-label=\"Erkläung öffnen\" in alignment with every other (i) in the app."
+          },
+          {
+            "deliverable": "tests/unit/chat/MemoryPanel.test.tsx",
+            "title": "Add unit test asserting MemoryPanel info button ARIA attributes (3/3): Write or update a test file for MemoryPanel that mounts the component and asserts the info button has aria-haspopup and accessible text 'Erkläung öffnen', confirming the refactor meets ARIA requirements.\nThis one task does all of these, in order:\nStep 1, Add unit test asserting MemoryPanel info button ARIA attributes (1/3): Write or update a test file for MemoryPanel that mounts the component and asserts the info button has aria-haspopup and accessible text 'Erkläung öffnen', confirming the refactor meets ARIA requirements.\nStep 2, Add unit test asserting MemoryPanel info button ARIA attributes (2/3): Write or update a test file for MemoryPanel that mounts the component and asserts the info button has aria-haspopup and accessible text 'Erkläung öffnen', confirming the refactor meets ARIA requirements.\nStep 3, Add unit test asserting MemoryPanel info button ARIA attributes (3/3): Write or update a test file for MemoryPanel that mounts the component and asserts the info button has aria-haspopup and accessible text 'Erkläung öffnen', confirming the refactor meets ARIA requirements."
+          }
+        ],
+        "verification": {
+          "output": "",
+          "reason": "",
+          "reason_key": "",
+          "request": "The project names a test command, so its own tests run before a result is offered.",
+          "required": true,
+          "runs": [
+            {
+              "blocking": true,
+              "check_id": "ctr-C001",
+              "command": "npm test",
+              "source": "dod",
+              "status": "passed"
+            }
+          ],
+          "status": "passed",
+          "tested_by": [
+            "builder",
+            "final_check"
+          ]
+        }
+      }
+    ],
+    "landed": [],
+    "mission_id": "ed0ef1e8517941cdb574f8c55c75f343",
+    "mission_plan_path": "/home/decodeux/Repos/remedy/.data/missions/901d6b75-c848-486c-81a6-6c8b5090e38f/ed0ef1e8517941cdb574f8c55c75f343/evidence/orders/86e1b45118e34811a4edfa1c4a0a9143/mission_plan_v4.md",
+    "next": [
+      "remedy job show 967b13a7bbb44b9c",
+      "remedy serve start",
+      "remedy client story 967b13a7bbb44b9c",
+      "remedy job apply 967b13a7bbb44b9c --repo /home/decodeux/Repos/universe/universe-chat --approve"
+    ],
+    "ok": true,
+    "order_budget": {
+      "calls": [
+        {
+          "attempt": 0,
+          "estimated_tokens": 13954,
+          "outcome": "ok",
+          "prompt_chars": 55495,
+          "reason": "scope_decision",
+          "response_chars": 323,
+          "role": "planner",
+          "seconds": 7.651,
+          "tokens_estimated": true
+        },
+        {
+          "attempt": 0,
+          "estimated_tokens": 98,
+          "outcome": "ok",
+          "prompt_chars": 183,
+          "reason": "study_narration",
+          "response_chars": 209,
+          "role": "planner",
+          "seconds": 4.505,
+          "tokens_estimated": true
+        },
+        {
+          "attempt": 0,
+          "estimated_tokens": 141,
+          "outcome": "ok",
+          "prompt_chars": 122,
+          "reason": "study_narration",
+          "response_chars": 445,
+          "role": "planner",
+          "seconds": 6.061,
+          "tokens_estimated": true
+        },
+        {
+          "attempt": 0,
+          "estimated_tokens": 180,
+          "outcome": "ok",
+          "prompt_chars": 79,
+          "reason": "study_narration",
+          "response_chars": 644,
+          "role": "planner",
+          "seconds": 7.75,
+          "tokens_estimated": true
+        },
+        {
+          "attempt": 0,
+          "estimated_tokens": 14,
+          "outcome": "ok",
+          "prompt_chars": 40,
+          "reason": "study_narration",
+          "response_chars": 16,
+          "role": "planner",
+          "seconds": 3.886,
+          "tokens_estimated": true
+        },
+        {
+          "attempt": 0,
+          "estimated_tokens": 952,
+          "outcome": "ok",
+          "prompt_chars": 2212,
+          "reason": "intake",
+          "response_chars": 1597,
+          "role": "planner",
+          "seconds": 35.896,
+          "tokens_estimated": true
+        },
+        {
+          "attempt": 0,
+          "estimated_tokens": 2468,
+          "outcome": "ok",
+          "prompt_chars": 6974,
+          "reason": "task_plan",
+          "response_chars": 2898,
+          "role": "planner",
+          "seconds": 79.463,
+          "tokens_estimated": true
+        }
+      ],
+      "caps": {
+        "deadline": null,
+        "max_cost_usd": null,
+        "max_provider_calls": 60,
+        "max_total_tokens": 400000,
+        "max_wall_clock_minutes": 120,
+        "min_free_disk_bytes": null
+      },
+      "cost": {
+        "cap_usd": null,
+        "enforced": false,
+        "measured_usd": null,
+        "unpriced_calls": 7
+      },
+      "estimated_planning_tokens": 17807,
+      "jobs": {
+        "967b13a7bbb44b9c": {
+          "calls": 8,
+          "cost_usd": null,
+          "measured": true,
+          "tokens": 28786,
+          "unpriced_calls": 0
+        }
+      },
+      "planner_calls": 7,
+      "planner_calls_by_reason": {
+        "intake": 1,
+        "scope_decision": 1,
+        "study_narration": 4,
+        "task_plan": 1
+      },
+      "refused_calls": 0,
+      "unmeasured_jobs": [],
+      "used": {
+        "calls": 15,
+        "cost_usd": null,
+        "elapsed_minutes": 9.961,
+        "tokens": 46593
+      }
+    },
+    "order_id": "86e1b45118e34811a4edfa1c4a0a9143",
+    "push": null,
+    "review_report": {
+      "file": "review_reports/rr-20261027T153105Z-58938168.json",
+      "report_id": "rr-20261027T153105Z-58938168",
+      "status": "completed"
+    },
+    "schema_version": 1,
+    "shape": "one job",
+    "shape_source": "the planner's scope decision",
+    "steps": [
+      {
+        "detail": "project universe-chat (901d6b75-c848-486c-81a6-6c8b5090e38f) selected by --project",
+        "name": "init",
+        "status": "done"
+      },
+      {
+        "detail": "4 memory card(s) written for project universe-chat (studied again: package.json changed since the study)",
+        "name": "study",
+        "status": "done"
+      },
+      {
+        "detail": "mission ed0ef1e8517941cdb574f8c55c75f343 plan v4 (deterministic, 1 milestone(s)): /home/decodeux/Repos/remedy/.data/missions/901d6b75-c848-486c-81a6-6c8b5090e38f/ed0ef1e8517941cdb574f8c55c75f343/evidence/orders/86e1b45118e34811a4edfa1c4a0a9143/mission_plan_v4.md; lane: full (the planner's scope decision says one job (Es handelt sich um eine einzige kohärente Änderung: das (i)-Element im Gedächtnis-Screen wird auf denselben Namen und dasselbe Verhalten wie die bestehende InfoButton-Komponente angepasst.), so it is one job without milestones and the planner plans its tasks only (routing alone: the scope of the order is not clearly one file)); no contract template, none proposed from the order",
+        "name": "plan",
+        "status": "done"
+      },
+      {
+        "detail": "one job 967b13a7bbb44b9c linked to mission ed0ef1e8517941cdb574f8c55c75f343 (shape: one job, from the planner's scope decision): 2 task(s), plan: task plan task_plan_v1 (approved via --run-unattended), intake: llm",
+        "name": "shape",
+        "status": "done"
+      },
+      {
+        "detail": "job 967b13a7bbb44b9c ran 2 task(s) to completed",
+        "name": "run",
+        "status": "done"
+      },
+      {
+        "detail": "stopped before apply; /home/decodeux/Repos/universe/universe-chat is untouched. Apply the reviewed result with: remedy job apply 967b13a7bbb44b9c --repo /home/decodeux/Repos/universe/universe-chat --approve",
+        "name": "apply",
+        "status": "stopped"
+      }
+    ],
+    "stopped_before_apply": true,
+    "unmet_blocking_criteria": [
+      "C001"
+    ],
+    "waiting_job_ids": []
+  },
+  "cancel": null,
+  "ended_at": "2026-10-27T15:41:03Z",
+  "exit_code": 0,
+  "jobs": [
+    {
+      "blocking_criterion": null,
+      "executable": false,
+      "job_id": "967b13a7bbb44b9c",
+      "mission_id": "ed0ef1e8517941cdb574f8c55c75f343",
+      "phase": "awaiting_apply",
+      "state": "completed",
+      "story": "/api/v1/jobs/967b13a7bbb44b9c/story",
+      "tasks": {
+        "current": "",
+        "done": 2,
+        "total": 2
+      },
+      "title": "Das (i) in Gedächtnis bekommt denselben Namen und dasselbe Verhalten wie jedes…",
+      "verification": "passed",
+      "waiting_reason": "",
+      "waits_for": null
+    }
+  ],
+  "ok": true,
+  "order_file": "/home/decodeux/Repos/remedy/.data/serve/orders/2318f04b3a65e952/order.md",
+  "order_id": "2318f04b3a65e952",
+  "phase": "awaiting_apply",
+  "schema_version": 1,
+  "started_at": "2026-10-27T15:31:05Z",
+  "state": "ended"
+}

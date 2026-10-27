@@ -1,0 +1,36 @@
+{
+  "client": "orb-remedy",
+  "missions": [
+    {
+      "milestones": [
+        {
+          "goal": "The mission goal is met in full: Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased. Trag ihn in drei Sätzen nach. Dieses Repository hat noch keine CHANGELOG.md: leg sie im Wurzelordner an, mit der Überschrift Changelog und dem Abschnitt Unreleased, und trag den Eintrag dort ein. Ändere keine anderen Dateien. Was amend1024-one-real-order (2026-10-24) in Remedy brachte, laut Remedys eigenem Changelog: Claude Code ist der Standard für Planen, Bauen und Prüfen eines Auftrags eines Clients mit dem Recht host_tools, der keinen Provider nennt. Bevor geplant wird, entscheidet der Planer, ob ein Auftrag ein Job oder mehrere ist, und hält seine Antwort beim Job fest. Ein Claude-Code-Bauer darf den Testbefehl des Projekts und einige lesende Befehle selbst ausführen, und jeder abgelehnte Befehl wird protokolliert.",
+          "id": "M001",
+          "jobs": [
+            {
+              "job_id": "98c1f2692d004e3e",
+              "number": 1,
+              "round": null,
+              "state": "done",
+              "state_detail": {},
+              "story": "/api/v1/jobs/98c1f2692d004e3e/story",
+              "tasks": {
+                "done": 1,
+                "total": 1
+              },
+              "title": "Der Eintrag für das Amendment amend1024 fehlt im CHANGELOG unter Unreleased.…",
+              "tool": null
+            }
+          ]
+        }
+      ],
+      "mission_id": "ee76884d807e4b2dbaec9b2bec91117c"
+    }
+  ],
+  "ok": true,
+  "order_id": "67f912f1e5b9ab21",
+  "phase": "awaiting_apply",
+  "schema_version": 1,
+  "scope": null,
+  "state": "ended"
+}

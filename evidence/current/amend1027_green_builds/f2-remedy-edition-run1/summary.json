@@ -1,0 +1,52 @@
+{
+  "client": "orb-remedy",
+  "exit_code": 1,
+  "jobs": {
+    "d643d0e015de4b41": {
+      "numbers": {
+        "calls": 2,
+        "duration_s": 36,
+        "model_turns": null,
+        "rounds": 1,
+        "tokens_in": 12,
+        "tokens_out": 2314
+      },
+      "order_id": "5a42873746467117",
+      "retries": [],
+      "scope": {
+        "decided": "one_job",
+        "files": [
+          "CHANGELOG.md"
+        ],
+        "files_expected": [
+          "CHANGELOG.md"
+        ],
+        "files_touched": [],
+        "match": false,
+        "reason": "Es handelt sich um eine einzelne, abgeschlossene Dokumentationsänderung in einer einzigen Datei.",
+        "single_job": true
+      },
+      "state": "failed",
+      "verification": {
+        "output": "",
+        "reason": "",
+        "reason_key": "",
+        "required": true,
+        "status": "passed",
+        "tested_by": [
+          "final_check"
+        ]
+      }
+    }
+  },
+  "order_budget_used": {
+    "calls": 9,
+    "cost_usd": null,
+    "elapsed_minutes": 2.549,
+    "tokens": 7946
+  },
+  "order_id": "5a42873746467117",
+  "phase": "blocked",
+  "shape": "one job",
+  "state": "ended"
+}

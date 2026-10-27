@@ -1,0 +1,40 @@
+{
+  "client": "orb-remedy",
+  "exit_code": 0,
+  "jobs": {
+    "98c1f2692d004e3e": {
+      "numbers": {
+        "calls": 2,
+        "duration_s": 27,
+        "model_turns": null,
+        "rounds": 1,
+        "tokens_in": 12,
+        "tokens_out": 1299
+      },
+      "order_id": "67f912f1e5b9ab21",
+      "retries": [],
+      "scope": null,
+      "state": "done",
+      "verification": {
+        "output": "",
+        "reason": "",
+        "reason_key": "",
+        "required": true,
+        "status": "passed",
+        "tested_by": [
+          "final_check"
+        ]
+      }
+    }
+  },
+  "order_budget_used": {
+    "calls": 2,
+    "cost_usd": null,
+    "elapsed_minutes": 0.47,
+    "tokens": 1311
+  },
+  "order_id": "67f912f1e5b9ab21",
+  "phase": "awaiting_apply",
+  "shape": "one job",
+  "state": "ended"
+}

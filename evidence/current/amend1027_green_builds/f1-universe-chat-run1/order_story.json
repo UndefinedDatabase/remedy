@@ -1,0 +1,45 @@
+{
+  "client": "orb-universe",
+  "missions": [
+    {
+      "milestones": [
+        {
+          "goal": "The mission goal is met in full: Das (i) in Gedächtnis bekommt denselben Namen und dasselbe Verhalten wie jedes andere (i) der App.",
+          "id": "M001",
+          "jobs": [
+            {
+              "job_id": "967b13a7bbb44b9c",
+              "number": 1,
+              "round": null,
+              "state": "done",
+              "state_detail": {},
+              "story": "/api/v1/jobs/967b13a7bbb44b9c/story",
+              "tasks": {
+                "done": 2,
+                "total": 2
+              },
+              "title": "Das (i) in Gedächtnis bekommt denselben Namen und dasselbe Verhalten wie jedes…",
+              "tool": null
+            }
+          ]
+        }
+      ],
+      "mission_id": "ed0ef1e8517941cdb574f8c55c75f343"
+    }
+  ],
+  "ok": true,
+  "order_id": "2318f04b3a65e952",
+  "phase": "awaiting_apply",
+  "schema_version": 1,
+  "scope": {
+    "decided": "one_job",
+    "files": [
+      "src/screens/Memory.tsx",
+      "src/components/InfoButton.tsx",
+      "src/state/memory.ts"
+    ],
+    "reason": "Es handelt sich um eine einzige kohärente Änderung: das (i)-Element im Gedächtnis-Screen wird auf denselben Namen und dasselbe Verhalten wie die bestehende InfoButton-Komponente angepasst.",
+    "single_job": true
+  },
+  "state": "ended"
+}
