@@ -275,7 +275,7 @@ class TestProjectTestsKind:
         assert seen["cmd"] == expected
         assert ev.status == STATUS_PASSED
         # amend1027: a project with no [tests] env and no node_modules adds nothing to the sandbox.
-        assert seen["extras"] == {"project_env": {}, "read_only_paths": (), "scratch_dirs": ()}
+        assert seen["extras"] == {}
 
     def test_the_checks_own_time_limit_reaches_the_spawn(self, worktree: Path, monkeypatch):
         """amend1027 B2: the limit the order's wall-clock cap gave beats the DoD's default."""

@@ -455,8 +455,9 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
 
     try:   # amend1027: the [tests] table's env and the folders its command reads, read-only
         settings = read_test_settings(cwd)
-        extras = {"project_env": dict(settings.env), "read_only_paths": project_sandbox_read_paths(cwd),
-                  "scratch_dirs": project_sandbox_scratch_dirs(cwd)}
+        extras = {key: value for key, value in (
+            ("project_env", dict(settings.env)), ("read_only_paths", project_sandbox_read_paths(cwd)),
+            ("scratch_dirs", project_sandbox_scratch_dirs(cwd))) if value}
     except ProjectTestConfigError as exc:
         return _refused(check, REASON_TEST_COMMAND_INVALID, argv, declared_cwd, str(exc))
     return _spawn_check(check, ctx, argv, cwd, declared_cwd,
