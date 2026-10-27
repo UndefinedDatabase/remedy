@@ -323,17 +323,25 @@ class TestReportListFromDataRoot:
 # ---------------------------------------------------------------------------
 
 class TestNoTestCommand:
-    def test_no_test_command_no_pass(self, demo_repo):
+    def test_a_project_without_a_test_command_is_not_tests_not_run(self, demo_repo):
+        """amend1027 A4: the round says the project has no test command; no pass, no tests_not_run."""
+        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
+        assert result.tests_not_run is False
+        for rd in result.rounds:
+            assert rd.test_passed is None
+            assert rd.test_summary == "Projekt hat keinen Testbefehl"
+        assert export_pingpong_json(result)["tests_not_run"] is False
+
+    def test_a_project_with_tests_nobody_ran_is_tests_not_run_with_its_reason(self, demo_repo):
+        """amend1027 B3: neither the builder nor the loop ran the project's tests, and the summary says why."""
+        (demo_repo / "tests").mkdir()
+        (demo_repo / "tests" / "test_main.py").write_text("def test_one():\n    assert True\n")
         result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
         assert result.tests_not_run is True
         for rd in result.rounds:
             assert rd.test_passed is None
-            assert rd.test_summary == "tests_not_run"
-
-    def test_no_test_command_json_has_tests_not_run(self, demo_repo):
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
-        data = export_pingpong_json(result)
-        assert data["tests_not_run"] is True
+            assert rd.test_summary == "tests_not_run: der Bauer hat keinen Testlauf gestartet"
+        assert export_pingpong_json(result)["tests_not_run"] is True
 
 
 # ---------------------------------------------------------------------------

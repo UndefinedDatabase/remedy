@@ -74,7 +74,7 @@ from packages.orchestration.session_sent_index import (
 )
 from packages.orchestration.structured_log import bind_call_log_context
 from packages.orchestration.tier_escalation import TaskTierLadder
-from packages.orchestration.verified_repair import review_test_evidence, with_test_failure_finding
+from packages.orchestration.verified_repair import review_test_evidence, round_tests, with_test_failure_finding
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -3350,12 +3350,12 @@ def run_pingpong(
             if builder_no_changes:
                 result.builder_no_changes = True
 
-            # --- Test phase ---
-            if has_test_command:
-                rd.test_passed, rd.test_summary, rd.test_tripped_limit = _run_test_command(
-                    test_command, staging, timeout_sec=timeout_sec)
+            if has_test_command:    # --- Test phase --- (amend1027: with the builder's own runs)
+                rd.test_passed, rd.test_summary, rd.test_tripped_limit = round_tests(_run_test_command(
+                    test_command, staging, timeout_sec=timeout_sec), stream_evidence_dir, rd, staging, result)
             else:
-                rd.test_passed, rd.test_summary, result.tests_not_run = None, "tests_not_run", True
+                rd.test_passed, rd.test_summary, result.tests_not_run = round_tests(None, stream_evidence_dir, rd,
+                                                                                    staging, result)
 
             # An explicit test command that failed stops the run at once when repair_rounds is 0, else
             # its failure is the reviewer's evidence. One the sandbox refused ran no test (R-1343): it
