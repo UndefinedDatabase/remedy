@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-168 of 318 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+169 of 319 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -38,7 +38,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 51 | 52 |
+| 2 | Minimal Self-Build Runtime | 52 | 53 |
 | 3 | Full Token Economy & Autonomy | 16 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
@@ -375,7 +375,12 @@ F318 questions to a project, read-only (a client the operator granted the host's
 tools asked over the public HTTP API which file decides whether an order is one job
 or several, and the Claude Code CLI, allowed only to read, search and look up files,
 answered it from Remedy's own repository without changing a byte of it; the question,
-the answer and every tool call are kept beside Remedy's data, never in the project).
+the answer and every tool call are kept beside Remedy's data, never in the project),
+F319 build orders with Claude Code end green (the builder may run the project's own
+tests without being asked, Remedy counts the runs it reads from the builder's stream
+and runs the project's tests itself before a result is offered, a Claude Code call has
+thirty minutes and one repeat, and two real orders, one to universe-chat and one to
+the new project remedy-edition, ended waiting for the operator's apply).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
