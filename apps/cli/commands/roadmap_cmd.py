@@ -101,7 +101,7 @@ def _cmd_roadmap_status(args: Any) -> None:
 
     lines: list[str] = []
     if feature is None:
-        lines.append("No open feature — every STATUS line is done or blocked.")
+        lines.append("No open feature — every Package 1 line of STATUS is done or blocked (Rule A5 reads Package 1 only).")
     else:
         label = "Active" if reason == "in_progress" else "Next"
         lines.extend(_feature_block(index, feature, label))
@@ -136,7 +136,7 @@ def _cmd_roadmap_next(args: Any) -> None:
         return
 
     if feature is None:
-        print("No open feature — every STATUS line is done or blocked.")
+        print("No open feature — every Package 1 line of STATUS is done or blocked (Rule A5 reads Package 1 only).")
         return
 
     where = f"docs/roadmap/STATUS.md:{feature.status_line}" if feature.status_line else "not in STATUS.md"

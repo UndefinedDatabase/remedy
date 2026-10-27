@@ -74,6 +74,17 @@ the handoff names, found by searching for its heading.
 4. A handback is pending review → review it first; never plan new work
    over an ungated round.
 5. Otherwise claim the next feature per STATUS order (Rule A5).
+6. Since operator amendment amend1027b-v1 (2026-10-27) Remedy is version 1
+   (`docs/roadmap/V1.md`). Rule A5 reads Package 1 of `docs/roadmap/STATUS.md`
+   only; it does not apply to Package 3 "Nach v1: nur auf Report oder
+   Fehllauf", which holds every line Package 1 still had open then, nor to
+   Package 2. When Package 1 has no open line, there is no feature to claim:
+   the session writes the handoff and ends with the sentence "Remedy ist v1.
+   Es gibt keine offene Feature-Zeile; Verbesserungen kommen über Reports."
+   Improvements come as orders to the project remedy with claude-cli, from a
+   report over Universe or from a failed run (the tile Selbstverbesserung).
+   When such an order needs a feature of Package 3, the operator moves its
+   line back into Package 1; no session moves one on its own.
 
 ## Phase 2 — the round loop
 Each round is: author → delegate → review → verdict.

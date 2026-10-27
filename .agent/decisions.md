@@ -32174,3 +32174,13 @@ one gets a stop request instead of an end. The terminal walk itself reads no can
 digest's `jobs[].order_id` changes meaning from the batch to that id, and the batch moves to
 `order_batch_id`; the universe used the old value only to group jobs, which still works.
 HOW TO REVERSE: drop `resolve_order_record`, `BatchOrderRecord` and `http_order_id_of_batch`.
+
+## DECISION amend1027b D4 — Rule A5 reads Package 1 only
+
+The order says Rule A5 does not apply to Package 3. Package 2's header already said its lines rest
+until the operator moves them back into Package 1, yet the index read the whole file top to
+bottom, so with Package 1 empty `remedy roadmap next` would have proposed F156 of Package 2 and
+the loop would not have stopped. `roadmap_index.next_feature` and `active_feature` now read the
+lines under `## Package 1` only (`RULE_A5_PACKAGE`); each feature carries its `package`. The loop
+helpers of ~/Repos/system end with the order's sentence when Package 1 has no open line.
+HOW TO REVERSE: drop the package filter in the two functions and move Package 3 back.
