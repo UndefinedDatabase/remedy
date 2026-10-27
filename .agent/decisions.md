@@ -32184,3 +32184,12 @@ the loop would not have stopped. `roadmap_index.next_feature` and `active_featur
 lines under `## Package 1` only (`RULE_A5_PACKAGE`); each feature carries its `package`. The loop
 helpers of ~/Repos/system end with the order's sentence when Package 1 has no open line.
 HOW TO REVERSE: drop the package filter in the two functions and move Package 3 back.
+
+## DECISION amend1027b D5 — F295's gate test reads the batch under `order_batch_id`
+
+The digest's `jobs[].order_id` changed meaning in 1.32 (D3), so F295's gate test
+`tests/cli/test_machine_client_contract.py` compares the digest job's `order_batch_id` with the
+mission's batch and its `order_id` with the batch's first 16 characters. The gate test is pinned by
+`F295_GATE_TEST_SHA256` (R-1179); the digest is updated in the commit after the change, because the
+first full run found the pin. Nothing else in the gate test changed.
+HOW TO REVERSE: revert the two assertions and the digest together with D3.
