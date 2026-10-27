@@ -97,8 +97,10 @@ from packages.orchestration.project_ask import PROJECT_ASK_ANSWER_KEYS, PROJECT_
 #: fix1022-review-findings (R-1423) to `1.28` (`budget.used.minutes` of a running job measured to now), and
 #: amend1023-universe-trust to `1.29` (`client.order-story`, `host_tools`, `scope_findings`, the order header `shape`),
 #: amend1026-go-live-and-ask to `1.30` (`client.projects`, `client.ask`, `client.order-review`, `autonomy`, `scope`),
-#: amend1027-green-builds to `1.31` (the story's `order_id`, `retries`, `scope.match`, `verification.tested_by`).
-CLIENT_INTERFACE_VERSION = "1.31"
+#: amend1027-green-builds to `1.31` (the story's `order_id`, `retries`, `scope.match`, `verification.tested_by`),
+#: amend1027b-v1 to `1.32` (`scope.match` null when nothing was compared, `scope.match_text`, `scope.tasks`,
+#: `scope.tasks_text`, and the 16-character `order_id` of every job, `order_batch_id` in the digest).
+CLIENT_INTERFACE_VERSION = "1.32"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the

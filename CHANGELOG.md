@@ -11,6 +11,14 @@ fails the gate rather than shipping an unexplained release.
 
 ## [Unreleased]
 
+### Changed
+- 2026-10-27, amend1027b-v1; the public API and the client interface move to 1.32:
+  - A job story's `scope.match` is null, not true, when the size decision or the job's diff names
+    no file, and `scope.match_text` then says "nicht ermittelt"; the final review's
+    `changed_files_match` is null the same way when it was given no expected files.
+  - A job story's `scope` counts the job's tasks (`tasks`) and says in one sentence what a one-job
+    decision's job holds (`tasks_text`), such as "Ein Job mit zwei Aufgaben: der Code und sein Test."
+
 ### Added
 - 2026-10-27, amend1027-green-builds (feature F319); the public API and the client interface move
   to 1.31:

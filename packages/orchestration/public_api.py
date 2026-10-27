@@ -110,8 +110,8 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: (DECISIONs amend1026 D2 to D5) to `1.30` for `GET /api/v1/projects`, `POST /api/v1/projects/{project}/ask`, `GET
 #: /api/v1/orders/{order}/review`, the execution offer's `autonomy.push_allowed` and both stories' `scope`, and
 #: operator amendment amend1027-green-builds to `1.31` for `GET /api/v1/jobs/{job}/evidence` and the story's
-#: `order_id`, `retries`, `scope.match` and `verification.tested_by`.
-PUBLIC_API_VERSION = "1.31"
+#: `order_id`, `retries`, `scope.match` and `verification.tested_by`, and amend1027b-v1 to `1.32` (see the page).
+PUBLIC_API_VERSION = "1.32"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.

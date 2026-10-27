@@ -197,8 +197,8 @@ def build_final_job_review(
                 )
             )
     else:
-        # No expected set provided -> cannot detect drift; treat as matching.
-        changed_files_match = True
+        # amend1027b A1: no expected set means nothing was compared: unknown (null), never true.
+        changed_files_match = None
 
     scope_check = {
         "expected_changed_files": sorted(expected_files),

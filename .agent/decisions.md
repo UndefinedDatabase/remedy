@@ -32138,3 +32138,24 @@ The edition `~/Repos/universe/remedy` has no CHANGELOG.md, and the builder canno
 changelog outside its workspace. Order 5a42873746467117 (the operator's words alone) was blocked
 honestly; the accepted order 67f912f1e5b9ab21 says to create the file and states amend1024's three
 facts. Order f72f138b0f2a9e76 named a file in its facts and delivered that file; it was declined.
+
+## DECISION amend1027b D1 — a comparison that compared nothing is null, never true
+
+The universe's report of 2026-10-27 (U267): the green universe-chat order read
+`changed_files_match: true` with two empty file lists. The cause was the final job review: both
+production callers (`pingpong_job._write_final_job_review`, `job_evidence`) pass no expected
+files, and the review then counted the job as matching. The story's `scope.match` had the same
+flaw in reserve: it compared two empty sets as equal. Both read `null` now when nothing was
+compared, and the story says `match_text` "nicht ermittelt". The scope decision's files are not
+passed into the final review as its expected set, because that set raises a repairable finding
+and the final verifier blocks the apply on any finding; the size decision is a guess, never a
+verdict (amend1027 D2). The story keeps the comparison of the decision with the diff.
+HOW TO REVERSE: restore `changed_files_match = True` and the set equality without the guard.
+
+## DECISION amend1027b D2 — one job may hold several tasks, and the story says so
+
+`one_job` counts jobs, not tasks: the planner may split the one job into tasks (the code and its
+test). The job story's `scope` carries `tasks` and, for a `one_job` decision with two tasks or
+more, `tasks_text`, one German sentence; two tasks of which exactly one touches test files only
+read "Ein Job mit zwei Aufgaben: der Code und sein Test."
+HOW TO REVERSE: drop `scope_tasks_text` and the two keys.

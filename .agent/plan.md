@@ -1,21 +1,22 @@
-# Plan — operator amendment amend1027-green-builds
+# Plan — operator amendment amend1027b-v1
 
 ## Goal
-A claude-cli build order whose change is right ends green: the builder may run the project's
-tests, the harness counts that run, no call dies after 120 seconds, and every project has its
-own slug (2026-10-27). F319 closed with two real orders (universe-chat, remedy-edition).
+Remedy closes as version 1 (2026-10-27): three truth defects fixed (A1 scope.match, A2 what
+one_job counts, A3 the 16-character order id of a job made elsewhere), the feature loop stops
+(Package 3 "Nach v1"), and improvements come only from reports and failed runs.
 
 ## Current Step
-Parts A to F are done: F319 accepted with order 2318f04b3a65e952 (universe-chat, job
-967b13a7bbb44b9c) and order 67f912f1e5b9ab21 (remedy-edition, job 98c1f2692d004e3e), both
-awaiting the operator's apply. The closing step: the last full suite, the merge, the push, the
-supervisor restart and the handback `~/.remedy-loop/amend1027-green-builds.handback.md`.
+A1: `scope.match` and the final review's `changed_files_match` are null when nothing can be
+compared; the story says "nicht ermittelt". Two fake-builder runs as tests.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then Rule A5, which reads F316 (findings
-   paydown v11) as the next line.
+1. A2: the story's `scope.tasks` and `scope.tasks_text` ("Ein Job mit zwei Aufgaben: der Code
+   und sein Test.").
+2. A3: `order_id` per job is the 16-character order id; the order routes resolve a batch prefix;
+   interface 1.32, docs, CHANGELOG.
+3. B2: STATUS.md V1 line, Package 3, Rule A5 reads Package 1 only (roadmap_index, protocol).
+4. B1 V1.md, B4 README and CHANGELOG 1.0.0, B3 the loop helpers in ~/Repos/system.
+5. Full suite, review loop, ruff, merge, push, supervisor restart, handback.
 
 ## Risks
-- universe-chat's `main` is red on three tests of its own (DECISION amend1027 D1); its
-  `.remedy/config.toml` and remedy-edition's are untracked files the operator keeps.
-- The repo's settings deny reading `.data/**`; evidence is read through `remedy` commands.
+- The client answers are recorded (client-answers-v1): a changed answer is re-recorded.

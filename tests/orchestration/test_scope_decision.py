@@ -132,3 +132,49 @@ def test_a_story_compares_the_expected_files_with_the_touched_ones(tmp_path, mon
     assert same["files_touched"] == ["src/a.tsx", "tests/a.test.ts"] and same["match"] is True
     other = story_scope("0123456789abcdef", ["src/a.tsx", "src/b.tsx"])
     assert other["match"] is False and "files_expected" not in story_scope("0123456789abcdef")
+
+
+def test_two_empty_lists_are_no_match_but_not_determined(tmp_path, monkeypatch):
+    """amend1027b A1: with nothing to compare `match` is null and the story says so, never true."""
+    from packages.orchestration.scope_decision import SCOPE_MATCH_UNKNOWN_TEXT, story_scope
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    record_scope_decision({"single_job": True, "files": [], "reason": "Eins.", "decided": SCOPE_ONE_JOB},
+                          "0123456789abcdef")
+    empty = story_scope("0123456789abcdef", [])
+    assert (empty["files_expected"], empty["files_touched"]) == ([], [])
+    assert empty["match"] is None and empty["match_text"] == SCOPE_MATCH_UNKNOWN_TEXT == "nicht ermittelt"
+    assert story_scope("0123456789abcdef", ["src/a.py"])["match"] is None
+    record_scope_decision({"single_job": True, "files": [".gitignore"], "reason": "Eins.",
+                           "decided": SCOPE_ONE_JOB}, "fedcba9876543210")
+    filled = story_scope("fedcba9876543210", ["./.gitignore"])
+    assert filled["match"] is True and filled["match_text"] is None
+
+
+@pytest.mark.parametrize(("decided", "task_files", "text"), [
+    (SCOPE_ONE_JOB, [["greet/core.py", "tests/test_greet.py"], ["tests/test_greet.py"]],
+     "Ein Job mit zwei Aufgaben: der Code und sein Test."),
+    (SCOPE_ONE_JOB, [["src/a.tsx"], ["src/b.tsx"], ["tests/unit/a.test.ts"]], "Ein Job mit drei Aufgaben."),
+    (SCOPE_ONE_JOB, [["src/a.tsx"], ["src/b.tsx"]], "Ein Job mit zwei Aufgaben."),
+    (SCOPE_ONE_JOB, [["src/a.tsx"]], None),
+    (SCOPE_SEVERAL_JOBS, [["src/a.tsx"], ["tests/a.test.ts"]], None),
+    (SCOPE_REGEX_FALLBACK, [["src/a.tsx"], ["tests/a.test.ts"]], None),
+])
+def test_a_one_job_decision_says_how_many_tasks_its_job_holds(decided, task_files, text):
+    """amend1027b A2: one job stays one job; the story says in one sentence what it holds."""
+    from packages.orchestration.scope_decision import scope_tasks_text
+
+    assert scope_tasks_text(decided, task_files) == text
+
+
+def test_the_job_story_scope_counts_the_tasks(tmp_path, monkeypatch):
+    from packages.orchestration.scope_decision import story_scope
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    record_scope_decision({"single_job": True, "files": ["greet/core.py"], "reason": "Eins.",
+                           "decided": SCOPE_ONE_JOB}, "0123456789abcdef")
+    scope = story_scope("0123456789abcdef", ["greet/core.py", "tests/test_greet.py"],
+                        [["greet/core.py"], ["tests/test_greet.py"]])
+    assert scope["decided"] == SCOPE_ONE_JOB and scope["single_job"] is True
+    assert (scope["tasks"], scope["tasks_text"]) == (2, "Ein Job mit zwei Aufgaben: der Code und sein Test.")
+    assert "tasks" not in story_scope("0123456789abcdef")

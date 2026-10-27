@@ -352,7 +352,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.31`.
+Interface version: `1.32`.
 
 ### Envelope
 
@@ -1079,7 +1079,7 @@ Keys under the answer keys: see below.
   - `route`: `method`, `path`
 - `numbers`: `calls`, `duration_s`, `model_turns`, `rounds`, `tokens_in`, `tokens_out`
 - `retries`: `attempt`, `reason`, `role`, `task_id`
-- `scope`: `decided`, `files`, `files_expected`, `files_touched`, `match`, `reason`, `single_job`
+- `scope`: `decided`, `files`, `files_expected`, `files_touched`, `match`, `match_text`, `reason`, `single_job`, `tasks`, `tasks_text`
 - `scope_findings`: `key`, `path`, `text`
 - `state_detail`: `changed_files`, `decision_id`, `file`, `question`, `reason`, `round`
   - `reason`: `args`, `key`
