@@ -124,7 +124,7 @@ def test_a_project_without_a_test_command_says_so_when_tests_were_asked_for(data
     ("tool_unavailable", None, "not_run"),
     ("sandbox_unavailable", None, "not_run"),        # exec-1017c: the guard spawned nothing
     ("nonzero_exit", 1, "failed"),                   # it ran and was red
-    ("timeout", None, "failed"),                     # it ran out of time: a run, and not green
+    ("timeout", None, "not_run"),                    # amend1027 B3: cut at its limit, it judged nothing
 ])
 def test_a_check_refused_before_it_ran_is_not_run_never_failed_or_passed(data_root, reason, exit_code, expected):
     job = _job("blocked")
@@ -250,3 +250,30 @@ def test_a_task_whose_red_run_held_the_job_before_the_gate_is_its_only_evidence(
     found = OV.job_verification(job)
 
     assert found["status"] == "failed" and [run["source"] for run in found["runs"]] == ["task"]
+
+
+def test_a_project_with_a_test_command_always_runs_it_blocking_with_the_orders_time_limit(data_root, tmp_path):
+    """amend1027 B2: an order that asks for no test run still gets the project's own command, blocking,
+    with half its wall-clock cap as the limit; a compiled pytest check is not made blocking."""
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    job = JobPlan(job_title="t", mission="m", tasks=[TaskEntry(title="x")], repo_path=str(repo),
+                  budgets={"max_wall_clock_minutes": 120})
+    save_job_plan(job)
+    store_dod(str(job.job_id), DoD(schema_v=DOD_SCHEMA_V, compiled=False, origin="deterministic", checks=[
+        DoDCheck(id="acc-001", kind="pytest", spec={"selector": "tests"}, source="plan_acceptance",
+                 blocking=False)]))
+
+    assert OV.require_order_tests(str(job.job_id), "Fix the typo in README.md.") == OV.PROJECT_TESTS_REQUEST
+
+    pytest_check, project_check = load_dod(str(job.job_id)).checks
+    assert (pytest_check.kind, pytest_check.blocking) == ("pytest", False)
+    assert (project_check.id, project_check.kind, project_check.blocking) == (
+        OV.ORDER_TESTS_CHECK_ID, "project_tests", True)
+    assert project_check.spec == {"timeout_sec": 3600}
+
+
+@pytest.mark.parametrize(("minutes", "expected"), [(None, 0), (4, 300), (30, 900), (500, 3600)])
+def test_the_project_tests_time_limit_follows_the_wall_clock_cap(minutes, expected):
+    job = SimpleNamespace(budgets={"max_wall_clock_minutes": minutes} if minutes else None)
+    assert OV.project_tests_timeout(job) == expected

@@ -52,6 +52,7 @@ protects the next kind added to the schema.
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import os
 import subprocess
 import sys
@@ -419,6 +420,8 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
     configuration or ``package.json`` is not.
     """
     declared_cwd = str(check.spec.get("cwd", "") or "")
+    if check.spec.get("timeout_sec"):   # amend1027 B2: the limit the order's wall-clock cap gave
+        ctx = dataclasses.replace(ctx, timeout_sec=int(check.spec["timeout_sec"]))
     cwd, cwd_reason = _resolve_cwd(check, ctx.root)
     if cwd is None:
         return _refused(

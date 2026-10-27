@@ -83,9 +83,13 @@ _SPEC_KEYS: dict[str, frozenset[str]] = {
     # vocabulary, so an unknown name is refused here rather than at run time.
     "product_smoke": frozenset({"smoke", "retry", "paths"}),
     # F299, DECISION F299 D1: the check finds its own command when it runs, so
-    # it carries none beyond the common keys every kind shares.
-    "project_tests": frozenset(),
+    # it carries none beyond the common keys every kind shares; amend1027 B2 adds
+    # its time limit, taken from the order's wall-clock cap.
+    "project_tests": frozenset({"timeout_sec"}),
 }
+
+#: The longest a project's own tests may run in one DoD check (amend1027 B2): two hours.
+PROJECT_TESTS_MAX_TIMEOUT_SEC = 7200
 
 #: The v1 runtime_flow vocabulary (R-0165). One action, and a closed set of
 #: keys per step: a flow step that names something else is nonsense the
@@ -194,6 +198,12 @@ def validate_check_spec(kind: str, spec: dict[str, Any]) -> None:
             raise DoDSpecError("custom_cmd spec needs a non-empty 'argv' list")
         _require_str_list(spec, "argv", kind)
         _reject_flag_shaped(str(argv[0]), "argv[0]", kind)
+    elif kind == "project_tests" and "timeout_sec" in spec:
+        value = spec["timeout_sec"]
+        if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= PROJECT_TESTS_MAX_TIMEOUT_SEC:
+            raise DoDSpecError(
+                f"project_tests spec 'timeout_sec' must be whole seconds from 1 to "
+                f"{PROJECT_TESTS_MAX_TIMEOUT_SEC}, got {value!r}")
     elif kind == "runtime_flow":
         steps = spec.get("steps")
         if not isinstance(steps, list) or not steps:

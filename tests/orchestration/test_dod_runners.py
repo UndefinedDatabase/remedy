@@ -277,6 +277,22 @@ class TestProjectTestsKind:
         # amend1027: a project with no [tests] env and no node_modules adds nothing to the sandbox.
         assert seen["extras"] == {"project_env": {}, "read_only_paths": (), "scratch_dirs": ()}
 
+    def test_the_checks_own_time_limit_reaches_the_spawn(self, worktree: Path, monkeypatch):
+        """amend1027 B2: the limit the order's wall-clock cap gave beats the DoD's default."""
+        import subprocess as sp
+
+        from packages.orchestration import dod_runners
+
+        seen: dict = {}
+
+        def _capture(cmd, *, timeout_sec, cwd, env_overlay=None, **extras):
+            seen.update(timeout_sec=timeout_sec)
+            return sp.CompletedProcess(list(cmd), 0, b"", b"")
+
+        monkeypatch.setattr(dod_runners, "run_guarded_dod_process_command", _capture)
+        run_check(check("project_tests", {"timeout_sec": 1800}), worktree)
+        assert seen["timeout_sec"] == 1800
+
     def test_the_python_target_runs_for_real_in_its_own_venv_and_pytest_alone_fails(
             self, tmp_path: Path):
         """The red control: Remedy's own `pytest` check lacks the dependency."""
