@@ -100,7 +100,7 @@ class TestTheCommandLineEndsWithTheSwitches:
         on = _keys(customizations=True, all_tools=True)
         assert build_claude_cli_args("claude", "P", write_mode="allowed-tools", config=on) == [
             "claude", "-p", "P", "--output-format", "json", "--allowedTools", "Edit,Write,MultiEdit",
-            *builder_bash_rules(None)]
+            *builder_bash_rules(None), "--permission-mode", "dontAsk"]
 
 
 def _provider(**kw) -> ClaudeCliProvider:
@@ -217,3 +217,76 @@ class TestTheBuilderMayRunOnlyTheListedCommands:
         assert log_builder_command_refusals(json.dumps({"result": "ok"}), str(log)) == []
         assert log_builder_command_refusals("not json", str(log)) == []
         assert not log.exists()
+
+
+class TestTheBuilderMayRunTheProjectsTests:
+    """Operator amendment amend1027-green-builds, Part A: the found test command and its spellings."""
+
+    def test_a_package_json_project_gets_its_runners_and_its_test_scripts(self, tmp_path):
+        (tmp_path / "package.json").write_text(json.dumps(
+            {"scripts": {"test": "vitest run", "e2e": "playwright test", "build": "vite build",
+                         "test;rm": "x"}}))
+        commands = builder_test_commands(str(tmp_path))
+        assert commands[0] == "npm test"
+        for spelling in ("pnpm exec playwright test", "npx vitest", "pnpm vitest", "pnpm e2e",
+                         "pnpm run e2e", "npm run e2e"):
+            assert spelling in commands
+        assert "pnpm build" not in commands and not any("rm" in c for c in commands)
+        allowed = commands + BUILDER_COMMAND_ALLOWLIST
+        assert builder_command_allowed("pnpm e2e tests/e2e/memory-net-592.spec.ts -g net", allowed)
+        assert builder_command_allowed("npx playwright test tests/e2e/a.spec.ts", allowed)
+        assert not builder_command_allowed("pnpm install", allowed)
+
+    def test_a_python_project_gets_pytest_under_every_spelling(self, tmp_path):
+        (tmp_path / "tests").mkdir()
+        commands = builder_test_commands(str(tmp_path))
+        assert commands[0] == "python -m pytest -p no:cacheprovider tests -q"
+        for spelling in ("pytest", "python -m pytest", "python3 -m pytest", "uv run pytest",
+                         ".venv/bin/pytest", ".venv/bin/python -m pytest"):
+            assert spelling in commands
+        assert "npx vitest" not in commands
+
+    def test_a_configured_pytest_command_counts_as_python(self, tmp_path):
+        (tmp_path / ".remedy").mkdir()
+        (tmp_path / ".remedy" / "config.toml").write_text('[tests]\ncommand = ["pytest", "-q"]\n')
+        commands = builder_test_commands(str(tmp_path))
+        assert commands[0] == "pytest -q" and "uv run pytest" in commands
+
+    def test_a_builder_that_may_write_is_never_asked(self):
+        """A3: `--permission-mode dontAsk` ends a builder's rules; a reader and dangerous-skip lack it."""
+        argv = build_claude_cli_args("claude", "P", write_mode="allowed-tools", config=_keys())
+        assert argv[argv.index("--permission-mode") + 1] == "dontAsk"
+        assert argv.index("--permission-mode") > max(i for i, a in enumerate(argv) if a.startswith("Bash("))
+        assert "--permission-mode" not in build_claude_cli_args("claude", "P", config=_keys())
+        skip = build_claude_cli_args("claude", "P", write_mode="dangerous-skip", config=_keys())
+        assert "--permission-mode" not in skip and "--dangerously-skip-permissions" in skip
+
+
+class TestTheBuildersEnvironment:
+    """A2: the project's tool folders come first on the builder's PATH, with its tests' variables."""
+
+    def test_the_project_tools_come_first_and_the_tests_env_is_set(self, tmp_path, monkeypatch):
+        from packages.orchestration.claude_cli_command import with_project_tools
+        from packages.orchestration.exec_guard import ExecGuardPolicy
+
+        (tmp_path / "node_modules" / ".bin").mkdir(parents=True)
+        venv = tmp_path / ".venv"
+        (venv / "bin").mkdir(parents=True)
+        (venv / "pyvenv.cfg").write_text("home = /usr\n")
+        (venv / "bin" / "python").write_text("")
+        (tmp_path / ".remedy").mkdir()
+        (tmp_path / ".remedy" / "config.toml").write_text('[tests]\nenv = { KIT = "/k" }\n')
+        policy = with_project_tools(
+            ExecGuardPolicy(env={"PATH": "/usr/bin", "HOME": "/h"}, env_allowlist=("PATH", "HOME")),
+            str(tmp_path))
+        assert policy.env["PATH"].split(":") == [
+            str(venv / "bin"), str(tmp_path / "node_modules" / ".bin"), "/usr/bin"]
+        assert policy.env["KIT"] == "/k" and policy.env["VIRTUAL_ENV"] == str(venv)
+        assert {"PATH", "HOME", "KIT", "VIRTUAL_ENV"} <= set(policy.env_allowlist)
+
+    def test_no_workspace_changes_nothing(self):
+        from packages.orchestration.claude_cli_command import with_project_tools
+        from packages.orchestration.exec_guard import ExecGuardPolicy
+
+        policy = ExecGuardPolicy(env={"PATH": "/usr/bin"})
+        assert with_project_tools(policy, None) is policy

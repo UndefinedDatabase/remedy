@@ -446,3 +446,31 @@ def test_share_network_holds_share_net_right_after_unshare_all_and_default_holds
     assert shared[index + 1] == "--share-net"
     default = TS.SandboxSpec(workspace=str(ws)).wrap(["/bin/true"], None, str(ws))
     assert "--share-net" not in default
+
+
+class TestAProjectsReadOnlyFolders:
+    """amend1027: a project's named folder is readable and never writable inside; a scratch
+    folder over a read-only cache is writable and vanishes; the table's env is set."""
+
+    def test_read_only_paths_scratch_dirs_and_env(self, world, tmp_path):
+        from packages.orchestration.exec_guard import run_guarded_dod_process_command
+
+        ws, _secret, other = world
+        cache = other / ".vite-temp"
+        cache.mkdir()
+        script = (f"cat {other}/notes.txt; echo; echo x > {other}/new.txt || echo RO; "
+                  f"echo y > {cache}/c.txt && echo SCRATCH; echo $KIT")
+        done = run_guarded_dod_process_command(
+            ["/bin/sh", "-c", script], timeout_sec=60, cwd=str(ws), project_env={"KIT": str(other)},
+            read_only_paths=(str(other),), scratch_dirs=(str(cache),))
+        out = done.stdout.decode()
+        assert SECRET in out and "RO" in out and "SCRATCH" in out and str(other) in out
+        assert not (other / "new.txt").exists() and not (cache / "c.txt").exists()
+
+    def test_without_the_folder_the_other_repository_stays_hidden(self, world):
+        from packages.orchestration.exec_guard import run_guarded_dod_process_command
+
+        ws, _secret, other = world
+        done = run_guarded_dod_process_command(
+            ["/bin/sh", "-c", f"cat {other}/notes.txt || echo HIDDEN"], timeout_sec=60, cwd=str(ws))
+        assert "HIDDEN" in done.stdout.decode() and SECRET not in done.stdout.decode()

@@ -203,6 +203,26 @@ class SandboxSpec:
     #: WHY: an allowlist profile needs the host's network to reach its hosts; DECISION F162 D3
     #: compiles that into this field rather than widening the sandbox's own private namespace.
     share_network: bool = False
+    #: amend1027: folders inside a read-only mount a tool writes its cache to (Vite's
+    #: `node_modules/.vite-temp`); each gets an empty memory-backed folder that vanishes with the call.
+    scratch_dirs: tuple[str, ...] = ()
+
+    @classmethod
+    def for_project(cls, workspace: str, read_only_paths: Sequence[str] = (),
+                    scratch_dirs: Sequence[str] = ()) -> SandboxSpec:
+        """The sandbox of a project's own test command (operator amendment amend1027-green-builds).
+
+        READ_ONLY_PATHS (the checkout's `node_modules`, the `[tests]` table's folders) are mounted
+        read-only and SCRATCH_DIRS (cache folders inside them) get empty memory-backed folders; a
+        path inside WORKSPACE is left out, since the workspace is already there and writable.
+        """
+        real = os.path.realpath(workspace)
+
+        def outside(path: str) -> bool:
+            return os.path.commonpath([os.path.realpath(path), real]) != real
+
+        return cls(workspace, mounts=tuple((p, p, False) for p in read_only_paths if outside(p)),
+                   scratch_dirs=tuple(d for d in scratch_dirs if outside(d)))
 
     def _program_exists(self, program: str, path_value: str, cwd: str) -> bool:
         """Whether *program* will be found inside: on `PATH`, relative to *cwd*, or in a mount."""
@@ -256,6 +276,8 @@ class SandboxSpec:
             args += ["--ro-bind", os.path.join(workspace, ".git"), os.path.join(workspace, ".git")]
         for host_path, target, writable in self.mounts:
             args += ["--bind" if writable else "--ro-bind", host_path, target]
+        for path in self.scratch_dirs:
+            args += ["--tmpfs", path]
         # The environment inside is EXPLICIT: the caller's allowlisted one (a policy without an
         # allowlist gets PATH and the locale only, never the whole parent environment), with
         # the sandbox's own home and temp directory.

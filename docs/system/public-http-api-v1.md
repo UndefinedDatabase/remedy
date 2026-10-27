@@ -135,6 +135,19 @@ only ever added, and each addition raises the minor number of the registry's ver
 that is to go is first marked deprecated, which makes it answer the header `Deprecation: true`
 and shows it in the table below; it is removed only under a new major path.
 
+**What changed from 1.30 to 1.31 (operator amendment amend1027-green-builds, 2026-10-27).**
+Only additions, as the rule above demands:
+
+- `GET /api/v1/jobs/{job}/evidence` answers the files of a job's evidence folder, each with its
+  `name`, `size` and `content` (its text, the last 20,000 characters), for the server's token and
+  a client granted `host_tools` only (see "Evidence").
+- A job's story carries, under `verification`, `reason` and `reason_key` when no test ran,
+  `tested_by` (`builder`, the builder's own test run read from its stream, and `final_check`,
+  the project's test command Remedy ran itself) and `output`, a red run's output (see "Stories").
+- A job's story carries `scope.files_expected`, `scope.files_touched` and `scope.match`, the
+  size decision's files beside the files the result changes; `order_id`, the order the job
+  serves; and `retries`, each provider call repeated after a time-out.
+
 **What changed from 1.29 to 1.30 (operator amendment amend1026-go-live-and-ask, 2026-10-26).**
 Only additions, as the rule above demands:
 
@@ -469,7 +482,22 @@ operator amendment amend1024): `single_job` (`true`, `false`, or `null` when the
 decided because the planner gave no usable answer), `files`, the paths the planner expected the
 change to touch, `reason`, its one German sentence, and `decided` (`one_job`, `several_jobs` or
 `regex_fallback`); it is `null` for a job that keeps no decision. The order's story carries the
-same `scope`, read from the first of its jobs that keeps one.
+same `scope`, read from the first of its jobs that keeps one. Since 1.31 a job's `scope` also
+carries `files_expected` (the decision's `files`), `files_touched` (the files the job's result
+changes) and `match`, `true` when both name the same files; it is transparency only and never
+decides the job.
+
+Since 1.31 the job story's `verification` carries, beside `status` and `required`: `tested_by`,
+`builder` when a task's reading was its builder's own test run (a test command of the project in
+the builder's stream, its result read from the runner's summary line) and `final_check` when
+Remedy ran the project's test command itself in the job's workspace (that run decides); `reason`
+and `reason_key` when no test ran (`permission_denied`, `command_not_found`, `timeout`,
+`sandbox_unavailable`, `no_test_command` or `not_attempted`); and `output`, a red run's output
+cut to its last 4,000 characters with the job's workspace and the home folder taken out. `output`
+is the one text in the story that is not Remedy's words: the test runner's own. `order_id` names
+the order the job serves (the HTTP order, else the order batch of its mission; `null` for none),
+and `retries` lists each provider call repeated after it ran into its time limit, as
+`{task_id, role, attempt, reason}`.
 
 A `phrase` and a `reason` are `{key, args}`. Their keys are closed lists, and their arguments are
 numbers, paths relative to the repository and, for `provider`, a provider's id word; the story
@@ -526,6 +554,16 @@ token sees only its own projects' jobs and orders, and the insight of another pr
 403 `api_client_policy_refused`.
 
 ## Diffs
+
+`GET /api/v1/jobs/{job}/evidence` (since 1.31, the section "Evidence") answers the files of one
+job's evidence folder as `remedy client evidence <job> --json` prints them: `job_id`, `files`,
+each `{name, size, content, truncated}` with `name` its path in the folder and `content` its text
+cut to its last 20,000 characters, the first 400 files in path order, and `files_omitted`. The
+folder holds the scope decision, the DoD and its result, the builder's Bash calls
+(`task_runs/<run>/builder_bash_calls.json`) and test runs (`builder_test_runs.json`), each task
+run's isolation records and raw streams. The streams carry the commands a builder ran on the host,
+so only the server's token and a client granted `host_tools` read it (403
+`api_client_policy_refused`).
 
 `GET /api/v1/jobs/{job}/diff` answers one ended job's change as git prints it, as `remedy client
 diff <job> --json` does, so a client can show a person the real change before the person applies
@@ -643,7 +681,7 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.30`.
+API version: `1.31`.
 
 | Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|
@@ -670,6 +708,7 @@ API version: `1.30`.
 | `GET` | `/api/v1/jobs/{job}/story` | — | `remedy client story --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400 | no | One job's run story in closed words a client translates, as `remedy client story <job> --json` prints it: `order`, `state` and `state_detail`, `next` with the one next step and the route that takes it, `end` with the way out of a job that is still open (since 1.21), the five `steps` with the job's tasks under `building`, `changes`, `dirty_start` (since 1.27), `numbers` (null where not measured), `note_open`, `scope_findings` (since 1.29) and `scope` (since 1.30: the size decision's `single_job`, `files`, `reason` and `decided`, or null). Every word is in the `story` key of `GET /api/v1/interface`. A job id prefix is accepted, and a client token reads only a job of one of its projects (403 `api_client_policy_refused`). |
 | `GET` | `/api/v1/now` | — | `remedy client now --json` | — | no | What runs right now, in closed words a client translates, as `remedy client now --json` prints it (since 1.22): `jobs`, one entry per running job with its `order`, `project`, `state`, `phase`, `task`, `round`, `worker`, `budget` (`used` and `limits`), `last_output_s`, `stalled` with its `stall_reason`, and `waiting_on`; `orders`, the orders that wait with no running job; `model_server`, the local model server's `state`, its `loaded` models and its `queue`; `workers`; and `stall_threshold_s`. A value Remedy cannot know is null. Every word is in the `insight` key of `GET /api/v1/interface`. A client token reads only its own projects' jobs and orders. |
 | `GET` | `/api/v1/jobs/{job}/insight` | `lines=<value>` | `remedy client insight --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400 | no | One job's worker seen from outside, as `remedy client insight <job> --json` prints it (since 1.22): the job's entry of `GET /api/v1/now`, plus `stream`, the worker's last `lines` stream lines (default 40, at most 200, already redacted), and `advice`, the closed words for what the operator can do. Every word is in the `insight` key of `GET /api/v1/interface`. A job id prefix is accepted, and a client token reads only a job of one of its projects (403 `api_client_policy_refused`). |
+| `GET` | `/api/v1/jobs/{job}/evidence` | — | `remedy client evidence --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400 | no | One job's evidence files, as `remedy client evidence <job> --json` prints them (since 1.31): `job_id`, `files` with each file's `name` (its path in the job's evidence folder), `size` in bytes, `content` (its text, the last 20,000 characters) and `truncated`, and `files_omitted` beyond the first 400. It changes nothing. Only the server's token and a client granted `host_tools` read it (403 `api_client_policy_refused`), and a client token only a job of one of its projects. |
 | `GET` | `/api/v1/jobs/{job}/diff` | — | `remedy client diff --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400, `diff_not_ready` 409, `diff_unavailable` 409 | no | One ended job's change as git prints it, as `remedy client diff <job> --json` does: `job`, `state` (`prepared`, `applied`, `declined`, `failed` or `conflict`), `files` with each file's `path`, `change` (`added`, `modified`, `deleted` or `renamed`), `added` and `removed` lines, its unified `patch` and `truncated`, and `truncated` when a patch or the list was cut. A result not yet applied is the job branch against its base commit, an applied one the commit its apply landed. A job that has not ended or waits for an answer answers 409 `diff_not_ready`, commits git no longer has 409 `diff_unavailable`. A job id prefix is accepted, and a client token reads only a job of one of its projects (403 `api_client_policy_refused`). |
 | `GET` | `/api/v1/jobs/{job}/run` | — | `remedy client run --json` | `run_not_found` 404 | no | Polls the run the `POST` to this path started, answering the run's record as `remedy client run <job> --json` does: the record's keys, `state` and `answer`. A client polls it until `state` is not `running`: `state` reads `running`, `ended` or `lost`; `exit_code` is `null` until the run ends and stays `null` for a run read `lost`; `answer` is `null` while the run is `running` and afterwards holds what `remedy job run --json` printed, or `null` when it printed no envelope. A job id prefix is accepted; a value that names no one job, or a job with no run, is refused with 404 `run_not_found`, and a client token reads only a job of one of its projects (403 `api_client_policy_refused`). |
 | `POST` | `/api/v1/jobs/{job}/run` | `builder_provider` (string), `reviewer_provider` (string) | the run's record, as the supervisor's `RunLauncher` writes it | — | no | Starts a job's run through the supervisor's own `RunLauncher`, as `remedy job run <job> <options> --json` would, and answers 202 with the run's record: `job_id`, `pid`, `started_at`, `out_log`, `err_log`, `exit_code` and `ended_at`, the last two `null` until the run ends, and `state` and `answer` as the route above reads them. `builder_provider` and `reviewer_provider` each pass `--builder-provider=<value>` and `--reviewer-provider=<value>`, a provider HTTP does not offer refused with 400 `api_provider_not_offered` (`claude-cli` is offered since 1.29 to a client granted `host_tools`); of the other options of `remedy job run` only `--retry` is offered over HTTP, by the route below. A job id prefix is accepted. A client waits for the run's end by polling the route above until `state` is not `running`. Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a record that cannot be read), `ambiguous_job_id` 400, `job_already_running` 409, `api_command_failed` 500 when the run cannot start, and `api_client_policy_refused` 403 for a client token's job outside its projects. |

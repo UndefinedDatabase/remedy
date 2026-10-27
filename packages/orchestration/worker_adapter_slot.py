@@ -115,7 +115,13 @@ def adapter_isolation_record(adapter_ref: str, **settings: Any) -> dict[str, Any
 def adapter_exec_policy(
     adapter_ref: str, base: ExecGuardPolicy = ExecGuardPolicy(), **settings: Any,
 ) -> ExecGuardPolicy:
-    """Compile the installed adapter's effective sandbox profile onto `base`."""
+    """Compile the installed adapter's effective sandbox profile onto `base`.
+
+    A call pinned to a workspace (`base.cwd`) also gets that project's tools first on `PATH` and
+    its tests' variables (`with_project_tools`, operator amendment amend1027-green-builds A2).
+    """
+    from packages.orchestration.claude_cli_command import with_project_tools
+
     adapter = installed_worker_adapter(adapter_ref, **settings)
     declaration = adapter.sandbox_default()
     if declaration.tool_sandbox and base.cwd is None:
@@ -124,7 +130,8 @@ def adapter_exec_policy(
     profile = effective_sandbox_profile(adapter)
     base_with_env = dataclasses.replace(base, env=adapter_child_env(adapter_ref, **settings))
     return sandbox_profile_guard_policy(
-        profile, workspace=base.cwd or "", base=base_with_env, tool_sandbox=declaration.tool_sandbox)
+        profile, workspace=base.cwd or "", base=with_project_tools(base_with_env, base.cwd),
+        tool_sandbox=declaration.tool_sandbox)
 
 
 # WHY: the evidence twin of `adapter_exec_policy` — the same effective profile, shaped for

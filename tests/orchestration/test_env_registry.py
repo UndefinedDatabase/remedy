@@ -206,7 +206,7 @@ class TestTheRegistryReader:
     """`env_value`: the live environment, read as each variable's declared type."""
 
     def test_an_unset_env_only_variable_answers_its_spec_default(self):
-        assert env_value("REMEDY_CLAUDE_PLANNER_TIMEOUT", {}) == 300
+        assert env_value("REMEDY_CLAUDE_PLANNER_TIMEOUT", {}) == 600     # ten minutes since amend1027 C1
         assert env_value("REMEDY_PLANNER_FREETEXT", {}) is False
 
     def test_an_unset_variable_remedy_toml_may_carry_answers_none(self):

@@ -692,50 +692,50 @@ DOD_PROCESS_OUTPUT_CAP_BYTES: int = TEST_COMMAND_OUTPUT_CAP_BYTES
 
 def dod_process_exec_policy(
     timeout_sec: float, cwd: str | None,
-    env_overlay: Mapping[str, str] | None = None,
+    env_overlay: Mapping[str, str] | None = None, **project: object,
 ) -> ExecGuardPolicy:
     """The stage-1 policy every `dod-process` check runs under.
 
-    A DoD check is BOUNDED — pytest, a linter, a build, a project's own command —
-    so it KEEPS a wall timeout, which is what separates this class from `dod-app`
-    in T2_F085's policy table. `cpu_seconds`, `address_space_bytes` and
-    `open_files` are None for the reasons :func:`test_command_exec_policy` states,
-    not restated here so the classes cannot drift apart.
+    A DoD check is BOUNDED — pytest, a linter, a build, a project's own command — so it KEEPS a wall
+    timeout, which is what separates this class from `dod-app` in T2_F085's policy table.
+    `cpu_seconds`, `address_space_bytes` and `open_files` are None for the reasons
+    :func:`test_command_exec_policy` states, not restated here so the classes cannot drift apart.
 
-    `env=None` is deliberate and is the gap this seam closes: the call site it
-    replaces passed `os.environ.copy()`, which handed a project-authored command
-    the WHOLE parent environment. With `env=None` and an allowlist,
-    `plan_child_spawn` builds the child environment from `os.environ` keeping only
-    allowlisted keys, and `FORBIDDEN_ENV_KEYS` remains the floor beneath it.
+    `env=None` is deliberate and is the gap this seam closes: the call site it replaces passed
+    `os.environ.copy()`, which handed a project-authored command the WHOLE parent environment. With
+    `env=None` and an allowlist, `plan_child_spawn` builds the child environment from `os.environ`
+    keeping only allowlisted keys, and `FORBIDDEN_ENV_KEYS` remains the floor beneath it.
 
-    `deny_network=True` is amendment F085 D1's network column for this row: a DoD
-    check is a bounded, project-authored command, so it takes the same proxy
-    posture the `test` class takes, written after the scrub that would delete it.
+    `deny_network=True` is amendment F085 D1's network column for this row: a DoD check is a
+    bounded, project-authored command, so it takes the same proxy posture the `test` class takes,
+    written after the scrub that would delete it.
 
-    `PYTHONDONTWRITEBYTECODE` is SET, never merely passed through (F273): a DoD
-    check judges the job's worktree before its hand-off, and a Python check that
-    wrote `__pycache__/*.pyc` into that tree would end the job
-    `job_handoff_coverage_failed` on files no task wrote. The value becomes the scrub
-    SOURCE beside `os.environ`, as `test_command_exec_policy`'s overlay does.
+    `PYTHONDONTWRITEBYTECODE` is SET, never merely passed through (F273): a DoD check judges the
+    job's worktree before its hand-off, and a Python check that wrote `__pycache__/*.pyc` into that
+    tree would end the job `job_handoff_coverage_failed` on files no task wrote. The value becomes
+    the scrub SOURCE beside `os.environ`, as `test_command_exec_policy`'s overlay does.
 
-    `env_overlay` is F299's project environment — a `project_tests` check's own
-    `PATH` and `VIRTUAL_ENV`, found in the project rather than in Remedy's own.
-    It still passes through the allowlist above, so only an allowlisted key such
-    as `PATH` or `VIRTUAL_ENV` reaches the child, and it is applied BEFORE the
-    bytecode key so an overlay can never unset that key.
+    `env_overlay` is F299's project environment — a `project_tests` check's own `PATH` and
+    `VIRTUAL_ENV`, found in the project rather than in Remedy's own. It still passes through the
+    allowlist above, so only an allowlisted key such as `PATH` or `VIRTUAL_ENV` reaches the child,
+    and it is applied BEFORE the bytecode key so an overlay can never unset that key.
 
     A DoD check runs the project's own command over the job's worktree, so it always runs
     inside the tool sandbox (DECISION amend1016sb D4), as `test_command_exec_policy` states.
+
+    amend1027-green-builds: `project` is a project test's `project_env` (SET, its keys join the
+    allowlist) and its sandbox's `read_only_paths` and `scratch_dirs` (`SandboxSpec.for_project`).
     """
+    extra = dict(project.pop("project_env", None) or {})
     return ExecGuardPolicy(
         wall_timeout_seconds=float(timeout_sec),
         output_cap_bytes=DOD_PROCESS_OUTPUT_CAP_BYTES,
         cwd=cwd,
         core_file_bytes=0,
-        env={**os.environ, **(env_overlay or {}), "PYTHONDONTWRITEBYTECODE": "1"},
-        env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
+        env={**os.environ, **(env_overlay or {}), **extra, "PYTHONDONTWRITEBYTECODE": "1"},
+        env_allowlist=DOD_PROCESS_ENV_ALLOWLIST + tuple(sorted(extra)),
         deny_network=True,
-        sandbox=SandboxSpec(workspace_root_for(cwd or os.getcwd())),
+        sandbox=SandboxSpec.for_project(workspace_root_for(cwd or os.getcwd()), **project),
     )
 
 
@@ -744,7 +744,7 @@ def run_guarded_dod_process_command(
     *,
     timeout_sec: float,
     cwd: str | None,
-    env_overlay: Mapping[str, str] | None = None,
+    env_overlay: Mapping[str, str] | None = None, **project: object,
 ) -> subprocess.CompletedProcess[bytes]:
     """Run one `dod-process` check under the guard, shaped like `subprocess.run`.
 
@@ -761,7 +761,7 @@ def run_guarded_dod_process_command(
     translations; what stays per-seam is the policy each wrapper builds, and the
     `check` knob `runtime-build` alone asks for.
     """
-    guarded = run_guarded(cmd, dod_process_exec_policy(timeout_sec, cwd, env_overlay))
+    guarded = run_guarded(cmd, dod_process_exec_policy(timeout_sec, cwd, env_overlay, **project))
     return _completed_process_from_guarded(cmd, timeout_sec, guarded)
 
 

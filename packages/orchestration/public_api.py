@@ -61,6 +61,7 @@ from packages.orchestration.client_projects import client_projects_answer  # ame
 # Operator amendment amend1024-one-real-order Part E: every answer's dollar fields read null
 # unless `cost.show_usd` is true, one rule for every route (`docs/system/cost-currency-v1.md`).
 from packages.orchestration.cost_currency import visible_cost_usd
+from packages.orchestration.job_evidence_files import EVIDENCE_REFUSED_WORDS, client_evidence_answer
 from packages.orchestration.order_review import order_review_answer  # amend1026 D3
 
 # Operator amendment amend1023-universe-trust (DECISION amend1023 D11): an order's story.
@@ -85,35 +86,32 @@ from packages.orchestration.public_api_writes import (
 #: The path prefix every route under this registry lives below; the major version is in the path.
 PUBLIC_API_PREFIX = "/api/v1"
 
-#: This registry's own version. The minor number rises whenever a route, an answer key or a
-#: refusal token is added; the major number changes only under a new path prefix. Operator
-#: amendment amend1015-face-migration (DECISION amend1015f D14) raises it to `1.15` for
-#: `GET /api/v1/jobs/{job}/story`, and operator order amend1015-final-closure to `1.16` for the
-#: client token's refusal `api_client_policy_refused` on the proof, run and order polls
-#: (DECISION amend1015c D2) and for `GET /api/v1/jobs/{job}/diff` (DECISION amend1015c D5), and
-#: order exec-1017 to `1.17` for the story's `verification` and `numbers.model_turns`, and order
-#: exec-1017b to `1.18` for `POST /api/v1/jobs/{job}/stop` and an order's `jobs`, and order exec-1017c
-#: to `1.19` for `POST /api/v1/jobs/{job}/abandon`, `POST /api/v1/orders/{order}/cancel` and an
-#: order's `phase` and `cancel`, and order exec-1018 to `1.20` for the story reasons
-#: `sandbox_unavailable` and `project_rules_too_large`, an order job's phase `checked`, and a cancel
-#: that ends a planner call in flight, and order exec-1018b to `1.21` for the story's `end`, and
-#: F313 (DECISION F313 D1) to `1.22` for `GET /api/v1/now`, `GET /api/v1/jobs/{job}/insight` and
-#: the decision route's `resumed` and `resume_refused` after an `extend`, and F078 (DECISION F078 D6)
-#: to `1.23` for the interface's status answer `autonomy`, with no change over HTTP, and F141
-#: (DECISION F141 D7) to `1.24` for `autonomy`'s `push_allowed` and `permissions`, with none either,
-#: and F303 (DECISION F303 D3) to `1.25` for `POST /api/v1/jobs/{job}/note`, and F307
-#: (DECISION F307 D11) to `1.26` for an order's `repo_path`, with no change over HTTP, and F307
-#: (DECISION F307 D17, D18) to `1.27` for exit code 2 on a `remedy.toml` that cannot be read and,
-#: over HTTP, the refusals of the methods, the query values and the path values no route takes,
-#: and operator order fix1022-review-findings (R-1423) to `1.28` for `budget.used.minutes` of a
-#: running job, measured to now instead of to its last safe point, and operator amendment
-#: amend1023-universe-trust (DECISIONs amend1023 D6, D8, D11) to `1.29` for the client property
-#: `host_tools`, `GET /api/v1/orders/{order}/story`, the order jobs' `mission_id` and
-#: `blocking_criterion`, and the story's `scope_findings`, and operator amendment
-#: amend1026-go-live-and-ask (DECISIONs amend1026 D2 to D5) to `1.30` for `GET /api/v1/projects`,
-#: `POST /api/v1/projects/{project}/ask`, `GET /api/v1/orders/{order}/review`, the execution offer's
-#: `autonomy.push_allowed` and both stories' `scope`.
-PUBLIC_API_VERSION = "1.30"
+#: This registry's own version. The minor number rises whenever a route, an answer key or a refusal token is added;
+#: the major number changes only under a new path prefix. Operator amendment amend1015-face-migration (DECISION
+#: amend1015f D14) raises it to `1.15` for `GET /api/v1/jobs/{job}/story`, and operator order amend1015-final-closure
+#: to `1.16` for the client token's refusal `api_client_policy_refused` on the proof, run and order polls (DECISION
+#: amend1015c D2) and for `GET /api/v1/jobs/{job}/diff` (DECISION amend1015c D5), and order exec-1017 to `1.17` for
+#: the story's `verification` and `numbers.model_turns`, and order exec-1017b to `1.18` for `POST
+#: /api/v1/jobs/{job}/stop` and an order's `jobs`, and order exec-1017c to `1.19` for `POST
+#: /api/v1/jobs/{job}/abandon`, `POST /api/v1/orders/{order}/cancel` and an order's `phase` and `cancel`, and order
+#: exec-1018 to `1.20` for the story reasons `sandbox_unavailable` and `project_rules_too_large`, an order job's
+#: phase `checked`, and a cancel that ends a planner call in flight, and order exec-1018b to `1.21` for the story's
+#: `end`, and F313 (DECISION F313 D1) to `1.22` for `GET /api/v1/now`, `GET /api/v1/jobs/{job}/insight` and the
+#: decision route's `resumed` and `resume_refused` after an `extend`, and F078 (DECISION F078 D6) to `1.23` for the
+#: interface's status answer `autonomy`, with no change over HTTP, and F141 (DECISION F141 D7) to `1.24` for
+#: `autonomy`'s `push_allowed` and `permissions`, with none either, and F303 (DECISION F303 D3) to `1.25` for `POST
+#: /api/v1/jobs/{job}/note`, and F307 (DECISION F307 D11) to `1.26` for an order's `repo_path`, with no change over
+#: HTTP, and F307 (DECISION F307 D17, D18) to `1.27` for exit code 2 on a `remedy.toml` that cannot be read and, over
+#: HTTP, the refusals of the methods, the query values and the path values no route takes, and operator order
+#: fix1022-review-findings (R-1423) to `1.28` for `budget.used.minutes` of a running job, measured to now instead of
+#: to its last safe point, and operator amendment amend1023-universe-trust (DECISIONs amend1023 D6, D8, D11) to
+#: `1.29` for the client property `host_tools`, `GET /api/v1/orders/{order}/story`, the order jobs' `mission_id` and
+#: `blocking_criterion`, and the story's `scope_findings`, and operator amendment amend1026-go-live-and-ask
+#: (DECISIONs amend1026 D2 to D5) to `1.30` for `GET /api/v1/projects`, `POST /api/v1/projects/{project}/ask`, `GET
+#: /api/v1/orders/{order}/review`, the execution offer's `autonomy.push_allowed` and both stories' `scope`, and
+#: operator amendment amend1027-green-builds to `1.31` for `GET /api/v1/jobs/{job}/evidence` and the story's
+#: `order_id`, `retries`, `scope.match` and `verification.tested_by`.
+PUBLIC_API_VERSION = "1.31"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -492,7 +490,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "client.order": _order_answer,
     "client.run": _run_answer,
     "client.story": _client_story_answer,
-    "client.diff": _client_diff_answer,
+    "client.diff": _client_diff_answer, "client.evidence": client_evidence_answer,
     "client.now": _client_now_answer,
     "client.insight": _client_insight_answer,
     "client.order-story": order_story_answer,
@@ -508,7 +506,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
 #: about another project's job, and the diff was born among them (DECISION amend1015c D5); the
 #: insight joined them under F311 (DECISION F311 D6).
 _CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof", "client.run",
-                                  "client.diff", "client.insight"})
+                                  "client.diff", "client.insight", "client.evidence"})
 #: The read routes whose answer lists many projects' records: for a client token they list only
 #: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2); `client.now`
 #: joined them under F311 (DECISION F311 D6).
@@ -568,6 +566,8 @@ def answer_public_api_get(
                 accepted = ", ".join(f"'{k}'" for k in (*route.query, *route.query_values)) or "none"
                 return 400, build_error(
                     "api_query_invalid", f"'{key}' is not a valid query key for '{path}'; it accepts {accepted}"), {}
+        if client is not None and route.twin == "client.evidence" and not client.host_tools:  # amend1027 E1
+            return 403, build_error("api_client_policy_refused", EVIDENCE_REFUSED_WORDS), {}
         if client is not None and route.twin in _CLIENT_SCOPED_TWINS:
             refusal = _client_read_refusal(client, segments.get("job", ""))
             if refusal is not None:

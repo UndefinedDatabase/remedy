@@ -128,9 +128,14 @@ def record_scope_decision(record: dict[str, Any] | None, job_id: str) -> None:
 
 
 # WHY: a client shows why an order became one job or several without reading the evidence folder.
-def story_scope(job_id: str) -> dict[str, Any] | None:
+def story_scope(job_id: str, touched: list[str] | None = None) -> dict[str, Any] | None:
     """JOB_ID's scope decision as a story carries it: `single_job` (null when the regex lanes
-    decided), `files`, `reason` and `decided`; None when the job keeps no readable decision."""
+    decided), `files`, `reason` and `decided`; None when the job keeps no readable decision.
+
+    Operator amendment amend1027-green-builds D2: with TOUCHED, the files the job's result
+    changes, it also carries `files_expected` (the decision's files), `files_touched` and
+    `match`, true when both name the same files; transparency only, never a verdict.
+    """
     from packages.orchestration.data_paths import job_evidence_dir
 
     try:
@@ -141,6 +146,10 @@ def story_scope(job_id: str) -> dict[str, Any] | None:
         return None
     single = record.get("single_job")
     files = record.get("files")
-    return {"single_job": single if isinstance(single, bool) else None,
-            "files": [str(path) for path in files] if isinstance(files, list) else [],
-            "reason": str(record.get("reason") or ""), "decided": str(record.get("decided") or "") or None}
+    expected = [str(path) for path in files] if isinstance(files, list) else []
+    found = {"single_job": single if isinstance(single, bool) else None, "files": expected,
+             "reason": str(record.get("reason") or ""), "decided": str(record.get("decided") or "") or None}
+    if touched is None:
+        return found
+    return {**found, "files_expected": expected, "files_touched": sorted(touched),
+            "match": sorted({path.strip("./") for path in expected}) == sorted({path.strip("./") for path in touched})}

@@ -15,14 +15,16 @@ from typing import Any
 #: `build_client_story`'s keys, and `matches` of the `ambiguous_job_id` refusal.
 CLIENT_STORY_ANSWER_KEYS: tuple[str, ...] = (
     "changes", "dirty_start", "end", "ended_at", "job_id", "matches", "next", "note_open", "numbers",
-    "order", "scope", "scope_findings",
+    "order", "order_id", "retries", "scope", "scope_findings",
     "started_at", "state", "state_detail", "steps", "updated_at", "verification",
 )
 
 #: A job's verification as `order_verification.job_verification` answers it (exec-1017 D2): the
-#: `do.run` answer's `jobs` carry it whole; the story carries only `status` and `required`.
+#: `do.run` answer's `jobs` carry it whole; the story carries `client_story.STORY_VERIFICATION_KEYS`.
+#: amend1027 B: `reason_key`, `tested_by` (`builder`, `final_check`) and a red run's `output`.
 JOB_VERIFICATION_KEY_TREE: dict[str, Any] = {
-    "status": {}, "required": {}, "request": {}, "reason": {},
+    "status": {}, "required": {}, "request": {}, "reason": {}, "reason_key": {}, "tested_by": {},
+    "output": {},
     "runs": {"source": {}, "task_id": {}, "check_id": {}, "status": {}, "command": {}, "blocking": {}},
 }
 
@@ -40,9 +42,12 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
     "changes": {"path": {}, "added": {}, "removed": {}},
     "dirty_start": _WORD_TREE,
     "numbers": {"duration_s": {}, "tokens_in": {}, "tokens_out": {}, "calls": {}, "model_turns": {}, "rounds": {}},
-    "verification": {"status": {}, "required": {}},
+    "verification": {"status": {}, "required": {}, "reason": {}, "reason_key": {}, "tested_by": {},
+                     "output": {}},
     "scope_findings": {"key": {}, "path": {}, "text": {}},
-    "scope": {"single_job": {}, "files": {}, "reason": {}, "decided": {}},
+    "scope": {"single_job": {}, "files": {}, "reason": {}, "decided": {}, "files_expected": {},
+              "files_touched": {}, "match": {}},
+    "retries": {"task_id": {}, "role": {}, "attempt": {}, "reason": {}},
 }
 
 #: The keys of the interface's `story` key, `client_story_words.story_words()`; under `phrases`

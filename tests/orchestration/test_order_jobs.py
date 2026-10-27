@@ -162,3 +162,22 @@ def test_a_job_title_is_the_orders_first_line_and_tells_sibling_jobs_apart(job_o
 
     order = job_order.split("\n\nThis job does")[0] if "This job does" in job_order else job_order
     assert do_job_title(job_order, order, project_slug="web", deliverables=deliverables, several=several) == title
+
+
+def test_a_job_names_its_http_order_or_its_batch(data_root, monkeypatch):
+    """amend1027 E1: a job an HTTP order started names that order; one from the command line its batch."""
+    import packages.orchestration.mission_state as MS
+    from packages.orchestration.serve_paths import serve_paths
+
+    orders = serve_paths().orders_dir
+    batch = lambda order_id, source: SimpleNamespace(order_id=order_id, source_path=source)  # noqa: E731
+    link = lambda job_id, order_id: SimpleNamespace(job_id=job_id, order_id=order_id)  # noqa: E731
+    mission = SimpleNamespace(
+        orders=[batch("b1", str(orders / "e4eaaaa9cebd3304" / "order.md")), batch("b2", "")],
+        job_links=[link("j-http", "b1"), link("j-cli", "b2")])
+    monkeypatch.setattr(MS, "project_ids_with_missions", lambda: ["p"])
+    monkeypatch.setattr(MS, "list_missions", lambda project_id: [mission])
+
+    assert OJ.order_id_of_job(SimpleNamespace(job_id="j-http", project_id="")) == "e4eaaaa9cebd3304"
+    assert OJ.order_id_of_job(SimpleNamespace(job_id="j-cli", project_id="p")) == "b2"
+    assert OJ.order_id_of_job(SimpleNamespace(job_id="j-none", project_id="")) is None

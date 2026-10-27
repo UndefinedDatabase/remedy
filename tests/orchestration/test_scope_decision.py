@@ -118,3 +118,17 @@ def test_a_story_reads_the_kept_scope_decision_and_none_without_one(tmp_path, mo
     record_scope_decision({"single_job": None, "files": [], "reason": "", "decided": SCOPE_REGEX_FALLBACK},
                           "fedcba9876543210")
     assert story_scope("fedcba9876543210")["single_job"] is None
+
+
+def test_a_story_compares_the_expected_files_with_the_touched_ones(tmp_path, monkeypatch):
+    """amend1027 D2: `files_expected`, `files_touched` and `match`, transparency only."""
+    from packages.orchestration.scope_decision import story_scope
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    record_scope_decision({"single_job": True, "files": ["./src/a.tsx", "tests/a.test.ts"],
+                           "reason": "Eins.", "decided": SCOPE_ONE_JOB}, "0123456789abcdef")
+    same = story_scope("0123456789abcdef", ["tests/a.test.ts", "src/a.tsx"])
+    assert same["files_expected"] == ["./src/a.tsx", "tests/a.test.ts"]
+    assert same["files_touched"] == ["src/a.tsx", "tests/a.test.ts"] and same["match"] is True
+    other = story_scope("0123456789abcdef", ["src/a.tsx", "src/b.tsx"])
+    assert other["match"] is False and "files_expected" not in story_scope("0123456789abcdef")

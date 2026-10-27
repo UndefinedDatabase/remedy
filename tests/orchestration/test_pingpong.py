@@ -248,9 +248,10 @@ class TestStagingTestExecution:
     def test_test_result_in_round(self, demo_repo: Path):
         result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
         for rd in result.rounds:
-            # Without --test-command, test_passed is None and summary is "tests_not_run"
+            # Without --test-command, test_passed is None; a project naming no test command says so
+            # instead of "tests_not_run" (amend1027 A4).
             assert rd.test_passed is None
-            assert rd.test_summary == "tests_not_run"
+            assert rd.test_summary == "Projekt hat keinen Testbefehl"
 
 
 # ---------------------------------------------------------------------------

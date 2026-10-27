@@ -38,6 +38,16 @@ A sandboxed process sees:
 - **Writable:** the job workspace (from Remedy's own job record, never from a model-written
   path) and a private `/tmp` with the private `HOME=/tmp/home`. Both temporary areas vanish with
   the call.
+- **A project's own read-only folders** (operator amendment amend1027-green-builds), for a
+  `project_tests` DoD check only: the checkout's `node_modules`, so a job's worktree below the
+  checkout finds the installed packages, with its cache folders `.vite-temp`, `.vite` and
+  `.cache` replaced by empty memory-backed folders; and the folders the `[tests]` table of the
+  project's `.remedy/config.toml` names under `read_only_paths` (absolute, existing, never the
+  root, the home or one of its ancestors), with the variables it names under `env` set inside.
+  A value may hold `{workspace}`, the job's own copy of the repository, and a `PATH` there goes
+  in front of the command's own `PATH`, never in its place. Both keys are read from the
+  repository's own checkout, never from the job's worktree; a `.remedy/config.toml` the checkout
+  keeps out of git is no change of the job, because a worktree never holds it.
 - **Nothing else.** The operator's home, other repositories, SSH keys, cloud credentials,
   `/run/user`, Remedy's data root and its tokens do not exist inside. A workspace symlink to a
   private file leads nowhere. `PATH` directories inside a git working tree (another
@@ -196,8 +206,16 @@ appended to `builder_command_refusals.jsonl` in the run's evidence folder; a str
 it in its raw stream. The write mode `dangerous-skip` is unchanged: it keeps every tool.
 
 - The project's own test command (`[tests] command` of `.remedy/config.toml`, else `npm test` for
-  a `package.json`, else pytest over `tests/`, as `find_project_test_command` reads it): the
-  builder must see its own change pass before the reviewer reads it.
+  a `package.json`, else `go test`, `cargo test` or pytest over `tests/`, as
+  `find_project_test_command` reads it): the builder must see its own change pass before the
+  reviewer reads it.
+- The spellings that command's runner is started with, each with any arguments (operator
+  amendment amend1027-green-builds, A1): for a `package.json` project `pnpm test`,
+  `pnpm run test`, `pnpm vitest`, `pnpm exec vitest`, `pnpm exec playwright test`, `npx vitest`,
+  `npx playwright test`, `npm test`, `npm run test`, `vitest` and `playwright test`, and every
+  script whose name begins with `test` or `e2e` under `pnpm`, `pnpm run` and `npm run`; for a
+  Python project `pytest`, `python -m pytest`, `python3 -m pytest`, `uv run pytest`,
+  `.venv/bin/pytest` and `.venv/bin/python -m pytest`; `go test` and `cargo test`.
 - `python -m pytest`, `python3 -m pytest` and `pnpm test`, the fallback when the project names no
   command: the common test runners, under both spellings of the Python interpreter, because a
   machine may carry only `python3`.
@@ -213,6 +231,14 @@ it in its raw stream. The write mode `dangerous-skip` is unchanged: it keeps eve
 A command joined to another (`;`, `&&`, `||`, a pipe, a redirection or a substitution) is no
 command of the list by its first word: Claude Code checks each part, and Remedy's own reading,
 `builder_command_allowed`, refuses the whole.
+
+The builder is started with `--permission-mode dontAsk` (A3): in print mode nobody answers a
+permission prompt, so a command its rules allow runs at once and every other one is refused at
+once, never left waiting for an approval. Its environment is the operator's `PATH` with the
+project's `.venv/bin` and `node_modules/.bin` in front, each when the checkout has it, plus
+`VIRTUAL_ENV` and the `[tests]` table's `env` (A2, `with_project_tools`); the isolation list of
+DECISION F152 D3 is otherwise unchanged. A job's worktree of a Node project links the checkout's
+`node_modules` (`worktrees.link_installed_packages`), excluded through `.git/info/exclude`.
 
 ## Rollback
 

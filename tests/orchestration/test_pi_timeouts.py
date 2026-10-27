@@ -67,8 +67,14 @@ def test_the_default_applies_only_when_nobody_set_a_timeout():
     assert (default_pi.timeout_sec, default_pi.timeout_sec_source) == (900, "default")
     explicit = resolve_job_execution_config(None, builder_name="pi", reviewer_name="pi", timeout_sec=30)
     assert (explicit.timeout_sec, explicit.timeout_sec_source) == (30, "invocation")
-    other = resolve_job_execution_config(None, builder_name="claude-cli", reviewer_name="claude-cli")
+    other = resolve_job_execution_config(None, builder_name="fake", reviewer_name="fake")
     assert other.timeout_sec == 120
+    # amend1027 C1: a claude-cli worker's default is providers.claude_cli.call_timeout_minutes (30).
+    claude = resolve_job_execution_config(None, builder_name="claude-cli", reviewer_name="claude-cli")
+    assert (claude.timeout_sec, claude.timeout_sec_source) == (1800, "default")
+    explicit = resolve_job_execution_config(None, builder_name="claude-cli", reviewer_name="claude-cli",
+                                            timeout_sec=60)
+    assert explicit.timeout_sec == 60
 
 
 def _job(**budgets):
@@ -118,3 +124,23 @@ def test_run_job_binds_the_job_clock_when_it_claims_the_workspace(monkeypatch):
     PJ._acquire_job_workspace(job)                                       # the copy branch: nothing else runs
     seconds, why = PP.effective_pi_timeout(900)
     assert seconds <= 60 and why["bound_by"] == "max_wall_clock_minutes"
+
+
+def test_a_claude_cli_call_is_bounded_by_the_jobs_remaining_wall_clock():
+    """amend1027 C1: thirty minutes, never longer than the job has left; no job, the configured value."""
+    from packages.orchestration.claude_cli_command import claude_cli_call_timeout_sec, cli_call_timeout
+
+    assert claude_cli_call_timeout_sec({}) == 1800
+    assert claude_cli_call_timeout_sec({"providers.claude_cli.call_timeout_minutes": 5}) == 300
+    assert claude_cli_call_timeout_sec({"providers.claude_cli.call_timeout_minutes": 0}) == 1800
+    PP.bind_job_clock(_job(max_wall_clock_minutes=1))                    # about fifty seconds left
+    assert 40 < cli_call_timeout(1800) <= 50
+    PP.bind_job_clock(_job())
+    assert cli_call_timeout(1800) == 1800
+
+
+def test_the_planner_and_the_scope_decision_keep_ten_minutes():
+    from packages.orchestration.config import get_key_spec
+
+    assert get_key_spec("claude_planner.timeout_seconds").default == 600
+    assert get_key_spec("providers.claude_cli.call_timeout_minutes").default == 30

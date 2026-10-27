@@ -1,0 +1,98 @@
+{
+  "argv_without_prompt": [
+    "/home/decodeux/Repos/system/bin/claude",
+    "-p",
+    "--output-format",
+    "json",
+    "--allowedTools",
+    "Edit,Write,MultiEdit",
+    "Bash(python -m pytest -p no:cacheprovider tests -q:*)",
+    "Bash(pytest:*)",
+    "Bash(python -m pytest:*)",
+    "Bash(python3 -m pytest:*)",
+    "Bash(uv run pytest:*)",
+    "Bash(.venv/bin/pytest:*)",
+    "Bash(.venv/bin/python -m pytest:*)",
+    "Bash(pnpm test:*)",
+    "Bash(git status:*)",
+    "Bash(git diff:*)",
+    "Bash(git log:*)",
+    "Bash(ls:*)",
+    "Bash(cat:*)",
+    "Bash(head:*)",
+    "Bash(tail:*)",
+    "Bash(wc:*)",
+    "Bash(grep:*)",
+    "Bash(rg:*)",
+    "Bash(python -m py_compile:*)",
+    "Bash(python3 -m py_compile:*)",
+    "Bash(pnpm build:*)",
+    "Bash(pnpm lint:*)",
+    "--permission-mode",
+    "dontAsk",
+    "--safe-mode",
+    "--tools",
+    "Read,Glob,Grep,Edit,Write,MultiEdit,Bash",
+    "--setting-sources",
+    "project,local",
+    "--strict-mcp-config"
+  ],
+  "builder_test_commands": [
+    "python -m pytest -p no:cacheprovider tests -q",
+    "pytest",
+    "python -m pytest",
+    "python3 -m pytest",
+    "uv run pytest",
+    ".venv/bin/pytest",
+    ".venv/bin/python -m pytest",
+    "pnpm test"
+  ],
+  "exit_code": 0,
+  "result": "- `python3 -m pytest -q`: ran (1 passed).\n- `curl --version`: refused (Bash permission was denied in don't-ask mode).",
+  "permission_denials": [
+    {
+      "tool_name": "Bash",
+      "tool_use_id": "toolu_01D46nMThe5roeWTyD61kmws",
+      "tool_input": {
+        "command": "curl --version",
+        "description": "Show curl version"
+      }
+    }
+  ],
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 2308,
+    "cache_read_input_tokens": 19342,
+    "output_tokens": 212,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 2308,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 53,
+        "cache_read_input_tokens": 7152,
+        "cache_creation_input_tokens": 304,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 304
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "stderr_tail": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.\n"
+}

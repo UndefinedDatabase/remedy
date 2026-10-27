@@ -352,7 +352,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.30`.
+Interface version: `1.31`.
 
 ### Envelope
 
@@ -504,7 +504,7 @@ Keys under the answer keys: see below.
   - `roles`: `cache_read`, `cost_usd`, `harness_invocations`, `model_turns`, `role`, `tokens_in`, `tokens_out`
 - `jobs`: `job_id`, `tasks`, `verification`
   - `tasks`: `deliverable`, `title`
-  - `verification`: `reason`, `request`, `required`, `runs`, `status`
+  - `verification`: `output`, `reason`, `reason_key`, `request`, `required`, `runs`, `status`, `tested_by`
     - `runs`: `blocking`, `check_id`, `command`, `source`, `status`, `task_id`
 - `landed`: `branch`, `job_id`, `repo`, `sha`
 - `order_budget`: `calls`, `caps`, `cost`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `unmeasured_jobs`, `used`
@@ -1067,7 +1067,7 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
+Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `order_id`, `retries`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
@@ -1078,7 +1078,8 @@ Keys under the answer keys: see below.
 - `next`: `action`, `route`
   - `route`: `method`, `path`
 - `numbers`: `calls`, `duration_s`, `model_turns`, `rounds`, `tokens_in`, `tokens_out`
-- `scope`: `decided`, `files`, `reason`, `single_job`
+- `retries`: `attempt`, `reason`, `role`, `task_id`
+- `scope`: `decided`, `files`, `files_expected`, `files_touched`, `match`, `reason`, `single_job`
 - `scope_findings`: `key`, `path`, `text`
 - `state_detail`: `changed_files`, `decision_id`, `file`, `question`, `reason`, `round`
   - `reason`: `args`, `key`
@@ -1088,7 +1089,7 @@ Keys under the answer keys: see below.
     - `args`: `*`
   - `tasks`: `files`, `rounds`, `status`, `title`
   - `tokens`: `in`, `out`
-- `verification`: `required`, `status`
+- `verification`: `output`, `reason`, `reason_key`, `required`, `status`, `tested_by`
 
 #### `remedy client now`
 
@@ -1233,6 +1234,23 @@ Keys under the answer keys: see below.
 
 - `projects`: `description`, `last_job_at`, `last_test`, `name`, `open_jobs`, `repo_path`, `slug`
   - `last_test`: `at`, `job_id`, `status`
+
+#### `remedy client evidence`
+
+Command id: `client.evidence`.
+Description: Read the files of one Job's evidence folder, kept for each of its task runs, each file with its path, its size and its text cut to its last 20,000 characters: the size choice, the DoD and its result, the builder's commands and test runs, the raw streams (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job` | no | yes | yes | no | The id of the job, or a prefix of it, whose task runs' evidence folder is read |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
+Answer keys: `files`, `files_omitted`, `job_id`, `matches`.
+Keys under the answer keys: see below.
+
+- `files`: `content`, `name`, `size`, `truncated`
 
 #### `remedy client ask`
 

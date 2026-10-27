@@ -25,7 +25,12 @@ from packages.orchestration.project_tests import (
     project_environment,
     project_lookup_dirs,
     project_python,
+    project_sandbox_read_paths,
+    project_sandbox_scratch_dirs,
+    project_test_env,
+    project_tool_environment,
     read_configured_command,
+    read_test_settings,
 )
 
 
@@ -307,3 +312,78 @@ def test_lookup_dirs_of_a_folder_outside_any_repository_is_itself_alone(
     folder.mkdir()
     monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
     assert project_lookup_dirs(folder) == (folder,)
+
+
+def _config(repo: Path, text: str) -> None:
+    (repo / ".remedy").mkdir(exist_ok=True)
+    (repo / ".remedy" / "config.toml").write_text(text)
+
+
+class TestTheTestSettings:
+    """amend1027: the [tests] table's env and read_only_paths, and where a check reads them."""
+
+    def test_unset_keys_read_empty(self, tmp_path):
+        assert read_test_settings(tmp_path).env == () and read_test_settings(tmp_path).read_only_paths == ()
+
+    def test_env_and_read_only_paths_are_read(self, tmp_path):
+        kit = tmp_path / "kit"
+        kit.mkdir()
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        _config(repo, f'[tests]\nenv = {{ KIT = "{kit}" }}\nread_only_paths = ["{kit}"]\n')
+        settings = read_test_settings(repo)
+        assert settings.env == (("KIT", str(kit)),)
+        assert settings.read_only_paths == (str(kit.resolve()),)
+        assert project_sandbox_read_paths(repo) == (str(kit.resolve()),)
+        assert project_tool_environment(repo, "/usr/bin") == {"PATH": "/usr/bin", "KIT": str(kit)}
+
+    @pytest.mark.parametrize("line", [
+        'env = { "A-B" = "x" }', 'env = { A = 1 }', 'env = "A=1"', 'env = { LD_PRELOAD = "x" }', 'read_only_paths = ["relative"]',
+        'read_only_paths = ["/"]', 'read_only_paths = ["/no/such/folder/amend1027"]',
+        'read_only_paths = "/tmp"'])
+    def test_a_wrong_shape_is_refused(self, tmp_path, line):
+        _config(tmp_path, f"[tests]\n{line}\n")
+        with pytest.raises(ProjectTestConfigError):
+            read_test_settings(tmp_path)
+
+    def test_the_home_is_never_a_read_only_path(self, tmp_path):
+        _config(tmp_path, f'[tests]\nread_only_paths = ["{os.path.expanduser("~")}"]\n')
+        with pytest.raises(ProjectTestConfigError):
+            read_test_settings(tmp_path)
+
+    def test_a_node_project_shares_its_packages_and_cache_folders(self, tmp_path):
+        (tmp_path / "node_modules" / ".bin").mkdir(parents=True)
+        assert project_sandbox_read_paths(tmp_path) == (str((tmp_path / "node_modules").resolve()),)
+        scratch = project_sandbox_scratch_dirs(tmp_path)
+        assert [Path(d).name for d in scratch] == [".vite-temp", ".vite", ".cache"]
+        assert all(Path(d).is_dir() for d in scratch)
+        env = project_tool_environment(tmp_path, "/usr/bin")
+        assert env["PATH"].split(os.pathsep) == [str(tmp_path / "node_modules" / ".bin"), "/usr/bin"]
+
+
+class TestTheWorkspacePlaceholderAndPath:
+    """amend1027: `{workspace}` names the job's copy; a table's PATH goes in front, never in place."""
+
+    def test_the_placeholder_names_the_workspace_and_path_goes_in_front(self, tmp_path):
+        _config(tmp_path, '[tests]\nenv = { ROOT = "{workspace}/sub", PATH = "/opt/tool/bin" }\n')
+        env = project_test_env(tmp_path, Path("/w/job-1"), "/usr/bin")
+        assert env == {"ROOT": "/w/job-1/sub", "PATH": "/opt/tool/bin:/usr/bin"}
+        assert project_tool_environment(tmp_path, "/usr/bin")["PATH"] == "/opt/tool/bin:/usr/bin"
+
+    def test_an_untracked_config_only_the_checkout_holds_is_no_change_of_the_job(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        _git(repo, "init", "-q")
+        _git(repo, "config", "user.email", "t@e.com")
+        _git(repo, "config", "user.name", "T")
+        (repo / "README.md").write_text("x\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "init")
+        (repo / ".git" / "info" / "exclude").write_text(".remedy/\n.remedy-wt/\n")
+        _config(repo, '[tests]\ncommand = ["make", "check"]\n')
+        wt = repo / ".remedy-wt" / "job-1"
+        _git(repo, "worktree", "add", "-q", "--detach", str(wt))
+        command = ProjectTestCommand(argv=("make", "check"), source="config")
+        assert changed_source_file(wt, command) == ""
+        _config(wt, '[tests]\ncommand = ["true"]\n')                  # the job writes its own
+        assert changed_source_file(wt, command) == ".remedy/config.toml"

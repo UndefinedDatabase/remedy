@@ -441,6 +441,27 @@ def _note_open(plan: Any) -> bool:
               in STEERABLE_TASK_STATUSES for task in plan.tasks)
 
 
+#: The parts of `job_verification` a story carries (amend1027 B: who tested, why none ran, a red
+#: run's output cut to 4,000 characters).
+STORY_VERIFICATION_KEYS = ("status", "required", "reason", "reason_key", "tested_by", "output")
+
+
+def job_order_id(plan: Any) -> str | None:
+    """The order the job serves, from its record or the order store; None when it serves none
+    (amend1027 E1: a job not started over HTTP still names its order when one exists)."""
+    from packages.orchestration.order_jobs import order_id_of_job
+
+    return order_id_of_job(plan)
+
+
+def provider_retries(plan: Any) -> list[dict[str, Any]]:
+    """The provider calls the job repeated after a time-out, each `{task_id, role, reason}`
+    (amend1027 C2), from its tasks' run records."""
+    from packages.orchestration.provider_retry import job_timeout_retries
+
+    return job_timeout_retries(plan)
+
+
 def _scope_findings(plan: Any) -> list[dict[str, Any]]:
     """What Remedy took out of the job's scope (DECISION amend1023 D8, D9): each `{key, path, text}`,
     `key` a word of `STORY_SCOPE_FINDINGS`, `path` relative to the repository, `text` the removed
@@ -492,7 +513,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
         "changes": changes,
         "dirty_start": _dirty_start(plan),
         "verification": {key: value for key, value in job_verification(plan).items()
-                         if key in ("status", "required")},
+                         if key in STORY_VERIFICATION_KEYS},
         "numbers": {
             "duration_s": duration,
             "tokens_in": summary["tokens_in"],
@@ -503,7 +524,9 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
         },
         "note_open": _note_open(plan),
         "scope_findings": _scope_findings(plan),
-        "scope": story_scope(str(plan.job_id)),
+        "scope": story_scope(str(plan.job_id), [change["path"] for change in changes]),
+        "order_id": job_order_id(plan),
+        "retries": provider_retries(plan),
     }
 
 

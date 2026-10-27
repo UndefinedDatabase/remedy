@@ -419,6 +419,13 @@ class TestTheRealClaudeTimeoutMessage:
         records = _postmortems(result)
         assert len(records) == 1
         assert records[0]["failure_class"] == "provider_timeout"
+        assert result.retries_used == 1     # amend1027 C2: a claude-cli time-out is repeated once
+
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
+    def test_another_providers_time_out_is_still_repeated_twice(self, _s):
+        result = PingPongResult(job_id="J1", task_id="T001")
+        _call_with_retry(lambda: BuilderOutput(error=CLAUDE_TIMEOUT, provider="ollama"),
+                         result=result, role="builder", provider="ollama")
         assert result.retries_used == 2
 
 
@@ -1083,3 +1090,20 @@ class TestDataRootAddressing:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(target))
         from packages.orchestration.pingpong_loop import _is_remedy_data_path
         assert _is_remedy_data_path(repo, "src/source.py") is False
+
+
+def test_the_story_names_a_repeat_after_a_time_out(tmp_path, monkeypatch):
+    """amend1027 C2: the run record's retry reasons say which call was repeated after a time-out."""
+    import json
+    from types import SimpleNamespace
+
+    from packages.orchestration.data_paths import run_dir
+    from packages.orchestration.provider_retry import job_timeout_retries
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    folder = run_dir("run1")
+    folder.mkdir(parents=True)
+    (folder / "result.json").write_text(json.dumps({"retry_reasons": [
+        "builder:attempt1:claude CLI timed out after 1800s", "reviewer:attempt1:claude CLI exited 1: x"]}))
+    plan = SimpleNamespace(tasks=[SimpleNamespace(task_id="t1", run_id="run1"), SimpleNamespace(task_id="t2", run_id="")])
+    assert job_timeout_retries(plan) == [{"task_id": "t1", "role": "builder", "attempt": 1, "reason": "timeout"}]

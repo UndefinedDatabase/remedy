@@ -85,6 +85,29 @@ def red_test_fingerprint(summary: str) -> str:
     return hashlib.sha256(_VOLATILE.sub("", head).encode()).hexdigest()[:16]
 
 
+def round_tests(reading: tuple[bool | None, str, str] | None, stream_dir: str | None, rd: Any, staging: Path,
+                result: Any) -> tuple[bool | None, str, Any]:
+    """The test phase of one round with the builder's own test runs (operator amendment
+    amend1027-green-builds, Part B), read from its stream and recorded either way.
+
+    With no test command of the loop's own (*reading* None) the answer is `(passed, summary,
+    tests_not_run)`: the builder's last test run of the round, else "Projekt hat keinen
+    Testbefehl" (A4), else `tests_not_run` with its reason (B3). With one, the loop's own run
+    *reading* `(passed, summary, tripped)` decides (B2); when it ran nothing the builder's run does,
+    except after a sandbox refusal, which stops the run (R-1343).
+    """
+    from packages.orchestration.builder_test_runs import round_test_reading
+
+    builder = round_test_reading(stream_dir=stream_dir, round_num=rd.round_number, workspace=str(staging),
+                                 job_id=result.job_id, run_id=result.run_id, task_id=result.task_id)
+    if reading is None:
+        return builder
+    passed, summary, tripped = reading
+    if passed is None and tripped != "sandbox_unavailable" and builder[0] is not None:
+        return builder[0], f"{summary}\n{builder[1]}", tripped
+    return reading
+
+
 class DoDTestCommand(str):
     """The loop's test command when it is the job's blocking DoD test checks.
 

@@ -52,6 +52,7 @@ protects the next kind added to the schema.
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import os
 import subprocess
 import sys
@@ -76,6 +77,9 @@ from packages.orchestration.project_tests import (
     find_project_test_command,
     project_environment,
     project_python,
+    project_sandbox_read_paths,
+    project_sandbox_scratch_dirs,
+    project_test_env,
 )
 from packages.orchestration.test_runner import _EXECUTION_SAFE_EXECUTABLES
 from packages.runtimes.dev_server import (
@@ -317,7 +321,8 @@ def _refused(check: DoDCheck, reason: str, argv: list[str], cwd: str,
 
 def _spawn_check(check: DoDCheck, ctx: _RunContext, argv: list[str], cwd: Path,
                  declared_cwd: str,
-                 env_overlay: Mapping[str, str] | None = None) -> CheckEvidence:
+                 env_overlay: Mapping[str, str] | None = None,
+                 sandbox_extras: Mapping[str, Any] | None = None) -> CheckEvidence:
     """Spawn ``argv`` in ``cwd`` under the guard, and judge what it did.
 
     The spawn-and-judge half of a single-process check, shared by
@@ -334,6 +339,7 @@ def _spawn_check(check: DoDCheck, ctx: _RunContext, argv: list[str], cwd: Path,
             timeout_sec=ctx.timeout_sec,
             cwd=str(cwd),
             env_overlay=env_overlay,
+            **(sandbox_extras or {}),
         )
     except FileNotFoundError:
         # The tool is not installed. A missing linter is a RED check with a
@@ -414,6 +420,8 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
     configuration or ``package.json`` is not.
     """
     declared_cwd = str(check.spec.get("cwd", "") or "")
+    if check.spec.get("timeout_sec"):   # amend1027 B2: the limit the order's wall-clock cap gave
+        ctx = dataclasses.replace(ctx, timeout_sec=int(check.spec["timeout_sec"]))
     cwd, cwd_reason = _resolve_cwd(check, ctx.root)
     if cwd is None:
         return _refused(
@@ -445,8 +453,15 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
             check, REASON_EXECUTABLE_NOT_ALLOWED, argv, declared_cwd,
             f"executable {argv[0]!r} is not in the allowed set; nothing was run")
 
-    return _spawn_check(check, ctx, argv, cwd, declared_cwd,
-                        env_overlay=project_environment(cwd))
+    try:   # amend1027: the [tests] table's env and the folders its command reads, read-only
+        overlay = project_environment(cwd)
+        extras = {key: value for key, value in (
+            ("project_env", project_test_env(cwd, ctx.root, overlay.get("PATH", os.environ.get("PATH", "")))),
+            ("read_only_paths", project_sandbox_read_paths(cwd)),
+            ("scratch_dirs", project_sandbox_scratch_dirs(cwd))) if value}
+    except ProjectTestConfigError as exc:
+        return _refused(check, REASON_TEST_COMMAND_INVALID, argv, declared_cwd, str(exc))
+    return _spawn_check(check, ctx, argv, cwd, declared_cwd, env_overlay=overlay, sandbox_extras=extras)
 
 
 # ---------------------------------------------------------------------------
