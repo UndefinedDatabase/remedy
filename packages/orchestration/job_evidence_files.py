@@ -46,3 +46,15 @@ def job_evidence_files(job_id: str) -> dict[str, Any]:
                       "content": text[-MAX_EVIDENCE_FILE_CHARS:],
                       "truncated": len(text) > MAX_EVIDENCE_FILE_CHARS})
     return {"job_id": job_id, "files": files, "files_omitted": max(0, len(found) - MAX_EVIDENCE_FILES)}
+
+
+def client_evidence_answer(*, job: str) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/evidence` sends: what `remedy client evidence <job> --json`
+    prints, for a value that names one job; its refusal otherwise (the job resolved as the twin does)."""
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.public_api import _resolved_job_plan
+
+    resolved, refusal = _resolved_job_plan(job)
+    if resolved is None:
+        return refusal or {}
+    return build_ok(**job_evidence_files(resolved[0]))

@@ -207,6 +207,23 @@ class SandboxSpec:
     #: `node_modules/.vite-temp`); each gets an empty memory-backed folder that vanishes with the call.
     scratch_dirs: tuple[str, ...] = ()
 
+    @classmethod
+    def for_project(cls, workspace: str, read_only_paths: Sequence[str] = (),
+                    scratch_dirs: Sequence[str] = ()) -> SandboxSpec:
+        """The sandbox of a project's own test command (operator amendment amend1027-green-builds).
+
+        READ_ONLY_PATHS (the checkout's `node_modules`, the `[tests]` table's folders) are mounted
+        read-only and SCRATCH_DIRS (cache folders inside them) get empty memory-backed folders; a
+        path inside WORKSPACE is left out, since the workspace is already there and writable.
+        """
+        real = os.path.realpath(workspace)
+
+        def outside(path: str) -> bool:
+            return os.path.commonpath([os.path.realpath(path), real]) != real
+
+        return cls(workspace, mounts=tuple((p, p, False) for p in read_only_paths if outside(p)),
+                   scratch_dirs=tuple(d for d in scratch_dirs if outside(d)))
+
     def _program_exists(self, program: str, path_value: str, cwd: str) -> bool:
         """Whether *program* will be found inside: on `PATH`, relative to *cwd*, or in a mount."""
         if "/" not in program:
