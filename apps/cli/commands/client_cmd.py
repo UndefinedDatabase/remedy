@@ -220,6 +220,27 @@ def _cmd_client_insight(job: str, *, lines: int, json_output: bool = False) -> N
          f"advice: {', '.join(answer['advice'])}")
 
 
+def _cmd_client_evidence(job: str, *, json_output: bool = False) -> None:
+    """`remedy client evidence <job>`: the job's evidence files, the answer
+    `GET /api/v1/jobs/{job}/evidence` sends (amend1027 E1)."""
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
+    from packages.orchestration.job_evidence_files import job_evidence_files
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
+
+    job_id = resolve_job_id_or_fail(job, json_output=json_output)
+    try:
+        require_job_plan(job_id)
+    except JobNotFoundError as exc:
+        fail("job_not_found", str(exc), json_output=json_output)
+    answer = job_evidence_files(job_id)
+    if json_output:
+        emit_ok(**answer)
+        return
+    print(f"Job {job_id}: {len(answer['files'])} evidence file(s)")
+    for row in answer["files"]:
+        print(f"  {row['size']:>9} {row['name']}")
+
+
 def _cmd_client_diff(job: str, *, json_output: bool = False) -> None:
     from apps.cli.job_id_arg import resolve_job_id_or_fail
     from packages.orchestration.client_diff import ClientDiffRefusal, job_client_diff
@@ -388,6 +409,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job, lines=insight_lines(getattr(args, "lines", None)),
         json_output=getattr(args, "json", False)),
     "client.diff": lambda args: _cmd_client_diff(
+        args.job, json_output=getattr(args, "json", False)),
+    "client.evidence": lambda args: _cmd_client_evidence(
         args.job, json_output=getattr(args, "json", False)),
     "client.order-story": lambda args: _cmd_client_order_story(
         args.order, json_output=getattr(args, "json", False)),

@@ -244,6 +244,21 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         # A job that has not ended, or whose commits git no longer has, exits 3 (`not_ready`).
         exit_codes=(0, 1, 2, 3),
     ),
+    # Operator amendment amend1027-green-builds E1: a job's evidence files, as text.
+    CommandEntry(
+        command_id="client.evidence",
+        group_id="client",
+        subcommand="evidence",
+        description="Read the files of one Job's evidence folder, each with its path, its size and its text cut to its last 20,000 characters: the scope decision, the DoD and its result, the builder's commands and test runs, the raw streams (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("job", "The id of the job, or a prefix of it, whose evidence is read"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.story", "client.diff"),
+        exit_codes=(0, 1, 2),
+    ),
     # Operator amendment amend1023-universe-trust (DECISION amend1023 D6): the client registry,
     # read and changed on this machine's command line only; never published over HTTP.
     CommandEntry(

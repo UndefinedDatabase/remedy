@@ -617,6 +617,10 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({"markdown", "order_id", "report_id", "status"}),
         "the keys order_review.order_review_answer passes to build_ok (amend1026 D3)",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_evidence:**answer": (
+        frozenset({"files", "files_omitted", "job_id"}),
+        "the keys job_evidence_files.job_evidence_files returns (amend1027 E1)",
+    ),
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
             "changes", "dirty_start", "end", "ended_at", "job_id", "next", "note_open", "numbers",
@@ -788,6 +792,8 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
         _returned_dict_keys("packages/orchestration/job_evidence.py", "export_job_evidence"))
     assert sites["apps.cli.commands.patch:_cmd_approve_hunks:**result.exported"] == (
         set(hunk_decision_record._RECORD_KEYS))
+    assert sites["apps.cli.commands.client_cmd:_cmd_client_evidence:**answer"] == (
+        _returned_dict_keys("packages/orchestration/job_evidence_files.py", "job_evidence_files"))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_story:**story"] == (
         _returned_dict_keys("packages/orchestration/client_story.py", "build_client_story"))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_order_story:**story"] == (
@@ -1514,6 +1520,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     assert steered["error"] == "job_not_steerable"
     proved = answer("change.proof", ["change", "proof", job_id], 0)
     exported = answer("job.evidence", ["job", "evidence", job_id], 0)
+    # amend1027 E1: the job's evidence files, each with its name, size and text.
+    evidence = answer("client.evidence", ["client", "evidence", job_id], 0)
+    assert evidence["job_id"] == job_id and evidence["files"] and evidence["files_omitted"] == 0
     hunks = answer("patch.hunks", ["patch", "hunks", job_id], 0)
     answer("patch.approve-hunks", ["patch", "approve-hunks", job_id], 1)
     answer("patch.approve", ["patch", "approve", job_id, "no-such-intent"], 1)

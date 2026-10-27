@@ -1235,6 +1235,23 @@ Keys under the answer keys: see below.
 - `projects`: `description`, `last_job_at`, `last_test`, `name`, `open_jobs`, `repo_path`, `slug`
   - `last_test`: `at`, `job_id`, `status`
 
+#### `remedy client evidence`
+
+Command id: `client.evidence`.
+Description: Read the files of one Job's evidence folder, each with its path, its size and its text cut to its last 20,000 characters: the scope decision, the DoD and its result, the builder's commands and test runs, the raw streams (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job` | no | yes | yes | no | The id of the job, or a prefix of it, whose evidence is read |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
+Answer keys: `files`, `files_omitted`, `job_id`, `matches`.
+Keys under the answer keys: see below.
+
+- `files`: `content`, `name`, `size`, `truncated`
+
 #### `remedy client ask`
 
 Command id: `client.ask`.

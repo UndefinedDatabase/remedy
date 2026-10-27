@@ -120,6 +120,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "client.interface", "client.execution", "client.changes", "client.order", "client.run", "client.story",
     "client.now", "client.insight",
     "client.diff", "client.cancel-order", "client.order-story", "client.order-review", "client.projects",
+    "client.evidence",
     "client.ask",
     "doctor.health",
     "doctor.logs",
@@ -189,6 +190,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.ask": PROJECT_ASK_REFUSAL_TOKENS,
     "client.run": ("run_not_found",),
     "client.story": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
+    "client.evidence": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
     "client.now": (),
     "client.insight": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
     "client.diff": ("ambiguous_job_id", "diff_not_ready", "diff_unavailable", "invalid_job_id",
@@ -285,6 +287,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "client.story": CLIENT_STORY_ANSWER_KEYS, "client.execution": CLIENT_EXECUTION_ANSWER_KEYS,
     "client.now": CLIENT_NOW_ANSWER_KEYS, "client.insight": CLIENT_INSIGHT_ANSWER_KEYS,
     "client.diff": ("files", "job", "matches", "state", "truncated"),
+    "client.evidence": ("files", "files_omitted", "job_id", "matches"),
     "client.order-story": ORDER_STORY_ANSWER_KEYS, "client.order-review": ORDER_REVIEW_ANSWER_KEYS,
     "client.projects": CLIENT_PROJECTS_ANSWER_KEYS, "client.ask": PROJECT_ASK_ANSWER_KEYS,
     "doctor.health": ("checks", "verdict"),
@@ -711,6 +714,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     "client.order": {"jobs": ORDER_JOBS_KEY_TREE, "cancel": CANCEL_ANSWER_TREES["client.cancel-order"]["cancel"]},
     "client.order-story": ORDER_STORY_KEY_TREE,     # amend1023 D11
     "client.order-review": {},                      # amend1026 D3: `markdown` is one string
+    "client.evidence": {"files": {"name": {}, "size": {}, "content": {}, "truncated": {}}},   # amend1027 E1
     "client.projects": CLIENT_PROJECTS_KEY_TREE,    # amend1026 C1
     "client.ask": PROJECT_ASK_KEY_TREE,             # amend1026 C2
     # F253 D20: `answer` is the envelope `remedy job run` printed once the run ended; no tree under it.

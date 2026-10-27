@@ -12,6 +12,31 @@ fails the gate rather than shipping an unexplained release.
 ## [Unreleased]
 
 ### Added
+- 2026-10-27, amend1027-green-builds (feature F319); the public API and the client interface move
+  to 1.31:
+  - A Claude Code builder may now run the project's own tests. Its list of allowed commands takes the
+    test command Remedy finds for the project and the usual ways to start it, such as `pnpm vitest`,
+    `npx playwright test` or `uv run pytest`, and the builder is started with the permission mode
+    `dontAsk`, so an allowed command runs at once and every other one is refused at once. Its `PATH`
+    starts with the project's `.venv/bin` and `node_modules/.bin`.
+  - Remedy counts a test run the builder made itself. It reads the run from the builder's stream,
+    with its result from the test runner's own summary line, for pytest, Vitest, Playwright, Jest, go
+    and cargo alike, and keeps every Bash call in `builder_bash_calls.json`.
+  - The final check of every job now runs the project's own test command itself, in the job's
+    workspace, blocking, with half the order's wall-clock cap as its time limit. A job's worktree of a
+    Node project links the checkout's `node_modules`, the tool sandbox mounts it read-only, and the
+    `[tests]` table of a project's `.remedy/config.toml` may name variables (`env`) and folders
+    (`read_only_paths`) its tests read outside the project.
+  - A project without a test command is no longer reported as `tests_not_run`; a round says so, and
+    `tests_not_run` comes with its reason, such as a refused permission, a missing command or a time
+    limit.
+  - One call of a Claude Code builder or reviewer may run for thirty minutes
+    (`providers.claude_cli.call_timeout_minutes`), never longer than the job has left, and is repeated
+    once after a time-out; the planner and the scope decision get ten minutes.
+  - `GET /api/v1/jobs/{job}/evidence` and its twin `remedy client evidence <job>` answer a job's
+    evidence files as text, for a client granted `host_tools`. A job's story names who ran the tests,
+    a red run's output, why no test ran, the scope decision's files beside the touched ones, the order
+    the job serves and every call repeated after a time-out.
 - 2026-10-26, amend1026-go-live-and-ask (feature F318); the public API and the client interface move
   to 1.30:
   - `GET /api/v1/projects` and its twin `remedy client projects` list the projects a client may see,

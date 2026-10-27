@@ -112,8 +112,10 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: `blocking_criterion`, and the story's `scope_findings`, and operator amendment
 #: amend1026-go-live-and-ask (DECISIONs amend1026 D2 to D5) to `1.30` for `GET /api/v1/projects`,
 #: `POST /api/v1/projects/{project}/ask`, `GET /api/v1/orders/{order}/review`, the execution offer's
-#: `autonomy.push_allowed` and both stories' `scope`.
-PUBLIC_API_VERSION = "1.30"
+#: `autonomy.push_allowed` and both stories' `scope`, and operator amendment amend1027-green-builds
+#: to `1.31` for `GET /api/v1/jobs/{job}/evidence` and the story's `order_id`, `retries`,
+#: `scope.match` and `verification.tested_by`.
+PUBLIC_API_VERSION = "1.31"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -393,6 +395,18 @@ def _client_diff_answer(*, job: str) -> dict[str, Any]:
         return build_error(exc.token, str(exc))
 
 
+def _client_evidence_answer(*, job: str) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/evidence` sends: what `remedy client evidence <job>
+    --json` prints (amend1027 E1)."""
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.job_evidence_files import job_evidence_files
+
+    resolved, refusal = _resolved_job_plan(job)
+    if resolved is None:
+        return refusal or {}
+    return build_ok(**job_evidence_files(resolved[0]))
+
+
 def _client_now_answer(*, project_ids: frozenset[str] | None = None) -> dict[str, Any]:
     """The answer `GET /api/v1/now` sends: what `remedy client now --json` prints (DECISIONs
     F311 D1 and D6). A client token's `project_ids` filters it to its own projects' jobs and
@@ -493,6 +507,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "client.run": _run_answer,
     "client.story": _client_story_answer,
     "client.diff": _client_diff_answer,
+    "client.evidence": _client_evidence_answer,
     "client.now": _client_now_answer,
     "client.insight": _client_insight_answer,
     "client.order-story": order_story_answer,
@@ -508,7 +523,9 @@ _TWIN_ANSWERS: dict[str, Any] = {
 #: about another project's job, and the diff was born among them (DECISION amend1015c D5); the
 #: insight joined them under F311 (DECISION F311 D6).
 _CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof", "client.run",
-                                  "client.diff", "client.insight"})
+                                  "client.diff", "client.insight", "client.evidence"})
+#: The read routes only the server's token and a client granted `host_tools` use (amend1027 E1).
+_HOST_TOOLS_TWINS = frozenset({"client.evidence"})
 #: The read routes whose answer lists many projects' records: for a client token they list only
 #: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2); `client.now`
 #: joined them under F311 (DECISION F311 D6).
@@ -568,6 +585,10 @@ def answer_public_api_get(
                 accepted = ", ".join(f"'{k}'" for k in (*route.query, *route.query_values)) or "none"
                 return 400, build_error(
                     "api_query_invalid", f"'{key}' is not a valid query key for '{path}'; it accepts {accepted}"), {}
+        if client is not None and route.twin in _HOST_TOOLS_TWINS and not getattr(client, "host_tools", False):
+            from packages.orchestration.job_evidence_files import EVIDENCE_REFUSED_WORDS
+
+            return 403, build_error("api_client_policy_refused", EVIDENCE_REFUSED_WORDS), {}
         if client is not None and route.twin in _CLIENT_SCOPED_TWINS:
             refusal = _client_read_refusal(client, segments.get("job", ""))
             if refusal is not None:

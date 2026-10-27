@@ -499,6 +499,20 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="GET",
+        path="/api/v1/jobs/{job}/evidence",
+        twin="client.evidence",
+        refusals=(("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)),
+        description=(
+            "One job's evidence files, as `remedy client evidence <job> --json` prints them (since "
+            "1.31): `job_id`, `files` with each file's `name` (its path in the job's evidence folder), "
+            "`size` in bytes, `content` (its text, the last 20,000 characters) and `truncated`, and "
+            "`files_omitted` beyond the first 400. It changes nothing. Only the server's token and a "
+            "client granted `host_tools` read it (403 `api_client_policy_refused`), and a client token "
+            "only a job of one of its projects."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
         path="/api/v1/jobs/{job}/diff",
         twin="client.diff",
         refusals=(("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400),
