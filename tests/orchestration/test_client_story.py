@@ -104,7 +104,8 @@ def test_a_finished_run_reads_done_and_offers_its_apply(data_root, repo):
                                                  "args": {"n": 1, "first": "README.md"}}
     # exec-1017 D2: no test was asked for and none ran, which is not "the project names no test command".
     assert _step(story, "checking")["phrase"]["key"] == "tests_not_requested"
-    assert story["verification"] == {"status": "not_required", "required": False}
+    assert story["verification"] == {"status": "not_required", "required": False, "reason": "", "reason_key": "",
+                                     "tested_by": [], "output": ""}
     assert _step(story, "finished")["phrase"] == {"key": "waiting_for_apply", "args": {"n": 1}}
     assert [change["path"] for change in story["changes"]] == building["tasks"][0]["files"]
     numbers = story["numbers"]
@@ -231,7 +232,8 @@ def test_a_planned_job_reads_queued_and_offers_its_run(data_root, repo):
     assert story["started_at"] is None and story["ended_at"] is None
     assert story["numbers"] == {"duration_s": None, "tokens_in": None, "tokens_out": None,
                                 "calls": None, "model_turns": None, "rounds": None}
-    assert story["verification"] == {"status": "pending", "required": False}
+    assert story["verification"] == {"status": "pending", "required": False, "reason": "", "reason_key": "",
+                                     "tested_by": [], "output": ""}
 
 
 def test_a_running_job_reads_reading_then_working_then_checking(data_root, repo):

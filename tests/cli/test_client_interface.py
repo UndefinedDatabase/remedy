@@ -96,7 +96,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.30"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.31"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -620,8 +620,8 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
             "changes", "dirty_start", "end", "ended_at", "job_id", "next", "note_open", "numbers",
-            "order", "scope", "scope_findings", "started_at", "state", "state_detail", "steps",
-            "updated_at", "verification",
+            "order", "order_id", "retries", "scope", "scope_findings", "started_at", "state",
+            "state_detail", "steps", "updated_at", "verification",
         }),
         "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
         "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",

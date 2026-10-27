@@ -14,6 +14,7 @@ which jobs exist, so a job is never listed under an order it does not belong to.
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 #: The job metadata key naming the job of the same order a waiting job runs after.
@@ -118,6 +119,31 @@ def job_mission_ids(job_ids: list[str]) -> dict[str, str]:
         for mission in list_missions(project_id):
             found.update({link.job_id: str(mission.id) for link in mission.job_links if link.job_id in wanted})
     return found
+
+
+def order_id_of_job(job: Any) -> str | None:
+    """The order JOB serves (operator amendment amend1027-green-builds E1), or None.
+
+    The batch its mission links it under: when that batch's order file lies in the supervisor's
+    orders folder (`serve_paths`), the id of the HTTP order (`<orders>/<order>/order.md`), else
+    the batch's own id, so a job started from the command line names its order too.
+    """
+    from packages.orchestration.mission_state import list_missions, project_ids_with_missions
+    from packages.orchestration.serve_paths import serve_paths
+
+    job_id, project = str(job.job_id), str(getattr(job, "project_id", "") or "")
+    for project_id in [project] if project else project_ids_with_missions():
+        for mission in list_missions(project_id):
+            batch_id = next((link.order_id for link in mission.job_links if link.job_id == job_id), None)
+            if batch_id is None:
+                continue
+            batch = next((b for b in mission.orders if b.order_id == batch_id), None)
+            source = Path(batch.source_path) if batch is not None and batch.source_path else None
+            orders = serve_paths().orders_dir
+            if source is not None and source.parent.parent.resolve() == orders.resolve():
+                return source.parent.name
+            return batch_id or None
+    return None
 
 
 def _missing(job_id: str) -> dict[str, Any]:

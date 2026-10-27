@@ -96,8 +96,9 @@ from packages.orchestration.project_ask import PROJECT_ASK_ANSWER_KEYS, PROJECT_
 #: F307 (DECISION F307 D17) to `1.27` (exit code 2 and `config_invalid` for a `remedy.toml` that cannot be read), and
 #: fix1022-review-findings (R-1423) to `1.28` (`budget.used.minutes` of a running job measured to now), and
 #: amend1023-universe-trust to `1.29` (`client.order-story`, `host_tools`, `scope_findings`, the order header `shape`),
-#: amend1026-go-live-and-ask to `1.30` (`client.projects`, `client.ask`, `client.order-review`, `autonomy`, `scope`).
-CLIENT_INTERFACE_VERSION = "1.30"
+#: amend1026-go-live-and-ask to `1.30` (`client.projects`, `client.ask`, `client.order-review`, `autonomy`, `scope`),
+#: amend1027-green-builds to `1.31` (the story's `order_id`, `retries`, `scope.match`, `verification.tested_by`).
+CLIENT_INTERFACE_VERSION = "1.31"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
