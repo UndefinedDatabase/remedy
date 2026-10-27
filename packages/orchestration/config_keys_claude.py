@@ -26,11 +26,23 @@ CLAUDE_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         key="claude_planner.timeout_seconds",
         env_var="REMEDY_CLAUDE_PLANNER_TIMEOUT",
         description=(
-            "Per-call wall timeout of the Claude CLI planner, in whole seconds (env-only)"
+            "Per-call wall timeout of the Claude CLI planner and the scope decision, in whole "
+            "seconds (env-only); ten minutes since amend1027-green-builds C1"
         ),
         value_type=int,
-        default=300,
+        default=600,
         env_only=True,
+    ),
+    ConfigKeySpec(
+        key="providers.claude_cli.call_timeout_minutes",
+        env_var="REMEDY_CLAUDE_CLI_CALL_TIMEOUT_MINUTES",
+        description=(
+            "Time limit of one claude-cli builder or reviewer call, in whole minutes, when the job "
+            "names none of its own; never longer than the job's remaining wall-clock budget. A call "
+            "that runs into it is recorded as a time-out and repeated once (amend1027-green-builds C)."
+        ),
+        value_type=int,
+        default=30,
     ),
     ConfigKeySpec(
         key="claude_cli.all_tools",

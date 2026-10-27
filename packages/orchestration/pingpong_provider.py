@@ -27,6 +27,7 @@ from packages.orchestration.capability_routes import routed_parked_resume, route
 
 # DECISION F315 D2: the installed adapter builds every call's command line (`claude_cli_command.py`).
 from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL, log_builder_command_refusals
+from packages.orchestration.claude_cli_command import cli_call_timeout as _cli_call_timeout
 from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.planner_cancel import planner_cancel_check
@@ -1149,13 +1150,12 @@ class ClaudeCliProvider:
     ) -> tuple[str, int, int, dict[str, Any] | None, str]:
         """Call claude CLI. Returns (text, duration_ms, tokens_used, usage_actuals, actual_missing_reason).
 
-        The CLI is invoked with ``--output-format json``. When the JSON parses
-        into a usage block, ``text`` is taken from the ``result`` field and the
-        measured token usage is returned. When parsing fails (non-JSON output,
-        older CLI, no usage block), it falls back to the raw stdout as text with
-        ``tokens_used=0`` and ``usage_actuals=None``.
+        The CLI is invoked with ``--output-format json``. When the JSON parses into a usage
+        block, ``text`` is taken from the ``result`` field and the measured token usage is
+        returned. When parsing fails (non-JSON output, older CLI, no usage block), it falls
+        back to the raw stdout as text with ``tokens_used=0`` and ``usage_actuals=None``.
         """
-        claude = self._get_claude_path()
+        claude, timeout_sec = self._get_claude_path(), _cli_call_timeout(timeout_sec)  # amend1027 C1
         if self._stream_evidence:
             return self._call_streamed(
                 claude, prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
@@ -1225,7 +1225,7 @@ class ClaudeCliProvider:
         (usage/cost retained); an unknown ``--json-schema`` option is class
         ``config``. Provider transport failures raise as before.
         """
-        claude = self._get_claude_path()
+        claude, timeout_sec = self._get_claude_path(), _cli_call_timeout(timeout_sec)  # amend1027 C1
         cli_ver = self._resolve_version()
 
         # Stream mode: reuse the F004 capture (raw/redaction/accounting unchanged)

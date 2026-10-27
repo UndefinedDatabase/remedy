@@ -161,6 +161,35 @@ def log_builder_command_refusals(raw: str, path: str | None) -> list[dict[str, A
                                         sort_keys=True) + "\n")
     return refused
 
+#: Operator amendment amend1027-green-builds C1: the config key of one claude-cli worker call's
+#: time limit in minutes, and its default; the planner and the scope decision keep their own
+#: shorter limit (`claude_planner.timeout_seconds`, ten minutes).
+CLAUDE_CLI_CALL_TIMEOUT_KEY = "providers.claude_cli.call_timeout_minutes"
+CLAUDE_CLI_CALL_TIMEOUT_MINUTES = 30
+
+
+def claude_cli_call_timeout_sec(config: Any = None) -> int:
+    """The configured time limit of one claude-cli worker call, in seconds (C1); a value Remedy
+    cannot read as a positive whole number of minutes is the default."""
+    if config is None:
+        from packages.orchestration.config import get_config
+
+        config = get_config()
+    value = config.get(CLAUDE_CLI_CALL_TIMEOUT_KEY)
+    minutes = value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else (
+        CLAUDE_CLI_CALL_TIMEOUT_MINUTES)
+    return minutes * 60
+
+
+def cli_call_timeout(timeout_sec: int) -> int:
+    """TIMEOUT_SEC bounded by the running job's remaining wall-clock budget (C1), never below one
+    second; outside a job, or for a job with no wall-clock cap, TIMEOUT_SEC itself."""
+    from packages.orchestration.pi_provider import effective_pi_timeout
+
+    seconds, _provenance = effective_pi_timeout(int(timeout_sec))
+    return max(1, int(seconds))
+
+
 #: The model name a claude-cli call is fingerprinted under when no model is set: the CLI then
 #: runs its own default, and a run manifest refuses an empty model (R-1162). It names the
 #: fingerprint only; no `--model` switch is added to the command line.

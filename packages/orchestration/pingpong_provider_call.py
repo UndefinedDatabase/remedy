@@ -5,6 +5,12 @@ rate governor's pacing, and books every real invocation on the run's result as a
 :class:`ProviderAttempt`; ``_begin_stream_call`` and ``_offer_stable_prefix`` are the two
 duck-typed hints the loop hands a provider before it calls. F307 moved them here from
 ``pingpong_loop.py`` as that file's structural step (3) in ``docs/system/structure-ledger-v1.md``.
+
+Operator amendment amend1027-green-builds C2: a ``claude-cli`` call that ran into its time limit
+(thirty minutes by default, ``providers.claude_cli.call_timeout_minutes``) is repeated ONCE, not
+twice as a short call is; the time-out stays in the run's ``retry_reasons`` and the streamed output
+so far in the call's ``raw_stream.jsonl``, and the job's story names the repeat
+(``provider_retry.job_timeout_retries``).
 """
 from __future__ import annotations
 
@@ -239,7 +245,7 @@ def _call_with_retry(
         if is_reject or not (_transport_retries or is_rate_limit):
             return out
 
-        backoff = next_backoff(attempt)
+        backoff = None if is_timeout and provider == "claude-cli" and attempt else next_backoff(attempt)  # C2
         if backoff is None:
             return out
 

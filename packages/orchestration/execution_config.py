@@ -235,7 +235,12 @@ def _resolve_invocation_controls(
     from packages.orchestration.provider_timeouts import PI_DEFAULT_TIMEOUT_SEC
 
     # amend1014c R2: Pi's longer agent loop is a DEFAULT, never a floor an explicit value is raised to.
+    # amend1027 C1: so is a claude-cli worker's, `providers.claude_cli.call_timeout_minutes` (30).
     _ts_default = PI_DEFAULT_TIMEOUT_SEC if "pi" in providers else 120
+    if "claude-cli" in providers:
+        from packages.orchestration.claude_cli_command import claude_cli_call_timeout_sec
+
+        _ts_default = max(_ts_default, claude_cli_call_timeout_sec())
     _ts, _ts_src = _resolve_inv(timeout_sec, _ts_default, ec.timeout_sec if ec else None)
     _tp, _tp_src = _resolve_inv(timeout_profile, "", ec.timeout_profile if ec else None)
     _moc, _moc_src = _resolve_inv(max_output_chars, 50000,
