@@ -29,11 +29,25 @@ def repo_has_committed_file(repo_root: str) -> bool:
 
 
 def do_step_study(ctx: DoContext) -> tuple[str, str]:
-    """Study the repository exactly once, and only when it is non-empty (D3)."""
+    """Study the repository exactly once, and only when it is non-empty (D3).
+
+    Operator order beweis (F327): the step's detail starts with the order ledger's sentence when the
+    order's call cap cannot keep three rounds of builder and reviewer free, so it is said before
+    any planning.
+    """
+    status, detail = _study_once(ctx)
+    shortfall = ctx.ledger.reserve_shortfall() if ctx.ledger is not None else ""
+    return status, f"{shortfall} {detail}" if shortfall else detail
+
+
+def _study_once(ctx: DoContext) -> tuple[str, str]:
+    """The study step itself: skipped, stopped or done with what it wrote."""
     from packages.orchestration.study import (
         record_study_pass,
         run_study,
+        STUDY_FACT_CHANGED,
         study_call_fn,
+        study_runs_local,
         study_stale_reason,
     )
 
@@ -58,7 +72,10 @@ def do_step_study(ctx: DoContext) -> tuple[str, str]:
     # repository of any size: a README edit in a 10,000-file repository needs no whole-repository model pass.
     # exec-1018 (R-1352): nor does any order on a tiny repository, whose facts the planner sees whole
     # (measured: four narration calls, 23.8 of 27.5 s, on six files).
-    call_fn = None if ctx.no_llm or lane.bounded or ctx.tiny_repo else study_call_fn()
+    # F327 (operator order beweis): no narration either when the study only refreshes facts after a
+    # manifest changed, or when the study's model is not local, so narration never spends the order's caps.
+    quiet = ctx.no_llm or lane.bounded or ctx.tiny_repo or stale.endswith(STUDY_FACT_CHANGED) or not study_runs_local()
+    call_fn = None if quiet else study_call_fn()
     result = run_study(ctx.repo_root, project_id=str(ctx.project.id), call_fn=call_fn)
     updated = record_study_pass(str(ctx.project.id), ctx.repo_root)
     if updated is not None:

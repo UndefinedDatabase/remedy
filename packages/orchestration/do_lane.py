@@ -409,7 +409,8 @@ def settle_do_lane(ctx: DoContext) -> DoLaneDecision:
         lane = select_do_lane(
             ctx.order, tracked_files=files, projects=len(ctx.projects) or 1,
             force_job=ctx.force_job, force_mission=ctx.force_mission,
-            single_job=order_single_job_reason(ctx.order, ctx.order_source_path))
+            single_job=order_single_job_reason(ctx.order, ctx.order_source_path)
+            or (ctx.ledger.reserve_shortfall() if ctx.ledger is not None else ""))   # F327: the smallest size
         if asks_scope_decision(ctx, lane):
             from packages.orchestration.scope_decision import decide_order_scope
 

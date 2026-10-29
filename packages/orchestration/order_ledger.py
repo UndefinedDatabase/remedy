@@ -15,6 +15,14 @@ order's caps (`ctx.budgets`: the flags or the order file's header) are now the O
 
 Remedy deliberately does not retry, escalate or loop on a refused call: the refusal is final for
 that order, and the entry says why.
+
+Operator order beweis (F327): the study's narration (`UNCOUNTED_REASONS`) runs on the local model
+and is recorded but never counted or refused, so it spends nothing of the order's caps; and a
+planner call the walk can do without (`RESERVE_REFUSABLE_REASONS`: the scope decision and the
+mission plan, whose callers fall back to the regex lane and the deterministic plan) is refused when
+it would leave the jobs fewer than `ROUNDS_KEPT_FREE` full rounds of builder and reviewer. When the
+call cap cannot hold that reserve at all, `reserve_shortfall` says so in one sentence before
+planning and the walk plans one job, the smallest size, instead of stopping in the middle of it.
 """
 from __future__ import annotations
 
@@ -27,6 +35,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from packages.orchestration.planner_cancel import PlannerCallCancelled
+from packages.orchestration.verified_repair import PROVIDER_CALLS_PER_ROUND
 
 #: The schema a planner call is bound to, read as the reason the call was made.
 CALL_REASONS = {
@@ -36,6 +45,12 @@ CALL_REASONS = {
     "StudyCategoryNarration": "study_narration",
     "OrderScopeDecision": "scope_decision",
 }
+#: F327: the reasons whose calls run on the local model and are recorded but never counted or refused.
+UNCOUNTED_REASONS = frozenset({"study_narration"})
+#: F327: the planner calls a walk can do without, refused before they eat into the jobs' reserve.
+RESERVE_REFUSABLE_REASONS = frozenset({"scope_decision", "mission_plan"})
+#: F327: the full rounds of builder and reviewer the order's call cap always keeps free for its jobs.
+ROUNDS_KEPT_FREE = 3
 #: Characters per token for the estimate of a planning call; labelled an estimate wherever shown.
 CHARS_PER_ESTIMATED_TOKEN = 4
 
@@ -76,7 +91,33 @@ class OrderCallLedger:
             "role": "planner", "reason": reason, "attempt": attempt, "seconds": round(seconds, 3),
             "prompt_chars": prompt_chars, "response_chars": response_chars, "outcome": outcome,
             "estimated_tokens": (prompt_chars + response_chars) // CHARS_PER_ESTIMATED_TOKEN,
-            "tokens_estimated": True})
+            "tokens_estimated": True, "counted": reason not in UNCOUNTED_REASONS})
+
+    def _counted(self) -> list[dict[str, Any]]:
+        """The entries that spend the order's caps: answered calls of a counted reason (F327)."""
+        return [e for e in self.entries if e.get("counted", True) and not e["outcome"].startswith("refused")]
+
+    def reserved_calls(self) -> int:
+        """F327: the provider calls kept free for the jobs, `ROUNDS_KEPT_FREE` rounds of builder and reviewer."""
+        return ROUNDS_KEPT_FREE * PROVIDER_CALLS_PER_ROUND
+
+    def reserve_shortfall(self) -> str:
+        """F327: one sentence when the order's call cap cannot keep the jobs' reserve free, else ""."""
+        cap = (self.caps or {}).get("max_provider_calls")
+        if cap is None or cap >= self.reserved_calls():
+            return ""
+        return (f"The order's cap of {cap} provider calls cannot keep {ROUNDS_KEPT_FREE} full rounds of "
+                f"builder and reviewer ({self.reserved_calls()} calls) free, so Remedy plans the smallest "
+                "size, one job.")
+
+    def _reserve_refusal(self) -> str:
+        """F327: why one more planner call would eat into the jobs' reserve, or "". A cap that cannot
+        hold the reserve at all refuses nothing for it: the walk plans one job (`reserve_shortfall`)."""
+        cap = (self.caps or {}).get("max_provider_calls")
+        if cap is None or cap < self.reserved_calls() or self.used()["calls"] + 1 + self.reserved_calls() <= cap:
+            return ""
+        return (f"the order keeps {self.reserved_calls()} of its {cap} provider calls free for "
+                f"{ROUNDS_KEPT_FREE} rounds of builder and reviewer")
 
     def record_job(self, job: Any) -> None:
         """Take the job's persisted actuals (calls, tokens, money) into the order's spend."""
@@ -107,8 +148,10 @@ class OrderCallLedger:
         def recorded(prompt: str, attempt: int) -> str:
             # The study's narration passes its token limit in the attempt slot; it has no retries.
             attempt = 0 if reason == "study_narration" else attempt
-            refusal = self.exhausted()
-            if not refusal and self.failures_in_a_row >= PLANNER_FAILURE_LIMIT:
+            counted = reason not in UNCOUNTED_REASONS     # F327: the local narration is never refused
+            refusal = (self.exhausted() or (self._reserve_refusal() if reason in RESERVE_REFUSABLE_REASONS
+                                            else "")) if counted else ""
+            if counted and not refusal and self.failures_in_a_row >= PLANNER_FAILURE_LIMIT:
                 refusal = (f"the planner failed {self.failures_in_a_row} calls in a row; it is not "
                            "asked again for this order")
             if refusal:
@@ -124,12 +167,12 @@ class OrderCallLedger:
                                          prompt_chars=len(prompt), response_chars=0, outcome="cancelled")
                 raise
             except Exception as exc:
-                self.failures_in_a_row += 1
+                self.failures_in_a_row += int(counted)
                 self.record_planner_call(reason, attempt=attempt, seconds=self.clock() - began,
                                          prompt_chars=len(prompt), response_chars=0,
                                          outcome=f"error: {type(exc).__name__}")
                 raise
-            self.failures_in_a_row = 0
+            self.failures_in_a_row = 0 if counted else self.failures_in_a_row
             self.record_planner_call(reason, attempt=attempt, seconds=self.clock() - began,
                                      prompt_chars=len(prompt), response_chars=len(text or ""),
                                      outcome="ok")
@@ -143,12 +186,12 @@ class OrderCallLedger:
 
     @property
     def planner_calls(self) -> int:
-        return sum(1 for entry in self.entries if not entry["outcome"].startswith("refused"))
+        """The counted planner calls that were made; the study's local narration is not one (F327)."""
+        return len(self._counted())
 
     def used(self) -> dict[str, Any]:
         """Calls, tokens (measured by jobs, estimated for planning) and measured money spent so far."""
-        planning_tokens = sum(e["estimated_tokens"] for e in self.entries
-                              if not e["outcome"].startswith("refused"))
+        planning_tokens = sum(e["estimated_tokens"] for e in self._counted())
         cost = [j["cost_usd"] for j in self.jobs.values() if j["cost_usd"] is not None]
         return {
             "calls": self.planner_calls + sum(j["calls"] for j in self.jobs.values()),
@@ -216,8 +259,9 @@ class OrderCallLedger:
             "caps": self.caps,
             "planner_calls": self.planner_calls,
             "planner_calls_by_reason": by_reason,
-            "refused_calls": len(self.entries) - self.planner_calls,
-            "estimated_planning_tokens": sum(e["estimated_tokens"] for e in self.entries),
+            "refused_calls": sum(1 for e in self.entries if e["outcome"].startswith("refused")),
+            "uncounted_calls": sum(1 for e in self.entries if not e.get("counted", True)),
+            "estimated_planning_tokens": sum(e["estimated_tokens"] for e in self._counted()),
             "used": {**used, "elapsed_minutes": round(used["elapsed_minutes"], 3)},
             "cost": self.cost_summary(),
             "jobs": dict(self.jobs),

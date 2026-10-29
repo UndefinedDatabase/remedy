@@ -46,6 +46,13 @@ fails the gate rather than shipping an unexplained release.
   --noEmit` and `pnpm exec tsc`, and ruff, mypy and pyright when `pyproject.toml` names them. The
   reviewer's prompt names the list, and a finding that only says a command outside it did not run
   reads low.
+- 2026-10-29, operator order beweis (F327): the planner spends no order budget on narration. The
+  study's narration runs on the local model and is recorded on the order's ledger but never
+  counted or refused (`uncounted_calls`, each call's `counted`); it is skipped when the study's
+  model is not local or when a studied project only changed a manifest. The ledger refuses the
+  scope decision and the mission plan before they eat into three full rounds of builder and
+  reviewer; a call cap too small for those rounds is said in one sentence at the study step, and
+  the walk plans one job instead of failing.
 
 ## [1.0.0] - 2026-10-27
 

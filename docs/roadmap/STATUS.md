@@ -565,7 +565,7 @@ Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/
 ## Tier 2 — Remedy proves it runs alone (operator order beweis, 2026-10-29)
 
 - [x] F326 — The builder may run what the reviewer asks for (built 2026-10-29 by the operator order beweis · branch feature/beweis)
-- [ ] F327 — The planner spends no order budget on narration
+- [x] F327 — The planner spends no order budget on narration (built 2026-10-29 by the operator order beweis · branch feature/beweis)
 - [ ] F328 — An unattended job raises its budget once by itself
 - [ ] F329 — Remedy narrows its test run to the changed parts
 - [ ] F330 — A task outside this repository ends the job

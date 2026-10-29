@@ -511,8 +511,8 @@ Keys under the answer keys: see below.
   - `verification`: `output`, `reason`, `reason_key`, `request`, `required`, `runs`, `status`, `tested_by`
     - `runs`: `blocking`, `check_id`, `command`, `source`, `status`, `task_id`
 - `landed`: `branch`, `job_id`, `repo`, `sha`
-- `order_budget`: `calls`, `caps`, `cost`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `unmeasured_jobs`, `used`
-  - `calls`: `attempt`, `estimated_tokens`, `outcome`, `prompt_chars`, `reason`, `response_chars`, `role`, `seconds`, `tokens_estimated`
+- `order_budget`: `calls`, `caps`, `cost`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `uncounted_calls`, `unmeasured_jobs`, `used`
+  - `calls`: `attempt`, `counted`, `estimated_tokens`, `outcome`, `prompt_chars`, `reason`, `response_chars`, `role`, `seconds`, `tokens_estimated`
   - `caps`: `*`
   - `cost`: `cap_usd`, `enforced`, `measured_usd`, `unpriced_calls`
   - `jobs`: `*`
