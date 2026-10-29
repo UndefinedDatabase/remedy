@@ -40,7 +40,18 @@ job's worktree, whose files the job itself writes; the other two sources are rea
 A project whose tests run any other way names its command in `.remedy/config.toml`. In a
 repository whose root names no command, each check runs in the package folder that owns the job's
 files (the nearest folder where one of these sources finds a command) and its evidence names that
-folder (`cwd`); the command is always the package's whole test command, never a selection of tests.
+folder (`cwd`).
+
+Since the operator order beweis (F329, 2026-10-29) the run is narrowed to the job's changed parts,
+read from the worktree's diff against the job's base commit (`changed_test_selection`). For the
+`tests` folder, pytest runs only the test folder of each source folder the diff touches
+(`tests/<folder>`, else `tests/<folder without its first part>`, so `src/pkg` finds `tests/pkg`)
+and every test file the diff names. For `npm test` whose script is `vitest` or `vitest run` alone,
+Vitest runs only the test files that import a changed file or are named like it. Every other
+command, a diff over more than ten source folders, a changed `conftest.py` or file that is neither
+source, test nor prose, and a selection that comes out empty run the full command. The check's
+evidence says which in `selection`, for example `pytest narrowed to 1 of the diff's parts:
+tests/pkg` or `full run: the diff touches 11 source folders, more than 10`.
 
 When the job's own copy of the file its command comes from — `.remedy/config.toml`, or the
 `package.json` of `npm test` — differs from the checkout's, the check is refused as

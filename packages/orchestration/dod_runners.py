@@ -63,6 +63,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.changed_test_selection import narrowed_test_argv
 from packages.orchestration.dod_schema import DoD, DoDCheck
 from packages.orchestration.exec_guard import (
     TRIPPED_LIMIT_ATTR,
@@ -192,6 +193,8 @@ class CheckEvidence:
     duration_ms: int
     output_tail: str
     output_truncated: bool = False
+    #: F329: which tests a project's test run chose, as one sentence ("" for every other check).
+    selection: str = ""
 
     @property
     def green(self) -> bool:
@@ -418,14 +421,16 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
     full: list[str] = []
     evidence = _run_project_tests_once(check, ctx, full)
 
-    def rerun(root: Path) -> tuple[CheckEvidence, str]:
+    def rerun(root: Path) -> tuple[CheckEvidence, str]:   # F329: the base runs the job's own selection
         again: list[str] = []
-        return _run_project_tests_once(check, dataclasses.replace(ctx, root=root), again), "".join(again)
+        return _run_project_tests_once(check, dataclasses.replace(ctx, root=root), again,
+                                       diff_root=ctx.root), "".join(again)
 
     return judged_against_base(evidence, "".join(full), ctx.root, rerun)
 
 
-def _run_project_tests_once(check: DoDCheck, ctx: _RunContext, full_output: list[str]) -> CheckEvidence:
+def _run_project_tests_once(check: DoDCheck, ctx: _RunContext, full_output: list[str],
+                            diff_root: Path | None = None) -> CheckEvidence:
     """F299, DECISION F299 D1 — a project's own test command, in its own environment.
 
     Never Remedy's: the command is found at run time, in the check's working
@@ -435,7 +440,9 @@ def _run_project_tests_once(check: DoDCheck, ctx: _RunContext, full_output: list
     Remedy's. A command found in the project's own ``tests`` folder is exempt
     from the allowlist, as the ``pytest`` kind's fixed-template argv is — F299
     builds that argv itself; a command named in the project's own
-    configuration or ``package.json`` is not.
+    configuration or ``package.json`` is not. F329: the argv is narrowed to the changed parts of
+    DIFF_ROOT's worktree (the check's own by default, `changed_test_selection`), and the evidence's
+    `selection` says which selection was made.
     """
     declared_cwd = str(check.spec.get("cwd", "") or "")
     if check.spec.get("timeout_sec"):   # amend1027 B2: the limit the order's wall-clock cap gave
@@ -479,8 +486,9 @@ def _run_project_tests_once(check: DoDCheck, ctx: _RunContext, full_output: list
             ("scratch_dirs", project_sandbox_scratch_dirs(cwd))) if value}
     except ProjectTestConfigError as exc:
         return _refused(check, REASON_TEST_COMMAND_INVALID, argv, declared_cwd, str(exc))
-    return _spawn_check(check, ctx, argv, cwd, declared_cwd, env_overlay=overlay, sandbox_extras=extras,
-                        full_output=full_output)
+    argv, selection = narrowed_test_argv(command, cwd, diff_root and (diff_root / declared_cwd).resolve())
+    return dataclasses.replace(_spawn_check(check, ctx, argv, cwd, declared_cwd, env_overlay=overlay,
+                                            sandbox_extras=extras, full_output=full_output), selection=selection)
 
 
 # ---------------------------------------------------------------------------

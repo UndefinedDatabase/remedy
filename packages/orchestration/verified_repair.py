@@ -132,7 +132,8 @@ def remedy_round_test_run(staging: Path, timeout_sec: int) -> tuple[bool | None,
     to run or timed out, so the builder's own reading stands. It runs as the job-end check does
     (`dod_runners`' `project_tests` kind): the project's own environment, the worktree's source
     first on `PYTHONPATH` (`project_tests.project_environment`), inside the tool sandbox.
-    Remedy deliberately runs the whole command, never a guessed subset of it.
+    Since the operator order beweis (F329) that run is narrowed to the changed parts as the job-end
+    check's is (`changed_test_selection`), and the full command runs whenever the diff cannot say.
     """
     from packages.orchestration.dod_runners import CHECK_TIMEOUT_DEFAULT_SEC, STATUS_FAILED, STATUS_PASSED, run_check
     from packages.orchestration.dod_schema import DoDCheck

@@ -59,6 +59,11 @@ fails the gate rather than shipping an unexplained release.
   war“ in its story's new `assumptions`; at the second cap it stops with the budget question, and its
   time cap always stops it. `POST /api/v1/orders` takes `auto_extend` (`false` passes the new
   `remedy do --no-auto-extend`).
+- 2026-10-29, operator order beweis (F329): Remedy narrows its own test run to the changed parts.
+  pytest runs the test folder of each source folder the diff touches and every test file the diff
+  names; a Vitest project runs the test files that import or are named like a changed file. Every
+  other command, a diff over more than ten source folders or a change every test may read runs the
+  full command, and the check's evidence names the selection (`selection`).
 
 ## [1.0.0] - 2026-10-27
 

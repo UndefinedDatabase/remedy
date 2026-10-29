@@ -145,6 +145,7 @@ packages.orchestration.capability_evidence
 packages.orchestration.capability_routes
 packages.orchestration.change_provenance_gate
 packages.orchestration.change_set
+packages.orchestration.changed_test_selection
 packages.orchestration.chat_answer
 packages.orchestration.chat_door
 packages.orchestration.chat_evidence
