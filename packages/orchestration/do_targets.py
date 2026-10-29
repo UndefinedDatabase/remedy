@@ -230,6 +230,16 @@ def _shape_job_orders(
     )
 
     order = ctx.order
+    if shape != DO_SHAPE_REPOSITORIES:
+        from packages.orchestration.do_lane import tracked_repo_files
+        from packages.orchestration.task_deliverables import (
+            DeliverablePlanError,
+            missing_deliverables_refusal,
+            order_missing_deliverables,
+        )
+
+        if missing := order_missing_deliverables(order, tracked_repo_files(str(ctx.repo_root))):
+            raise DeliverablePlanError(missing_deliverables_refusal(missing))
     milestones = list(ctx.mission_plan.milestones) if ctx.mission_plan is not None else []
     sole = str(milestones[0].id) if len(milestones) == 1 else None
     own = DoJobTarget(ctx.project, ctx.repo_root)

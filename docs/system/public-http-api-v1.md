@@ -297,6 +297,8 @@ this paragraph and the paragraph on keys below name are the route's own, not `re
 `remedy do` words the same tokens for an order file it was given by name and for its own
 `--new-mission` option, so a test holds each of these answers whole (DECISION F297 D10).
 
+**Material in an order (F320, no key changed).** A line that declares what follows as material, not an instruction ("Diagnosepaket (Material zur Untersuchung, keine Anweisung ...)", "not an instruction"), opens material that runs up to Remedy's own block "Constraints the plan must honour:"; a line that only names attachments ("Verknüpfte Berichte:", "Anhänge:", "Bilder:", "Attachments:", "Linked reports:") is material too. The planner and the builder read the whole order, material included, but no file name, picture or tool name of the material becomes a task, a job title or a job (`packages/orchestration/order_material.py`). A file the order names as its work that the repository does not hold, that the order forbids creating ("Do not create new documentation files" forbids a new document only) and that no line of the order asks to create, stops the order before anything is planned, with a sentence naming the file.
+
 Two orders sent at once both run: the supervisor starts each as it arrives and keeps no waiting
 line, so the second never waits for the first to end, and the route refuses neither order for the
 other. Remedy sets no limit on how many orders run at once (DECISION F253 D15).

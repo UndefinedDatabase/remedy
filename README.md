@@ -36,7 +36,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-169 of 325 registered items accepted. Remedy is version 1: Package 1 of docs/roadmap/STATUS.md has no
+170 of 325 registered items accepted. Remedy is version 1: Package 1 of docs/roadmap/STATUS.md has no
 open line, so Rule A5 names no next item; the lines still open wait in Package 3 for a report.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
@@ -46,7 +46,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 52 | 59 |
+| 2 | Minimal Self-Build Runtime | 53 | 59 |
 | 3 | Full Token Economy & Autonomy | 16 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
@@ -388,7 +388,8 @@ F319 build orders with Claude Code end green (the builder may run the project's 
 tests without being asked, Remedy counts the runs it reads from the builder's stream
 and runs the project's tests itself before a result is offered, a Claude Code call has
 thirty minutes and one repeat, and two real orders, one to universe-chat and one to
-the new project remedy-edition, ended waiting for the operator's apply).
+the new project remedy-edition, ended waiting for the operator's apply),
+F320 attachments are never deliverables (an order's linked reports, pictures and the tool names of a diagnosis package no longer become tasks, job titles or jobs, and a missing file the order forbids creating stops the order before planning).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

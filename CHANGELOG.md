@@ -11,6 +11,13 @@ fails the gate rather than shipping an unexplained release.
 
 ## [Unreleased]
 
+### Fixed
+- 2026-10-29, operator order welt-2 (F320): an order's attachments and evidence are never
+  deliverables. The report a client links ("Verknüpfte Berichte:"), its pictures and the tool names
+  of a diagnosis package no longer become tasks "Deliver ...", job title suffixes or further jobs;
+  a named file that does not exist and that the order forbids creating stops the order before
+  planning, with one sentence.
+
 ## [1.0.0] - 2026-10-27
 
 ### Added

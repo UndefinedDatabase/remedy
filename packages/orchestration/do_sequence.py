@@ -825,6 +825,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.repo_mission import link_order_job
     from packages.orchestration.scope_decision import record_scope_decision
     from packages.orchestration.scope_question import ScopeQuestionRaised
+    from packages.orchestration.task_deliverables import DeliverablePlanError
 
     lane = settle_do_lane(ctx)
     try:
@@ -837,7 +838,10 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     ctx.shape, ctx.shape_source = shape, source
 
     shaped_jobs: list[OrderJobPlan] = []
-    planned = _shape_job_orders(ctx, shape)
+    try:
+        planned = _shape_job_orders(ctx, shape)
+    except DeliverablePlanError as exc:     # F320: a deliverable that cannot exist stops before planning
+        return DO_STEP_FAILED, str(exc)
     for order, tasks, milestone_id, target in planned:
         try:
             shaped = plan_order_job(
