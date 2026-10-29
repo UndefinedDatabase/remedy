@@ -157,27 +157,38 @@ def _vitest_script(cwd: Path) -> bool:
     return isinstance(script, str) and re.fullmatch(r"vitest(?: run)?(?: --run)?", script.strip()) is not None
 
 
-def narrowed_test_argv(command: Any, cwd: Path, diff_cwd: Path | None = None) -> tuple[list[str], str]:
-    """COMMAND's argv narrowed to the changed parts of DIFF_CWD (CWD by default), and the sentence
-    the evidence keeps; the full argv with the sentence why when nothing narrows it."""
+def _with_selectors(kind: str, argv: list[str], chosen: list[str]) -> list[str]:
+    if kind == "pytest":
+        at = argv.index("tests")
+        return argv[:at] + chosen + argv[at + 1:]
+    return argv + ["--", *chosen]
+
+
+def narrowed_test_argv(command: Any, cwd: Path, *, only: list[str] | None = None,
+                       full: bool = False) -> tuple[list[str], str]:
+    """COMMAND's argv narrowed to the changed parts of CWD, and the sentence the evidence keeps; the
+    full argv with the sentence why when nothing narrows it. F333: ONLY, the ids of the failing tests
+    a base run runs, replaces the selection, and a runner that takes no ids raises `ValueError`;
+    FULL keeps the full run (Remedy's check of a builder's red run)."""
     argv = list(command.argv)
     if command.source == "tests_folder":
         kind, pick = "pytest", _pytest_selection
     elif command.source == "package_json" and _vitest_script(cwd):
         kind, pick = "vitest", _vitest_selection
+    elif only is not None:
+        raise ValueError(f"Remedy runs single tests by id only for pytest and Vitest, not {command.source}")
     else:
         return argv, full_run_sentence(f"Remedy narrows only pytest and Vitest, not {command.source}")
-    changed = changed_paths(diff_cwd or cwd)
+    if only is not None:
+        return _with_selectors(kind, argv, only), f"{kind} base run of the failing tests only: {', '.join(only)}"
+    if full:
+        return argv, full_run_sentence("Remedy checks a red run of the builder in full")
+    changed = changed_paths(cwd)
     if changed is None:
         return argv, full_run_sentence("git could not name the changed files")
     if not changed:
         return argv, full_run_sentence("the diff changes no file")
-    chosen, why = pick(diff_cwd or cwd, changed)
+    chosen, why = pick(cwd, changed)
     if not chosen:
         return argv, full_run_sentence(why)
-    if kind == "pytest":
-        at = argv.index("tests")
-        narrowed = argv[:at] + chosen + argv[at + 1:]
-    else:
-        narrowed = argv + ["--", *chosen]
-    return narrowed, f"{kind} narrowed to {len(chosen)} of the diff's parts: {', '.join(chosen)}"
+    return _with_selectors(kind, argv, chosen), f"{kind} narrowed to {len(chosen)} of the diff's parts: {', '.join(chosen)}"

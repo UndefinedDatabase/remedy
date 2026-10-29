@@ -248,7 +248,7 @@ class TestSchemaSize:
     #: Snapshot of the compact JSON-schema length. A change here means the schema
     #: grew or shrank — update deliberately, never to paper over bloat.
     SNAPSHOT = {
-        ReviewVerdict: 1099,
+        ReviewVerdict: 1152,   # F330: a finding's optional `kind` (not_in_this_repository)
         PlannerPlan: 909,
         DesignSpec: 525,
     }

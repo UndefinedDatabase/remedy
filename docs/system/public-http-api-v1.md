@@ -161,6 +161,13 @@ Additions only, so that an unattended order needs nobody:
   already did its work, and the review found its acceptance met; its status is `done`, and before
   1.34 it ended `failed` and blocked the job with `no_file_changed`. A task that only runs the
   tests carries it the same way, `task` naming the last earlier task that changed a file.
+- A new phrase of the story's `checking` step, `failed_before_job` with `n` (F333): the tests passed
+  but for `n` failing tests that already failed on the job's base commit („war schon vorher rot“);
+  Remedy ran only those tests, by their ids, at the base commit in a throwaway worktree. They are no
+  finding against the builder and do not block. Each test check in the DoD gate's result
+  (`remedy job show --json`, the job's evidence) carries `preexisting`, the list of such tests, and
+  `baseline`, the comparison's sentence: why a red run stayed red (failures new in the job, no ids,
+  a base run that could not be made), or that every failure was there before.
 - A `remedy do` answer's `order_budget` carries `uncounted_calls`, and each of its `calls` carries
   `counted` (F327): the study's narration runs on the local model and is never counted against
   the order's caps.

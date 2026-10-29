@@ -150,6 +150,9 @@ def _evidence_json(ev: CheckEvidence) -> dict[str, Any]:
         "cwd": ev.cwd,
         # F329 (operator order beweis): which tests a project's test run chose, as one sentence.
         "selection": ev.selection,
+        # F333: the failing tests already red on the job's base commit, and the comparison's sentence.
+        "preexisting": list(ev.preexisting),
+        "baseline": ev.baseline,
     }
 
 

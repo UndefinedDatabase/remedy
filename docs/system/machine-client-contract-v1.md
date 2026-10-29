@@ -416,6 +416,7 @@ Story phrase `applied`: `n`.
 Story phrase `declined`: none.
 Story phrase `dirty_start`: `captured`, `preserved`.
 Story phrase `already_done`: `task`, `n`.
+Story phrase `failed_before_job`: `n`.
 Story reason `provider_unavailable`: `provider`.
 Story reason `tests_failed`: `n`.
 Story reason `review_not_passed`: `rounds`.

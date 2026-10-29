@@ -78,6 +78,13 @@ fails the gate rather than shipping an unexplained release.
   reviewer, asked so, finds its acceptance already met; it keeps the record „already done by
   task N“ (story phrase `already_done`) instead of blocking the job with `no_file_changed`. A task
   that only runs the tests is read the same way over the files the earlier tasks changed.
+- 2026-10-29, operator order beweis (F333, interface 1.34): when a job's test run fails, Remedy
+  runs only the failing tests, by their ids, once at the job's base commit in a throwaway
+  worktree. A failure that is there too was already red before the job: the check's evidence
+  (`preexisting`) and the reviewer's test summary name it, a finding only about it reads `low`,
+  and it does not block; the story's checking step says `failed_before_job`. A failure new in the
+  job, or one the base run cannot be made for, blocks as before, and the evidence says why
+  (`baseline`). A builder's own red run is checked by Remedy's full run.
 
 ## [1.0.0] - 2026-10-27
 

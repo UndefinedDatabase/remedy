@@ -84,8 +84,9 @@ _SPEC_KEYS: dict[str, frozenset[str]] = {
     "product_smoke": frozenset({"smoke", "retry", "paths"}),
     # F299, DECISION F299 D1: the check finds its own command when it runs, so
     # it carries none beyond the common keys every kind shares; amend1027 B2 adds
-    # its time limit, taken from the order's wall-clock cap.
-    "project_tests": frozenset({"timeout_sec"}),
+    # its time limit, taken from the order's wall-clock cap; F333 `full`, Remedy's whole run
+    # (never narrowed to the diff) when it checks a builder's red run.
+    "project_tests": frozenset({"timeout_sec", "full"}),
 }
 
 #: The longest a project's own tests may run in one DoD check (amend1027 B2): two hours.

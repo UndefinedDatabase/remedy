@@ -55,6 +55,8 @@ def _ev(reason="nonzero_exit", status="failed"):
         status: str
         command: str = "npm test"
         output_tail: str = "tail\n"
+        preexisting: tuple = ()
+        baseline: str = ""
     return Ev(reason, status)
 
 
@@ -62,23 +64,24 @@ def test_a_failure_the_base_shares_passes_and_one_more_stays_red(tmp_path):
     repo, wt = _repo(tmp_path)
     seen = []
 
-    def rerun(root):
-        seen.append(root)
+    def rerun(root, ids):                                    # F333: the base runs only the failing tests
+        seen.append((root, ids))
         assert root.is_dir() and root != wt and (root / "a.txt").is_file()
         return _ev(), VITEST
 
     judged = judged_against_base(_ev(), VITEST, wt, rerun)
     assert (judged.status, judged.reason) == ("passed", REASON_PREEXISTING_FAILURES)
     assert judged.output_tail.startswith("Every failing test already failed") and "math > adds" in judged.output_tail
-    assert not seen[0].exists()                                          # the base worktree is gone
+    assert not seen[0][0].exists() and seen[0][1] == ["tests/a.test.ts"]   # the base worktree is gone
     more = VITEST.replace("1 failed | 1 passed", "2 failed").replace(
         " FAIL  tests/a.test.ts > math > adds", " FAIL  tests/a.test.ts > math > adds\n FAIL  tests/b.test.ts > x")
     assert judged_against_base(_ev(), more, wt, rerun).status == "failed"
-    assert len(seen) == 1                                                # the base run is kept
+    assert judged_against_base(_ev(), VITEST, wt, rerun).status == "passed"
+    assert len(seen) == 2                                                # the base run of the same ids is kept
 
 
 def test_nothing_is_compared_outside_a_job_worktree_or_for_a_refusal(tmp_path):
     repo, _wt = _repo(tmp_path)
-    never = lambda root: pytest.fail("no base run")  # noqa: E731
+    never = lambda root, ids: pytest.fail("no base run")  # noqa: E731
     assert judged_against_base(_ev(), VITEST, repo, never).status == "failed"
     assert judged_against_base(_ev(reason="tool_unavailable"), VITEST, repo, never).reason == "tool_unavailable"

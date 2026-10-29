@@ -125,7 +125,19 @@ def review_severity_verdict(verdict: str, finding_count: int,
 ROUND_PROJECT_TESTS_CHECK_ID = "round_project_tests"
 
 
-def remedy_round_test_run(staging: Path, timeout_sec: int) -> tuple[bool | None, str] | None:
+#: F333: the words the reviewer reads, as a fact, for failing tests the job's base commit shares.
+PREEXISTING_FACT = ("These failing tests were already red on the job's base commit, before this job: {tests}. "
+                    "They are not the builder's, and no finding against the builder may rest on them.")
+
+
+def preexisting_fact(evidence: Any) -> str:
+    """F333: the reviewer's fact for EVIDENCE's pre-existing failures, or "" when it names none."""
+    tests = tuple(getattr(evidence, "preexisting", ()) or ())
+    return PREEXISTING_FACT.format(tests=", ".join(tests)) if tests else ""
+
+
+def remedy_round_test_run(staging: Path, timeout_sec: int, *, full: bool = False,
+                          job_id: str = "") -> tuple[bool | None, str] | None:
     """F322: Remedy's own run of the project's test command in the job's worktree *staging*.
 
     `(passed, summary)` when the command ran to an end, None when it was refused, found nothing
@@ -134,12 +146,16 @@ def remedy_round_test_run(staging: Path, timeout_sec: int) -> tuple[bool | None,
     first on `PYTHONPATH` (`project_tests.project_environment`), inside the tool sandbox.
     Since the operator order beweis (F329) that run is narrowed to the changed parts as the job-end
     check's is (`changed_test_selection`), and the full command runs whenever the diff cannot say.
+    F333: FULL runs the whole command (Remedy's check of a builder's red run), a red one is judged
+    against the job's base commit by the check itself, and pre-existing failures are recorded for
+    JOB_ID and named in the summary as a fact.
     """
     from packages.orchestration.dod_runners import CHECK_TIMEOUT_DEFAULT_SEC, STATUS_FAILED, STATUS_PASSED, run_check
     from packages.orchestration.dod_schema import DoDCheck
 
     check = DoDCheck(id=ROUND_PROJECT_TESTS_CHECK_ID, kind="project_tests", source="standard", blocking=False,
-                     description="Remedy runs the project's tests in the worktree: the builder started none.")
+                     description="Remedy runs the project's tests in the worktree: the builder started none.",
+                     spec={"full": True} if full else {})
     try:
         evidence = run_check(check, staging, timeout_sec=max(timeout_sec, CHECK_TIMEOUT_DEFAULT_SEC))
     except (OSError, ValueError, subprocess.SubprocessError):   # it cannot start: the builder's reading stands
@@ -147,8 +163,13 @@ def remedy_round_test_run(staging: Path, timeout_sec: int) -> tuple[bool | None,
     if evidence.status not in (STATUS_PASSED, STATUS_FAILED) or evidence.exit_code is None:
         return None
     tail = " ".join(evidence.output_tail.strip().splitlines()[-5:])
+    from packages.orchestration.project_test_baseline import record_preexisting_failures
+
+    record_preexisting_failures(job_id, evidence.preexisting if evidence.status == STATUS_PASSED else ())
+    fact = preexisting_fact(evidence) if evidence.status == STATUS_PASSED else evidence.baseline
     return (evidence.status == STATUS_PASSED,
-            f"Remedy ran `{evidence.command}` in the worktree: exit={evidence.exit_code}" + (f" | {tail}" if tail else ""))
+            f"Remedy ran `{evidence.command}` in the worktree: exit={evidence.exit_code}" + (f" | {tail}" if tail else "")
+            + (f"\n{fact}" if fact else ""))
 
 
 def round_tests(reading: tuple[bool | None, str, str] | None, stream_dir: str | None, rd: Any, staging: Path,
@@ -170,15 +191,19 @@ def round_tests(reading: tuple[bool | None, str, str] | None, stream_dir: str | 
 
     builder = round_test_reading(stream_dir=stream_dir, round_num=rd.round_number, workspace=str(staging),
                                  job_id=result.job_id, run_id=result.run_id, task_id=result.task_id)
+    real_job = bool(result.job_id) and getattr(result, "builder_provider", "") != "fake"
     if reading is None:
-        if builder[2] and result.job_id and getattr(result, "builder_provider", "") != "fake":
-            own = remedy_round_test_run(staging, timeout_sec)
+        if (builder[2] or builder[0] is False) and real_job:   # F333: a builder's red run is checked in full
+            own = remedy_round_test_run(staging, timeout_sec, full=builder[0] is False, job_id=result.job_id)
             if own is not None:
                 return own[0], f"{own[1]}\n{builder[1]}", False
         return builder
     passed, summary, tripped = reading
     if passed is None and tripped != "sandbox_unavailable" and builder[0] is not None:
         return builder[0], f"{summary}\n{builder[1]}", tripped
+    if passed and builder[0] is False and real_job:   # F333: the reviewer reads why the builder saw red
+        own = remedy_round_test_run(staging, timeout_sec, full=True, job_id=result.job_id)
+        return (passed, f"{summary}\n{own[1]}", tripped) if own is not None else reading
     return reading
 
 
@@ -214,19 +239,22 @@ class DoDTestCommand(str):
         from packages.orchestration.dod_runners import REASON_NONZERO_EXIT, run_check
 
         red: list[str] = []
+        passed: list[Any] = []
         for check in self.checks:
             ev = run_check(check, staging)
             if ev.green:
+                passed.append(ev)
                 continue
             if ev.reason != REASON_NONZERO_EXIT or ev.exit_code in (None, 126, 127):
                 # Nothing was judged: the reviewer runs on, and the DoD gate reports it not run.
                 detail = red_test_diagnostic(ev.output_tail, staging.resolve())[-600:]
                 return None, f"tests_not_run: {ev.reason or f'exit {ev.exit_code}'}: {detail}", ""
             red.append(f"{ev.command or check.id} exited {ev.exit_code}:\n"
-                       f"{red_test_diagnostic(ev.output_tail, staging.resolve())}")
+                       f"{ev.baseline and ev.baseline + chr(10)}{red_test_diagnostic(ev.output_tail, staging.resolve())}")
         if red:
             return False, "\n\n".join(red), ""
-        return True, "passed: " + ", ".join(c.id for c in self.checks), ""
+        facts = [fact for ev in passed if (fact := preexisting_fact(ev))]   # F333: told as a fact
+        return True, "\n".join(["passed: " + ", ".join(c.id for c in self.checks), *facts]), ""
 
 
 def final_task_test_command(job: Any, task: Any, test_command: str | None,
