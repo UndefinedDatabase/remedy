@@ -509,7 +509,15 @@ def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
 
 
 def save_job_plan(job: JobPlan, root: Path | None = None) -> Path:
-    """Public API to persist a JobPlan. Returns path to job.json."""
+    """Public API to persist a JobPlan. Returns path to job.json.
+
+    F321: a job that has not run yet records the repair rounds it will run with
+    (`execution_config.configured_repair_rounds`), never 0 rounds with an empty source.
+    """
+    if not job.repair_rounds_source and job.execution_config is None:
+        from packages.orchestration.execution_config import configured_repair_rounds
+
+        job.repair_rounds_allowed, job.repair_rounds_source = configured_repair_rounds()
     return _persist_job(job, root)
 
 
@@ -1878,9 +1886,14 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
             reasons.append("test_passed=False")
         if last_round.reviewer_output:
             ro = last_round.reviewer_output
-            if ro.verdict != "pass":
+            # F321: the loop passed a review whose findings are all low; they stay on the record.
+            from packages.orchestration.pingpong_loop import REVIEW_PASSING_SEVERITIES
+
+            low_only = bool(ro.findings) and all(
+                str(f.severity).strip().lower() in REVIEW_PASSING_SEVERITIES for f in ro.findings)
+            if ro.verdict != "pass" and not low_only:
                 reasons.append(f"reviewer_verdict={ro.verdict}")
-            if ro.verdict == "pass" and ro.findings:
+            if ro.verdict == "pass" and ro.findings and not low_only:
                 reasons.append(
                     f"reviewer_pass_with_{len(ro.findings)}_findings"
                 )
@@ -2537,6 +2550,11 @@ def run_job(
         job.budgets = budgets
         _persist_job(job)
 
+    # F321/F324: repair rounds the job's own record names (an order's or a run's `repair_rounds`)
+    # answer before the config key on the job's first run; a later run reads its persisted config.
+    if repair_rounds is None and job.execution_config is None and \
+            job.repair_rounds_source not in ("", "config", "default"):
+        repair_rounds, repair_rounds_source = job.repair_rounds_allowed, job.repair_rounds_source
     # Step 4869: Resolve each config field — explicit > persisted > default. F306 structure step
     # (2) for `run_job`: the resolution itself is `resolve_job_execution_config` in
     # execution_config.py, so the recorded answer and the running job can never drift apart.

@@ -240,6 +240,13 @@ class PingPongResult:
 _REPAIR_ROUNDS_HARD_CAP = 10
 _REPAIR_ROUNDS_DEFAULT = 2
 
+#: F321: the finding severities a review passes with; such findings stay recorded for the person.
+REVIEW_PASSING_SEVERITIES: frozenset[str] = frozenset({"low"})
+#: F321: the severities a `blocked` verdict is repaired over instead of stopping the job.
+REVIEW_REPAIRABLE_SEVERITIES: frozenset[str] = frozenset({"low", "medium"})
+#: The decision reason of a review that passed with low findings only.
+REASON_ONLY_LOW_FINDINGS = "only_low_findings"
+
 
 def resolve_repair_rounds(cli_value: int | None) -> tuple[int, str]:
     """Resolve repair rounds from CLI, config, or default.
@@ -323,8 +330,16 @@ def make_repair_decision(
     repair_rounds_used: int,
     is_repair: bool,
     coherence_error: str | None,
+    finding_severities: tuple[str, ...] = (),
 ) -> RepairDecision:
-    """Deterministic repair decision. No provider call."""
+    """Deterministic repair decision. No provider call.
+
+    F320/F321 (operator order welt-2): *finding_severities* are the review's findings' severities.
+    A review whose findings are all `low` passes whatever its verdict, and a `blocked` verdict whose
+    findings are at most `medium` gets a repair round while rounds remain: only a `high` or
+    `blocker` finding stops a job by the reviewer's word alone. On 2026-10-28 job 4b90ef2ed0274960
+    stopped on one low finding with a repair round left.
+    """
     rd = RepairDecision(
         round=round_num,
         reviewer_verdict=reviewer_verdict,
@@ -357,10 +372,19 @@ def make_repair_decision(
         rd.reason = "reviewer_passed"
         return rd
 
-    if reviewer_verdict == "blocked":
+    severities = {str(severity).strip().lower() for severity in finding_severities}
+    if finding_count and severities and severities <= REVIEW_PASSING_SEVERITIES:
+        rd.repair_decision = "pass_no_repair"
+        rd.reason = REASON_ONLY_LOW_FINDINGS
+        return rd
+
+    if reviewer_verdict == "blocked" and not (
+            finding_count and severities and severities <= REVIEW_REPAIRABLE_SEVERITIES):
         rd.repair_decision = "stop_blocked"
         rd.reason = "reviewer_blocked"
         return rd
+    if reviewer_verdict == "blocked":
+        reviewer_verdict = "needs_repair"   # medium at most: repaired like any finding (F321)
 
     if reviewer_verdict not in ("needs_repair", "fail"):
         rd.repair_decision = "stop_unknown_verdict"
@@ -3772,6 +3796,7 @@ def run_pingpong(
                 repair_rounds_used=result.repair_rounds_used,
                 is_repair=is_repair,
                 coherence_error=coherence_error,
+                finding_severities=tuple(str(f.severity) for f in reviewer_out.findings),
             ), rd, result.rounds, test_command)
             ladder.after_review(decision, result.rounds, rounds_left=max_rounds - round_num)
             if reviewer_out.verdict_normalized:

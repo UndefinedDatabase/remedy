@@ -556,7 +556,7 @@ Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/
 ## Tier 2 — Remedy runs on its own (operator order welt-2, 2026-10-29)
 
 - [x] F320 — Attachments are never deliverables (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
-- [ ] F321 — Low findings never block
+- [x] F321 — Low findings never block (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
 - [ ] F322 — Builder tests in the worktree
 - [ ] F323 — Waiting jobs follow their order
 - [ ] F324 — Unattended jobs stay unattended

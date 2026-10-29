@@ -17,6 +17,11 @@ fails the gate rather than shipping an unexplained release.
   of a diagnosis package no longer become tasks "Deliver ...", job title suffixes or further jobs;
   a named file that does not exist and that the order forbids creating stops the order before
   planning, with one sentence.
+- 2026-10-29, operator order welt-2 (F321): low findings never block a job. A review whose
+  findings are all low passes, a blocked verdict with medium findings at most gets a repair round
+  while rounds remain, and only high or blocker findings stop a job by the reviewer's word. The
+  config key `cycles.repair_rounds` now names every job's repair rounds when nothing else does,
+  and a job that has not run yet shows the rounds it will run with instead of 0.
 
 ## [1.0.0] - 2026-10-27
 

@@ -285,6 +285,39 @@ def _resolve_claude_cli_launch_config(config: Any = None) -> dict[str, Any]:
     return result
 
 
+#: The config key whose value is every job's repair rounds when nothing else names them (F321).
+CONFIG_KEY_JOB_REPAIR_ROUNDS = "cycles.repair_rounds"
+#: The repair rounds of a job when the config key is unset too.
+JOB_REPAIR_ROUNDS_DEFAULT = 2
+#: The largest repair-round count the loop accepts (`pingpong_loop._REPAIR_ROUNDS_HARD_CAP`).
+JOB_REPAIR_ROUNDS_CAP = 10
+
+
+def configured_repair_rounds(config: Any = None) -> tuple[int, str]:
+    """``(rounds, source)`` a job takes when neither its run nor its record names repair rounds.
+
+    F321 (operator order welt-2): before, the product default 2 answered whatever
+    `cycles.repair_rounds` said, and a job that never ran showed 0 rounds with an empty source.
+    The source reads ``config`` when the key is set in an env var or a config file, else ``default``.
+    """
+    if config is None:
+        from packages.orchestration.config import get_config
+
+        config = get_config()
+    try:
+        value = config.get(CONFIG_KEY_JOB_REPAIR_ROUNDS)
+        source = config.get_source(CONFIG_KEY_JOB_REPAIR_ROUNDS)
+    except (KeyError, AttributeError):
+        value, source = None, None
+    try:
+        rounds = int(value) if value is not None else JOB_REPAIR_ROUNDS_DEFAULT
+    except (TypeError, ValueError):
+        rounds = JOB_REPAIR_ROUNDS_DEFAULT
+    rounds = max(0, min(rounds, JOB_REPAIR_ROUNDS_CAP))
+    named = source is not None and getattr(source, "value", "default") != "default"
+    return rounds, ("config" if named else "default")
+
+
 # F306, the structure ledger's step (2) for `run_job`: `run_job` no longer resolves its own
 # configuration inline — this is the single function that does, so the recorded answer and the
 # running job can never drift apart.
@@ -345,8 +378,7 @@ def resolve_job_execution_config(
         repair_rounds = ec.repair_rounds_allowed
         rr_src = "persisted"
     else:
-        repair_rounds = 2
-        rr_src = "default"
+        repair_rounds, rr_src = configured_repair_rounds(config)
 
     builder_model, bm_src = _resolve_cfg(
         builder_model, ec.builder_model if ec else None, "")
