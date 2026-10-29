@@ -20,6 +20,7 @@ from packages.orchestration.claude_cli_command import (
     builder_command_allowed,
 )
 from packages.orchestration.empty_diff_gate import reject_verdict_on_empty_diff
+from packages.orchestration.job_task_already_done import earlier_work_of
 from packages.orchestration.job_wrong_repository import NOT_IN_THIS_REPOSITORY
 from packages.orchestration.pingpong_provider import ReviewerOutput
 
@@ -63,14 +64,17 @@ def only_disallowed_command_not_run(finding: object, allowed: tuple[str, ...]) -
 
 
 def settle_review_findings(reviewer_out: ReviewerOutput, *, staged_files: list[str], is_fake: bool,
-                           workspace: str | None) -> ReviewerOutput:
+                           workspace: str | None, job_task: tuple[str, str] = ("", "")) -> ReviewerOutput:
     """REVIEWER_OUT after the rules the code decides, not the reviewer's words.
 
-    The empty diff outvotes a verdict first (`reject_verdict_on_empty_diff`). Then each finding
+    The empty diff outvotes a verdict first (`reject_verdict_on_empty_diff`), unless JOB_TASK (the job's
+    and the task's id) names a task whose work an earlier task of its job already did (F332). Then each finding
     that only says a command outside the builder's list for WORKSPACE did not run reads `low`
     (F326).
     """
-    reviewer_out = reject_verdict_on_empty_diff(reviewer_out, staged_files=staged_files, is_fake=is_fake)
+    already_done = not staged_files and not is_fake and earlier_work_of(*job_task) is not None
+    reviewer_out = reject_verdict_on_empty_diff(reviewer_out, staged_files=staged_files, is_fake=is_fake,
+                                                already_done=already_done)
     allowed = builder_allowed_commands(workspace)
     for finding in reviewer_out.findings:
         if finding.severity != "low" and only_disallowed_command_not_run(finding, allowed):

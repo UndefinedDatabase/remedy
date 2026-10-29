@@ -477,7 +477,8 @@
     "body key `auto_extend` (flag) of `POST /api/v1/orders`: `false` passes `remedy do --no-auto-extend`, so the order's jobs never raise a call or token cap by themselves (F328)",
     "story key `assumptions` in `GET /api/v1/jobs/{job}/story`, each with `at`, `question` and `assumed`: what an unattended job assumed instead of asking (F328)",
     "stop reason `not_in_this_repository` in the story's `stop.reason`, `remedy job show --json`'s `stop.reason` and each order job's `stop_text`: an unattended job whose review says the work does not belong in its repository, with no file changed, ends `failed` (F330)",
-    "stop reason `orphaned_after_restart`: a job an ended order walk left `running` is started again at the server's start when it runs unattended, its order is live and it is within its caps, and else ends `stopped` with this reason and a stop text (F331)"
+    "stop reason `orphaned_after_restart`: a job an ended order walk left `running` is started again at the server's start when it runs unattended, its order is live and it is within its caps, and else ends `stopped` with this reason and a stop text (F331)",
+    "story task key `phrase` in `GET /api/v1/jobs/{job}/story` (each row of the `building` step's `tasks`), null or the new phrase `already_done` with `task` and `n`: a task whose work an earlier task of its job already did (F332)"
    ],
    "value_changes": [
     {
@@ -497,6 +498,12 @@
      "case": "a job an ended order walk left `running` with nothing running it, after the server starts",
      "before": "`running` for good",
      "after": "`running` again in a new run, or `stopped` with the stop reason `orphaned_after_restart` (F331)"
+    },
+    {
+     "field": "story.steps[building].tasks[].status",
+     "case": "a job task that staged no change because an earlier task of its job already changed the files it names, and whose review passed",
+     "before": "`failed`, the job `blocked` with `no_file_changed`",
+     "after": "`done` with the phrase `already_done`, the job going on (F332)"
     }
    ]
   }
@@ -613,6 +620,7 @@
    "run": "1.19"
   },
   "story.phrases": {
+   "already_done": "1.34",
    "applied": "1.17",
    "changed_file_in_rounds": "1.17",
    "changed_files": "1.17",

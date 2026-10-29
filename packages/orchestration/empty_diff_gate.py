@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from packages.orchestration.pingpong_provider import ReviewerOutput
+from packages.orchestration.verified_repair import review_findings_all_low
 
 
 def reject_verdict_on_empty_diff(
-    reviewer_out: ReviewerOutput, *, staged_files: list[str], is_fake: bool,
+    reviewer_out: ReviewerOutput, *, staged_files: list[str], is_fake: bool, already_done: bool = False,
 ) -> ReviewerOutput:
     """The empty staged diff is the evidence; a reviewer's words cannot outvote it.
 
@@ -16,8 +17,15 @@ def reject_verdict_on_empty_diff(
     this loop, because it writes its changes after this point of a round; so is a single run
     (`remedy run`), which may still end a clean `builder_no_changes`: only a job task is
     what a job applies.
+
+    F332: ALREADY_DONE says an earlier task of the job already changed the files this task names
+    (`job_task_already_done.earlier_work`) and the reviewer was asked whether the task's acceptance
+    already holds; its pass with no finding above `low` then stands, and the task ends done.
     """
     if staged_files:
+        return reviewer_out
+    if already_done and reviewer_out.verdict == "pass" and (
+            not reviewer_out.findings or review_findings_all_low(reviewer_out.findings)):
         return reviewer_out
     if reviewer_out.verdict == "pass" and not is_fake:
         reviewer_out.verdict = "needs_repair"

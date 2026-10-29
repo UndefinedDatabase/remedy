@@ -314,7 +314,7 @@ with the code that calls it.
 | Lines | File | Function |
 |---|---|---|
 | 1310 | `packages/orchestration/pingpong_job.py` | `run_job` |
-| 1230 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
+| 1228 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 887 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/serve_http_handler.py` | `_RemedyHandler._handle_command_submission` |
@@ -471,7 +471,7 @@ with the code that calls it.
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
 | 4867 | `packages/orchestration/pingpong_job.py` |
-| 4909 | `packages/orchestration/pingpong_loop.py` |
+| 4908 | `packages/orchestration/pingpong_loop.py` |
 | 1824 | `packages/orchestration/serve_http_handler.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |

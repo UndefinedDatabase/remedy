@@ -34,6 +34,7 @@ from packages.orchestration.builder_context import build_builder_context
 from packages.orchestration.data_paths import mint_run_id
 from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
+from packages.orchestration.job_task_already_done import no_change_diff_summary
 from packages.orchestration.model_failover import resolve_failover_chains
 from packages.orchestration.pingpong_call_record import _add_exit_detail, _session_fields
 from packages.orchestration.pingpong_provider import (
@@ -3376,10 +3377,8 @@ def run_pingpong(
                 break
 
             # --- Reviewer phase ---
-            if builder_no_changes:
-                diff_summary = "(no changes — the builder changed no file)"
-            else:
-                diff_summary = "\n".join(f"M {f}" for f in result.staged_files)
+            diff_summary = (no_change_diff_summary(result.job_id, result.task_id) if builder_no_changes  # F332
+                            else "\n".join(f"M {f}" for f in result.staged_files))
             # Compute safe diff for reviewer (before reviewer runs)
             reviewer_safe_diff = ""
             if result.staged_files and staging.exists():
@@ -3745,8 +3744,8 @@ def run_pingpong(
             # so the empty diff becomes the finding and the repair loop gets its second try.
             # F326: a finding that only says a command the builder may not run did not run reads low,
             # decided in code (`review_scope_rules`), never by the reviewer's words.
-            reviewer_out = settle_review_findings(reviewer_out, staged_files=result.staged_files,
-                                                  is_fake=is_fake or not _job_owned, workspace=str(staging))
+            reviewer_out = settle_review_findings(reviewer_out, staged_files=result.staged_files, workspace=str(staging),
+                                                  is_fake=is_fake or not _job_owned, job_task=(result.job_id, result.task_id))
 
             # --- Reviewer output coherence validation ---
             coherence_error = validate_reviewer_output(reviewer_out, test_passed=rd.test_passed)

@@ -43,6 +43,7 @@ from packages.orchestration.execution_config import (
 )
 from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
 from packages.orchestration.job_run_finish import stamp_blocked_job_finish
+from packages.orchestration.job_task_already_done import settle_already_done
 from packages.orchestration.structured_log import bind_call_log_context
 from packages.orchestration.tier_escalation import escalation_started_in
 from packages.orchestration.verified_repair import final_task_test_command, review_findings_all_low
@@ -1863,9 +1864,8 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
     if result.final_status != "staged_review_passed":
         reasons.append(f"final_status={result.final_status}")
 
-    # R-1117: a task that changed no file did nothing its order asked for, so no
-    # reviewer's pass makes it passed. A single run may still end a clean
-    # `builder_no_changes`; a job task is what a job applies, and it applied nothing.
+    # R-1117: a job task that changed no file applied nothing, so no reviewer's pass makes it passed (a single
+    # run may still end a clean `builder_no_changes`); F332's `settle_already_done` alone lifts it, in run_job.
     if not result.staged_files:
         reasons.append("no_file_changed")
 
@@ -3556,7 +3556,7 @@ def run_job(
                 return _settle_safe_point(signal, task=task)
 
             # Step 4857: Deterministic task completion gate
-            gate_ok, gate_reasons = validate_job_task_result(result)
+            gate_ok, gate_reasons = settle_already_done(job, task, result, validate_job_task_result(result))
             if not gate_ok:
                 task.status = TASK_BLOCKED
                 task.error = f"completion_gate_failed: {'; '.join(gate_reasons)}"
