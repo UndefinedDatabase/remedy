@@ -90,6 +90,14 @@ def study_call_fn() -> Callable[[str, int], str] | None:
     return _adapted
 
 
+def study_runs_local() -> bool:
+    """F327: True when the `study` role's model is served on this machine, so its narration costs no budget."""
+    from packages.orchestration.budget_profiles import PROVIDER_CLASS_LOCAL, provider_class
+
+    role_cfg = resolve_role_config("study")
+    return provider_class(str(role_cfg.provider or ""), role_cfg.model) == PROVIDER_CLASS_LOCAL
+
+
 def _walk_repo(repo_root: str, max_entries: int) -> tuple[list[str], list[str], bool]:
     """Walk repo yielding relative paths, bounded by max_entries.
 
@@ -340,6 +348,10 @@ _STUDY_FACT_FILES = frozenset({
 })
 
 
+#: The end of the stale reason that names a changed dependency, build or workspace file (F327 reads it).
+STUDY_FACT_CHANGED = " changed since the study"
+
+
 def study_stale_reason(repo_root: str, studied_head: str) -> str:
     """Why a study recorded at *studied_head* no longer describes *repo_root*, or "" while it does.
 
@@ -364,7 +376,7 @@ def study_stale_reason(repo_root: str, studied_head: str) -> str:
         return f"the studied head {studied_head[:12]} is not in the repository's history"
     changed = [line for line in proc.stdout.splitlines() if line]
     if fact := next((c for c in changed if c.rsplit("/", 1)[-1] in _STUDY_FACT_FILES), ""):
-        return f"{fact} changed since the study"
+        return f"{fact}{STUDY_FACT_CHANGED}"
     if len(changed) >= STUDY_STALE_CHANGED_PATHS:
         return f"{len(changed)} paths changed since the study"
     return ""

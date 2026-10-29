@@ -32,7 +32,6 @@ from packages.orchestration import data_paths
 from packages.orchestration.artifact_summary import render_tiered_diff_text, summary_call_fn
 from packages.orchestration.builder_context import build_builder_context
 from packages.orchestration.data_paths import mint_run_id
-from packages.orchestration.empty_diff_gate import reject_verdict_on_empty_diff
 from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
 from packages.orchestration.model_failover import resolve_failover_chains
@@ -63,6 +62,7 @@ from packages.orchestration.prompt_segments import (
 from packages.orchestration.provider_timeouts import PROFILES as TIMEOUT_PROFILES
 from packages.orchestration.provider_timeouts import compute_timeout, is_timeout_error
 from packages.orchestration.rate_governor import ProviderRateGovernor
+from packages.orchestration.review_scope_rules import REVIEWER_SCOPE_RULES, settle_review_findings
 from packages.orchestration.role_provider_factory import create_role_provider
 from packages.orchestration.session_sent_index import (
     DEDUPE_MIN_SEGMENT_CHARS,
@@ -741,7 +741,7 @@ Review the builder's changes against the original goal.
 Be strict but fair. Only flag real issues.
 A change that adds a file nothing references, or leaves replaced code beside its replacement, is rejected with the path named.
 Return ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.
-"""
+""" + REVIEWER_SCOPE_RULES
 
 
 _REPAIR_DIFF_CAP = 20000
@@ -3741,12 +3741,12 @@ def run_pingpong(
                 reviewer_out.findings = list(reviewer_out.findings) + hygiene_findings
                 if reviewer_out.verdict == "pass":
                     reviewer_out.verdict = "needs_repair"
-            # R-0999: a builder that staged nothing gives a failing reviewer nothing to
-            # point at, and a `fail` without a finding would block the task as the
-            # REVIEWER's incoherence. The empty diff is the evidence, so it becomes the
-            # finding and the repair loop gets its second try.
-            reviewer_out = reject_verdict_on_empty_diff(
-                reviewer_out, staged_files=result.staged_files, is_fake=is_fake or not _job_owned)
+            # R-0999: a builder that staged nothing gives a failing reviewer nothing to point at,
+            # so the empty diff becomes the finding and the repair loop gets its second try.
+            # F326: a finding that only says a command the builder may not run did not run reads low,
+            # decided in code (`review_scope_rules`), never by the reviewer's words.
+            reviewer_out = settle_review_findings(reviewer_out, staged_files=result.staged_files,
+                                                  is_fake=is_fake or not _job_owned, workspace=str(staging))
 
             # --- Reviewer output coherence validation ---
             coherence_error = validate_reviewer_output(reviewer_out, test_passed=rd.test_passed)
@@ -4800,7 +4800,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
                         "id": f.id,
                         "severity": f.severity,
                         "file": f.file,
-                        "summary": f.summary,
+                        "summary": f.summary, **({"kind": f.kind} if f.kind else {}),   # F330
                     }
                     for f in rd.reviewer_output.findings
                 ],

@@ -148,6 +148,8 @@ def _evidence_json(ev: CheckEvidence) -> dict[str, Any]:
         # The folder a check ran in, relative to the job's worktree ("" at its root): which package's
         # tests a polyglot repository's check ran (exec-1017b).
         "cwd": ev.cwd,
+        # F329 (operator order beweis): which tests a project's test run chose, as one sentence.
+        "selection": ev.selection,
     }
 
 

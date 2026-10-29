@@ -536,7 +536,18 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
         "order_id": job_order_id(plan),
         "retries": provider_retries(plan),
         "stop": job_stop(plan),     # F325: why the job stopped, `reason` and `text`
+        "assumptions": story_assumptions(plan),     # F328: what the job assumed instead of asking
     }
+
+
+def story_assumptions(plan: Any) -> list[dict[str, str]]:
+    """F328: what an unattended job assumed instead of asking (`job_unattended.JOB_ASSUMPTIONS_KEY`), oldest
+    first, each with `at`, `question` and `assumed`; [] for a job that assumed nothing."""
+    from packages.orchestration.job_unattended import JOB_ASSUMPTIONS_KEY
+
+    entries = (getattr(plan, "metadata", None) or {}).get(JOB_ASSUMPTIONS_KEY) or []
+    return [{key: str(entry.get(key) or "") for key in ("at", "question", "assumed")}
+            for entry in entries if isinstance(entry, dict)]
 
 
 def job_client_story(job_id: str, plan: Any) -> dict[str, Any]:

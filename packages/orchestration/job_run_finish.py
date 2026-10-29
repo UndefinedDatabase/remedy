@@ -13,6 +13,10 @@ the jobs of its order that wait for it (`order_jobs.settle_waiting_jobs`): a job
 a result that can land ends each job waiting for it `blocked`, with a sentence naming why. Before,
 such a job stayed `waiting` forever (job 43e55dbbd5ba4e73 of 2026-10-28). A settle that cannot read
 or write a record never fails the run it follows.
+
+F330 (operator order beweis): a blocked, unattended job whose review says its work does not belong
+in its repository, with no file changed, ends `failed` with the stop reason `not_in_this_repository`
+here (`job_wrong_repository`), so it hands its task back instead of waiting for a person.
 """
 
 from __future__ import annotations
@@ -33,11 +37,16 @@ def stamp_blocked_job_finish(run: Callable[..., Any]) -> Callable[..., Any]:
     def _wrapped(*args: Any, **kwargs: Any) -> Any:
         try:
             job = run(*args, **kwargs)
+            from packages.orchestration.job_wrong_repository import end_job_not_in_this_repository
             from packages.orchestration.pingpong_job import JOB_BLOCKED, load_job_plan_safe, save_job_plan
 
             job_id = str(getattr(job, "job_id", "") or "")
             record, _damaged = load_job_plan_safe(job_id) if job_id else (None, False)
-            if record is not None and record.state == JOB_BLOCKED and not record.finished_at:
+            if record is not None and end_job_not_in_this_repository(record):    # F330
+                save_job_plan(record)
+                job.state, job.stop_reason, job.finished_at = record.state, record.stop_reason, record.finished_at
+                job.metadata = record.metadata
+            elif record is not None and record.state == JOB_BLOCKED and not record.finished_at:
                 record.finished_at = datetime.now(timezone.utc).isoformat()
                 save_job_plan(record)
                 job.finished_at = record.finished_at

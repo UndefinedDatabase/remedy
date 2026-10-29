@@ -21,8 +21,11 @@ from packages.orchestration.claude_cli_command import (
     _WRITER_TOOLS,
     BUILDER_COMMAND_ALLOWLIST,
     BUILDER_COMMAND_REFUSALS_FILENAME,
+    BUILDER_TYPECHECK_COMMANDS,
     build_claude_cli_args,
+    builder_allowed_commands,
     builder_bash_rules,
+    builder_check_commands,
     builder_command_allowed,
     builder_test_commands,
     claude_cli_launch_switches,
@@ -175,7 +178,9 @@ class TestTheBuilderMayRunOnlyTheListedCommands:
     def test_every_listed_command_becomes_one_bash_rule_after_the_test_commands(self):
         rules = builder_bash_rules(None)
         assert rules[:3] == ["Bash(python -m pytest:*)", "Bash(python3 -m pytest:*)", "Bash(pnpm test:*)"]
-        assert rules[3:] == [f"Bash({command}:*)" for command in BUILDER_COMMAND_ALLOWLIST]
+        # F326 (operator order beweis): the TypeScript checker follows the fixed list in every workspace.
+        assert rules[3:] == [f"Bash({command}:*)" for command in (*BUILDER_COMMAND_ALLOWLIST,
+                                                                    *BUILDER_TYPECHECK_COMMANDS)]
         assert "Bash(git diff:*)" in rules and "Bash(pnpm lint:*)" in rules
 
     def test_the_projects_own_test_command_comes_first(self, tmp_path):
@@ -290,3 +295,32 @@ class TestTheBuildersEnvironment:
 
         policy = ExecGuardPolicy(env={"PATH": "/usr/bin"})
         assert with_project_tools(policy, None) is policy
+
+
+class TestTheBuilderMayRunWhatTheReviewerAsksFor:
+    """Operator order beweis, F326: check scripts, the TypeScript checker and the Python checkers."""
+
+    def test_every_check_script_is_allowed_under_its_four_spellings(self, tmp_path):
+        (tmp_path / "package.json").write_text(json.dumps({"scripts": {
+            "typecheck": "tsc --noEmit", "check:types": "tsc", "lint:fix": "eslint --fix .",
+            "build:web": "vite build", "e2e": "playwright test", "start": "vite", "check;rm": "x"}}))
+        commands = builder_check_commands(str(tmp_path))
+        for name in ("typecheck", "check:types", "lint:fix", "build:web", "e2e"):
+            for runner in ("pnpm", "pnpm run", "npm run", "npx"):
+                assert f"{runner} {name}" in commands
+        assert not any("start" in c or "rm" in c for c in commands)
+        assert "Bash(pnpm typecheck:*)" in builder_bash_rules(str(tmp_path))
+
+    def test_the_typescript_checker_is_allowed_under_its_spellings(self):
+        allowed = builder_allowed_commands(None)
+        for command in ("tsc", "npx tsc", "npx tsc --noEmit", "pnpm exec tsc -p tsconfig.json"):
+            assert builder_command_allowed(command, allowed)
+        assert not builder_command_allowed("npx tsc && rm -rf x", allowed)
+
+    def test_python_checkers_only_when_pyproject_names_them(self, tmp_path):
+        assert not any(c in builder_check_commands(str(tmp_path)) for c in ("ruff", "mypy", "pyright"))
+        (tmp_path / "pyproject.toml").write_text('[tool.ruff]\nline-length = 100\n[project]\n'
+                                                 'optional-dependencies = {dev = ["mypy>=1"]}\n')
+        commands = builder_check_commands(str(tmp_path))
+        assert "ruff" in commands and "mypy" in commands and "pyright" not in commands
+        assert builder_command_allowed("ruff check src", builder_allowed_commands(str(tmp_path)))

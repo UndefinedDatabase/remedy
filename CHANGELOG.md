@@ -40,6 +40,39 @@ fails the gate rather than shipping an unexplained release.
   failed job carries one sentence: the story's `stop` (`reason` and `text`), each order job's
   `stop_text` and `remedy job show --json`'s `stop.text`. A job its review blocked names the
   verdict, its findings by severity and the first finding, where its `stop.reason` was empty.
+- 2026-10-29, operator order beweis (F326): the builder may run what the reviewer asks for. Its
+  command list holds every `package.json` script whose name starts with typecheck, check, lint,
+  build or e2e (under `pnpm`, `pnpm run`, `npm run` and `npx`), `tsc` with `npx tsc`, `npx tsc
+  --noEmit` and `pnpm exec tsc`, and ruff, mypy and pyright when `pyproject.toml` names them. The
+  reviewer's prompt names the list, and a finding that only says a command outside it did not run
+  reads low.
+- 2026-10-29, operator order beweis (F327): the planner spends no order budget on narration. The
+  study's narration runs on the local model and is recorded on the order's ledger but never
+  counted or refused (`uncounted_calls`, each call's `counted`); it is skipped when the study's
+  model is not local or when a studied project only changed a manifest. The ledger refuses the
+  scope decision and the mission plan before they eat into three full rounds of builder and
+  reviewer; a call cap too small for those rounds is said in one sentence at the study step, and
+  the walk plans one job instead of failing.
+- 2026-10-29, operator order beweis (F328, interface 1.34): an unattended job that reaches its call
+  or token cap raises it once by itself to the doubled value, as the budget answer `extend` would,
+  saves that and keeps the assumption „Remedy hat das Budget einmal selbst erhöht, weil niemand da
+  war“ in its story's new `assumptions`; at the second cap it stops with the budget question, and its
+  time cap always stops it. `POST /api/v1/orders` takes `auto_extend` (`false` passes the new
+  `remedy do --no-auto-extend`).
+- 2026-10-29, operator order beweis (F329): Remedy narrows its own test run to the changed parts.
+  pytest runs the test folder of each source folder the diff touches and every test file the diff
+  names; a Vitest project runs the test files that import or are named like a changed file. Every
+  other command, a diff over more than ten source folders or a change every test may read runs the
+  full command, and the check's evidence names the selection (`selection`).
+- 2026-10-29, operator order beweis (F330, interface 1.34): a task outside this repository ends the
+  job. The reviewer's findings carry an optional `kind`, and its prompt asks for a finding of kind
+  `not_in_this_repository` when the work does not belong here. An unattended job whose review
+  blocked a task that way, with no file changed, ends `failed` with the stop reason
+  `not_in_this_repository` and a sentence naming the repository and why, instead of waiting.
+- 2026-10-29, operator order beweis (F331, interface 1.34): no job stays running with nothing
+  running it. When the server starts, a job a dead order walk left `running` is resumed when it
+  runs unattended, its order is live and it is within its caps, and else ends `stopped` with the
+  stop reason `orphaned_after_restart` and a sentence why.
 
 ## [1.0.0] - 2026-10-27
 

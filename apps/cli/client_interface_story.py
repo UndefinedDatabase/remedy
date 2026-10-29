@@ -14,7 +14,7 @@ from typing import Any
 #: The top-level keys `remedy client story <job> --json` can answer beside the envelope's own:
 #: `build_client_story`'s keys, and `matches` of the `ambiguous_job_id` refusal.
 CLIENT_STORY_ANSWER_KEYS: tuple[str, ...] = (
-    "changes", "dirty_start", "end", "ended_at", "job_id", "matches", "next", "note_open", "numbers",
+    "assumptions", "changes", "dirty_start", "end", "ended_at", "job_id", "matches", "next", "note_open", "numbers",
     "order", "order_id", "retries", "scope", "scope_findings",
     "started_at", "state", "state_detail", "steps", "stop", "updated_at", "verification",
 )
@@ -49,6 +49,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
               "files_touched": {}, "match": {}, "match_text": {}, "tasks": {}, "tasks_text": {}},
     "retries": {"task_id": {}, "role": {}, "attempt": {}, "reason": {}},
     "stop": {"reason": {}, "text": {}},
+    "assumptions": {"at": {}, "question": {}, "assumed": {}},
 }
 
 #: The keys of the interface's `story` key, `client_story_words.story_words()`; under `phrases`
@@ -89,10 +90,10 @@ def render_story_words_lines(story: dict[str, Any]) -> list[str]:
 #: The key tree of `order_budget` in a `remedy do` answer: the order's ledger (scale audit 2026-10-17).
 ORDER_BUDGET_KEY_TREE: dict = {
     "caps": {"*": {}}, "planner_calls": {}, "planner_calls_by_reason": {"*": {}},
-    "refused_calls": {}, "estimated_planning_tokens": {}, "unmeasured_jobs": {},
+    "refused_calls": {}, "uncounted_calls": {}, "estimated_planning_tokens": {}, "unmeasured_jobs": {},
     "used": dict.fromkeys(("calls", "tokens", "cost_usd", "elapsed_minutes"), {}),
     "jobs": {"*": dict.fromkeys(("calls", "tokens", "cost_usd", "measured", "unpriced_calls"), {})},
     "cost": dict.fromkeys(("cap_usd", "measured_usd", "unpriced_calls", "enforced"), {}),
     "calls": dict.fromkeys(("role", "reason", "attempt", "seconds", "prompt_chars", "response_chars",
-                            "outcome", "estimated_tokens", "tokens_estimated"), {}),
+                            "outcome", "estimated_tokens", "tokens_estimated", "counted"), {}),
 }

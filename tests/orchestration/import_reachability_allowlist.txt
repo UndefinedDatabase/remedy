@@ -125,6 +125,7 @@ packages.orchestration.block_lint
 packages.orchestration.brain_detail
 packages.orchestration.brain_viewer
 packages.orchestration.brain_viewer_theme
+packages.orchestration.budget_auto_extend
 packages.orchestration.budget_clock
 packages.orchestration.budget_decision
 packages.orchestration.budget_guard
@@ -144,6 +145,7 @@ packages.orchestration.capability_evidence
 packages.orchestration.capability_routes
 packages.orchestration.change_provenance_gate
 packages.orchestration.change_set
+packages.orchestration.changed_test_selection
 packages.orchestration.chat_answer
 packages.orchestration.chat_door
 packages.orchestration.chat_evidence
@@ -265,6 +267,7 @@ packages.orchestration.job_report_task_lines
 packages.orchestration.job_retry
 packages.orchestration.job_input_definition
 packages.orchestration.job_insight
+packages.orchestration.job_orphans
 packages.orchestration.job_plan
 packages.orchestration.job_run_ending
 packages.orchestration.job_run_finish
@@ -273,6 +276,7 @@ packages.orchestration.job_stop_now
 packages.orchestration.job_stop_text
 packages.orchestration.job_tokens
 packages.orchestration.job_unattended
+packages.orchestration.job_wrong_repository
 packages.orchestration.lessons
 packages.orchestration.list_options
 packages.orchestration.llm_planner
@@ -379,6 +383,7 @@ packages.orchestration.repository_snapshot
 packages.orchestration.result_tour
 packages.orchestration.review_reports
 packages.orchestration.review_scope
+packages.orchestration.review_scope_rules
 packages.orchestration.review_subject
 packages.orchestration.review_zip
 packages.orchestration.reviewer

@@ -188,7 +188,12 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: Six more, F320 to F325 (Remedy runs on its own), were registered on
 #: 2026-10-29 by the operator order welt-2 in Package 3, under their own Tier 2
 #: heading; see T2_F320.md to T2_F325.md.
-TOTAL_FEATURES = 325
+#: Five more, F326 to F330 (Remedy proves it runs alone), were registered on
+#: 2026-10-29 by the operator order beweis in Package 3, under their own Tier 2
+#: heading; see T2_F326.md to T2_F330.md.
+#: One more, F331 (no job stays running with nothing running it), was registered
+#: the same day by the same order on the orchestrator's word; see T2_F331.md.
+TOTAL_FEATURES = 331
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

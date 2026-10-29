@@ -227,6 +227,13 @@ it in its raw stream. The write mode `dangerous-skip` is unchanged: it keeps eve
   but its bytecode cache.
 - `pnpm build`, `pnpm lint`: the project's own build and lint scripts, the checks a reviewer
   would otherwise be the first to run.
+- The checks a reviewer asks for (operator order beweis, F326, `builder_check_commands`): every
+  `package.json` script whose name begins with `typecheck`, `check`, `lint`, `build` or `e2e`, under
+  `pnpm`, `pnpm run`, `npm run` and `npx`; the TypeScript checker as `tsc`, `npx tsc`,
+  `npx tsc --noEmit` and `pnpm exec tsc`; and `ruff`, `mypy` and `pyright` when the project's
+  `pyproject.toml` names them. The reviewer's prompt names this list and says a command outside it
+  is no finding against the builder; a finding that only says such a command did not run is
+  lowered to `low` in code (`review_scope_rules.settle_review_findings`), so it never blocks.
 
 A command joined to another (`;`, `&&`, `||`, a pipe, a redirection or a substitution) is no
 command of the list by its first word: Claude Code checks each part, and Remedy's own reading,

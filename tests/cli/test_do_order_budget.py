@@ -48,7 +48,9 @@ def test_every_planner_call_of_a_full_walk_is_on_the_orders_ledger(repo, planner
     data = _do(capsys, BROAD_ORDER, "--plan-only", "--run-unattended")
 
     ledger = data["order_budget"]
-    assert ledger["planner_calls"] == planner.count() > 0
+    # F327 (operator order beweis): the study's local narration is on the ledger but not counted.
+    assert ledger["planner_calls"] + ledger["uncounted_calls"] == planner.count() > 0
+    assert ledger["uncounted_calls"] == planner.count("StudyCategoryNarration")
     assert ledger["planner_calls_by_reason"] == {
         {"JobIntake": "intake", "TaskPlan": "task_plan", "MissionPlanDraft": "mission_plan",
          "StudyCategoryNarration": "study_narration", "OrderScopeDecision": "scope_decision"}[schema]: n
@@ -65,17 +67,19 @@ def test_a_bounded_walk_makes_no_planner_call_and_the_ledger_says_so(repo, plann
     assert data["order_budget"]["planner_calls"] == 0 and data["order_budget"]["calls"] == []
 
 
-def test_planning_calls_beyond_the_orders_call_cap_are_refused_and_the_walk_fails_honestly(
+def test_a_cap_below_the_jobs_three_rounds_is_said_before_planning_and_the_walk_plans_one_job(
         repo, planner, capsys):
+    # F327 (operator order beweis) rewrote this case: a cap of 2 calls failed the walk at the task
+    # plan; now the study's narration is not counted, the walk says before planning that the cap
+    # cannot keep three rounds of builder and reviewer free, and it plans the smallest size, one job.
     data = _do(capsys, BROAD_ORDER, "--plan-only", "--max-provider-calls", "2")
 
     ledger = data["order_budget"]
-    assert ledger["planner_calls"] == 2 == planner.count()
-    assert ledger["refused_calls"] >= 1
-    assert any(e["outcome"].startswith("refused") for e in ledger["calls"])
-    shape = _step(data, "shape")
-    assert shape["status"] == "failed" and "cap of 2 provider calls is spent" in shape["detail"]
-    assert data["job_ids"] == []
+    assert ledger["planner_calls"] == 2 == planner.count() - planner.count("StudyCategoryNarration")
+    assert ledger["refused_calls"] == 0
+    assert _step(data, "study")["detail"].startswith(
+        "The order's cap of 2 provider calls cannot keep 3 full rounds of builder and reviewer")
+    assert _step(data, "shape")["status"] == "done" and len(data["job_ids"]) == 1
 
 
 def test_the_second_job_of_a_chain_gets_what_the_first_left_not_the_whole_cap(
@@ -104,11 +108,13 @@ def test_a_provider_failure_is_recorded_per_attempt_and_stops_honestly_without_u
     data = _do(capsys, BROAD_ORDER, "--plan-only")
 
     ledger = data["order_budget"]
-    # two failures in a row end planner use: the study asks twice, nothing after it is asked at all
-    assert failing.count() == ledger["planner_calls"] == 2
-    assert [e["outcome"] for e in ledger["calls"][:2]] == ["error: TimeoutError"] * 2
-    assert all(e["outcome"].startswith("refused: the planner failed 2 calls in a row")
-               for e in ledger["calls"][2:])
+    # two counted failures in a row end planner use; F327 (operator order beweis): the study's local
+    # narration fails uncounted, so the two are the plan's first calls, and nothing after them is asked
+    narration = failing.count("StudyCategoryNarration")
+    assert failing.count() - narration == ledger["planner_calls"] == 2
+    counted = [e for e in ledger["calls"] if e["counted"]]
+    assert [e["outcome"] for e in counted[:2]] == ["error: TimeoutError"] * 2
+    assert all(e["outcome"].startswith("refused: the planner failed 2 calls in a row") for e in counted[2:])
     shape = _step(data, "shape")      # a failed task plan is a failed shape, never a silent substitute
     assert shape["status"] == "failed" and "failed 2 calls in a row" in shape["detail"]
 

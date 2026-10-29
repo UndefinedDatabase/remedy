@@ -562,6 +562,15 @@ Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/
 - [x] F324 — Unattended jobs stay unattended (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
 - [x] F325 — Every stop says why (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
 
+## Tier 2 — Remedy proves it runs alone (operator order beweis, 2026-10-29)
+
+- [x] F326 — The builder may run what the reviewer asks for (built 2026-10-29 by the operator order beweis · branch feature/beweis)
+- [x] F327 — The planner spends no order budget on narration (built 2026-10-29 by the operator order beweis · branch feature/beweis)
+- [x] F328 — An unattended job raises its budget once by itself (built 2026-10-29 by the operator order beweis · branch feature/beweis)
+- [x] F329 — Remedy narrows its test run to the changed parts (built 2026-10-29 by the operator order beweis · branch feature/beweis)
+- [x] F330 — A task outside this repository ends the job (built 2026-10-29 by the operator order beweis · branch feature/beweis)
+- [x] F331 — No job stays running with nothing running it (built 2026-10-29 by the operator order beweis · branch feature/beweis)
+
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
 - [ ] F316 — Findings paydown v11

@@ -356,7 +356,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.33`.
+Interface version: `1.34`.
 
 ### Envelope
 
@@ -473,6 +473,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--planner-model` | yes | no | yes | no | Model for every planner call of the plan and shape steps (default: the planner's configured model) |
 | `--planner-provider` | yes | no | yes | no | Which service plans: ollama or claude-cli (default: the planner of the repository's [roles] table, else planner.provider, else claude-cli) |
 | `--run-unattended` | yes | no | no | no | Run a generated plan of tasks without interactive confirmation and use the documented default for every open planning question, audited; it never implies --apply, a commit, a push, a merge or a deployment |
+| `--no-auto-extend` | yes | no | no | no | An unattended job that reaches its call or token cap does not raise it once by itself (operator order beweis, F328); it stops with the budget question at once |
 | `--no-ui` | yes | no | no | no | Deprecated and inert: the old cockpit was deleted, so there is nothing to open; kept so existing scripts keep working |
 | `--max-total-tokens` | yes | no | yes | no | Maximum total tokens for this job (F018 budget) |
 | `--max-provider-calls` | yes | no | yes | no | Maximum provider calls for this job (F018 budget) |
@@ -511,8 +512,8 @@ Keys under the answer keys: see below.
   - `verification`: `output`, `reason`, `reason_key`, `request`, `required`, `runs`, `status`, `tested_by`
     - `runs`: `blocking`, `check_id`, `command`, `source`, `status`, `task_id`
 - `landed`: `branch`, `job_id`, `repo`, `sha`
-- `order_budget`: `calls`, `caps`, `cost`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `unmeasured_jobs`, `used`
-  - `calls`: `attempt`, `estimated_tokens`, `outcome`, `prompt_chars`, `reason`, `response_chars`, `role`, `seconds`, `tokens_estimated`
+- `order_budget`: `calls`, `caps`, `cost`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `uncounted_calls`, `unmeasured_jobs`, `used`
+  - `calls`: `attempt`, `counted`, `estimated_tokens`, `outcome`, `prompt_chars`, `reason`, `response_chars`, `role`, `seconds`, `tokens_estimated`
   - `caps`: `*`
   - `cost`: `cap_usd`, `enforced`, `measured_usd`, `unpriced_calls`
   - `jobs`: `*`
@@ -1073,9 +1074,10 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `order_id`, `retries`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `stop`, `updated_at`, `verification`.
+Answer keys: `assumptions`, `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `order_id`, `retries`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `stop`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
+- `assumptions`: `assumed`, `at`, `question`
 - `changes`: `added`, `path`, `removed`
 - `dirty_start`: `args`, `key`
   - `args`: `*`

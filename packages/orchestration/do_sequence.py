@@ -859,7 +859,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         if lane.bounded and not ctx.no_llm:
             shaped.intake_fallback_reason = "bounded"
         job_id = str(shaped.job.job_id)
-        name_do_job(shaped.job, order, ctx.order, target, several=len(planned) > 1, unattended=ctx.run_unattended)
+        name_do_job(shaped.job, order, ctx.order, target, several=len(planned) > 1, unattended=ctx.run_unattended, auto_extend=ctx.auto_extend)
         # DECISION amend1011b D4: the job joins the mission of ITS repository, under this order.
         target_mission, target_order = ctx.project_missions[str(target.project.id)]
         mission = link_order_job(str(target.project.id), target_mission, target_order, job_id)

@@ -308,9 +308,10 @@ def do_job_title(job_order: str, order: str, *, project_slug: str, deliverables:
 
 
 def name_do_job(job: Any, job_order: str, order: str, target: DoJobTarget, *, several: bool,
-                unattended: bool = False) -> None:
+                unattended: bool = False, auto_extend: bool = True) -> None:
     """Give a planned job of the walk its `do_job_title` and save it; an UNATTENDED walk's job
-    stores that it runs unattended for every later run (F324, `job_unattended`)."""
+    stores that it runs unattended for every later run (F324, `job_unattended`), and a walk without
+    AUTO_EXTEND stores `auto_extend: false`, so the job never raises its cap by itself (F328)."""
     from packages.orchestration.pingpong_job import save_job_plan
     from packages.orchestration.task_deliverables import task_deliverable
 
@@ -321,4 +322,8 @@ def name_do_job(job: Any, job_order: str, order: str, target: DoJobTarget, *, se
         from packages.orchestration.order_jobs import JOB_UNATTENDED_KEY
 
         job.metadata[JOB_UNATTENDED_KEY] = True
+    if not auto_extend:
+        from packages.orchestration.budget_auto_extend import JOB_AUTO_EXTEND_KEY
+
+        job.metadata[JOB_AUTO_EXTEND_KEY] = False
     save_job_plan(job)

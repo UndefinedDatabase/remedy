@@ -51,6 +51,8 @@ class ReviewFinding(_Strict):
     file: str
     summary: str
     required_fix: str = ""
+    #: F330 (operator order beweis): "not_in_this_repository" when the work does not belong in this repository.
+    kind: str = ""
 
 
 class ReviewVerdict(_Structured):

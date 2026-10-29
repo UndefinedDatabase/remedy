@@ -68,6 +68,20 @@ def _git(cwd: Path, *args: str) -> str:
     return done.stdout.strip()
 
 
+def job_base_commit(worktree: Path) -> str | None:
+    """The job's base commit: the merge base of WORKTREE's `HEAD` and its checkout's `HEAD`; None when
+    WORKTREE has no checkout apart from itself or git cannot say (F329 reads its diff against it)."""
+    from packages.orchestration.project_tests import base_lookup_dirs
+
+    [checkout] = base_lookup_dirs(worktree)
+    if checkout == worktree:
+        return None
+    try:
+        return _git(worktree, "merge-base", "HEAD", _git(checkout, "rev-parse", "HEAD"))
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
 def base_failures(worktree: Path, command: str,
                   rerun: Callable[[Path], tuple[Any, str]]) -> frozenset[str] | None:
     """The failing tests of COMMAND on the job's base commit, run by RERUN in a throwaway worktree
@@ -75,13 +89,10 @@ def base_failures(worktree: Path, command: str,
     from packages.orchestration.project_tests import base_lookup_dirs
     from packages.orchestration.worktrees import WORKTREE_DIRNAME, link_installed_packages
 
+    base = job_base_commit(worktree)
+    if base is None:
+        return None
     [checkout] = base_lookup_dirs(worktree)
-    if checkout == worktree:
-        return None
-    try:
-        base = _git(worktree, "merge-base", "HEAD", _git(checkout, "rev-parse", "HEAD"))
-    except (OSError, subprocess.TimeoutExpired):
-        return None
     key = (str(checkout), base, command)
     if key in _BASE_RUNS:
         return _BASE_RUNS[key]

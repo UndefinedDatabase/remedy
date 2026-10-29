@@ -387,7 +387,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         body=(("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
               ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
               ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
-              ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag")),
+              ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag"),
+              ("auto_extend", "flag")),
         starts_order=True,
         description=(
             "Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do "
@@ -420,7 +421,11 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "runs, retries and resumes run unattended too, unless the body's `unattended` is `false`, "
             "which leaves out `--run-unattended` so the jobs ask their questions. An order's jobs take "
             "their repair rounds from the config key `cycles.repair_rounds`; `remedy do` deliberately "
-            "names none (F280)."
+            "names none (F280). Since 1.34 (F328) an unattended job that reaches its call or token cap "
+            "raises it once by itself to the doubled value, as the budget answer `extend` would, and "
+            "keeps that as an assumption in its story's `assumptions`; at the second cap it stops with "
+            "the budget question, and its time cap always stops it. `auto_extend` `false` passes "
+            "`--no-auto-extend`, so the order's jobs stop at their first cap."
         ),
     ),
     PublicApiRoute(

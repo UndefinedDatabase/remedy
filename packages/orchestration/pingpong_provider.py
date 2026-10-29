@@ -104,7 +104,7 @@ class ReviewFinding:
     summary: str = ""
     details: str = ""
     required_fix: str = ""
-
+    kind: str = ""  # F330: "not_in_this_repository" when the work does not belong in this repository
 
 @dataclass
 class ReviewerOutput:
@@ -203,7 +203,7 @@ Your entire response must be exactly one JSON object with this structure:
 
 Fields:
 - verdict: exactly one of "pass", "fail", "needs_repair", "blocked"
-- findings: array of objects, each with "id", "severity" (blocker|high|medium|low), "file", "summary", "required_fix"
+- findings: array of objects, each with "id", "severity" (blocker|high|medium|low), "file", "summary", "required_fix", and "kind" "not_in_this_repository" only when the work does not belong in this repository
 - confidence: "low", "medium", or "high"
 - summary: one sentence
 
@@ -577,7 +577,7 @@ def _parse_reviewer_structured(
         findings=[
             ReviewFinding(
                 id=f.id, severity=f.severity, file=f.file,
-                summary=f.summary, details="", required_fix=f.required_fix,
+                summary=f.summary, details="", required_fix=f.required_fix, kind=f.kind,
             )
             for f in v.findings
         ],
@@ -656,7 +656,7 @@ def _parse_reviewer_json(
             file=f.get("file", ""),
             summary=f.get("summary", ""),
             details=f.get("details", ""),
-            required_fix=f.get("required_fix", ""),
+            required_fix=f.get("required_fix", ""), kind=str(f.get("kind", "") or ""),
         ))
 
     return normalize_reviewer_verdict(ReviewerOutput(
