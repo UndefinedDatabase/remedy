@@ -379,6 +379,7 @@ packages.orchestration.repository_snapshot
 packages.orchestration.result_tour
 packages.orchestration.review_reports
 packages.orchestration.review_scope
+packages.orchestration.review_scope_rules
 packages.orchestration.review_subject
 packages.orchestration.review_zip
 packages.orchestration.reviewer

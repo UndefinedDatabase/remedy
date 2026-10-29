@@ -40,6 +40,12 @@ fails the gate rather than shipping an unexplained release.
   failed job carries one sentence: the story's `stop` (`reason` and `text`), each order job's
   `stop_text` and `remedy job show --json`'s `stop.text`. A job its review blocked names the
   verdict, its findings by severity and the first finding, where its `stop.reason` was empty.
+- 2026-10-29, operator order beweis (F326): the builder may run what the reviewer asks for. Its
+  command list holds every `package.json` script whose name starts with typecheck, check, lint,
+  build or e2e (under `pnpm`, `pnpm run`, `npm run` and `npx`), `tsc` with `npx tsc`, `npx tsc
+  --noEmit` and `pnpm exec tsc`, and ruff, mypy and pyright when `pyproject.toml` names them. The
+  reviewer's prompt names the list, and a finding that only says a command outside it did not run
+  reads low.
 
 ## [1.0.0] - 2026-10-27
 

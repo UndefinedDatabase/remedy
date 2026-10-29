@@ -50,6 +50,15 @@ _RUNNERS_BY_SOURCE: dict[str, tuple[str, ...]] = {
 }
 #: A `package.json` script whose name starts so runs tests (`test`, `test:unit`, `e2e`).
 _TEST_SCRIPT_PREFIXES = ("test", "e2e")
+#: Operator order beweis (F326): a `package.json` script whose name starts so checks the code, so
+#: the builder may run what a reviewer asks for (`pnpm typecheck`, `npm run lint:fix`).
+BUILDER_CHECK_SCRIPT_PREFIXES = ("typecheck", "check", "lint", "build", "e2e")
+#: F326: the spellings a check script runs under.
+_CHECK_SCRIPT_RUNNERS = ("pnpm", "pnpm run", "npm run", "npx")
+#: F326: the TypeScript checker under its spellings, allowed in every workspace.
+BUILDER_TYPECHECK_COMMANDS = ("tsc", "npx tsc", "npx tsc --noEmit", "pnpm exec tsc")
+#: F326: the Python checkers the builder may run when the project's `pyproject.toml` names them.
+BUILDER_PYTHON_CHECKERS = ("ruff", "mypy", "pyright")
 #: The evidence file a builder's refused commands are appended to, beside the run's isolation line.
 BUILDER_COMMAND_REFUSALS_FILENAME = "builder_command_refusals.jsonl"
 
@@ -75,7 +84,7 @@ def builder_test_commands(workspace: str | None) -> tuple[str, ...]:
     source = found.source if found is not None else ""
     if source == "config" and "pytest" in own[0]:
         source = "tests_folder"
-    scripts = _package_test_scripts(Path(workspace)) if workspace else ()
+    scripts = _package_scripts(Path(workspace), _TEST_SCRIPT_PREFIXES) if workspace else ()
     named = tuple(f"{runner} {name}" for name in scripts for runner in ("pnpm", "pnpm run", "npm run"))
     runners = _RUNNERS_BY_SOURCE.get(source, ())
     if scripts and source != "package_json":
@@ -83,8 +92,36 @@ def builder_test_commands(workspace: str | None) -> tuple[str, ...]:
     return tuple(dict.fromkeys((*own, *runners, *named, *BUILDER_FALLBACK_TEST_COMMANDS)))
 
 
-def _package_test_scripts(workspace: Path) -> tuple[str, ...]:
-    """The names of *workspace*'s `package.json` scripts that run tests (`_TEST_SCRIPT_PREFIXES`).
+def builder_check_commands(workspace: str | None) -> tuple[str, ...]:
+    """F326: the check commands the builder may run beside its tests.
+
+    Every `package.json` script of *workspace* whose name starts with one of
+    `BUILDER_CHECK_SCRIPT_PREFIXES`, under each of `_CHECK_SCRIPT_RUNNERS`; then
+    `BUILDER_TYPECHECK_COMMANDS`; then each of `BUILDER_PYTHON_CHECKERS` its `pyproject.toml` names.
+    """
+    root = Path(workspace) if workspace else None
+    scripts = _package_scripts(root, BUILDER_CHECK_SCRIPT_PREFIXES) if root else ()
+    named = tuple(f"{runner} {name}" for name in scripts for runner in _CHECK_SCRIPT_RUNNERS)
+    return tuple(dict.fromkeys((*named, *BUILDER_TYPECHECK_COMMANDS, *(_pyproject_checkers(root) if root else ()))))
+
+
+def builder_allowed_commands(workspace: str | None) -> tuple[str, ...]:
+    """Every command beginning the builder may run in *workspace*: its tests, the fixed list, its checks."""
+    return tuple(dict.fromkeys((*builder_test_commands(workspace), *BUILDER_COMMAND_ALLOWLIST,
+                                *builder_check_commands(workspace))))
+
+
+def _pyproject_checkers(workspace: Path) -> tuple[str, ...]:
+    """The `BUILDER_PYTHON_CHECKERS` *workspace*'s `pyproject.toml` names as a word; none without one."""
+    try:
+        text = (workspace / "pyproject.toml").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return ()
+    return tuple(tool for tool in BUILDER_PYTHON_CHECKERS if re.search(rf"(?<![\w-]){tool}(?![\w-])", text))
+
+
+def _package_scripts(workspace: Path, prefixes: tuple[str, ...]) -> tuple[str, ...]:
+    """The names of *workspace*'s `package.json` scripts that start with one of *prefixes*.
 
     A name is kept only when it is one plain word (letters, digits, `:`, `-`, `_`), so it can
     never widen a `Bash(<command>:*)` rule; a file that does not parse names none.
@@ -97,7 +134,7 @@ def _package_test_scripts(workspace: Path) -> tuple[str, ...]:
     if not isinstance(scripts, dict):
         return ()
     return tuple(name for name in scripts if isinstance(name, str)
-                 and name.startswith(_TEST_SCRIPT_PREFIXES) and re.fullmatch(r"[\w:-]+", name))
+                 and name.startswith(prefixes) and re.fullmatch(r"[\w:-]+", name))
 
 
 def with_project_tools(policy: Any, cwd: str | None) -> Any:
@@ -138,7 +175,7 @@ def builder_command_allowed(command: str, allowlist: tuple[str, ...]) -> bool:
 
 def builder_bash_rules(workspace: str | None) -> list[str]:
     """The `--allowedTools` rules of the builder's Bash: one `Bash(<command>:*)` per allowed command."""
-    return [f"Bash({command}:*)" for command in (*builder_test_commands(workspace), *BUILDER_COMMAND_ALLOWLIST)]
+    return [f"Bash({command}:*)" for command in builder_allowed_commands(workspace)]
 
 
 def log_builder_command_refusals(raw: str, path: str | None) -> list[dict[str, Any]]:

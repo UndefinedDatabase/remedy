@@ -5,7 +5,7 @@ decodeux's order beweis: the reruns of 2026-10-29 must run without a question to
 causes become F326 to F330 (Package 3, Tier 2), built on branch feature/beweis.
 
 ## Current Step
-Registration of F326 to F330; then one closing commit per feature.
+F326 built; F327 next.
 
 ## Next Steps
 1. F326 the builder may run what the reviewer asks for.
