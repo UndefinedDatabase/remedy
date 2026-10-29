@@ -568,7 +568,7 @@ Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/
 - [x] F327 — The planner spends no order budget on narration (built 2026-10-29 by the operator order beweis · branch feature/beweis)
 - [x] F328 — An unattended job raises its budget once by itself (built 2026-10-29 by the operator order beweis · branch feature/beweis)
 - [x] F329 — Remedy narrows its test run to the changed parts (built 2026-10-29 by the operator order beweis · branch feature/beweis)
-- [ ] F330 — A task outside this repository ends the job
+- [x] F330 — A task outside this repository ends the job (built 2026-10-29 by the operator order beweis · branch feature/beweis)
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 

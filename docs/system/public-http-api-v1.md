@@ -146,6 +146,11 @@ Additions only, so that an unattended order needs nobody:
   budget question (see "Budget stops"), and its time cap and deadline always stop it.
   `POST /api/v1/orders` takes `auto_extend` (`true` or `false`, default `true`); `false` passes
   `remedy do --no-auto-extend`, and the order's jobs stop at their first cap as before.
+- A new stop reason, `not_in_this_repository` (F330). An unattended job whose review blocked a
+  task with a finding of kind `not_in_this_repository` (the reviewer's verdict findings carry an
+  optional `kind`), while no task changed a file, ends `failed` at once instead of waiting
+  `blocked` for a person; its `stop.reason` is `not_in_this_repository` and `stop.text` names the
+  repository and why, so a client hands the task back. See "Orders".
 - A `remedy do` answer's `order_budget` carries `uncounted_calls`, and each of its `calls` carries
   `counted` (F327): the study's narration runs on the local model and is never counted against
   the order's caps.
@@ -268,6 +273,14 @@ words (the acceptance of its first task that ended blocked or failed), null in e
 `tasks.done` and `tasks.total` are read while the order runs, as they were since 1.18.
 
 **A waiting job follows the job it waits for (F323, version 1.33).** When the job a waiting job waits for ends without a result that will land (`blocked`, `stopped`, `failed`, `cancelled`, or its result declined), the waiting job ends `blocked` at once instead of waiting forever: its stop reason reads `awaited_job_ended:<job>` and its stop text names that job, how it ended and why, and what the person may do. A job waiting for it is settled the same way, down the order. When the awaited job's result is applied over HTTP and the apply landed a commit, the waiting job is released (a job this rule blocked is planned again) and, when it runs unattended, the supervisor starts it; the apply's answer names that run under `released`, or why it could not start under `release_refused`. A waiting job that asks questions is released and stays `ready` for its person. Only jobs planned since F323 name the job they release; an older waiting job keeps the reason the view reads for it.
+
+**A job whose work is not in its repository ends (F330, version 1.34).** When the review of an
+unattended job's task says, by a finding of kind `not_in_this_repository`, that the work does not
+belong in the job's repository, and no task of the job changed a file, the job ends `failed` at
+once: its stop reason is `not_in_this_repository` and its stop text (the story's `stop.text`, the
+order job's `stop_text`) names the repository by name and path, the task, and the review's reason.
+It never waits for a person, so a client hands the task back to whoever routes it. An attended
+job, and a job that changed a file, stay `blocked` on the plain review path.
 
 **An order's story (version 1.29).** `GET /api/v1/orders/{order}/story` tells the whole order in
 closed words, as `remedy client order-story <order> --json` does: `order_id`; `client`, the name of

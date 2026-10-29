@@ -4800,7 +4800,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
                         "id": f.id,
                         "severity": f.severity,
                         "file": f.file,
-                        "summary": f.summary,
+                        "summary": f.summary, **({"kind": f.kind} if f.kind else {}),   # F330
                     }
                     for f in rd.reviewer_output.findings
                 ],

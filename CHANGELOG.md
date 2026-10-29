@@ -64,6 +64,11 @@ fails the gate rather than shipping an unexplained release.
   names; a Vitest project runs the test files that import or are named like a changed file. Every
   other command, a diff over more than ten source folders or a change every test may read runs the
   full command, and the check's evidence names the selection (`selection`).
+- 2026-10-29, operator order beweis (F330, interface 1.34): a task outside this repository ends the
+  job. The reviewer's findings carry an optional `kind`, and its prompt asks for a finding of kind
+  `not_in_this_repository` when the work does not belong here. An unattended job whose review
+  blocked a task that way, with no file changed, ends `failed` with the stop reason
+  `not_in_this_repository` and a sentence naming the repository and why, instead of waiting.
 
 ## [1.0.0] - 2026-10-27
 

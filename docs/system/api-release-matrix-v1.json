@@ -475,7 +475,8 @@
    "branch": "feature/beweis",
    "added": [
     "body key `auto_extend` (flag) of `POST /api/v1/orders`: `false` passes `remedy do --no-auto-extend`, so the order's jobs never raise a call or token cap by themselves (F328)",
-    "story key `assumptions` in `GET /api/v1/jobs/{job}/story`, each with `at`, `question` and `assumed`: what an unattended job assumed instead of asking (F328)"
+    "story key `assumptions` in `GET /api/v1/jobs/{job}/story`, each with `at`, `question` and `assumed`: what an unattended job assumed instead of asking (F328)",
+    "stop reason `not_in_this_repository` in the story's `stop.reason`, `remedy job show --json`'s `stop.reason` and each order job's `stop_text`: an unattended job whose review says the work does not belong in its repository, with no file changed, ends `failed` (F330)"
    ],
    "value_changes": [
     {
@@ -483,6 +484,12 @@
      "case": "an unattended job that reaches its call or token cap for the first time",
      "before": "stopped with the budget question",
      "after": "raises that cap once to the doubled value, as the answer `extend` would, records the assumption and runs on; the second cap stops it with the question, and the time cap always stops it (F328)"
+    },
+    {
+     "field": "job.state",
+     "case": "an unattended job whose review blocked a task with a finding of kind `not_in_this_repository` and that changed no file",
+     "before": "`blocked`, waiting for a person",
+     "after": "`failed` with the stop reason `not_in_this_repository` and a stop text naming the repository and why (F330)"
     }
    ]
   }

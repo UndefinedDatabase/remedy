@@ -275,6 +275,7 @@ packages.orchestration.job_stop_now
 packages.orchestration.job_stop_text
 packages.orchestration.job_tokens
 packages.orchestration.job_unattended
+packages.orchestration.job_wrong_repository
 packages.orchestration.lessons
 packages.orchestration.list_options
 packages.orchestration.llm_planner
