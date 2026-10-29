@@ -1,20 +1,19 @@
-# Plan — operator amendment amend1027b-v1
+# Plan — operator order welt-2 (2026-10-29): Remedy runs on its own
 
 ## Goal
-Remedy closes as version 1 (2026-10-27): three truth defects fixed (A1 scope.match, A2 what
-one_job counts, A3 the 16-character order id of a job made elsewhere), the feature loop stops
-(Package 3 "Nach v1"), and improvements come only from reports and failed runs.
+decodeux: improvement jobs from remedy-chat must run unattended end to end and stop only with a
+plain reason. Six faults of the night 2026-10-28/29 become F320 to F325 (Package 3, Tier 2).
 
 ## Current Step
-Done. A1 and A2 (dc69345ff), A3 (758077b7c), B2 (bafb89737), B1 and B4 (2bdeb922c), repairs of
-the full runs (24701fb03, f2d26d40a); B3 in ~/Repos/system (9d85dff). Full suite green on
-f2d26d40a (24433 passed, 11 skipped). Closing: merge, push, supervisor restart, handback
-`~/.remedy-loop/amend1027b-v1.handback.md`.
+F320 attachments are never deliverables.
 
 ## Next Steps
-1. None by Rule A5: Package 1 has no open line (F319 was its last; F316 waits in Package 3). The next work is an order to the project remedy
-   from a report over Universe or a failed run (docs/roadmap/V1.md).
+1. F321 low findings never block; config `cycles.repair_rounds` is the default.
+2. F322 builder tests in the worktree (PYTHONPATH, Remedy's own test run).
+3. F323 waiting jobs follow their order.
+4. F324 unattended stays on the job; HTTP `unattended`/`repair_rounds`; interface 1.33.
+5. F325 every stop says why (story `stop.text`, order view `stop_text`).
+6. Run only the added and changed tests once; ruff on touched files.
 
 ## Risks
-- The installed metadata of the editable install still says 0.1.0 until it is reinstalled;
-  pyproject declares 1.0.0.
+- Branch welt2/remedycore is merged and pushed by the orchestrator, not by this session.

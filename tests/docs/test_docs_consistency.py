@@ -185,7 +185,10 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F319 (build orders with Claude Code end green), was registered on
 #: 2026-10-27 by operator amendment amend1027-green-builds (Part F3) directly
 #: after F318, under its own Tier 2 heading; see T2_F319.md.
-TOTAL_FEATURES = 319
+#: Six more, F320 to F325 (Remedy runs on its own), were registered on
+#: 2026-10-29 by the operator order welt-2 in Package 3, under their own Tier 2
+#: heading; see T2_F320.md to T2_F325.md.
+TOTAL_FEATURES = 325
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
