@@ -2590,10 +2590,10 @@ def run_job(
     #
     # Binding the control root resolves a path. It creates nothing, and it touches neither
     # the repository nor the workspace.
+    from packages.orchestration.budget_auto_extend import should_stop_or_extend as _should_stop  # F328
     from packages.orchestration.safe_points import StopSignal as _StopSignal
     from packages.orchestration.safe_points import control_root as _control_root
     from packages.orchestration.safe_points import moot_budget_stop as _moot_budget_stop
-    from packages.orchestration.budget_auto_extend import should_stop_or_extend as _should_stop  # F328
     _control = _control_root()
 
     # F018: seed accumulators from persisted budget_actuals on resume.

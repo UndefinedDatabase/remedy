@@ -623,7 +623,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
-            "changes", "dirty_start", "end", "ended_at", "job_id", "next", "note_open", "numbers",
+            "assumptions", "changes", "dirty_start", "end", "ended_at", "job_id", "next", "note_open", "numbers",
             "order", "order_id", "retries", "scope", "scope_findings", "started_at", "state",
             "state_detail", "steps", "stop", "updated_at", "verification",
         }),

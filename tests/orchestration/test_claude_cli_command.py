@@ -309,7 +309,7 @@ class TestTheBuilderMayRunWhatTheReviewerAsksFor:
             for runner in ("pnpm", "pnpm run", "npm run", "npx"):
                 assert f"{runner} {name}" in commands
         assert not any("start" in c or "rm" in c for c in commands)
-        assert f"Bash(pnpm typecheck:*)" in builder_bash_rules(str(tmp_path))
+        assert "Bash(pnpm typecheck:*)" in builder_bash_rules(str(tmp_path))
 
     def test_the_typescript_checker_is_allowed_under_its_spellings(self):
         allowed = builder_allowed_commands(None)

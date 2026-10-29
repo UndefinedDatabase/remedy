@@ -1671,7 +1671,8 @@ def test_the_order_create_route_is_pinned_with_its_body_and_its_statuses():
         ("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
         ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
         ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
-        ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag"))
+        ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag"),
+        ("auto_extend", "flag"))
     assert route.refusals == ()
     assert route.refusal_default is None
     assert route.starts_order is True
@@ -1694,6 +1695,10 @@ def test_the_order_create_routes_body_matches_do_runs_own_flags():
         if key == "unattended":
             # F324: `false` leaves out the `--run-unattended` every order passes; no option of its own.
             assert "--run-unattended" in flag_options
+            continue
+        if key == "auto_extend":
+            # F328: `false` passes `--no-auto-extend`; true is the default and passes nothing.
+            assert "--no-auto-extend" in flag_options
             continue
         if kind == "flag":
             assert "--" + key.replace("_", "-") in flag_options, key

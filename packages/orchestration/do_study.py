@@ -43,9 +43,9 @@ def do_step_study(ctx: DoContext) -> tuple[str, str]:
 def _study_once(ctx: DoContext) -> tuple[str, str]:
     """The study step itself: skipped, stopped or done with what it wrote."""
     from packages.orchestration.study import (
+        STUDY_FACT_CHANGED,
         record_study_pass,
         run_study,
-        STUDY_FACT_CHANGED,
         study_call_fn,
         study_runs_local,
         study_stale_reason,

@@ -36,7 +36,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-177 of 330 registered items accepted. Remedy is version 1: Package 1 of docs/roadmap/STATUS.md has no
+180 of 330 registered items accepted. Remedy is version 1: Package 1 of docs/roadmap/STATUS.md has no
 open line, so Rule A5 names no next item; the lines still open wait in Package 3 for a report.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
@@ -46,7 +46,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 60 | 64 |
+| 2 | Minimal Self-Build Runtime | 63 | 64 |
 | 3 | Full Token Economy & Autonomy | 16 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
