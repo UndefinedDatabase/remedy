@@ -75,7 +75,7 @@ def settle_orphaned_running_jobs(paths: Any, launcher: Any, *, now: datetime | N
     from packages.orchestration.job_cancel import job_cancel_request
     from packages.orchestration.pingpong_job import JOB_RUNNING, list_job_plans_safe
     from packages.orchestration.safe_points import StopControlError
-    from packages.orchestration.serve_runs import job_runner_alive, settle_orphaned_job_cancels
+    from packages.orchestration.serve_runs import RunRefused, job_runner_alive, settle_orphaned_job_cancels
 
     settle_orphaned_job_cancels(paths)
     outcomes: list[dict[str, str]] = []
@@ -89,7 +89,7 @@ def settle_orphaned_running_jobs(paths: Any, launcher: Any, *, now: datetime | N
             if not why:
                 try:
                     launcher.start(job_id)
-                except Exception as exc:  # noqa: BLE001 — any refusal of the start ends the job instead
+                except (RunRefused, OSError, RuntimeError, ValueError, StopControlError) as exc:  # a refused start ends it
                     why = f"its run could not start again ({type(exc).__name__})"
                 else:
                     outcomes.append({"job_id": job_id, "action": "resumed"})

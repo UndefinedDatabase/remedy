@@ -85,6 +85,10 @@ fails the gate rather than shipping an unexplained release.
   and it does not block; the story's checking step says `failed_before_job`. A failure new in the
   job, or one the base run cannot be made for, blocks as before, and the evidence says why
   (`baseline`). A builder's own red run is checked by Remedy's full run.
+- 2026-10-29, operator order beweis (F335): the review zip of a job that stopped before any change
+  landed (its content proof names no commit, file or tombstone) is built without that empty proof
+  when no ReviewSubject is declared, and its status says what the evidence says (BLOCKED_EVIDENCE),
+  instead of failing on the proof's schema.
 - 2026-10-29, operator order beweis (F334, interface 1.34): a merged job task („A + run the
   tests“) is read part by part, its deliverable path is read even when it stands alone, and the
   files its test-run part names are not asked to have changed, so a merged task whose work an
