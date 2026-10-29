@@ -316,10 +316,14 @@ def _checking(plan: Any, state: str, building: str) -> tuple[str, Any]:
     exec-1017 D2: read through `job_verification`, so a DoD that ran the tests is never "no test
     command", and tests the order asked for that did not run are never "not requested".
     """
+    from packages.orchestration.project_test_baseline import load_preexisting_failures
+
     found = job_verification(plan)
     failed = sum(1 for run in found["runs"] if run["status"] == "failed")
     if failed:
         phrase: Any = _word("tests_failed", n=failed)
+    elif found["runs"] and (before := load_preexisting_failures(str(plan.job_id))):
+        phrase = _word("failed_before_job", n=len(before))   # F333: green but for tests already red before
     elif found["runs"]:
         phrase = _word("tests_passed", n=len(found["runs"]))
     elif found["status"] == "not_required":

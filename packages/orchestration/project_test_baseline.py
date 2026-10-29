@@ -21,6 +21,14 @@ ended red, and the last task's repair rounds would have chased failures the job 
 
 Remedy deliberately does not skip, deselect or retry a failing test here, and never compares when
 the names cannot be read completely: an unreadable red stays red.
+
+F333 (operator order beweis, job de04ce7d2bed47b0): the base run runs only the failing tests, by
+their ids (`failing_test_ids`: pytest's node ids, Vitest's file names), in the throwaway worktree.
+A failure the base shares is pre-existing ("war schon vorher rot"): the evidence keeps the list
+(`preexisting`), and `preexisting_failures_in` names it for the job's worktree, so the reviewer is
+told and a finding only about it reads `low` (`review_scope_rules`). When the base run cannot be
+made (no ids, a runner that takes no ids, a timeout, no base commit), the red stays red and the
+evidence's `baseline` sentence says why.
 """
 from __future__ import annotations
 
@@ -39,8 +47,12 @@ _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 _JS_FAIL = re.compile(r"^\s*FAIL\s+(\S.*?)\s*$")
 _JS_CROSS = re.compile(r"^\s*(?:✕|×)\s+(\S.*?)\s*$")
 _PY_FAIL = re.compile(r"^(?:FAILED|ERROR)\s+(\S+)")
-#: (worktree's checkout, base commit, command) → the base run's failing test names, per process.
-_BASE_RUNS: dict[tuple[str, str, str], frozenset[str] | None] = {}
+#: (worktree's checkout, base commit, command, ids) → the base run's failing test names and why none, per process.
+_BASE_RUNS: dict[tuple[str, str, str, tuple[str, ...]], tuple[frozenset[str] | None, str]] = {}
+#: F333: a job worktree → the failing tests of its last red run that all failed on the base too, per process.
+_PREEXISTING: dict[str, frozenset[str]] = {}
+#: F333: the evidence file of a job that lists the pre-existing failures its rounds met.
+PREEXISTING_FAILURES_FILENAME = "preexisting_failures.json"
 
 
 def failing_test_names(output: str) -> frozenset[str] | None:
@@ -59,6 +71,50 @@ def failing_test_names(output: str) -> frozenset[str] | None:
     _passed, summary = read_test_result(text, True)
     counted = int(summary.split(" passed, ")[1].split(" failed")[0])
     return frozenset(names) if names and len(names) == counted else None
+
+
+def failing_test_ids(names: frozenset[str]) -> list[str] | None:
+    """The ids NAMES' runner takes to run only them: a pytest node id as it stands, a Vitest test's
+    file (the part before ` > `); None when a name is no path, so the base run cannot be narrowed."""
+    ids: list[str] = []
+    for name in sorted(names):
+        test_id = name if "::" in name else name.split(" > ")[0].split(" [")[0].strip()
+        if "/" not in test_id and "." not in test_id.split("::")[0]:
+            return None
+        if test_id not in ids:
+            ids.append(test_id)
+    return ids or None
+
+
+def preexisting_failures_in(workspace: str | Path | None) -> frozenset[str]:
+    """F333: the failing tests WORKSPACE's last red run shared with the job's base commit; empty when none."""
+    return _PREEXISTING.get(str(Path(workspace).resolve()), frozenset()) if workspace else frozenset()
+
+
+def record_preexisting_failures(job_id: str, names: frozenset[str] | tuple[str, ...]) -> None:
+    """F333: add NAMES to JOB_ID's `preexisting_failures.json`, which the story counts."""
+    from packages.orchestration.builder_test_runs import _append_json
+    from packages.orchestration.data_paths import job_evidence_dir
+
+    if job_id and names:
+        _append_json(Path(job_evidence_dir(job_id)) / PREEXISTING_FAILURES_FILENAME, [{"tests": sorted(names)}])
+
+
+def load_preexisting_failures(job_id: str) -> list[str]:
+    """F333: every pre-existing failing test JOB_ID's rounds and its DoD gate's checks name, each once, sorted."""
+    import json
+
+    from packages.orchestration.data_paths import job_evidence_dir
+    from packages.orchestration.dod_gate import load_gate_result
+
+    try:
+        rows = json.loads((Path(job_evidence_dir(job_id)) / PREEXISTING_FAILURES_FILENAME).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        rows = []
+    checks = (load_gate_result(job_id) or {}).get("checks") or []
+    rows = [*(rows if isinstance(rows, list) else []),
+            *({"tests": c.get("preexisting")} for c in checks if isinstance(c, dict))]
+    return sorted({str(t) for row in rows if isinstance(row, dict) for t in row.get("tests") or ()})
 
 
 def _git(cwd: Path, *args: str) -> str:
@@ -82,50 +138,70 @@ def job_base_commit(worktree: Path) -> str | None:
         return None
 
 
-def base_failures(worktree: Path, command: str,
-                  rerun: Callable[[Path], tuple[Any, str]]) -> frozenset[str] | None:
-    """The failing tests of COMMAND on the job's base commit, run by RERUN in a throwaway worktree
-    of the checkout; None when there is no checkout apart from WORKTREE or the run cannot be read."""
+def base_failures(worktree: Path, command: str, ids: list[str],
+                  rerun: Callable[[Path, list[str]], tuple[Any, str]]) -> tuple[frozenset[str] | None, str]:
+    """The failing tests among IDS on the job's base commit, run by RERUN in a throwaway worktree of
+    the checkout, and "" ; (None, why) when there is no checkout apart from WORKTREE or the run
+    cannot be made or read (F333)."""
     from packages.orchestration.project_tests import base_lookup_dirs
     from packages.orchestration.worktrees import WORKTREE_DIRNAME, link_installed_packages
 
     base = job_base_commit(worktree)
     if base is None:
-        return None
+        return None, "the job has no base commit to compare with"
     [checkout] = base_lookup_dirs(worktree)
-    key = (str(checkout), base, command)
+    key = (str(checkout), base, command, tuple(ids))
     if key in _BASE_RUNS:
         return _BASE_RUNS[key]
     top = Path(_git(checkout, "rev-parse", "--show-toplevel"))
     folder = top / WORKTREE_DIRNAME / f"baseline-{uuid.uuid4().hex[:12]}"
+    why = ""
     try:
         _git(top, "worktree", "add", "--detach", str(folder), base)
         link_installed_packages(top, folder)
-        evidence, output = rerun(folder / checkout.relative_to(top))
+        evidence, output = rerun(folder / checkout.relative_to(top), ids)
         found = failing_test_names(output) if evidence.reason == "nonzero_exit" else (
             frozenset() if evidence.status == "passed" else None)
-    except (OSError, subprocess.TimeoutExpired, ValueError):
-        found = None
+        why = "" if found is not None else (
+            f"the base run ended {evidence.reason or evidence.status}" if evidence.reason != "nonzero_exit"
+            else "the base run's failing tests could not be read completely")
+    except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
+        found, why = None, f"the base run could not be made: {exc}"
     finally:
         subprocess.run(["git", "worktree", "remove", "--force", str(folder)], cwd=str(top),
                        capture_output=True, timeout=60)
-    _BASE_RUNS[key] = found
-    return found
+    _BASE_RUNS[key] = (found, why)
+    return found, why
+
+
+def _with_note(evidence: Any, note: str, **changes: Any) -> Any:
+    return dataclasses.replace(evidence, output_tail=note + evidence.output_tail[-max(0, 4000 - len(note)):],
+                               **changes)
 
 
 def judged_against_base(evidence: Any, output: str, worktree: Path,
-                        rerun: Callable[[Path], tuple[Any, str]]) -> Any:
+                        rerun: Callable[[Path, list[str]], tuple[Any, str]]) -> Any:
     """EVIDENCE as it stands, or passed with `REASON_PREEXISTING_FAILURES` when every test it failed
-    also fails on the job's base commit (see the module text)."""
+    also fails on the job's base commit (see the module text); a red that stays red says why."""
     if evidence.reason != "nonzero_exit":
         return evidence
+    key = str(Path(worktree).resolve())
+    _PREEXISTING.pop(key, None)
     mine = failing_test_names(output)
-    if not mine:
-        return evidence
-    before = base_failures(worktree, evidence.command, rerun)
-    if before is None or not mine <= before:
-        return evidence
+    ids = failing_test_ids(mine) if mine else None
+    if not mine or ids is None:
+        why = "the failing tests could not be read by name and id"
+        return _with_note(evidence, f"Not compared with the job's base commit: {why}.\n", baseline=why)
+    before, why = base_failures(worktree, evidence.command, ids, rerun)
+    if before is None:
+        return _with_note(evidence, f"Not compared with the job's base commit: {why}.\n", baseline=why)
+    new = sorted(mine - before)
+    shared = tuple(sorted(mine & before))
+    if new:
+        why = f"{len(new)} failing test(s) are new in this job: {', '.join(new)}"
+        return _with_note(evidence, f"Compared with the job's base commit: {why}.\n", baseline=why, preexisting=shared)
+    _PREEXISTING[key] = frozenset(mine)
     note = ("Every failing test already failed on the job's base commit, so none of them is the "
-            "job's (amend1027): " + ", ".join(sorted(mine)) + "\n")
-    return dataclasses.replace(evidence, status="passed", reason=REASON_PREEXISTING_FAILURES,
-                               output_tail=note + evidence.output_tail[-max(0, 4000 - len(note)):])
+            "job's (amend1027, F333: already red before the job): " + ", ".join(sorted(mine)) + "\n")
+    return _with_note(evidence, note, status="passed", reason=REASON_PREEXISTING_FAILURES,
+                      preexisting=tuple(sorted(mine)), baseline="every failing test already failed on the base")

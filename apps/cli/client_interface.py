@@ -104,7 +104,7 @@ from packages.orchestration.project_ask import PROJECT_ASK_ANSWER_KEYS, PROJECT_
 #: `job apply`'s `released`/`release_refused`, `job show`'s `stop.text`, the story's `stop`, order jobs' `stop_text`),
 #: and operator order beweis (F327 to F330) to `1.34` (`do --no-auto-extend`, the story's `assumptions`, the
 #: order ledger's `uncounted_calls` and each call's `counted`, the stop reason `not_in_this_repository`, and
-#: F332's story task `phrase` with the word `already_done`).
+#: F332's story task `phrase` with the word `already_done`, F333's checking phrase `failed_before_job`).
 CLIENT_INTERFACE_VERSION = "1.34"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,

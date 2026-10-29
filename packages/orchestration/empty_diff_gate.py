@@ -20,12 +20,13 @@ def reject_verdict_on_empty_diff(
 
     F332: ALREADY_DONE says an earlier task of the job already changed the files this task names
     (`job_task_already_done.earlier_work`) and the reviewer was asked whether the task's acceptance
-    already holds; its pass with no finding above `low` then stands, and the task ends done.
+    already holds; its pass, or any verdict whose findings are all `low` (F321, F333), then stands,
+    and the task ends done.
     """
     if staged_files:
         return reviewer_out
-    if already_done and reviewer_out.verdict == "pass" and (
-            not reviewer_out.findings or review_findings_all_low(reviewer_out.findings)):
+    if already_done and ((reviewer_out.verdict == "pass" and not reviewer_out.findings)
+                         or review_findings_all_low(reviewer_out.findings)):   # F321/F333: all-low passes
         return reviewer_out
     if reviewer_out.verdict == "pass" and not is_fake:
         reviewer_out.verdict = "needs_repair"

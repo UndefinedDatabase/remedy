@@ -61,6 +61,9 @@ STORY_PHRASES: dict[str, tuple[str, ...]] = {
     # F332: a task's own phrase, on its row under the building step: an earlier task of the job (its
     # 1-based number `task`) already changed the `n` files this task names, and the review found it done.
     "already_done": ("task", "n"),
+    # F333: the checking step's phrase when the tests passed but for `n` failing tests that already
+    # failed on the job's base commit, before the job („war schon vorher rot“): none of them is the job's.
+    "failed_before_job": ("n",),
 }
 
 #: Every reason key `state_detail.reason` carries while the job is stopped or failed. `stopped` is a

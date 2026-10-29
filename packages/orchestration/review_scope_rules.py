@@ -6,6 +6,9 @@ something it was not allowed to do, so the reviewer's system prompt names the li
 (`REVIEWER_SCOPE_RULES`) and `settle_review_findings` lowers a finding that only says such a
 command did not run to `low`, decided here in code and not left to the reviewer's words.
 
+F333: a finding only about tests that already failed on the job's base commit reads `low` too
+(`only_preexisting_failures`); the reviewer is told them as a fact in the round's test summary.
+
 F330: the same rules ask the reviewer to say, by a finding of kind `not_in_this_repository`, when
 the task's work does not belong in this repository at all (`job_wrong_repository`).
 """
@@ -23,6 +26,7 @@ from packages.orchestration.empty_diff_gate import reject_verdict_on_empty_diff
 from packages.orchestration.job_task_already_done import earlier_work_of
 from packages.orchestration.job_wrong_repository import NOT_IN_THIS_REPOSITORY
 from packages.orchestration.pingpong_provider import ReviewerOutput
+from packages.orchestration.project_test_baseline import preexisting_failures_in
 
 #: F326: the reviewer's rule on the builder's commands; F330: the finding kind for work not in this repository.
 REVIEWER_SCOPE_RULES = (
@@ -63,20 +67,41 @@ def only_disallowed_command_not_run(finding: object, allowed: tuple[str, ...]) -
     return bool(named) and not any(builder_command_allowed(command, allowed) for command in named)
 
 
+#: F333: a finding's words that say the tests or the test command fail.
+_TESTS_RED = re.compile(
+    r"\b(?:tests?|test command|test suite|vitest|pytest|jest)\b[^.;]{0,80}?"
+    r"\b(?:fail\w*|red|exit(?:s|ed)?\s+(?:with\s+)?(?:code\s+)?[1-9]\d*)", re.IGNORECASE)
+
+
+def only_preexisting_failures(finding: object, preexisting: frozenset[str]) -> bool:
+    """F333: True when FINDING is about failing tests every one of which already failed on the job's
+    base commit (PREEXISTING, the last red run of the workspace): its file is one of their files, its
+    words name one of them, or its words only say the tests fail."""
+    if not preexisting:
+        return False
+    files = {name.split("::")[0].split(" > ")[0].strip() for name in preexisting}
+    text = " ".join(str(getattr(finding, name, "") or "") for name in ("summary", "details", "required_fix"))
+    if str(getattr(finding, "file", "") or "") in files or any(part in text for part in files | preexisting):
+        return True
+    return bool(_TESTS_RED.search(text))
+
+
 def settle_review_findings(reviewer_out: ReviewerOutput, *, staged_files: list[str], is_fake: bool,
                            workspace: str | None, job_task: tuple[str, str] = ("", "")) -> ReviewerOutput:
     """REVIEWER_OUT after the rules the code decides, not the reviewer's words.
 
     The empty diff outvotes a verdict first (`reject_verdict_on_empty_diff`), unless JOB_TASK (the job's
-    and the task's id) names a task whose work an earlier task of its job already did (F332). Then each finding
-    that only says a command outside the builder's list for WORKSPACE did not run reads `low`
-    (F326).
+    and the task's id) names a task whose work an earlier task of its job already did (F332). Each
+    finding that only says a command outside the builder's list for WORKSPACE did not run reads `low`
+    (F326), and so does one only about tests already red on the job's base commit (F333); both are
+    read before the empty diff, so a task already done whose only findings were those passes.
     """
-    already_done = not staged_files and not is_fake and earlier_work_of(*job_task) is not None
-    reviewer_out = reject_verdict_on_empty_diff(reviewer_out, staged_files=staged_files, is_fake=is_fake,
-                                                already_done=already_done)
     allowed = builder_allowed_commands(workspace)
+    preexisting = preexisting_failures_in(workspace)
     for finding in reviewer_out.findings:
-        if finding.severity != "low" and only_disallowed_command_not_run(finding, allowed):
+        if finding.severity != "low" and (only_disallowed_command_not_run(finding, allowed)
+                                          or only_preexisting_failures(finding, preexisting)):
             finding.severity = "low"
-    return reviewer_out
+    already_done = not staged_files and not is_fake and earlier_work_of(*job_task) is not None
+    return reject_verdict_on_empty_diff(reviewer_out, staged_files=staged_files, is_fake=is_fake,
+                                        already_done=already_done)
