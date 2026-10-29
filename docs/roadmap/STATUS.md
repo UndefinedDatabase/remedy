@@ -572,6 +572,7 @@ Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/
 - [x] F331 — No job stays running with nothing running it (built 2026-10-29 by the operator order beweis · branch feature/beweis)
 - [x] F332 — A task an earlier task already did ends done (built 2026-10-29 by the operator order beweis · branch feature/beweis-2)
 - [x] F333 — A test already red before the job is not the job's (built 2026-10-29 by the operator order beweis · branch feature/beweis-3)
+- [x] F334 — A merged task already done ends done, and its builder runs its tests (built 2026-10-29 by the operator order beweis · branch feature/beweis-4)
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
