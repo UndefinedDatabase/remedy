@@ -1,0 +1,366 @@
+{
+  "schema_version": "1.1.0",
+  "verdict": "BLOCKED",
+  "checks": [
+    {
+      "check_id": "job_evidence_calls_fresh_evidence_gate",
+      "source_file": "packages/orchestration/job_evidence.py",
+      "check_type": "call_exists",
+      "pattern": "write_fresh_evidence_gate",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "job_evidence_calls_artifact_contract_gate",
+      "source_file": "packages/orchestration/job_evidence.py",
+      "check_type": "call_exists",
+      "pattern": "write_artifact_contract_gate",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "job_evidence_calls_runtime_integration_gate",
+      "source_file": "packages/orchestration/job_evidence.py",
+      "check_type": "call_exists",
+      "pattern": "write_runtime_integration_gate",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "job_evidence_calls_change_provenance_gate",
+      "source_file": "packages/orchestration/job_evidence.py",
+      "check_type": "call_exists",
+      "pattern": "write_change_provenance_gate",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "job_evidence_calls_commit_execution_gate",
+      "source_file": "packages/orchestration/job_evidence.py",
+      "check_type": "call_exists",
+      "pattern": "write_commit_execution_gate",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_run_job_calls_collect_counters",
+      "source_file": "packages/orchestration/pingpong_job.py",
+      "check_type": "call_exists",
+      "pattern": "collect_counters_from_actuals",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_run_job_persists_budget_actuals",
+      "source_file": "packages/orchestration/pingpong_job.py",
+      "check_type": "call_exists",
+      "pattern": "_persist_budget_actuals",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_run_job_uses_first_running_at",
+      "source_file": "packages/orchestration/pingpong_job.py",
+      "check_type": "call_exists",
+      "pattern": "first_running_at",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_config_fail_closed_budgets",
+      "source_file": "packages/orchestration/config.py",
+      "check_type": "call_exists",
+      "pattern": "fail_closed_for_budgets",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_budget_resolution_project_root",
+      "source_file": "packages/orchestration/budget_resolution.py",
+      "check_type": "call_exists",
+      "pattern": "project_root",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_run_manifest_decode_budgets",
+      "source_file": "packages/orchestration/run_manifest.py",
+      "check_type": "call_exists",
+      "pattern": "_decode_budgets_field",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_run_contract_reconcile_budgets",
+      "source_file": "packages/orchestration/run_contract.py",
+      "check_type": "call_exists",
+      "pattern": "_reconcile_budget_fields",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_decision_queue_budget_actions",
+      "source_file": "packages/orchestration/decision_queue.py",
+      "check_type": "call_exists",
+      "pattern": "\"extend\", \"abandon\"",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_do_job_plan_budget_flags",
+      "source_file": "apps/cli/commands/do_cmd.py",
+      "check_type": "call_exists",
+      "pattern": "resolve_job_budgets",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_budget_guard_counter_validation",
+      "source_file": "packages/orchestration/budget_guard.py",
+      "check_type": "call_exists",
+      "pattern": "BudgetCounterError",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_atomic_save",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "durable_write(",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_read_only_resolution",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "_find_project_by_repo_readonly",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_ambiguous_error",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "AmbiguousProjectError",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_invalid_selector",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "InvalidProjectSelectorError",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_register_primitive",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "register_project_repo",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_cli_select_project",
+      "source_file": "apps/cli/commands/project.py",
+      "check_type": "call_exists",
+      "pattern": "select_project",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_cli_not_a_git_repo_error",
+      "source_file": "apps/cli/commands/project.py",
+      "check_type": "call_exists",
+      "pattern": "NotAGitRepoError",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_cli_attach_canonical",
+      "source_file": "apps/cli/commands/project.py",
+      "check_type": "call_exists",
+      "pattern": "attach_repo_canonical",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_not_a_git_repo_error",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "NotAGitRepoError",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_attach_canonical",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "attach_repo_canonical",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_slug_validation",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "_validate_slug",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_lookup_readonly",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "_lookup_by_slug_or_uuid_readonly",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f146_registry_migrate_legacy",
+      "source_file": "packages/orchestration/project_registry.py",
+      "check_type": "call_exists",
+      "pattern": "migrate_legacy_projects",
+      "found": false,
+      "file_missing": true
+    },
+    {
+      "check_id": "f018_test_authority_integration_execution",
+      "check_type": "test_execution_binding",
+      "test_file": "tests/orchestration/test_f018_authority_integration.py",
+      "min_passed": 70,
+      "found": false,
+      "critical_node_ids": [
+        "TestStoppedJobBudgetOverrideBlocked::test_run_job_rejects_budget_on_stopped",
+        "TestClosedSourceVocabulary::test_unknown_source_rejected",
+        "TestClosedSourceVocabulary::test_valid_sources_accepted",
+        "TestStrictActualsRejectCoercion",
+        "TestCorruptPersistedBudgetsBlock",
+        "TestPersistedActualsSchemaVersion",
+        "TestPersistedActualsMissingSources",
+        "TestCorruptFirstRunningAt"
+      ]
+    },
+    {
+      "check_id": "f018_test_budget_guard_execution",
+      "check_type": "test_execution_binding",
+      "test_file": "tests/orchestration/test_budget_guard.py",
+      "min_passed": 45,
+      "found": false,
+      "critical_node_ids": [
+        "TestBudgetCounters::test_rejects_inconsistent_call_counts",
+        "TestBudgetCounters::test_rejects_negative_provider_calls"
+      ]
+    },
+    {
+      "check_id": "f018_test_job_budgets_execution",
+      "check_type": "test_execution_binding",
+      "test_file": "tests/orchestration/test_job_budgets.py",
+      "min_passed": 65,
+      "found": false
+    },
+    {
+      "check_id": "f018_test_budget_stop_integration_execution",
+      "check_type": "test_execution_binding",
+      "test_file": "tests/orchestration/test_budget_stop_integration.py",
+      "min_passed": 30,
+      "found": false
+    },
+    {
+      "check_id": "f146_test_resolution_execution",
+      "check_type": "test_execution_binding",
+      "test_file": "tests/orchestration/test_project_resolution.py",
+      "min_passed": 50,
+      "found": false,
+      "critical_node_ids": [
+        "TestReadOnlyResolution::test_resolve_does_not_write",
+        "TestReadOnlyResolution::test_resolve_legacy_project_does_not_write",
+        "TestAmbiguousProjectError::test_duplicate_slug_raises",
+        "TestSelectProject::test_empty_flag_raises_invalid",
+        "TestSelectProject::test_empty_env_raises_invalid",
+        "TestAtomicSave::test_save_uses_atomic_replace",
+        "TestRegisterProjectRepo::test_creates_with_slug_and_canonical",
+        "TestRegisterProjectRepo::test_same_repo_returns_existing",
+        "TestRegisterProjectRepo::test_create_project_assigns_slug_immediately",
+        "TestManagedWorktreeParent::test_worktree_path_without_git_returns_none",
+        "TestSelectProject::test_env_uuid",
+        "TestSelectProject::test_env_slug",
+        "TestSelectProject::test_env_beats_cwd",
+        "TestSelectProject::test_flag_beats_env_and_cwd"
+      ]
+    },
+    {
+      "check_id": "f146_test_cli_execution",
+      "check_type": "test_execution_binding",
+      "test_file": "tests/cli/test_project_current.py",
+      "min_passed": 10,
+      "found": false,
+      "critical_node_ids": [
+        "TestProjectCurrentCommand::test_json_output_exact_schema",
+        "TestProjectCurrentCommand::test_project_flag_overrides_cwd",
+        "TestProjectCurrentCommand::test_env_source_in_json",
+        "TestProjectCurrentCommand::test_job_count_uses_job_ids_len",
+        "TestProjectAttachCommand::test_attach_rejects_non_git",
+        "TestProjectAttachCommand::test_attach_json_output",
+        "TestProjectAttachCommand::test_attach_same_path_idempotent",
+        "TestProjectAttachCommand::test_attach_with_project_flag",
+        "TestWorkspaceKeyGuard::test_no_forbidden_imports"
+      ]
+    },
+    {
+      "check_id": "f146_test_registry_execution",
+      "check_type": "test_execution_binding",
+      "test_file": "tests/test_project_registry.py",
+      "min_passed": 40,
+      "found": false,
+      "critical_node_ids": [
+        "TestSaveLoadRoundtrip::test_load_roundtrip",
+        "TestSaveLoadRoundtrip::test_save_creates_file",
+        "TestReadOnlyProofs::test_list_projects_readonly_does_not_write",
+        "TestAttachRepo::test_attach_adds_resolved_path",
+        "TestProjectNotFoundError::test_project_id_attribute"
+      ]
+    }
+  ],
+  "checks_total": 35,
+  "checks_passed": 0,
+  "issues": [
+    "job_evidence_calls_fresh_evidence_gate: source file 'packages/orchestration/job_evidence.py' not found",
+    "job_evidence_calls_artifact_contract_gate: source file 'packages/orchestration/job_evidence.py' not found",
+    "job_evidence_calls_runtime_integration_gate: source file 'packages/orchestration/job_evidence.py' not found",
+    "job_evidence_calls_change_provenance_gate: source file 'packages/orchestration/job_evidence.py' not found",
+    "job_evidence_calls_commit_execution_gate: source file 'packages/orchestration/job_evidence.py' not found",
+    "f018_run_job_calls_collect_counters: source file 'packages/orchestration/pingpong_job.py' not found",
+    "f018_run_job_persists_budget_actuals: source file 'packages/orchestration/pingpong_job.py' not found",
+    "f018_run_job_uses_first_running_at: source file 'packages/orchestration/pingpong_job.py' not found",
+    "f018_config_fail_closed_budgets: source file 'packages/orchestration/config.py' not found",
+    "f018_budget_resolution_project_root: source file 'packages/orchestration/budget_resolution.py' not found",
+    "f018_run_manifest_decode_budgets: source file 'packages/orchestration/run_manifest.py' not found",
+    "f018_run_contract_reconcile_budgets: source file 'packages/orchestration/run_contract.py' not found",
+    "f018_decision_queue_budget_actions: source file 'packages/orchestration/decision_queue.py' not found",
+    "f018_do_job_plan_budget_flags: source file 'apps/cli/commands/do_cmd.py' not found",
+    "f018_budget_guard_counter_validation: source file 'packages/orchestration/budget_guard.py' not found",
+    "f146_registry_atomic_save: source file 'packages/orchestration/project_registry.py' not found",
+    "f146_registry_read_only_resolution: source file 'packages/orchestration/project_registry.py' not found",
+    "f146_registry_ambiguous_error: source file 'packages/orchestration/project_registry.py' not found",
+    "f146_registry_invalid_selector: source file 'packages/orchestration/project_registry.py' not found",
+    "f146_registry_register_primitive: source file 'packages/orchestration/project_registry.py' not found",
+    "f146_cli_select_project: source file 'apps/cli/commands/project.py' not found",
+    "f146_cli_not_a_git_repo_error: source file 'apps/cli/commands/project.py' not found",
+    "f146_cli_attach_canonical: source file 'apps/cli/commands/project.py' not found",
+    "f146_registry_not_a_git_repo_error: source file 'packages/orchestration/project_registry.py' not found",
+    "f146_registry_attach_canonical: source file 'packages/orchestration/project_registry.py' not found",
+    "f146_registry_slug_validation: source file 'packages/orchestration/project_registry.py' not found",
+    "f146_registry_lookup_readonly: source file 'packages/orchestration/project_registry.py' not found",
+    "f146_registry_migrate_legacy: source file 'packages/orchestration/project_registry.py' not found",
+    "f018_test_authority_integration_execution: no passing execution for 'tests/orchestration/test_f018_authority_integration.py' (need >= 70 passed, exit_code 0)",
+    "f018_test_budget_guard_execution: no passing execution for 'tests/orchestration/test_budget_guard.py' (need >= 45 passed, exit_code 0)",
+    "f018_test_job_budgets_execution: no passing execution for 'tests/orchestration/test_job_budgets.py' (need >= 65 passed, exit_code 0)",
+    "f018_test_budget_stop_integration_execution: no passing execution for 'tests/orchestration/test_budget_stop_integration.py' (need >= 30 passed, exit_code 0)",
+    "f146_test_resolution_execution: no passing execution for 'tests/orchestration/test_project_resolution.py' (need >= 50 passed, exit_code 0)",
+    "f146_test_cli_execution: no passing execution for 'tests/cli/test_project_current.py' (need >= 10 passed, exit_code 0)",
+    "f146_test_registry_execution: no passing execution for 'tests/test_project_registry.py' (need >= 40 passed, exit_code 0)"
+  ]
+}

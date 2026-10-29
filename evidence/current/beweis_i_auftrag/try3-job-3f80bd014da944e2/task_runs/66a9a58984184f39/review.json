@@ -1,0 +1,23 @@
+{
+  "total_reviews": 1,
+  "final_verdict": "needs_repair",
+  "reviews": [
+    {
+      "round": 1,
+      "kind": "initial",
+      "verdict": "needs_repair",
+      "confidence": "medium",
+      "summary": "No changes were needed. src/screens/net/NetHeader.tsx already has no onInfo prop: its props are { line, glow, place?, onClear?, info?: ComponentChildren }. The file has no reference to onInfo, setInfo, Sheet or InfoIcon, and no caller in src passes onInfo. The component still renders the info slot through the `info` children prop, so it works without the removed prop. Nothing is staged, so no new or orphaned files were added. The builder could not run tests because Bash permission was denied, but the harness test result reports passed (ctr-C001). [verdict normalized pass->needs_repair: reviewer reported 1 finding(s) alongside a pass verdict; routing findings to review/repair instead of passing]",
+      "finding_count": 1,
+      "findings": [
+        {
+          "id": "R1",
+          "severity": "low",
+          "file": "src/screens/net/NetHeader.tsx",
+          "summary": "The builder did not run the full unit and e2e suite itself because Bash was denied. Only the harness check ctr-C001 confirms it is green, so memory-net-592.spec.ts and the text-golden tests passing comes from the harness, not from the builder.",
+          "kind": "verification_gap"
+        }
+      ]
+    }
+  ]
+}

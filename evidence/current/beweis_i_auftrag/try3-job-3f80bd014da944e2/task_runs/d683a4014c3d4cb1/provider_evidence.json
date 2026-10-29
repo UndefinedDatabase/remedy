@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0.0",
+  "execution_mode": "provider_backed",
+  "builder_provider": "claude-cli",
+  "reviewer_provider": "claude-cli",
+  "builder_provider_kind": "external_cli",
+  "reviewer_provider_kind": "external_cli",
+  "builder_write_mode": "allowed-tools",
+  "reviewer_write_mode": "none",
+  "builder_can_write_staging": true,
+  "reviewer_can_write_staging": false,
+  "builder_configured_model": "",
+  "reviewer_configured_model": "",
+  "builder_actual_model": null,
+  "reviewer_actual_model": null,
+  "actual_model_verified": false,
+  "model_flag_supported": true,
+  "provider_attempts": [
+    {
+      "seq": 1,
+      "round": 1,
+      "role": "builder",
+      "provider": "claude-cli",
+      "model": "",
+      "is_retry": false,
+      "is_parse_retry": false,
+      "stream_call_id": "streams/builder/round-01/attempt-01",
+      "stream_artifact_refs": [
+        "streams/builder/round-01/attempt-01/raw_stream.jsonl",
+        "streams/builder/round-01/attempt-01/run_events.jsonl"
+      ],
+      "error": "",
+      "usage": {
+        "input_tokens": 20,
+        "output_tokens": 9224,
+        "cache_read_input_tokens": 242488,
+        "cache_creation_input_tokens": 36872
+      },
+      "total_cost_usd": 0.5280336
+    },
+    {
+      "seq": 2,
+      "round": 1,
+      "role": "reviewer",
+      "provider": "claude-cli",
+      "model": "",
+      "is_retry": false,
+      "is_parse_retry": false,
+      "stream_call_id": "streams/reviewer/round-01/attempt-01",
+      "stream_artifact_refs": [
+        "streams/reviewer/round-01/attempt-01/raw_stream.jsonl",
+        "streams/reviewer/round-01/attempt-01/run_events.jsonl"
+      ],
+      "error": "",
+      "usage": {
+        "input_tokens": 8,
+        "output_tokens": 1846,
+        "cache_read_input_tokens": 46636,
+        "cache_creation_input_tokens": 18918
+      },
+      "total_cost_usd": 0.1976232
+    }
+  ],
+  "stream_artifact_refs": [
+    "streams/builder/round-01/attempt-01/raw_stream.jsonl",
+    "streams/builder/round-01/attempt-01/run_events.jsonl",
+    "streams/reviewer/round-01/attempt-01/raw_stream.jsonl",
+    "streams/reviewer/round-01/attempt-01/run_events.jsonl"
+  ],
+  "stream_evidence_present": true,
+  "actual_available": true,
+  "total_cost_usd": 0.725657,
+  "cost_coverage_reason": null,
+  "provider_call_count": 2,
+  "actual_call_count": 2,
+  "actual_coverage_complete": true,
+  "cost_call_count": 2,
+  "cost_coverage_complete": true,
+  "usage": {
+    "input_tokens": 28,
+    "output_tokens": 11070,
+    "total_tokens": 11098,
+    "cache_read_input_tokens": 289124,
+    "cache_creation_input_tokens": 55790
+  },
+  "session_id": "ec2042a0-3526-4d53-884a-09b771f24942",
+  "parse_source": "claude_cli_stream_json",
+  "cli_version": "2.1.312 (Claude Code)",
+  "cli_versions": [
+    "2.1.312 (Claude Code)"
+  ]
+}

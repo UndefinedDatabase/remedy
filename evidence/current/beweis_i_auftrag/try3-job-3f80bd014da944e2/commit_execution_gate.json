@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0.0",
+  "verdict": "BLOCKED",
+  "gate_checks": {
+    "fresh_evidence_gate": "BLOCKED",
+    "artifact_contract_gate": "BLOCKED",
+    "runtime_integration_gate": "BLOCKED",
+    "final_verifier": "BLOCKED",
+    "change_provenance_gate": "PASS"
+  },
+  "blocked_gates": [
+    "artifact_contract_gate",
+    "final_verifier",
+    "fresh_evidence_gate",
+    "runtime_integration_gate"
+  ],
+  "non_pass_gates": [
+    "artifact_contract_gate",
+    "final_verifier",
+    "fresh_evidence_gate",
+    "runtime_integration_gate"
+  ],
+  "promote_ready": false,
+  "issues": [
+    "gate 'artifact_contract_gate' is BLOCKED",
+    "gate 'final_verifier' is BLOCKED",
+    "gate 'fresh_evidence_gate' is BLOCKED",
+    "gate 'runtime_integration_gate' is BLOCKED"
+  ]
+}

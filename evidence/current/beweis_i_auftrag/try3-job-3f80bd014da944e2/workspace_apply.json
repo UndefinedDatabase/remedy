@@ -1,0 +1,68 @@
+[
+  {
+    "task_id": "d683a4014c3d4cb1",
+    "status": "applied_to_job_workspace",
+    "apply_manifest": {
+      "task_id": "d683a4014c3d4cb1",
+      "run_id": "7988a1d7243f4233",
+      "applied_files": [
+        "src/screens/KnowledgeNet.tsx",
+        "src/screens/Memory.tsx",
+        "src/screens/net/NetHeader.tsx",
+        "src/styles/knowledge-net.css"
+      ],
+      "missing_files": [],
+      "unsupported_files": [],
+      "unexpected_files": [],
+      "duplicate_files": [],
+      "applied_file_proofs": [
+        {
+          "path": "src/screens/KnowledgeNet.tsx",
+          "existed_before_job": true,
+          "baseline_sha256": "a62df0fcbe99371a9ae30f304bc36c8d232d3d43fae5964ff976e76778788935",
+          "final_workspace_sha256": "144fe62cb83a68384c92679696d8e2f404bd8d11bc2878ecb0050950cf3f353b",
+          "task_id": "d683a4014c3d4cb1",
+          "run_id": "7988a1d7243f4233",
+          "baseline_mode": "100644",
+          "final_mode": "100644"
+        },
+        {
+          "path": "src/screens/Memory.tsx",
+          "existed_before_job": true,
+          "baseline_sha256": "fe04bdec06c47b67ed71e66dac07e6c1ccb28c1714f7eda46da8ed72795855e9",
+          "final_workspace_sha256": "fb6f908fd3431b3b40be043b5c5744a77ad73e3d1ea0156299d9ed5afb43f1f8",
+          "task_id": "d683a4014c3d4cb1",
+          "run_id": "7988a1d7243f4233",
+          "baseline_mode": "100644",
+          "final_mode": "100644"
+        },
+        {
+          "path": "src/screens/net/NetHeader.tsx",
+          "existed_before_job": true,
+          "baseline_sha256": "b4f924a4bf7263e7f05ee492afe11a85eec5f46e7a7a0934bd5fea1ca4a479a2",
+          "final_workspace_sha256": "9f3752bf88e71799537b3ba701584ef5aa791911595ab17f97356b7818159bc2",
+          "task_id": "d683a4014c3d4cb1",
+          "run_id": "7988a1d7243f4233",
+          "baseline_mode": "100644",
+          "final_mode": "100644"
+        },
+        {
+          "path": "src/styles/knowledge-net.css",
+          "existed_before_job": true,
+          "baseline_sha256": "1bfb916e4872971c263475bf9eaaea2d6d695468ffcfed4d5f5f5056e80ef27d",
+          "final_workspace_sha256": "db6c30f208e206ff3dba0ffd8b78b85b76fcc21346a3f748d80b2f828e690743",
+          "task_id": "d683a4014c3d4cb1",
+          "run_id": "7988a1d7243f4233",
+          "baseline_mode": "100644",
+          "final_mode": "100644"
+        }
+      ],
+      "status": "applied"
+    }
+  },
+  {
+    "task_id": "66a9a58984184f39",
+    "status": "blocked",
+    "apply_manifest": null
+  }
+]

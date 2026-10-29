@@ -1,0 +1,173 @@
+# Job hand-off diff (verified job result.diff; the execution worktree was removed after a clean cleanup and is not expected to exist)
+# Branch: remedy/job-3f80bd014da944e2
+# Base:   3f51639d0d2814b348d35b8820a96451261e787c
+# sha256: 41cc612a46ea3aaff76db93e0387938eda160b09b31b40cdc727bb06db9a2533
+
+diff --git a/src/screens/KnowledgeNet.tsx b/src/screens/KnowledgeNet.tsx
+index b67e19f7..6fffea25 100644
+--- a/src/screens/KnowledgeNet.tsx
++++ b/src/screens/KnowledgeNet.tsx
+@@ -15,6 +15,7 @@
+  * Replaces T9_F371's fixed viewBox, stretched square and always-on touch-action: none.
+  */
+ 
++import type { ComponentChildren } from "preact";
+ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+ import { layout } from "../state/graphLayout";
+ import { insertIntoComposer } from "../state/composer";
+@@ -156,10 +157,10 @@ export interface NetProps {
+   /** T10_F592: the net takes the keyboard's focus when it comes (after his „Im Netz zeigen“). */
+   takeFocus?: boolean;
+   /** T10_F592: on the phone the page's i, right after the map's line. */
+-  onInfo?: () => void;
++  info?: ComponentChildren;
+ }
+ 
+-export function KnowledgeNet({ mode, source = "knowledge", typed, onShow, onClear, place = null, takeFocus = false, onInfo }: NetProps) {
++export function KnowledgeNet({ mode, source = "knowledge", typed, onShow, onClear, place = null, takeFocus = false, info }: NetProps) {
+   const { base, failure, retry } = useTop(mode, source);
+   const found = useSearch(mode, typed, source);
+   const [expansions, setExpansions] = useState<Layer[]>([]);
+@@ -243,7 +244,7 @@ export function KnowledgeNet({ mode, source = "knowledge", typed, onShow, onClea
+       {!failure && base === null ? <Skeleton shape="card" /> : null}
+       {!failure && base?.nodes.length === 0 ? <EmptyState icon={BookCalmIcon} words={T.net.empty} sentence={T.net.empty} testId="net-empty" /> : null}
+       <div ref={stage} class="net__stage" data-no-pull="true" data-open={chosen ? "true" : undefined} hidden={!base || base.nodes.length === 0 || failure !== null}>
+-        <NetHeader line={growth.line} glow={found ? glowLine(found.nodes.length, found.truncated) : null} place={place} {...(onClear ? { onClear } : {})} {...(onInfo ? { onInfo } : {})} />
++        <NetHeader line={growth.line} glow={found ? glowLine(found.nodes.length, found.truncated) : null} place={place} {...(onClear ? { onClear } : {})} {...(info ? { info } : {})} />
+         {data.nodes.length > 0 ? (
+           <NetMap nodes={data.nodes} links={data.links} places={data.places} glow={glow} selected={selected} focus={focus} fresh={fresh} wide={wide.value} onOpen={(id) => void open(id)} onBloom={(id) => void bloom(id)} onEmpty={() => setSelected(null)} {...(source === "knowledge" ? { onCollect: collect } : {})} control={control}>
+             {expansions.length > 0 ? (
+diff --git a/src/screens/Memory.tsx b/src/screens/Memory.tsx
+index 927f80eb..cb52d4e8 100644
+--- a/src/screens/Memory.tsx
++++ b/src/screens/Memory.tsx
+@@ -26,7 +26,7 @@
+ import { useEffect, useState } from "preact/hooks";
+ import type { MemoryEntry, MemoryHistoryItem } from "@luna/kit/client";
+ import { Button, Input } from "@luna/kit/preact";
+-import { InfoSheet } from "../components/InfoButton";
++import { InfoButton } from "../components/InfoButton";
+ import { SegmentBar } from "../components/SegmentBar";
+ import { available } from "../state/connection";
+ import { wide } from "../state/layout";
+@@ -52,7 +52,7 @@ import { Screen } from "./Bar";
+ import { ConfirmSheet } from "./Confirm";
+ import { FilterMenu } from "./FilterMenu";
+ import { EmptyState } from "./EmptyState";
+-import { FilterIcon, InfoIcon, LockIcon, MemoryCalmIcon, NetIcon, SearchCalmIcon, SearchIcon } from "./icons";
++import { FilterIcon, LockIcon, MemoryCalmIcon, NetIcon, SearchCalmIcon, SearchIcon } from "./icons";
+ import { Failure } from "./KnowledgeFailure";
+ import { More, usePaged } from "./usePaged";
+ import { KnowledgeNet } from "./KnowledgeNet";
+@@ -282,7 +282,6 @@ export function Memory() {
+   // T10_F592: the net is the page; the magnifier opens the lists (#/wiki, the wiki page's way back, opens them too).
+   const [searching, setSearching] = useState(current.name === "wiki");
+   const view: View = net && (!searching || !lists) ? "net" : "list";
+-  const [info, setInfo] = useState(false);
+   // Whether the net takes the keyboard's focus when it comes: only after his „Im Netz zeigen“.
+   const [arrive, setArrive] = useState(false);
+   const [chosen, setMode] = useState(current.name === "wiki" && current.mode ? current.mode : lastMode);
+@@ -347,11 +346,8 @@ export function Memory() {
+       <LockIcon />
+     );
+   const phone = !wide.value;
+-  const infoButton = (
+-    <button type="button" class="icon-button" data-testid="memory-info" aria-label={T.info.open(T.net.page.infoTitle)} title={T.net.page.infoTitle} aria-haspopup="dialog" onClick={() => setInfo(true)}>
+-      <InfoIcon />
+-    </button>
+-  );
++  // U267: the app's one (i) (components/InfoButton); only one of its places shows at a time.
++  const infoButton = <InfoButton title={T.net.page.infoTitle} sentences={infoSentences(net, part, lists, modes.length > 1)} testId="memory-info" />;
+   // T10_F592: one row, in the bar itself: the segment, the magnifier and the filter (on the phone
+   // with the back arrow before it; its i stands after the map's line there).
+   const nav = (
+@@ -381,10 +377,9 @@ export function Memory() {
+       row={phone}
+       {...(phone ? { back: { name: "chats" } as const } : {})}
+     >
+-      <InfoSheet open={info} onClose={() => setInfo(false)} title={T.net.page.infoTitle} sentences={infoSentences(net, part, lists, modes.length > 1)} testId="memory-info-sheet" />
+       <div class="memory" data-testid="memory" data-mode={mode} data-part={part} data-view={view}>
+         {view === "net" && net ? (
+-          <KnowledgeNet key={`${net}/${mode}`} mode={mode} source={net} typed={typed} onShow={show} onClear={() => setTyped("")} place={mode === modes[0] ? null : displayMode(mode)} takeFocus={arrive} {...(phone ? { onInfo: () => setInfo(true) } : {})} />
++          <KnowledgeNet key={`${net}/${mode}`} mode={mode} source={net} typed={typed} onShow={show} onClear={() => setTyped("")} place={mode === modes[0] ? null : displayMode(mode)} takeFocus={arrive} {...(phone ? { info: infoButton } : {})} />
+         ) : (
+           <>
+             <div class="memory-find">
+diff --git a/src/screens/net/NetHeader.tsx b/src/screens/net/NetHeader.tsx
+index e5ca90d3..d1d287bc 100644
+--- a/src/screens/net/NetHeader.tsx
++++ b/src/screens/net/NetHeader.tsx
+@@ -5,12 +5,13 @@
+  * the line lies on the map's top left corner, so the map keeps the whole height; it names the mode
+  * when it is not the first one, and a glow line has a small × that empties the search. Where the
+  * line does not fit, its „neu“ part goes first (screen readers still hear it); a word is never cut. On the phone the page's i
+- * stands right after it (`onInfo`); on a wide window the i is in the bar (src/screens/Memory.tsx).
++ * stands right after it (`info`, the app's InfoButton); on a wide window the i is in the bar (src/screens/Memory.tsx).
+  */
+ 
++import type { ComponentChildren } from "preact";
+ import { useLayoutEffect, useRef, useState } from "preact/hooks";
+ import { T } from "../../text";
+-import { CloseIcon, InfoIcon } from "../icons";
++import { CloseIcon } from "../icons";
+ 
+ /** The line without its last part when that part tells what is new; null when there is none. */
+ export function withoutNew(text: string): string | null {
+@@ -18,7 +19,7 @@ export function withoutNew(text: string): string | null {
+   return parts.length > 1 && /\bneu\b/.test(parts[parts.length - 1]!) ? parts.slice(0, -1).join(" · ") : null;
+ }
+ 
+-export function NetHeader({ line, glow, place, onClear, onInfo }: { line: string | null; glow: string | null; place?: string | null; onClear?: () => void; onInfo?: () => void }) {
++export function NetHeader({ line, glow, place, onClear, info }: { line: string | null; glow: string | null; place?: string | null; onClear?: () => void; info?: ComponentChildren }) {
+   const full = glow ?? (line && place ? `${place} · ${line}` : (line ?? place ?? ""));
+   const short = glow ? null : withoutNew(full);
+   const head = useRef<HTMLDivElement>(null);
+@@ -29,7 +30,7 @@ export function NetHeader({ line, glow, place, onClear, onInfo }: { line: string
+     if (!box || !short) return setFits(true);
+     const check = () => {
+       const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
+-      const others = [...box.children].filter((el) => el.tagName === "BUTTON") as HTMLElement[];
++      const others = [...box.children].filter((el) => el.tagName === "BUTTON" || el.classList.contains("net__info")) as HTMLElement[];
+       const room = box.clientWidth - others.reduce((sum, el) => sum + el.offsetWidth + gap, 0);
+       setFits((measure.current?.offsetWidth ?? 0) <= room);
+     };
+@@ -48,7 +49,7 @@ export function NetHeader({ line, glow, place, onClear, onInfo }: { line: string
+   }, [full, short]);
+   const cut = !fits && short !== null;
+   return (
+-    <div class="net__head" ref={head} hidden={!full && !onInfo}>
++    <div class="net__head" ref={head} hidden={!full && !info}>
+       <span class="net__measure" ref={measure} aria-hidden="true">
+         {full}
+       </span>
+@@ -63,11 +64,7 @@ export function NetHeader({ line, glow, place, onClear, onInfo }: { line: string
+           <CloseIcon />
+         </button>
+       ) : null}
+-      {onInfo ? (
+-        <button type="button" class="icon-button net__info" data-testid="memory-info" aria-label={T.info.open(T.net.page.infoTitle)} title={T.net.page.infoTitle} aria-haspopup="dialog" onClick={onInfo}>
+-          <InfoIcon />
+-        </button>
+-      ) : null}
++      {info ? <span class="net__info">{info}</span> : null}
+     </div>
+   );
+ }
+diff --git a/src/styles/knowledge-net.css b/src/styles/knowledge-net.css
+index 2e5dc5df..2ee06877 100644
+--- a/src/styles/knowledge-net.css
++++ b/src/styles/knowledge-net.css
+@@ -231,8 +231,12 @@
+ 
+ /* The page's i on the phone, right after the line: the app's (i) (U267) as a small sign with a
+    whole finger's target. */
+-.icon-button.net__info {
++.net__info {
+   flex: none;
++  pointer-events: auto;
++}
++
++.net__info .icon-button {
+   width: 44px;
+   height: 44px;
+   margin: -8px 0 -8px -10px;

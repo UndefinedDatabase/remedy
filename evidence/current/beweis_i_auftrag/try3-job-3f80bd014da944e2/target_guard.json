@@ -1,0 +1,9 @@
+{
+  "target_mutated": false,
+  "target_content_mutated": false,
+  "target_operational_artifacts_changed": false,
+  "target_noise_changed": false,
+  "changed_target_files": [],
+  "ignored_operational_artifacts": [],
+  "ignored_target_noise_files": []
+}

@@ -1,0 +1,18 @@
+{
+  "postmortem_v": 1,
+  "scope": "task",
+  "failure_class": "unknown",
+  "signal_source": "none",
+  "job_id": "3f80bd014da944e2",
+  "task_id": "66a9a58984184f39",
+  "run_id": "9c967e43aa464a1a",
+  "call_id": "",
+  "role": "",
+  "provider": "",
+  "terminal_status": "staged_review_passed",
+  "raw_reason": "completion_gate_failed: no_file_changed",
+  "retries_used": 0,
+  "retry_reasons": [],
+  "evidence_refs": [],
+  "created_at": "2026-10-29T20:57:13.833623+00:00"
+}

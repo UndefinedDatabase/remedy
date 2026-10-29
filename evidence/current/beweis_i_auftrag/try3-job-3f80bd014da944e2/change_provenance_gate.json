@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0.0",
+  "verdict": "PASS",
+  "current_job_id": "3f80bd014da944e2",
+  "dirty_files": [],
+  "source_files": [],
+  "excluded_files": [],
+  "evidence_sources": [
+    "workspace.diff",
+    "workspace_apply.json",
+    "current_change_content_proof.json",
+    "task_runs/d683a4014c3d4cb1/safe.diff"
+  ],
+  "evidence_covered_files": [
+    "src/screens/KnowledgeNet.tsx",
+    "src/screens/Memory.tsx",
+    "src/screens/net/NetHeader.tsx",
+    "src/styles/knowledge-net.css"
+  ],
+  "covered_files": [],
+  "uncovered_files": [],
+  "content_hash_verified": false,
+  "current_hashes": {},
+  "evidence_hashes": {
+    "src/screens/KnowledgeNet.tsx": "144fe62cb83a68384c92679696d8e2f404bd8d11bc2878ecb0050950cf3f353b",
+    "src/screens/Memory.tsx": "fb6f908fd3431b3b40be043b5c5744a77ad73e3d1ea0156299d9ed5afb43f1f8",
+    "src/screens/net/NetHeader.tsx": "9f3752bf88e71799537b3ba701584ef5aa791911595ab17f97356b7818159bc2",
+    "src/styles/knowledge-net.css": "db6c30f208e206ff3dba0ffd8b78b85b76fcc21346a3f748d80b2f828e690743"
+  },
+  "hash_mismatches": [],
+  "stale_apply_proofs": [],
+  "issues": []
+}

@@ -1,0 +1,13 @@
+{
+  "task_id": "66a9a58984184f39",
+  "execution_mode": "provider_backed",
+  "builder_provider": "claude-cli",
+  "reviewer_provider": "claude-cli",
+  "builder_identity": null,
+  "reviewer_identity": null,
+  "prompt_trace_available": true,
+  "provider_call_count": 2,
+  "actual_provider_available": false,
+  "actual_model_available": false,
+  "actual_token_usage_available": false
+}

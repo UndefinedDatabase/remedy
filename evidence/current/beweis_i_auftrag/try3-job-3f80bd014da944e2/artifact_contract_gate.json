@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0.0",
+  "verdict": "BLOCKED",
+  "required_artifacts": {
+    "manifest.json": true,
+    "job_report.json": true,
+    "token_truth.json": true,
+    "fresh_evidence_gate.json": true,
+    "artifact_contract_gate.json": true,
+    "runtime_integration_gate.json": true,
+    "change_provenance_gate.json": true,
+    "commit_execution_gate.json": true,
+    "final_verifier_report.json": true
+  },
+  "optional_artifacts": {
+    "scratch_file_guard.json": true,
+    "prompt_trace_summary.json": true
+  },
+  "missing_required": [],
+  "fv_referenced_missing": [
+    "missing_tests_gate",
+    "safe_diff",
+    "spec_compliance_check"
+  ],
+  "critical_fv_missing": [
+    "safe_diff"
+  ],
+  "evidence_job_id": "3f80bd014da944e2",
+  "job_id_fresh": true,
+  "stream_artifacts": {
+    "applicable": true,
+    "verdict": "PASS",
+    "tasks_with_stream_evidence": [
+      "66a9a58984184f39",
+      "d683a4014c3d4cb1"
+    ],
+    "artifacts_verified": 8,
+    "artifacts_present": 8,
+    "missing_stream_artifact_listing": [],
+    "missing_stream_artifacts": [],
+    "missing_stream_artifact_metadata": [],
+    "stream_artifact_hash_mismatches": [],
+    "stream_artifact_size_mismatches": [],
+    "unexpected_stream_artifacts": [],
+    "duplicate_stream_artifact_refs": [],
+    "unsafe_stream_artifact_refs": []
+  },
+  "worktree_artifacts": {
+    "applicable": true,
+    "verdict": "BLOCKED",
+    "job_level_handoff": true,
+    "handoff_coverage_verdict": "",
+    "handoff_coverage_issues": [
+      "handoff_coverage_verdict is 'absent', not PASS",
+      "root result.diff changes unreviewed files ['src/screens/KnowledgeNet.tsx', 'src/screens/Memory.tsx', 'src/screens/net/NetHeader.tsx', 'src/styles/knowledge-net.css']"
+    ],
+    "missing_job_handoff": [],
+    "worktree_tasks": [
+      "(job)",
+      "66a9a58984184f39",
+      "d683a4014c3d4cb1"
+    ],
+    "diffs_verified": 3,
+    "missing_result_diffs": [],
+    "missing_result_diff_references": [],
+    "result_diff_hash_mismatches": [],
+    "result_diff_size_mismatches": [],
+    "unreferenced_result_diffs": [],
+    "unsafe_result_diff_refs": []
+  },
+  "issues": [
+    "final verifier references missing critical gate 'safe_diff'",
+    "worktree hand-off coverage failed: handoff_coverage_verdict is 'absent', not PASS",
+    "worktree hand-off coverage failed: root result.diff changes unreviewed files ['src/screens/KnowledgeNet.tsx', 'src/screens/Memory.tsx', 'src/screens/net/NetHeader.tsx', 'src/styles/knowledge-net.css']"
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "kind": "actual",
+  "actual_tokens_available": true,
+  "role": "builder",
+  "configured_model": "",
+  "builder_prompt_tokens_estimated": 2494,
+  "reviewer_prompt_tokens_estimated": 679,
+  "repair_prompt_tokens_estimated": 0,
+  "context_tokens_estimated": 1776,
+  "safe_diff_tokens_estimated": 0,
+  "task_tokens_estimated": 418,
+  "context_categories": [
+    "goal",
+    "file_tree",
+    "readme"
+  ],
+  "context_strategy": "bounded_task_context",
+  "full_repo_tokens_estimated": 3053122,
+  "full_repo_files_estimated": 1952,
+  "full_repo_files_skipped": 28,
+  "full_repo_estimate_cap_bytes_per_file": 50000,
+  "estimated_context_savings_tokens": 3051346,
+  "estimated_context_savings_ratio": 0.9994,
+  "builder_tokens_actual": 1544,
+  "reviewer_tokens_actual": 941,
+  "builder_cache_read_tokens_actual": 67909,
+  "builder_cache_creation_tokens_actual": 12702,
+  "reviewer_cache_read_tokens_actual": 20446,
+  "reviewer_cache_creation_tokens_actual": 4879,
+  "measurement_confidence": "high",
+  "usage_actuals": {
+    "actual_available": true,
+    "input_tokens": 16,
+    "output_tokens": 2469,
+    "total_tokens": 2485,
+    "cache_read": 88355,
+    "cache_creation": 17581,
+    "total_cost_usd": 0.207763,
+    "cost_coverage_reason": null,
+    "session_id": "4b539f08-3aa1-4d57-a75a-c5d70b85837c",
+    "cli_version": "2.1.312 (Claude Code)",
+    "cli_versions": [
+      "2.1.312 (Claude Code)"
+    ],
+    "parse_source": "claude_cli_stream_json",
+    "provider_call_count": 2,
+    "actual_call_count": 2,
+    "actual_coverage_complete": true,
+    "cost_call_count": 2,
+    "cost_coverage_complete": true,
+    "actual_missing_reasons": null,
+    "by_role": {
+      "builder": {
+        "provider_call_count": 1,
+        "actual_call_count": 1,
+        "input_tokens": 10,
+        "output_tokens": 1534,
+        "total_tokens": 1544,
+        "cache_read": 67909,
+        "cache_creation": 12702
+      },
+      "reviewer": {
+        "provider_call_count": 1,
+        "actual_call_count": 1,
+        "input_tokens": 6,
+        "output_tokens": 935,
+        "total_tokens": 941,
+        "cache_read": 20446,
+        "cache_creation": 4879
+      }
+    }
+  },
+  "parse_source": "claude_cli_stream_json",
+  "provider_call_count": 2,
+  "actual_call_count": 2,
+  "actual_coverage_complete": true,
+  "cost_call_count": 2,
+  "cost_coverage_complete": true,
+  "cost_coverage_reason": null,
+  "total_cost_usd": 0.207763,
+  "cli_version": "2.1.312 (Claude Code)"
+}

@@ -1,0 +1,247 @@
+{
+  "schema_version": "1.0.0",
+  "verdict": "BLOCKED",
+  "also_needs_repair": false,
+  "changed_files": [
+    "src/screens/KnowledgeNet.tsx",
+    "src/screens/Memory.tsx",
+    "src/screens/net/NetHeader.tsx",
+    "src/styles/knowledge-net.css"
+  ],
+  "changed_line_ranges": {
+    "src/screens/KnowledgeNet.tsx": [
+      [
+        15,
+        21
+      ],
+      [
+        157,
+        166
+      ],
+      [
+        244,
+        250
+      ]
+    ],
+    "src/screens/Memory.tsx": [
+      [
+        26,
+        32
+      ],
+      [
+        52,
+        58
+      ],
+      [
+        282,
+        287
+      ],
+      [
+        346,
+        353
+      ],
+      [
+        377,
+        385
+      ]
+    ],
+    "src/screens/net/NetHeader.tsx": [
+      [
+        5,
+        17
+      ],
+      [
+        19,
+        25
+      ],
+      [
+        30,
+        36
+      ],
+      [
+        49,
+        55
+      ],
+      [
+        64,
+        70
+      ]
+    ],
+    "src/styles/knowledge-net.css": [
+      [
+        231,
+        242
+      ]
+    ]
+  },
+  "authoritative_changed_files": [
+    "src/screens/KnowledgeNet.tsx",
+    "src/screens/Memory.tsx",
+    "src/screens/net/NetHeader.tsx",
+    "src/styles/knowledge-net.css"
+  ],
+  "change_source_mismatches": [
+    "authoritative files not covered by change_provenance: ['src/screens/KnowledgeNet.tsx', 'src/screens/Memory.tsx', 'src/screens/net/NetHeader.tsx', 'src/styles/knowledge-net.css']"
+  ],
+  "review_subject_uncovered_files": [
+    "src/screens/KnowledgeNet.tsx",
+    "src/screens/Memory.tsx",
+    "src/screens/net/NetHeader.tsx",
+    "src/styles/knowledge-net.css"
+  ],
+  "content_hash_mismatches": [],
+  "file_set_alignment_status": "BLOCKED",
+  "unresolved_findings": [
+    {
+      "task_id": "66a9a58984184f39",
+      "finding_id": "R1",
+      "severity": "low",
+      "file": "src/screens/net/NetHeader.tsx",
+      "summary": "The builder did not run the full unit and e2e suite itself because Bash was denied. Only the harness check ctr-C001 confirms it is green, so memory-net-592.spec.ts and the text-golden tests passing comes from the harness, not from the builder."
+    }
+  ],
+  "test_status": {
+    "ran": false,
+    "passed": 0,
+    "failed": 0
+  },
+  "missing_tests_gate": "PASS",
+  "scratch_file_guard": "PASS",
+  "postmortem_failures": [],
+  "postmortem_integrity_blocked": false,
+  "manifest_integrity_blocked": false,
+  "human_change_integrity_blocked": false,
+  "change_provenance": "PASS",
+  "change_provenance_gate": "PASS",
+  "fresh_evidence_gate": "BLOCKED",
+  "artifact_contract_gate": "BLOCKED",
+  "runtime_integration_gate": "BLOCKED",
+  "commit_execution_gate": "BLOCKED",
+  "spec_compliance": "PASS",
+  "token_status": {
+    "actual_available": false,
+    "actual_prompt_tokens": null,
+    "actual_completion_tokens": null,
+    "actual_total_tokens": null,
+    "estimated_prompt_tokens": 0,
+    "estimated_completion_tokens": 0,
+    "estimated_total_tokens": 0,
+    "measurement_source": "character_heuristic",
+    "measurement_confidence": "low",
+    "total_cost_usd": null,
+    "missing_reason": "actual token usage unavailable from claude-cli output",
+    "builder_estimated_total": 0,
+    "reviewer_estimated_total": 0,
+    "repair_estimated_total": 0,
+    "provider_call_count": 0,
+    "prompt_trace_count": 4,
+    "actual_call_count": 0,
+    "actual_coverage_complete": false,
+    "actual_missing_reasons": null,
+    "cost_call_count": 0,
+    "cost_coverage_complete": false,
+    "cost_coverage_reason": "no_real_provider_calls",
+    "cli_version": null,
+    "configured_models": {
+      "builder": "",
+      "reviewer": ""
+    },
+    "actual_models": {
+      "builder": null,
+      "reviewer": null
+    },
+    "actual_model_verified": false
+  },
+  "token_measurement": {
+    "measurement_confidence": "low",
+    "measurement_source": "character_heuristic",
+    "measurement_note": "Token counts are low-confidence character heuristics; no provider exposed measured usage. Informational only \u2014 does not affect the verdict.",
+    "actual_summary": null,
+    "provider_call_count": 0,
+    "actual_call_count": 0,
+    "actual_coverage_complete": false,
+    "actual_missing_reasons": null,
+    "cost_call_count": 0,
+    "cost_coverage_complete": false,
+    "cost_coverage_reason": "no_real_provider_calls",
+    "total_cost_usd": null,
+    "cli_version": null,
+    "configured_models": {
+      "builder": "",
+      "reviewer": ""
+    },
+    "actual_models": {
+      "builder": null,
+      "reviewer": null
+    },
+    "actual_model_verified": false
+  },
+  "token_measurement_confidence": "low",
+  "token_measurement_note": "Token counts are low-confidence character heuristics; no provider exposed measured usage. Informational only \u2014 does not affect the verdict.",
+  "token_actual_summary": null,
+  "evidence_completeness": {
+    "review_scope_packet": true,
+    "spec_compliance_check": false,
+    "missing_tests_gate": false,
+    "scratch_file_guard": true,
+    "token_truth": true,
+    "safe_diff": false,
+    "review_json": true,
+    "tests_txt": true
+  },
+  "missing_evidence": [
+    "missing_tests_gate",
+    "safe_diff",
+    "spec_compliance_check"
+  ],
+  "model_mismatch_warnings": [
+    "builder: no configured model",
+    "reviewer: no configured model"
+  ],
+  "model_mismatch_blocked": false,
+  "model_needs_repair": true,
+  "execution_mode_by_task": {
+    "66a9a58984184f39": "provider_backed",
+    "d683a4014c3d4cb1": "provider_backed"
+  },
+  "execution_mode_findings": [],
+  "execution_mode_blocked": false,
+  "sticky_binding_by_task": {
+    "66a9a58984184f39": true,
+    "d683a4014c3d4cb1": true
+  },
+  "sticky_binding_warnings": [],
+  "token_cost_risk_findings": [
+    {
+      "code": "ESTIMATE_MISSING",
+      "severity": "warning",
+      "role": "builder",
+      "message": "Role 'builder' made 2 provider call(s) but recorded no estimated token usage."
+    },
+    {
+      "code": "ESTIMATE_MISSING",
+      "severity": "warning",
+      "role": "reviewer",
+      "message": "Role 'reviewer' made 2 provider call(s) but recorded no estimated token usage."
+    }
+  ],
+  "token_cost_policy_present": true,
+  "token_cost_has_critical": false,
+  "final_job_review_verdict": "NEEDS_REPAIR",
+  "final_job_review_findings": [
+    {
+      "id": "F-TASK-002",
+      "severity": "repairable",
+      "category": "task_verdict",
+      "message": "Task 66a9a58984184f39 did not pass (verdict=needs_repair).",
+      "task_id": "66a9a58984184f39"
+    }
+  ],
+  "final_job_review_blocked": true,
+  "invocation_args_warnings": [],
+  "operator_attested_tasks": [],
+  "manual_completion": false,
+  "human_final_reviewer_required": false,
+  "report_badges": [],
+  "recommended_action": "Blocked: resolve gate violations before promoting."
+}
