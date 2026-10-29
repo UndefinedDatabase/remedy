@@ -103,7 +103,8 @@ from packages.orchestration.project_ask import PROJECT_ASK_ANSWER_KEYS, PROJECT_
 #: operator order welt-2 (F323 to F325) to `1.33` (`job run --unattended`/`--no-unattended`,
 #: `job apply`'s `released`/`release_refused`, `job show`'s `stop.text`, the story's `stop`, order jobs' `stop_text`),
 #: and operator order beweis (F327 to F330) to `1.34` (`do --no-auto-extend`, the story's `assumptions`, the
-#: order ledger's `uncounted_calls` and each call's `counted`, the stop reason `not_in_this_repository`).
+#: order ledger's `uncounted_calls` and each call's `counted`, the stop reason `not_in_this_repository`, and
+#: F332's story task `phrase` with the word `already_done`).
 CLIENT_INTERFACE_VERSION = "1.34"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,

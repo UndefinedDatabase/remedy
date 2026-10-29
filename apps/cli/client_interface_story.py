@@ -38,7 +38,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
     "next": {"action": {}, "route": {"method": {}, "path": {}}},
     "end": {"action": {}, "route": {"method": {}, "path": {}}},
     "steps": {"id": {}, "status": {}, "phrase": _WORD_TREE, "tokens": {"in": {}, "out": {}},
-              "tasks": {"title": {}, "status": {}, "rounds": {}, "files": {}}},
+              "tasks": {"title": {}, "status": {}, "rounds": {}, "files": {}, "phrase": _WORD_TREE}},
     "changes": {"path": {}, "added": {}, "removed": {}},
     "dirty_start": _WORD_TREE,
     "numbers": {"duration_s": {}, "tokens_in": {}, "tokens_out": {}, "calls": {}, "model_turns": {}, "rounds": {}},

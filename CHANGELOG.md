@@ -73,6 +73,11 @@ fails the gate rather than shipping an unexplained release.
   running it. When the server starts, a job a dead order walk left `running` is resumed when it
   runs unattended, its order is live and it is within its caps, and else ends `stopped` with the
   stop reason `orphaned_after_restart` and a sentence why.
+- 2026-10-29, operator order beweis (F332, interface 1.34): a job task that stages no change,
+  because an earlier task of its job already changed the files it names, ends done when the
+  reviewer, asked so, finds its acceptance already met; it keeps the record „already done by
+  task N“ (story phrase `already_done`) instead of blocking the job with `no_file_changed`. A task
+  that only runs the tests is read the same way over the files the earlier tasks changed.
 
 ## [1.0.0] - 2026-10-27
 

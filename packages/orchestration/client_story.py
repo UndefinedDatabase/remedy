@@ -277,7 +277,15 @@ def _task_rows(plan: Any, rounds: dict[str, int]) -> list[dict[str, Any]]:
     return [{"title": str(task.title or ""),
              "status": _TASK_STORY_STATUS.get(task_lifecycle_or_empty(task.status), "waiting"),
              "rounds": rounds.get(str(task.task_id)),
-             "files": _task_files(task)} for task in plan.tasks]
+             "files": _task_files(task), "phrase": _task_phrase(task)} for task in plan.tasks]
+
+
+def _task_phrase(task: Any) -> dict[str, Any] | None:
+    """F332: `already_done` for a task an earlier task of its job already did, else None."""
+    from packages.orchestration.job_task_already_done import ALREADY_DONE_KEY, already_done_record
+
+    record = already_done_record(task)
+    return _word(ALREADY_DONE_KEY, task=record.get("task"), n=len(record.get("files") or ())) if record else None
 
 
 def _building(tasks: list[dict[str, Any]], state: str, detail: dict[str, Any],

@@ -415,6 +415,7 @@ Story phrase `waiting_for_apply`: `n`.
 Story phrase `applied`: `n`.
 Story phrase `declined`: none.
 Story phrase `dirty_start`: `captured`, `preserved`.
+Story phrase `already_done`: `task`, `n`.
 Story reason `provider_unavailable`: `provider`.
 Story reason `tests_failed`: `n`.
 Story reason `review_not_passed`: `rounds`.
@@ -1095,7 +1096,9 @@ Keys under the answer keys: see below.
 - `steps`: `id`, `phrase`, `status`, `tasks`, `tokens`
   - `phrase`: `args`, `key`
     - `args`: `*`
-  - `tasks`: `files`, `rounds`, `status`, `title`
+  - `tasks`: `files`, `phrase`, `rounds`, `status`, `title`
+    - `phrase`: `args`, `key`
+      - `args`: `*`
   - `tokens`: `in`, `out`
 - `stop`: `reason`, `text`
 - `verification`: `output`, `reason`, `reason_key`, `required`, `status`, `tested_by`

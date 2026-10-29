@@ -570,6 +570,7 @@ Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/
 - [x] F329 — Remedy narrows its test run to the changed parts (built 2026-10-29 by the operator order beweis · branch feature/beweis)
 - [x] F330 — A task outside this repository ends the job (built 2026-10-29 by the operator order beweis · branch feature/beweis)
 - [x] F331 — No job stays running with nothing running it (built 2026-10-29 by the operator order beweis · branch feature/beweis)
+- [x] F332 — A task an earlier task already did ends done (built 2026-10-29 by the operator order beweis · branch feature/beweis-2)
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 

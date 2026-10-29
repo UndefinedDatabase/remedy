@@ -58,6 +58,9 @@ STORY_PHRASES: dict[str, tuple[str, ...]] = {
     "applied": ("n",),
     "declined": (),
     "dirty_start": ("captured", "preserved"),
+    # F332: a task's own phrase, on its row under the building step: an earlier task of the job (its
+    # 1-based number `task`) already changed the `n` files this task names, and the review found it done.
+    "already_done": ("task", "n"),
 }
 
 #: Every reason key `state_detail.reason` carries while the job is stopped or failed. `stopped` is a
@@ -177,6 +180,7 @@ def story_problems(story: dict[str, object]) -> list[str]:
         for task in step.get("tasks") or []:
             if task.get("status") not in STORY_STEP_STATUSES:
                 problems.append(f"task status {task.get('status')!r} is not closed")
+            problems += _word_problems(task.get("phrase"), STORY_PHRASES, "task phrase")
     for finding in story.get("scope_findings") or []:
         if not isinstance(finding, dict) or finding.get("key") not in STORY_SCOPE_FINDINGS:
             problems.append(f"scope finding {finding!r} is not in the closed list")

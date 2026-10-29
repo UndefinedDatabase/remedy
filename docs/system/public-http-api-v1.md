@@ -155,6 +155,12 @@ Additions only, so that an unattended order needs nobody:
   order walk left `running` with nothing running it is started again when it runs unattended,
   its order is live and it is within its caps; any other ends `stopped` with that reason and a
   `stop.text` saying why, and `remedy job resume` continues it. See "Orders".
+- Each task row of the story's `building` step carries `phrase` (F332): null, or the new phrase
+  `already_done` with `task` (the 1-based number of the earlier task of the job) and `n` (how many
+  of the files this task names it changed). Such a task staged no change because that earlier task
+  already did its work, and the review found its acceptance met; its status is `done`, and before
+  1.34 it ended `failed` and blocked the job with `no_file_changed`. A task that only runs the
+  tests carries it the same way, `task` naming the last earlier task that changed a file.
 - A `remedy do` answer's `order_budget` carries `uncounted_calls`, and each of its `calls` carries
   `counted` (F327): the study's narration runs on the local model and is never counted against
   the order's caps.
