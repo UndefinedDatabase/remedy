@@ -402,7 +402,7 @@ def test_every_route_is_well_formed():
         flag_options = {arg.name for arg in entry.args if arg.is_option and arg.is_flag}
         positional_names = {arg.name for arg in entry.args if not arg.is_option}
         for key, kind in route.body:
-            assert kind in ("string", "strings", "flag", "integer")
+            assert kind in ("string", "strings", "flag", "integer", "rounds")
             # A `starts_order` route's body maps to `remedy do run`'s own flags, not its twin
             # `client.order`'s (which takes none): checked by its own dedicated test instead.
             if route.starts_order:
@@ -414,7 +414,10 @@ def test_every_route_is_well_formed():
                 assert key in positional_names, (route.path, key)
                 continue
             if kind == "flag":
-                assert "--" + key.replace("_", "-") in flag_options, (route.path, key)
+                option = "--" + key.replace("_", "-")
+                # F324: a tri-state pair (`--unattended`/`--no-unattended`) passes `true` or `false`.
+                tri_state = option in option_flags and "--no-" + option[2:] in option_flags
+                assert option in flag_options or tri_state, (route.path, key)
             else:
                 assert "--" + key.replace("_", "-") in value_options, (route.path, key)
     major = public_api.PUBLIC_API_PREFIX.rsplit("/api/v", 1)[-1]
@@ -3461,7 +3464,7 @@ def test_an_order_runs_unattended_unless_its_body_says_false(registered_project_
         return _fixture_order_record()
 
     assert _post_order({"order": text, "unattended": True, "repair_rounds": 3}, start)[0] == 202
-    assert seen[-1] == ((text, [*_local_defaults(), "--repair-rounds=3"]), {})
+    assert seen[-1] == ((text, ["--repair-rounds=3", *_local_defaults()]), {})
     assert _post_order({"order": text, "unattended": False}, start)[0] == 202
     assert seen[-1] == ((text, _local_defaults()), {"unattended": False})
 

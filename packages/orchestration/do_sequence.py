@@ -816,6 +816,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     Beside that merge, the contract binds the job to its repository and
     grants it (DECISION F269 D7).
     """
+    from packages.orchestration.job_unattended import record_walk_job_choices
     from packages.orchestration.mission_contract import (
         grant_contract_job_repository,
         merge_contract_slice_into_dod,
@@ -825,7 +826,6 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.repo_mission import link_order_job
     from packages.orchestration.scope_decision import record_scope_decision
     from packages.orchestration.scope_question import ScopeQuestionRaised
-    from packages.orchestration.job_unattended import record_walk_job_choices
     from packages.orchestration.task_deliverables import DeliverablePlanError
 
     lane = settle_do_lane(ctx)

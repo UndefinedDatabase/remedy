@@ -147,7 +147,8 @@ def settle_waiting_jobs(job_id: str) -> list[str]:
     awaited = load_job_plan(job_id)
     ended = awaited_job_end(awaited) if awaited is not None else ""
     waiting = _waiting_job(str(awaited.metadata.get(ORDER_JOB_RELEASES_KEY) or "") if awaited else "", job_id)
-    if not ended or waiting is None or getattr(waiting.state, "value", "") not in ("planned", "pending"):
+    if (awaited is None or not ended or waiting is None
+            or getattr(waiting.state, "value", "") not in ("planned", "pending")):
         return []
     from packages.orchestration.job_stop_text import job_stop_text
 

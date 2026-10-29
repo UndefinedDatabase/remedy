@@ -206,6 +206,12 @@ def _failure_reason(plan: Any, rounds: dict[str, int]) -> dict[str, Any]:
     return _word("unknown")
 
 
+#: F325: the closed reason `job_stop_text` names for a task that failed outside its review.
+def story_failure_key(plan: Any) -> str:
+    """The key of the story's closed reason for a blocked or failed job PLAN (`unknown` when none fits)."""
+    return str(_failure_reason(plan, {})["key"])
+
+
 def _sandbox_refused_a_check(plan: Any) -> bool:
     """True when the tool sandbox refused one of the job's DoD checks, which then ran nothing."""
     from packages.orchestration.dod_gate import load_gate_result

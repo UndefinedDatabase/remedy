@@ -625,7 +625,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({
             "changes", "dirty_start", "end", "ended_at", "job_id", "next", "note_open", "numbers",
             "order", "order_id", "retries", "scope", "scope_findings", "started_at", "state",
-            "state_detail", "steps", "updated_at", "verification",
+            "state_detail", "steps", "stop", "updated_at", "verification",
         }),
         "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
         "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",

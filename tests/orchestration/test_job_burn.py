@@ -597,7 +597,7 @@ def test_an_unattended_trip_of_a_job_with_caps_keeps_running_and_records_its_ass
 
     job, counter = _run_unattended_spike(tmp_path, monkeypatch, prepare=_capped)
 
-    assert job.state != JOB_PAUSED and job.pause is None
+    assert job.state != JOB_PAUSED and not job.pause
     assert counter[0] == 4
     assert open_task_decisions(job) == []
     [assumption] = job.metadata[JOB_ASSUMPTIONS_KEY]

@@ -9,7 +9,7 @@ and no answer a client reads said it.
 `job_stop` is the one reading of why a job stopped: the job's own `stop_text` when a step wrote one
 (F323's waiting jobs), else a sentence derived from its record, in this order: the task that ended
 blocked or failed (the review's verdict with its findings by severity and the first finding, a
-failed test run, the run's own detail or error), the job's `stop_reason`, its pause reason, its
+failed test run, the story's own closed reason for the run's error), the job's `stop_reason`, its pause reason, its
 `error`. It feeds the story's `stop`, each order job's `stop_text` and `remedy job show --json`'s
 `stop.text`, so the three always say the same sentence.
 
@@ -18,6 +18,7 @@ Remedy deliberately writes these sentences in English, like every other sentence
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 #: The job states whose stop always carries a sentence; a paused job carries one when it has a reason.
@@ -90,9 +91,20 @@ def _task_sentence(job: Any, task: Any) -> tuple[str, str]:
         return STOP_REASON_REVIEW_BLOCKED, _review_sentence(job, task)
     if task.test_passed is False:
         return STOP_REASON_TESTS_FAILED, f"The tests of task \"{task.title}\" failed, so it ended {ended}."
-    why = (task.final_status_detail or task.error or "").strip()
-    sentence = f"Task \"{task.title}\" ended {ended}" + (f": {why}" if why else "")
-    return str(ended), sentence.rstrip(".") + "."
+    # The story carries closed words, never a provider's own text (exec-1018, R-1347): the sentence
+    # names the story's reason, else the error's leading token, and quotes nothing else of it.
+    from packages.orchestration.client_story import story_failure_key
+
+    key = story_failure_key(job)
+    token = key if key and key != "unknown" else _error_token(task.final_status_detail or task.error)
+    sentence = f"Task \"{task.title}\" ended {task.status}" + (f": {token.replace('_', ' ')}" if token else "")
+    return token or str(ended), sentence + "."
+
+
+def _error_token(error: str) -> str:
+    """The leading closed token of a recorded error (`provider_unavailable: down` -> `provider_unavailable`)."""
+    head = str(error or "").split(":", 1)[0].strip()
+    return head if re.fullmatch(r"[a-z][a-z0-9_]*", head) else ""
 
 
 def job_stop(job: Any) -> dict[str, str]:
@@ -111,8 +123,9 @@ def job_stop(job: Any) -> dict[str, str]:
         reason = reason or token
     if not text and reason:
         text = f"The job {state}: {reason.replace('_', ' ')}."
-    if not text and getattr(job, "error", ""):
-        text = f"The job {state}: {job.error}."
+    error = _error_token(str(getattr(job, "error", None) or ""))
+    if not text and error:
+        text = f"The job {state}: {error.replace('_', ' ')}."
     if not text:
         text = (f"The job {state} and recorded no reason; `remedy job show {job.job_id} --full` "
                 f"has its run's details.")

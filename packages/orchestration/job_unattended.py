@@ -70,7 +70,6 @@ def approve_unattended_plan(job: Any) -> bool:
         auto_approve_task_plan,
         task_plan_blocks_execution,
     )
-
     from packages.orchestration.pingpong_job import save_job_plan
 
     if job_runs_unattended(job) is not True or task_plan_blocks_execution(job) != "pending":

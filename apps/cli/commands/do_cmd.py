@@ -589,12 +589,12 @@ def _cmd_job_run(
     from packages.core.models import RunState
     from packages.orchestration.job_report import export_job_report
     from packages.orchestration.job_retry import retry_blocked_job_tasks
-    from packages.orchestration.pingpong_job import run_job
 
     # F324: `--unattended`/`--no-unattended` store the choice on the job; an unattended job's run
     # approves the plan it still waits on, as its walk would have, before any refusal reads it.
     from packages.orchestration.job_unattended import approve_unattended_plan, set_job_unattended
     from packages.orchestration.pingpong_job import load_job_plan as _load_job_plan
+    from packages.orchestration.pingpong_job import run_job
     from packages.orchestration.pingpong_job import save_job_plan as _save_job_plan
 
     _stored = _load_job_plan(job_id)
