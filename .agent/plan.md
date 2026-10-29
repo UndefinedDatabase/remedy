@@ -5,10 +5,10 @@ decodeux: improvement jobs from remedy-chat must run unattended end to end and s
 plain reason. Six faults of the night 2026-10-28/29 become F320 to F325 (Package 3, Tier 2).
 
 ## Current Step
-Run only the added and changed tests once; ruff on touched files; fix and run again.
+Done: F320 to F325 built, closing tests green (1027 passed), ruff clean.
 
 ## Next Steps
-1. Hand the commit hashes of contract 1.33 to the orchestrator.
+1. The orchestrator merges branch welt2/remedycore and pushes; decodeux installs.
 
 ## Risks
 - Branch welt2/remedycore is merged and pushed by the orchestrator, not by this session.
