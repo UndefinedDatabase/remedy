@@ -159,7 +159,7 @@ def earlier_work_of(job_id: str, task_id: str) -> EarlierWork | None:
 
     try:
         job = load_job_plan(job_id)
-    except Exception:  # noqa: BLE001 — an unreadable record leaves the no-change task to the old defenses
+    except (OSError, ValueError, KeyError):  # an unreadable record leaves the no-change task to the old defenses
         return None
     task = next((t for t in job.tasks if str(t.task_id) == str(task_id)), None) if job else None
     return earlier_work(job, task) if task is not None else None

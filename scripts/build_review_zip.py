@@ -205,6 +205,11 @@ def _decode_content_proof(raw: bytes | None, *, subject_declared: bool):
                 "cannot be derived and the package is refused")
         return None
     d = _strict_loads(raw, "the Content Proof")
+    from packages.orchestration.content_proof_empty import content_proof_is_empty
+    if not subject_declared and content_proof_is_empty(d):
+        # F335: a job that stopped before any change landed attests nothing; without a declared
+        # Subject the package is built without it and its status says what the evidence says.
+        return None
     return decode_content_proof_v1(d)     # raises ContentProofError on schema failure
 
 
