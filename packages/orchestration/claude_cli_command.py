@@ -29,6 +29,9 @@ _DANGEROUS_SKIP_ARGS = ["--dangerously-skip-permissions"]
 BUILDER_COMMAND_ALLOWLIST: tuple[str, ...] = (
     "git status", "git diff", "git log", "ls", "cat", "head", "tail", "wc", "grep", "rg",
     "python -m py_compile", "python3 -m py_compile", "pnpm build", "pnpm lint",
+    # F334: the plain readers a builder reaches for beside them; job 3f80bd014da944e2's builder was
+    # refused `ls node_modules >/dev/null 2>&1 && echo has_node_modules` for its `echo`.
+    "git show", "pwd", "echo",
 )
 #: The test commands a builder may run when the project names none of its own: pytest under
 #: either spelling of the interpreter (a machine may carry only `python3`) and `pnpm test`.
@@ -37,11 +40,17 @@ BUILDER_FALLBACK_TEST_COMMANDS: tuple[str, ...] = ("python -m pytest", "python3 
 BUILDER_NODE_TEST_COMMANDS: tuple[str, ...] = (
     "pnpm test", "pnpm run test", "pnpm vitest", "pnpm exec vitest", "pnpm exec playwright test",
     "npx vitest", "npx playwright test", "npm test", "npm run test", "vitest", "playwright test",
+    # F334: the runner from the project's own folder and under npm exec, pnpm and yarn.
+    "pnpm playwright test", "npm exec vitest", "npm exec playwright test", "yarn test", "yarn vitest",
+    "yarn playwright test", "node_modules/.bin/vitest", "./node_modules/.bin/vitest",
+    "node_modules/.bin/playwright test", "./node_modules/.bin/playwright test",
 )
 #: amend1027 A1: the spellings a Python project's tests run under, the project's own venv included.
 BUILDER_PYTHON_TEST_COMMANDS: tuple[str, ...] = (
     "pytest", "python -m pytest", "python3 -m pytest", "uv run pytest", ".venv/bin/pytest",
     ".venv/bin/python -m pytest",
+    # F334: the same from the project's folder written with `./`, and pytest through uv's python.
+    "./.venv/bin/pytest", "./.venv/bin/python -m pytest", "uv run python -m pytest",
 )
 #: What each source of `find_project_test_command` adds beside the found command.
 _RUNNERS_BY_SOURCE: dict[str, tuple[str, ...]] = {
@@ -50,6 +59,8 @@ _RUNNERS_BY_SOURCE: dict[str, tuple[str, ...]] = {
 }
 #: A `package.json` script whose name starts so runs tests (`test`, `test:unit`, `e2e`).
 _TEST_SCRIPT_PREFIXES = ("test", "e2e")
+#: The spellings a test script runs under; F334 adds yarn's.
+_TEST_SCRIPT_RUNNERS = ("pnpm", "pnpm run", "npm run", "yarn")
 #: Operator order beweis (F326): a `package.json` script whose name starts so checks the code, so
 #: the builder may run what a reviewer asks for (`pnpm typecheck`, `npm run lint:fix`).
 BUILDER_CHECK_SCRIPT_PREFIXES = ("typecheck", "check", "lint", "build", "e2e")
@@ -85,7 +96,7 @@ def builder_test_commands(workspace: str | None) -> tuple[str, ...]:
     if source == "config" and "pytest" in own[0]:
         source = "tests_folder"
     scripts = _package_scripts(Path(workspace), _TEST_SCRIPT_PREFIXES) if workspace else ()
-    named = tuple(f"{runner} {name}" for name in scripts for runner in ("pnpm", "pnpm run", "npm run"))
+    named = tuple(f"{runner} {name}" for name in scripts for runner in _TEST_SCRIPT_RUNNERS)
     runners = _RUNNERS_BY_SOURCE.get(source, ())
     if scripts and source != "package_json":
         runners = (*runners, *BUILDER_NODE_TEST_COMMANDS)
@@ -171,6 +182,20 @@ def builder_command_allowed(command: str, allowlist: tuple[str, ...]) -> bool:
     if not text or re.search(r"[;&|<>`]|\$\(", text):
         return False
     return any(text == prefix or text.startswith(prefix + " ") for prefix in allowlist)
+
+
+def builder_bash_note(workspace: str | None) -> str:
+    """F334: what the builder's system prompt adds about its Bash, so one refusal is never read as all.
+
+    Job 3f80bd014da944e2's builder had one compound command refused and reported „Bash permission was
+    denied in this session“, so it never ran `pnpm test`, which its rules allowed.
+    """
+    allowed = builder_allowed_commands(workspace)
+    tests = builder_test_commands(workspace)
+    return ("Your Bash runs a command whose every part (parts are joined by ;, &&, || or |) begins with one "
+            f"of these: {', '.join(allowed)}. Any other command is refused by itself; a refusal refuses "
+            "only that call and never means Bash is denied, so run the next command on its own. Run the "
+            f"project's tests yourself, for example `{tests[0]}`, before you say whether they pass.")
 
 
 def builder_bash_rules(workspace: str | None) -> list[str]:
@@ -292,7 +317,7 @@ def build_claude_cli_args(
       none: no write tools (reviewer mode, or builder without permission)
       allowed-tools: --allowedTools Edit,Write,MultiEdit and the builder's Bash rules
         (`builder_bash_rules` of ``workspace``, amend1024 C1), then ``--permission-mode dontAsk``
-        (amend1027 A3)
+        (amend1027 A3) and ``--append-system-prompt`` with `builder_bash_note` (F334)
       dangerous-skip: --dangerously-skip-permissions (explicit opt-in only)
     model: if non-empty, passed as --model <model> to claude CLI.
     stream_evidence: opt-in F004 mode. Uses ``--output-format stream-json``
@@ -320,7 +345,8 @@ def build_claude_cli_args(
             )
         argv.extend(["--resume", resume_session])
     if write_mode == "allowed-tools":
-        argv.extend([*_ALLOWED_TOOLS_ARGS, *builder_bash_rules(workspace), *_NO_PROMPT_ARGS])
+        argv.extend([*_ALLOWED_TOOLS_ARGS, *builder_bash_rules(workspace), *_NO_PROMPT_ARGS,
+                     "--append-system-prompt", builder_bash_note(workspace)])   # F334
     elif write_mode == "dangerous-skip":
         argv.extend(_DANGEROUS_SKIP_ARGS)
     argv.extend(claude_cli_launch_switches(write_mode, config=config))

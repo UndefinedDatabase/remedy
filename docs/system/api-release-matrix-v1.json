@@ -511,6 +511,12 @@
      "case": "a job whose test run fails only on tests that already failed on the job's base commit, among them a builder's own full run the reviewer read",
      "before": "`blocked` by the reviewer's finding on the red test",
      "after": "going on: the reviewer is told the tests were red before, a finding only about them reads `low`, and the checking step says `failed_before_job` (F333)"
+    },
+    {
+     "field": "story.steps[building].tasks[].status",
+     "case": "a merged job task („A + run the tests“) that staged no change because an earlier task of its job already changed the files its work part names, and whose review passed or found only `low` findings",
+     "before": "`failed`, the job `blocked` with `no_file_changed`",
+     "after": "`done` with the phrase `already_done`, the job going on (F334)"
     }
    ]
   }

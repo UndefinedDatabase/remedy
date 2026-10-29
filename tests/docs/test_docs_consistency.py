@@ -195,7 +195,8 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: the same day by the same order on the orchestrator's word; see T2_F331.md.
 #: One more, F332 (a task an earlier task already did ends done), the same way; see T2_F332.md.
 #: One more, F333 (a test already red before the job is not the job's), the same way; see T2_F333.md.
-TOTAL_FEATURES = 333
+#: One more, F334 (a merged task already done ends done, and its builder runs its tests), the same way; see T2_F334.md.
+TOTAL_FEATURES = 334
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

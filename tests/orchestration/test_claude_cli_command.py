@@ -24,6 +24,7 @@ from packages.orchestration.claude_cli_command import (
     BUILDER_TYPECHECK_COMMANDS,
     build_claude_cli_args,
     builder_allowed_commands,
+    builder_bash_note,
     builder_bash_rules,
     builder_check_commands,
     builder_command_allowed,
@@ -101,9 +102,11 @@ class TestTheCommandLineEndsWithTheSwitches:
 
     def test_the_old_command_line_comes_back_when_both_keys_are_true(self):
         on = _keys(customizations=True, all_tools=True)
+        # F334: rewritten for the new behaviour, the builder's Bash note now ends its rules.
         assert build_claude_cli_args("claude", "P", write_mode="allowed-tools", config=on) == [
             "claude", "-p", "P", "--output-format", "json", "--allowedTools", "Edit,Write,MultiEdit",
-            *builder_bash_rules(None), "--permission-mode", "dontAsk"]
+            *builder_bash_rules(None), "--permission-mode", "dontAsk",
+            "--append-system-prompt", builder_bash_note(None)]
 
 
 def _provider(**kw) -> ClaudeCliProvider:

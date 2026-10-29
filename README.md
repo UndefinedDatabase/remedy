@@ -36,7 +36,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-183 of 333 registered items accepted. Remedy is version 1: Package 1 of docs/roadmap/STATUS.md has no
+184 of 334 registered items accepted. Remedy is version 1: Package 1 of docs/roadmap/STATUS.md has no
 open line, so Rule A5 names no next item; the lines still open wait in Package 3 for a report.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
@@ -46,7 +46,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 66 | 67 |
+| 2 | Minimal Self-Build Runtime | 67 | 68 |
 | 3 | Full Token Economy & Autonomy | 16 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
@@ -402,7 +402,8 @@ F329 Remedy narrows its own test run to the changed parts and names the selectio
 F330 an unattended job whose review says its work is not in this repository ends at once with the stop reason `not_in_this_repository` (interface 1.34),
 F331 a job a dead order walk left running is resumed or stopped (`orphaned_after_restart`) when the server starts,
 F332 a job task whose work an earlier task of its job already did ends done with the record „already done by task N“ instead of blocking the job (story phrase `already_done`, interface 1.34),
-F333 a failing test that already failed on the job's base commit, run alone by its id there, is no finding against the builder and does not block (story phrase `failed_before_job`, interface 1.34).
+F333 a failing test that already failed on the job's base commit, run alone by its id there, is no finding against the builder and does not block (story phrase `failed_before_job`, interface 1.34),
+F334 a merged job task („A + run the tests“) whose work an earlier task already did ends done too, and the builder is told that one refused command never means Bash is denied, so it runs the project's tests itself.
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

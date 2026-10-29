@@ -85,6 +85,13 @@ fails the gate rather than shipping an unexplained release.
   and it does not block; the story's checking step says `failed_before_job`. A failure new in the
   job, or one the base run cannot be made for, blocks as before, and the evidence says why
   (`baseline`). A builder's own red run is checked by Remedy's full run.
+- 2026-10-29, operator order beweis (F334, interface 1.34): a merged job task („A + run the
+  tests“) is read part by part, its deliverable path is read even when it stands alone, and the
+  files its test-run part names are not asked to have changed, so a merged task whose work an
+  earlier task already did ends done like F332's; a review whose findings are all `low` counts as
+  a pass there. The builder's Bash rules add the runners' other spellings (yarn, npm exec,
+  `node_modules/.bin`, `./.venv/bin`) and `echo`, `pwd` and `git show`, and its system prompt says
+  that a refused command refuses only that call and that it runs the project's tests itself.
 
 ## [1.0.0] - 2026-10-27
 

@@ -168,6 +168,10 @@ Additions only, so that an unattended order needs nobody:
   (`remedy job show --json`, the job's evidence) carries `preexisting`, the list of such tests, and
   `baseline`, the comparison's sentence: why a red run stayed red (failures new in the job, no ids,
   a base run that could not be made), or that every failure was there before.
+- The phrase `already_done` (F332) also marks a merged task (F334), two titles joined with „ + “
+  and their goals with „; “: the files a part that only runs the tests names need not have
+  changed, and a review whose findings are all `low` counts as passed. Before, such a task ended
+  `failed` and blocked the job with `no_file_changed`.
 - A `remedy do` answer's `order_budget` carries `uncounted_calls`, and each of its `calls` carries
   `counted` (F327): the study's narration runs on the local model and is never counted against
   the order's caps.

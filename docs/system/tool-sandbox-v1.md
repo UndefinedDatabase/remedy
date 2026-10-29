@@ -239,6 +239,15 @@ A command joined to another (`;`, `&&`, `||`, a pipe, a redirection or a substit
 command of the list by its first word: Claude Code checks each part, and Remedy's own reading,
 `builder_command_allowed`, refuses the whole.
 
+F334 (operator order beweis): job 3f80bd014da944e2's builder had
+`grep -n '"scripts"' -A25 package.json; ls node_modules >/dev/null 2>&1 && echo has_node_modules`
+refused, for its `echo`, and then reported „Bash permission was denied“ and ran no test, though
+its rules allowed `pnpm test`. So `echo`, `pwd` and `git show` are on the fixed list, the runner
+spellings add `pnpm playwright test`, `npm exec`, yarn, `node_modules/.bin/...`, `./.venv/bin/...`
+and `uv run python -m pytest`, and a builder's command line ends with `--append-system-prompt`
+and `builder_bash_note`: the list, that a refusal refuses only that call, and that it runs the
+project's tests itself before it says whether they pass.
+
 The builder is started with `--permission-mode dontAsk` (A3): in print mode nobody answers a
 permission prompt, so a command its rules allow runs at once and every other one is refused at
 once, never left waiting for an approval. Its environment is the operator's `PATH` with the

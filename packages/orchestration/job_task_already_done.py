@@ -21,9 +21,12 @@ task fails exactly as before.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
+#: `task_deliverables.DELIVERABLE_INPUT_KEY`, written out: that module imports `pingpong_job`, which imports this one.
+DELIVERABLE_INPUT_KEY = "deliverable"
 #: The task's `inputs` key of the record, and the story's phrase word for such a task.
 ALREADY_DONE_KEY = "already_done"
 
@@ -57,24 +60,55 @@ class EarlierWork:
         return f"{verb} task {self.task_number} ({self.task_id}): {named}"
 
 
-def task_named_files(task: Any) -> list[str]:
-    """The files TASK names: its hints, its planner's hints, its deliverable and the paths its words name."""
-    from packages.orchestration.task_deliverables import DELIVERABLE_INPUT_KEY, explicit_order_paths
+def paths_in(text: str) -> list[str]:
+    """The paths TEXT names, a TEXT that is one path alone included (F334: `explicit_order_paths` reads a
+    lone path as text without a path, so a deliverable such as `src/screens/net/NetHeader.tsx` was lost)."""
+    from packages.orchestration.task_deliverables import extract_order_deliverables
 
+    return [token for token in extract_order_deliverables(text) if " " not in token] if text.strip() else []
+
+
+def task_named_files(task: Any) -> list[str]:
+    """The files TASK names: its hints, its planner's hints, its deliverable and the paths its words name;
+    a bare file name is dropped when a path ending in it is named too."""
     inputs = getattr(task, "inputs", None) or {}
     plan = inputs.get("plan") or {}
     hints = [*(getattr(task, "files_hint", None) or ()), *(plan.get("files_hint") or ())]
     words = [str(inputs.get(DELIVERABLE_INPUT_KEY) or ""), str(getattr(task, "title", "") or ""),
              str(getattr(task, "body", "") or ""), str(getattr(task, "acceptance", "") or "")]
-    text = "\n".join(str(h) for h in [*hints, *words] if str(h).strip())
-    return explicit_order_paths(text) if text.strip() else []
+    named = list(dict.fromkeys(path for text in [*map(str, hints), *words] for path in paths_in(text)))
+    return [path for path in named if "/" in path or not any(p.endswith("/" + path) for p in named)]
+
+
+def task_parts(task: Any) -> list[str]:
+    """F334: the parts of a merged task, „A + B: goal A; goal B“, each with its goal when the counts
+    match; a task that is no merge is its one part, its title."""
+    title = str(getattr(task, "title", "") or "")
+    head, _, goal = title.partition(": ")
+    heads = re.split(r"\s+\+\s+", head)
+    goals = [g for g in re.split(r";\s+", goal) if g.strip()]
+    if len(heads) > 1:
+        return [f"{h}: {g}" for h, g in zip(heads, goals)] if len(goals) == len(heads) else heads
+    return [title]
+
+
+def is_test_run_text(text: str) -> bool:
+    """True for words that only run the tests: they begin with a run verb and say `test`."""
+    words = text.strip().lower().split()
+    return bool(words) and words[0] in TEST_RUN_VERBS and "test" in text.lower()
 
 
 def is_test_run_task(task: Any) -> bool:
     """True for a task that only runs the tests: its title begins with a run verb and says `test`."""
-    title = str(getattr(task, "title", "") or "").strip().lower()
-    words = title.split()
-    return bool(words) and words[0] in TEST_RUN_VERBS and "test" in title
+    return is_test_run_text(str(getattr(task, "title", "") or ""))
+
+
+def _match(path: str, changed: dict[str, int]) -> str | None:
+    """The changed path PATH names: itself, or for a bare file name the one changed path ending in it."""
+    if path in changed:
+        return path
+    ends = [p for p in changed if "/" not in path and p.endswith("/" + path)]
+    return ends[0] if len(ends) == 1 else None
 
 
 def _changed_by_earlier_tasks(job: Any, index: int) -> dict[str, int]:
@@ -97,17 +131,18 @@ def earlier_work(job: Any, task: Any) -> EarlierWork | None:
     if not index:
         return None
     changed = _changed_by_earlier_tasks(job, index)
-    named = task_named_files(task)
-    if named:
-        from packages.orchestration.task_deliverables import DELIVERABLE_INPUT_KEY, explicit_order_paths
-
-        deliverable = explicit_order_paths(str(task.inputs.get(DELIVERABLE_INPUT_KEY) or ""))
-        needed = deliverable[:1] or named
-        if any(path not in changed for path in needed):
+    parts = task_parts(task)
+    run_parts = [part for part in parts if is_test_run_text(part)]
+    # F334: the files a part that only runs the tests names are to be run, not changed.
+    run_files = {path.rsplit("/", 1)[-1] for part in run_parts for path in paths_in(part)}
+    work = [p for p in task_named_files(task) if p.rsplit("/", 1)[-1] not in run_files]
+    if work:
+        needed = paths_in(str(task.inputs.get(DELIVERABLE_INPUT_KEY) or ""))[:1] or work
+        if any(_match(path, changed) is None for path in needed):
             return None
-        files = [(path, changed[path]) for path in named if path in changed]
-        test_run = False
-    elif is_test_run_task(task) and changed:
+        hits = dict.fromkeys(m for path in work if (m := _match(path, changed)))
+        files, test_run = [(path, changed[path]) for path in hits], False
+    elif (is_test_run_task(task) or (run_parts and len(run_parts) == len(parts))) and changed:
         files, test_run = sorted(changed.items()), True
     else:
         return None
