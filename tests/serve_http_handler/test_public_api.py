@@ -26,7 +26,7 @@ from uuid import uuid4
 import pytest
 
 from apps.cli.json_envelope import build_ok
-from packages.orchestration import public_api, self_health
+from packages.orchestration import public_api, public_api_routes, self_health
 from packages.orchestration import serve_runs as SR
 from packages.orchestration.data_paths import projects_dir
 from packages.orchestration.self_health import (
@@ -1171,7 +1171,7 @@ DECISION_PATH = "/api/v1/jobs/{job}/decisions/{decision}"
 _OK_ENVELOPE = {"schema_version": 1, "ok": True, "outcome": "answered"}
 
 
-def _decision_route() -> public_api.PublicApiRoute:
+def _decision_route() -> public_api_routes.PublicApiRoute:
     return next(route for route in public_api.PUBLIC_API_ROUTES if route.path == DECISION_PATH)
 
 

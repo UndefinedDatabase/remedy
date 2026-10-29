@@ -69,13 +69,14 @@ from packages.orchestration.order_story import order_story_answer
 
 # DECISION F199 D3: the route table, its dataclass and its registry, lives in a module of its
 # own; this module imports the names it uses from it.
-from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES, PublicApiRoute
+from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES
 
 # DECISION F205 D6: the write routes' argument builders and refusals live in a module of
 # their own; this module imports the names it uses, and every other consumer imports from it
 # (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.public_api_writes import (
     PublicApiWriteRefusal,
+    _body_refusal,
     _client_write_refusal,
     _order_text_and_options,
     _runner_options,
@@ -669,56 +670,6 @@ def _start_run_answer(
         return 500, build_error(
             "api_command_failed", f"the run for '{path}' could not be started; nothing runs"), {}
     return 202, build_ok(**run_record_payload(serve_paths(), record)), {}
-
-
-#: F324: the most repair rounds a body's `repair_rounds` may name (`remedy do --repair-rounds` holds the same).
-PUBLIC_API_REPAIR_ROUNDS_MAX = 5
-
-
-def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any] | None, str]:
-    """The checked JSON body of a write to ROUTE and an empty sentence, or None and why not.
-
-    A `string` value, or an item of a `strings` value, that holds a NUL character is refused
-    too: a child's arguments cannot hold one, and `subprocess.Popen` would raise out of the
-    route (R-1205).
-    """
-    try:
-        parsed = json.loads(raw_body.decode("utf-8")) if raw_body.strip() else {}
-    except (UnicodeDecodeError, ValueError):
-        return None, "the body is not valid JSON"
-    if not isinstance(parsed, dict):
-        return None, "the body must be a JSON object"
-    kinds = dict(route.body)
-    for key, value in parsed.items():
-        if key not in kinds:
-            takes = ", ".join(f"'{k}'" for k in kinds) or "none"
-            return None, f"'{key}' is not a key of this route's body; it takes {takes}"
-        if kinds[key] == "string":
-            valid = isinstance(value, str)
-            wanted = "a string"
-        elif kinds[key] == "flag":
-            valid = isinstance(value, bool)
-            wanted = "true or false"
-        elif kinds[key] == "integer":   # amend1026 C2: a whole number above zero, never a flag
-            valid, wanted = type(value) is int and value > 0, "a whole number above zero"
-        elif kinds[key] == "rounds":    # F324: repair rounds, 0 to PUBLIC_API_REPAIR_ROUNDS_MAX
-            valid = type(value) is int and 0 <= value <= PUBLIC_API_REPAIR_ROUNDS_MAX
-            wanted = f"a whole number from 0 to {PUBLIC_API_REPAIR_ROUNDS_MAX}"
-        else:
-            valid = (isinstance(value, list) and all(isinstance(item, str) and item
-                                                     for item in value))
-            wanted = "a list of non-empty strings"
-        if not valid:
-            return None, f"'{key}' must be {wanted}"
-        if kinds[key] == "string":
-            texts = [value]
-        elif kinds[key] in ("flag", "integer", "rounds"):
-            texts = []
-        else:
-            texts = value
-        if any("\x00" in text for text in texts):
-            return None, f"'{key}' must not hold a NUL character"
-    return parsed, ""
 
 
 def answer_public_api_post(
