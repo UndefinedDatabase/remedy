@@ -559,7 +559,7 @@ Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/
 - [x] F321 — Low findings never block (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
 - [x] F322 — Builder tests in the worktree (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
 - [x] F323 — Waiting jobs follow their order (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
-- [ ] F324 — Unattended jobs stay unattended
+- [x] F324 — Unattended jobs stay unattended (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
 - [ ] F325 — Every stop says why
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)

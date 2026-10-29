@@ -93,6 +93,9 @@ class DoContext:
     #: `--run-unattended`: run a generated plan of tasks without confirmation; every open
     #: question takes its documented default. Never implies apply, commit or push.
     run_unattended: bool = False
+    #: F324 `--repair-rounds`: every job of the walk records these repair rounds (source `order`);
+    #: None leaves each job to the config key `cycles.repair_rounds`.
+    repair_rounds: int | None = None
     no_llm: bool = False
     force_job: bool = False
     force_mission: bool = False

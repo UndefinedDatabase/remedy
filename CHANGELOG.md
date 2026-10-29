@@ -31,6 +31,11 @@ fails the gate rather than shipping an unexplained release.
   waits forever. When the awaited job ends blocked, stopped, failed, cancelled or declined, the
   waiting job ends blocked with a sentence naming why; when the awaited job's result is applied
   over HTTP with a commit, the waiting job is released and, when it runs unattended, started.
+- 2026-10-29, operator order welt-2 (F324): a job started unattended stays unattended. Every job
+  of an order stores the choice, so a later `remedy job run`, a retry over HTTP or a resume no
+  longer stops at the plan approval or at a burn trip of a job with caps; `remedy job run
+  --unattended`/`--no-unattended`, `remedy do --repair-rounds` and the HTTP bodies' `unattended`
+  and `repair_rounds` (interface 1.33) name it. An order's `unattended: false` asks again.
 
 ## [1.0.0] - 2026-10-27
 

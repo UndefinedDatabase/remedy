@@ -34,8 +34,8 @@ class PublicApiRoute:
     refusals: tuple[tuple[str, int], ...] = ()
     #: The keys of a write route's JSON body, each with its kind: `"string"`, `"strings"` (a list
     #: of non-empty strings) (DECISION F253 D9 (3)), `"flag"` (`true` or `false`) (DECISION
-    #: F253 D12), or `"integer"` (a whole number above zero, amend1026 C2); `()` for a route that
-    #: takes no body.
+    #: F253 D12), `"integer"` (a whole number above zero, amend1026 C2), or `"rounds"` (repair
+    #: rounds, a whole number from 0 to 5, F324); `()` for a route that takes no body.
     body: tuple[tuple[str, str], ...] = ()
     #: The HTTP status of a refusal token `refusals` does not list, or None when every refusal
     #: must be listed (DECISION F253 D9 (4)); also None for a `starts_order` route, whose every
@@ -386,7 +386,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         body=(("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
               ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
               ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
-              ("capture_review", "flag"), ("planner_provider", "string")),
+              ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag"),
+              ("repair_rounds", "rounds")),
         starts_order=True,
         description=(
             "Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do "
@@ -414,7 +415,12 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "order of a mission that has not ended still has unfinished jobs for is refused "
             "before anything starts with 409 `order_already_running`, the mission's id under "
             "`mission_id`, unless `new_mission` is `true`, which adds it as one more order to the "
-            "repository's one mission, and the record's `order_file` then names the key's file."
+            "repository's one mission, and the record's `order_file` then names the key's file. "
+            "Since 1.33 (F324) every job of an order stores that it runs unattended, so its later "
+            "runs, retries and resumes run unattended too, unless the body's `unattended` is `false`, "
+            "which leaves out `--run-unattended` so the jobs ask their questions; `repair_rounds`, a "
+            "whole number from 0 to 5, passes `--repair-rounds` and every job of the order records "
+            "these rounds, any other value answering 400 `api_body_invalid`."
         ),
     ),
     PublicApiRoute(
@@ -558,7 +564,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         method="POST",
         path="/api/v1/jobs/{job}/run",
         twin="job.run",
-        body=(("builder_provider", "string"), ("reviewer_provider", "string")),
+        body=(("builder_provider", "string"), ("reviewer_provider", "string"), ("unattended", "flag"),
+              ("repair_rounds", "rounds")),
         starts_run=True,
         description=(
             "Starts a job's run through the supervisor's own `RunLauncher`, as `remedy job run "
@@ -569,7 +576,11 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "`--builder-provider=<value>` and `--reviewer-provider=<value>`, a provider HTTP does not "
             "offer refused with 400 `api_provider_not_offered` (`claude-cli` is offered since 1.29 to "
             "a client granted `host_tools`); of the other options of "
-            "`remedy job run` only `--retry` is offered over HTTP, by the route below. A job id "
+            "`remedy job run` only `--retry` is offered over HTTP, by the route below. Since 1.33 "
+            "(F324) `unattended` passes `--unattended` when `true` and `--no-unattended` when `false`, "
+            "stored on the job for this and every later run, and without it the job keeps its stored "
+            "choice; `repair_rounds`, a whole number from 0 to 5, passes `--repair-rounds`, any other "
+            "value answering 400 `api_body_invalid`. A job id "
             "prefix is accepted. A client waits "
             "for the run's end by polling the route above until `state` is not `running`. "
             "Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a "
@@ -582,7 +593,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         method="POST",
         path="/api/v1/jobs/{job}/retry",
         twin="job.run",
-        body=(("builder_provider", "string"), ("reviewer_provider", "string")),
+        body=(("builder_provider", "string"), ("reviewer_provider", "string"), ("unattended", "flag"),
+              ("repair_rounds", "rounds")),
         starts_run=True,
         run_options=("--retry",),
         description=(

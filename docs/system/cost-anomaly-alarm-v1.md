@@ -60,7 +60,10 @@ holds, the runner:
    instead of adding one. The job parks before its next provider call, and
    `remedy job run <job_id>` continues it; answering the decision records the person's
    choice and does not by itself continue or end the job. When the pause cannot be
-   requested, the job is blocked rather than left to burn.
+   requested, the job is blocked rather than left to burn. Since F324 an unattended job that
+   carries its own caps (`max_total_tokens`, `max_provider_calls`, `max_wall_clock_minutes`,
+   `max_cost_usd` or `deadline`) does not pause: the trip is kept in the job's
+   `unattended_assumptions` and the job runs on, because its caps stop it by themselves.
 
 A job a person started keeps running, and the trip is a recorded warning.
 

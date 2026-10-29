@@ -110,8 +110,10 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: (DECISIONs amend1026 D2 to D5) to `1.30` for `GET /api/v1/projects`, `POST /api/v1/projects/{project}/ask`, `GET
 #: /api/v1/orders/{order}/review`, the execution offer's `autonomy.push_allowed` and both stories' `scope`, and
 #: operator amendment amend1027-green-builds to `1.31` for `GET /api/v1/jobs/{job}/evidence` and the story's
-#: `order_id`, `retries`, `scope.match` and `verification.tested_by`, and amend1027b-v1 to `1.32` (see the page).
-PUBLIC_API_VERSION = "1.32"
+#: `order_id`, `retries`, `scope.match` and `verification.tested_by`, and amend1027b-v1 to `1.32` (see the page),
+#: and operator order welt-2 (F323 to F325) to `1.33` for the bodies' `unattended` and `repair_rounds`, the
+#: apply answer's `released`, the story's `stop` and the order jobs' `stop_text` (see the page).
+PUBLIC_API_VERSION = "1.33"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -655,6 +657,10 @@ def _start_run_answer(
     route = next(r for r in PUBLIC_API_ROUTES if r.starts_run and _match_route_path(r.path, path) is not None)
     options = [*route.run_options, *(f"--{key.replace('_', '-')}={body[key]}" for key in _RUN_PROVIDER_KEYS
                                      if key in body)]
+    if "unattended" in body:    # F324: stored on the job for this and every later run
+        options.append("--unattended" if body["unattended"] else "--no-unattended")
+    if "repair_rounds" in body:
+        options.append(f"--repair-rounds={body['repair_rounds']}")
     try:
         record = start_run(job_id, options)
     except RunRefused as exc:
@@ -663,6 +669,10 @@ def _start_run_answer(
         return 500, build_error(
             "api_command_failed", f"the run for '{path}' could not be started; nothing runs"), {}
     return 202, build_ok(**run_record_payload(serve_paths(), record)), {}
+
+
+#: F324: the most repair rounds a body's `repair_rounds` may name (`remedy do --repair-rounds` holds the same).
+PUBLIC_API_REPAIR_ROUNDS_MAX = 5
 
 
 def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any] | None, str]:
@@ -691,6 +701,9 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
             wanted = "true or false"
         elif kinds[key] == "integer":   # amend1026 C2: a whole number above zero, never a flag
             valid, wanted = type(value) is int and value > 0, "a whole number above zero"
+        elif kinds[key] == "rounds":    # F324: repair rounds, 0 to PUBLIC_API_REPAIR_ROUNDS_MAX
+            valid = type(value) is int and 0 <= value <= PUBLIC_API_REPAIR_ROUNDS_MAX
+            wanted = f"a whole number from 0 to {PUBLIC_API_REPAIR_ROUNDS_MAX}"
         else:
             valid = (isinstance(value, list) and all(isinstance(item, str) and item
                                                      for item in value))
@@ -699,7 +712,7 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
             return None, f"'{key}' must be {wanted}"
         if kinds[key] == "string":
             texts = [value]
-        elif kinds[key] in ("flag", "integer"):
+        elif kinds[key] in ("flag", "integer", "rounds"):
             texts = []
         else:
             texts = value
@@ -810,11 +823,13 @@ def answer_public_api_post(
                         "the order with new_mission true to run it again as one more order of "
                         "the same mission; nothing was run",
                         mission_id=mission.id), {}
+            # F324: only an order that wants its questions says so; the key is passed only then.
+            asking = {} if checked.get("unattended", True) else {"unattended": False}
             try:
                 if order_key is None:
-                    record = start_order(order_text, options)
+                    record = start_order(order_text, options, **asking)
                 else:
-                    record = start_order(order_text, options, order_key=order_key)
+                    record = start_order(order_text, options, order_key=order_key, **asking)
             except OSError:
                 return 500, build_error(
                     "api_command_failed",

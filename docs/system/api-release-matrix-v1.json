@@ -1,8 +1,8 @@
 {
  "schema": "remedy_api_release_matrix_v1",
  "baseline": "1.17",
- "current": "1.32",
- "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.32 but `orders.plan_source`, a key no record ever carried (1.27); a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
+ "current": "1.33",
+ "rule": "Every route, story key, story word, insight word and order phase the code offers is listed with the version that added it ('1.17' = present at the baseline). Nothing was removed or renamed between 1.17 and 1.33 but `orders.plan_source`, a key no record ever carried (1.27); a client of an older version ignores a key it does not know and maps an unknown closed word to its own fallback.",
  "versions": [
   {
    "version": "1.18",
@@ -442,6 +442,23 @@
      "case": "a job no POST /api/v1/orders started",
      "before": "the batch's 32-character id",
      "after": "the first 16 characters of the batch's id (amend1027b A3)"
+    }
+   ]
+  },
+  {
+   "version": "1.33",
+   "pr": null,
+   "branch": "welt2/remedycore",
+   "added": [
+    "body keys `unattended` (flag) and `repair_rounds` (0 to 5) of `POST /api/v1/orders`, `POST /api/v1/jobs/{job}/run` and `POST /api/v1/jobs/{job}/retry`: a job stores whether it runs unattended, and every job of an order records its repair rounds (F324)",
+    "apply answer keys `released` and `release_refused`: the job that waited for the applied job, released and started (F323)"
+   ],
+   "value_changes": [
+    {
+     "field": "orders.unattended",
+     "case": "every job an order over HTTP starts",
+     "before": "unattended only for its walk; a later run, retry or resume asked again",
+     "after": "stored on the job, so every later run is unattended too, unless the body says `unattended: false` (F324)"
     }
    ]
   }

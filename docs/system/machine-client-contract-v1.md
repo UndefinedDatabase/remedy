@@ -356,7 +356,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.32`.
+Interface version: `1.33`.
 
 ### Envelope
 
@@ -473,6 +473,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--planner-model` | yes | no | yes | no | Model for every planner call of the plan and shape steps (default: the planner's configured model) |
 | `--planner-provider` | yes | no | yes | no | Which service plans: ollama or claude-cli (default: the planner of the repository's [roles] table, else planner.provider, else claude-cli) |
 | `--run-unattended` | yes | no | no | no | Run a generated plan of tasks without interactive confirmation and use the documented default for every open planning question, audited; it never implies --apply, a commit, a push, a merge or a deployment |
+| `--repair-rounds` | yes | no | yes | no | Repair rounds every job of this order records (F324, 0 to 5; default: the config key cycles.repair_rounds) |
 | `--no-ui` | yes | no | no | no | Deprecated and inert: the old cockpit was deleted, so there is nothing to open; kept so existing scripts keep working |
 | `--max-total-tokens` | yes | no | yes | no | Maximum total tokens for this job (F018 budget) |
 | `--max-provider-calls` | yes | no | yes | no | Maximum provider calls for this job (F018 budget) |
@@ -619,6 +620,8 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--max-wall-clock-minutes` | yes | no | yes | no | Maximum wall-clock minutes (F018 budget override) |
 | `--max-cost-usd` | yes | no | yes | no | Maximum cost in USD (F104 budget override) |
 | `--deadline` | yes | no | yes | no | UTC deadline as ISO 8601 string (F018 budget override) |
+| `--unattended` | yes | no | no | no | Store on the job that it runs unattended (F324): its run approves a plan that waits, and only a question without a safe default waits; kept for every later run |
+| `--no-unattended` | yes | no | no | no | Store on the job that it asks its questions (F324); kept for every later run |
 | `--retry` | yes | no | no | no | Put the tasks that ended blocked or failed back to pending first, so they run again; a plain run re-attempts none of them |
 | `--json` | yes | no | no | no | Output as JSON |
 

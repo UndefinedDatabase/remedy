@@ -5,15 +5,11 @@ decodeux: improvement jobs from remedy-chat must run unattended end to end and s
 plain reason. Six faults of the night 2026-10-28/29 become F320 to F325 (Package 3, Tier 2).
 
 ## Current Step
-F320 attachments are never deliverables.
+F325 every stop says why (story `stop`, order view `stop_text`, `job show` `stop.text`).
 
 ## Next Steps
-1. F321 low findings never block; config `cycles.repair_rounds` is the default.
-2. F322 builder tests in the worktree (PYTHONPATH, Remedy's own test run).
-3. F323 waiting jobs follow their order.
-4. F324 unattended stays on the job; HTTP `unattended`/`repair_rounds`; interface 1.33.
-5. F325 every stop says why (story `stop.text`, order view `stop_text`).
-6. Run only the added and changed tests once; ruff on touched files.
+1. Run only the added and changed tests once; ruff on touched files.
+2. Hand the commit hashes of contract 1.33 to the orchestrator.
 
 ## Risks
 - Branch welt2/remedycore is merged and pushed by the orchestrator, not by this session.

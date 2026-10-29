@@ -734,7 +734,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
     assert (route.method, route.twin, route.refusals) == (
         "GET", "doctor.health", (("health_failed", 503),))
-    assert public_api.PUBLIC_API_VERSION == "1.32"
+    assert public_api.PUBLIC_API_VERSION == "1.33"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
                         ("check_disk_floor", "disk"), ("check_providers", "providers"),
@@ -1201,7 +1201,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.32"
+    assert public_api.PUBLIC_API_VERSION == "1.33"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1391,7 +1391,7 @@ def test_the_stop_route_is_pinned_with_its_body_and_its_statuses():
     assert (route.refusal_default, route.refusals) == (
         409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
     assert "`api`" in route.description and "job_not_stoppable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.32"
+    assert public_api.PUBLIC_API_VERSION == "1.33"
 
 
 @pytest.mark.parametrize("body, reason", [({"reason": "obsolete"}, "obsolete"), ({}, "")])
@@ -1409,7 +1409,7 @@ def test_the_cancel_route_is_pinned_with_its_body_and_its_statuses():
     assert (route.refusal_default, route.refusals) == (
         409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
     assert "`api`" in route.description and "job_not_cancellable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.32"
+    assert public_api.PUBLIC_API_VERSION == "1.33"
 
 
 def test_a_cancel_post_runs_the_command_with_its_reason_and_the_api_door():
@@ -1574,7 +1574,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.32"
+    assert public_api.PUBLIC_API_VERSION == "1.33"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -1668,7 +1668,8 @@ def test_the_order_create_route_is_pinned_with_its_body_and_its_statuses():
         ("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
         ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
         ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
-        ("capture_review", "flag"), ("planner_provider", "string"))
+        ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag"),
+        ("repair_rounds", "rounds"))
     assert route.refusals == ()
     assert route.refusal_default is None
     assert route.starts_order is True
@@ -1688,6 +1689,10 @@ def test_the_order_create_routes_body_matches_do_runs_own_flags():
     for key, kind in route.body:
         if key in ("order", "order_key"):
             continue  # neither is an option of `remedy do` (DECISION F253 D22)
+        if key == "unattended":
+            # F324: `false` leaves out the `--run-unattended` every order passes; no option of its own.
+            assert "--run-unattended" in flag_options
+            continue
         if kind == "flag":
             assert "--" + key.replace("_", "-") in flag_options, key
         else:
@@ -2532,7 +2537,8 @@ def test_the_run_route_is_pinned_with_its_body_and_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES
                  if r.path == RUN_PATH and r.method == "POST")
     assert (route.method, route.twin) == ("POST", "job.run")
-    assert route.body == (("builder_provider", "string"), ("reviewer_provider", "string"))
+    assert route.body == (("builder_provider", "string"), ("reviewer_provider", "string"), ("unattended", "flag"),
+                          ("repair_rounds", "rounds"))
     assert route.refusals == ()
     assert route.refusal_default is None
     assert route.starts_run is True
@@ -2678,7 +2684,8 @@ def test_the_retry_route_is_pinned_with_its_body_and_its_options():
     """R-1331 (DECISION F307 D22): the route a story's `retry` names starts `remedy job run --retry`."""
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == RETRY_PATH)
     assert (route.method, route.twin, route.starts_run) == ("POST", "job.run", True)
-    assert route.body == (("builder_provider", "string"), ("reviewer_provider", "string"))
+    assert route.body == (("builder_provider", "string"), ("reviewer_provider", "string"), ("unattended", "flag"),
+                          ("repair_rounds", "rounds"))
     assert (route.refusals, route.refusal_default) == ((), None)
     assert route.run_options == ("--retry",)
     assert {r.path for r in public_api.PUBLIC_API_ROUTES if r.run_options} == {RETRY_PATH}
@@ -2775,7 +2782,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.32"
+    assert public_api.PUBLIC_API_VERSION == "1.33"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
@@ -3039,7 +3046,7 @@ def test_the_note_route_is_pinned_with_its_body_and_its_statuses():
         ("invalid_message", 400), ("unknown_task", 404),
     )
     assert "`api`" in route.description and "job_not_steerable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.32"
+    assert public_api.PUBLIC_API_VERSION == "1.33"
 
 
 def test_the_note_route_takes_a_steering_note_for_one_task(tmp_path):
@@ -3219,7 +3226,7 @@ def test_the_story_route_answers_the_client_story_command(tcp_server, unix_serve
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.story",
         (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.32"
+    assert public_api.PUBLIC_API_VERSION == "1.33"
     job_id = _saved_job_with_id("abc1230000000000")
     expected = build_ok(**job_client_story(job_id, require_job_plan(job_id)))
     assert expected["state"] == "queued" and story_problems(expected) == []     # exec-1017c: not "planning"
@@ -3300,7 +3307,7 @@ def test_the_now_route_answers_the_running_jobs_entry_and_workers(tcp_server, un
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/now")
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.now", (), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.32"
+    assert public_api.PUBLIC_API_VERSION == "1.33"
     job_id = _running_job_with_id("abc1234444444444")
     _write_insight_pulse(job_id)
 
@@ -3440,3 +3447,58 @@ def test_the_ask_route_is_pinned_with_its_body_and_its_statuses():
         "POST", "client.ask", (("question", "string"), ("max_total_tokens", "integer")), 409, 960)
     assert route.refusals == (("project_not_found", 404), ("invalid_argument", 400),
                               ("ask_provider_unavailable", 503), ("ask_failed", 503))
+
+
+# -- F324: a job started unattended stays unattended; an order names its repair rounds ------------
+
+
+def test_an_order_runs_unattended_unless_its_body_says_false(registered_project_slug):
+    text = _order_text(registered_project_slug)
+    seen: list[tuple[tuple, dict]] = []
+
+    def start(*args, **kwargs):
+        seen.append((args, kwargs))
+        return _fixture_order_record()
+
+    assert _post_order({"order": text, "unattended": True, "repair_rounds": 3}, start)[0] == 202
+    assert seen[-1] == ((text, [*_local_defaults(), "--repair-rounds=3"]), {})
+    assert _post_order({"order": text, "unattended": False}, start)[0] == 202
+    assert seen[-1] == ((text, _local_defaults()), {"unattended": False})
+
+
+@pytest.mark.parametrize("rounds", [6, -1, True, 2.5, "2"])
+def test_repair_rounds_outside_zero_to_five_are_400_and_start_nothing(registered_project_slug, rounds):
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order(
+        {"order": _order_text(registered_project_slug), "repair_rounds": rounds}, start)
+    assert (status, answer["error"]) == (400, "api_body_invalid")
+    assert "'repair_rounds' must be a whole number from 0 to 5" in answer["message"]
+    assert calls == []
+
+
+def test_a_run_or_retry_body_passes_unattended_and_repair_rounds_to_job_run():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    assert _post_run(full, {"unattended": True, "repair_rounds": 0}, start)[0] == 202
+    assert calls[-1] == (full, ["--unattended", "--repair-rounds=0"])
+    _run_calls, run = _recording_runner()
+    raw = json.dumps({"unattended": False}).encode("utf-8")
+    status, _answer, _headers = public_api.answer_public_api_post(
+        RETRY_PATH.replace("{job}", full), raw, run, start_run=start)
+    assert status == 202
+    assert calls[-1] == (full, ["--retry", "--no-unattended"])
+
+
+def test_the_order_launcher_leaves_out_run_unattended_only_when_asked():
+    """F324: `OrderLauncher.start(..., unattended=False)` drops `--run-unattended`, nothing else."""
+    paths = serve_paths(Path(os.environ["REMEDY_DATA_DIR"]))
+    child = 'import json, sys; print(json.dumps({"ok": True, "argv": sys.argv[1:]}))'
+    launcher = SR.OrderLauncher(paths, argv_prefix=[sys.executable, "-c", child])
+    argvs = []
+    for keys in ({}, {"unattended": False}):
+        started = launcher.start("do a thing", ["--no-llm"], **keys)
+        assert launcher.wait(started.order_id, timeout=30) == 0
+        out = Path(started.out_log).read_text(encoding="utf-8")
+        argvs.append(json.loads(out.strip().splitlines()[-1])["argv"])
+    assert argvs[0] == ["do", "run", "--no-llm", "--json", "--no-ui", "--run-unattended", "--", "order.md"]
+    assert argvs[1] == ["do", "run", "--no-llm", "--json", "--no-ui", "--", "order.md"]

@@ -430,7 +430,12 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
   walk actually used is the one its prompt traces and the mission plan
   record name.
 
-- `--run-unattended` — run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push
+- `--run-unattended` — run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push.
+  Since F324 every job the walk makes stores that it runs unattended, so `remedy job run`, a
+  retry and a resume of it run unattended too; `remedy job run --no-unattended` (or
+  `--unattended`) switches the stored choice for this and every later run
+- `--repair-rounds N` — the repair rounds every job of this order records (0 to 5, F324); without
+  it a job takes the config key `cycles.repair_rounds`
 - `--no-ui` — deprecated and inert: the old cockpit was deleted, so it opens nothing; still
   accepted so existing scripts keep working
 - `--max-total-tokens`, `--max-provider-calls`, `--max-wall-clock-minutes`,

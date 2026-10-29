@@ -263,6 +263,8 @@ def _order_text_and_options(body: dict[str, Any],
     options = [f"--{flag.replace('_', '-')}" for flag in _ORDER_CREATE_FLAGS if body.get(flag)]
     options += [f"--{key.replace('_', '-')}={body[key]}" for key in _ORDER_CREATE_STRINGS
                 if key in body]
+    if "repair_rounds" in body:     # F324: every job of the order records these rounds
+        options.append(f"--repair-rounds={body['repair_rounds']}")
     lead = projects[0]
     options += http_order_default_options(body, client, lead.canonical_repo_path or next(iter(lead.repo_paths), None))
     return order_text, options

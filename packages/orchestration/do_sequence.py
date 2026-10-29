@@ -825,6 +825,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.repo_mission import link_order_job
     from packages.orchestration.scope_decision import record_scope_decision
     from packages.orchestration.scope_question import ScopeQuestionRaised
+    from packages.orchestration.job_unattended import record_walk_job_choices
     from packages.orchestration.task_deliverables import DeliverablePlanError
 
     lane = settle_do_lane(ctx)
@@ -863,6 +864,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         if lane.bounded and not ctx.no_llm:
             shaped.intake_fallback_reason = "bounded"
         job_id = str(shaped.job.job_id)
+        record_walk_job_choices(shaped.job, unattended=ctx.run_unattended, repair_rounds=ctx.repair_rounds)
         name_do_job(shaped.job, order, ctx.order, target, several=len(planned) > 1)
         # DECISION amend1011b D4: the job joins the mission of ITS repository, under this order.
         target_mission, target_order = ctx.project_missions[str(target.project.id)]

@@ -119,8 +119,14 @@ def job_burn_record(reading: BurnReading) -> dict[str, Any]:
 #: DECISION F116 D5 (1): unattended is exactly the audit `auto_approve_task_plan`
 #: already stamps, never a guess about who is watching the run.
 def job_approved_unattended(job: Any) -> bool:
-    """True when *job*'s plan was approved with no person watching it."""
+    """True when *job* runs unattended: its stored choice (F324), else a plan approved with no
+    person watching it."""
     from packages.orchestration.job_plan import AUTO_APPROVAL_MODE
+    from packages.orchestration.job_unattended import job_runs_unattended
+
+    stored = job_runs_unattended(job)
+    if stored is not None:
+        return stored
 
     task_plan = getattr(job, "task_plan", None)
     if not isinstance(task_plan, dict):
@@ -277,6 +283,15 @@ def record_burn_trip(job: Any, monitor: JobBurnMonitor, *, persist: Callable[[An
             "job_burn_tripped event write FAILED for job %r; the trip stays recorded on the job "
             "and the run continues", job.job_id, exc_info=True)
     if not unattended:
+        return None
+    from packages.orchestration.job_unattended import job_has_caps, record_unattended_assumption
+
+    if job_has_caps(job):
+        # F324: an unattended job with caps keeps running within them; its caps stop it by
+        # themselves. Before, it paused with a question that had no default and waited for a person.
+        record_unattended_assumption(job, job_burn_sentence(record),
+                                     "kept running within the job's caps, which stop it by themselves", now=now)
+        persist(job)
         return None
     from packages.orchestration import pause_control
     from packages.orchestration.escalation import enqueue_task_decision, open_task_decisions

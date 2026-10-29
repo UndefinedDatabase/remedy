@@ -65,6 +65,15 @@ def _stream_group(parser: argparse.ArgumentParser):
     return grp
 
 
+def _unattended_group(parser: argparse.ArgumentParser):
+    """F324: the one mutually-exclusive group of ``--unattended`` / ``--no-unattended``."""
+    grp = getattr(parser, "_remedy_unattended_group", None)
+    if grp is None:
+        grp = parser.add_mutually_exclusive_group()
+        parser._remedy_unattended_group = grp
+    return grp
+
+
 def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> None:
     """Add arguments from catalog entry to argparse parser."""
     for arg in cmd.args:
@@ -254,6 +263,11 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 _stream_group(parser).add_argument(
                     "--no-stream-evidence", action="store_const", const=False,
                     dest="stream_evidence", help=arg.help)
+            elif arg.name in ("--unattended", "--no-unattended"):
+                # F324: tri-state like --stream-evidence: omitted None, both a usage error.
+                _unattended_group(parser).add_argument(
+                    arg.name, action="store_const", const=arg.name == "--unattended",
+                    default=None, dest="unattended", help=arg.help)
             elif arg.name == "--repair-rounds":
                 parser.add_argument("--repair-rounds", type=int, default=None, dest="repair_rounds", help=arg.help)
             elif arg.name == "--user-requested":
