@@ -11,6 +11,36 @@ fails the gate rather than shipping an unexplained release.
 
 ## [Unreleased]
 
+### Fixed
+- 2026-10-29, operator order welt-2 (F320): an order's attachments and evidence are never
+  deliverables. The report a client links ("Verknüpfte Berichte:"), its pictures and the tool names
+  of a diagnosis package no longer become tasks "Deliver ...", job title suffixes or further jobs;
+  a named file that does not exist and that the order forbids creating stops the order before
+  planning, with one sentence.
+- 2026-10-29, operator order welt-2 (F321): low findings never block a job. A review whose
+  findings are all low passes, a blocked verdict with medium findings at most gets a repair round
+  while rounds remain, and only high or blocker findings stop a job by the reviewer's word. The
+  config key `cycles.repair_rounds` now names every job's repair rounds unless its run names them,
+  and a job that has not run yet shows the rounds it will run with instead of 0.
+- 2026-10-29, operator order welt-2 (F322): a job's tests run against its own worktree. A Python
+  project's worktree comes first on `PYTHONPATH` for the builder and for every check, so the
+  tests no longer import the main checkout through its editable install, and when the builder
+  started no test run Remedy runs the project's test command itself in the worktree before the
+  review.
+- 2026-10-29, operator order welt-2 (F323): a job waiting for another job of its order no longer
+  waits forever. When the awaited job ends blocked, stopped, failed, cancelled or declined, the
+  waiting job ends blocked with a sentence naming why; when the awaited job's result is applied
+  over HTTP with a commit, the waiting job is released and, when it runs unattended, started.
+- 2026-10-29, operator order welt-2 (F324): a job started unattended stays unattended. Every job
+  of an order stores the choice, so a later `remedy job run`, a retry over HTTP or a resume no
+  longer stops at the plan approval or at a burn trip of a job with caps; `remedy job run
+  --unattended`/`--no-unattended` and the HTTP bodies' `unattended` (interface 1.33) name it, and
+  the run and retry bodies take `repair_rounds`. An order's `unattended: false` asks again.
+- 2026-10-29, operator order welt-2 (F325): every stop says why. A blocked, stopped, cancelled or
+  failed job carries one sentence: the story's `stop` (`reason` and `text`), each order job's
+  `stop_text` and `remedy job show --json`'s `stop.text`. A job its review blocked names the
+  verdict, its findings by severity and the first finding, where its `stop.reason` was empty.
+
 ## [1.0.0] - 2026-10-27
 
 ### Added

@@ -54,15 +54,21 @@ def _get_dispatch_table() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 
 
-def _stream_group(parser: argparse.ArgumentParser):
-    """F15: the ONE mutually-exclusive group carrying ``--stream-evidence`` /
-    ``--no-stream-evidence`` for this parser, so supplying BOTH is a usage error (exit 2)
-    instead of silent last-one-wins."""
-    grp = getattr(parser, "_remedy_stream_group", None)
-    if grp is None:
-        grp = parser.add_mutually_exclusive_group()
-        parser._remedy_stream_group = grp
-    return grp
+#: F1/F15/F324: each tri-state flag pair as flag -> (dest, value): omitted None, the flag True,
+#: its `--no-` twin False, and both together a usage error (exit 2).
+_TRI_STATE_FLAGS: dict[str, tuple[str, bool]] = {
+    "--stream-evidence": ("stream_evidence", True), "--no-stream-evidence": ("stream_evidence", False),
+    "--unattended": ("unattended", True), "--no-unattended": ("unattended", False),
+}
+
+
+def _tri_state_group(parser: argparse.ArgumentParser, dest: str):
+    """F15: the ONE mutually-exclusive group carrying the flag pair of *dest* for this parser, so
+    supplying BOTH is a usage error (exit 2) instead of silent last-one-wins."""
+    groups = parser.__dict__.setdefault("_remedy_tri_state_groups", {})
+    if dest not in groups:
+        groups[dest] = parser.add_mutually_exclusive_group()
+    return groups[dest]
 
 
 def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> None:
@@ -243,17 +249,11 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--tasks", default=None, dest="max_tasks", help=arg.help)
             elif arg.name == "--claude-cli-write-mode":
                 parser.add_argument("--claude-cli-write-mode", default=arg.default, dest="claude_cli_write_mode", help=arg.help)
-            elif arg.name == "--stream-evidence":
-                # F1/F15: tri-state AND mutually exclusive — omitted None, --stream-evidence
-                # True, --no-stream-evidence False, BOTH is a usage error (exit 2). The pair
-                # shares one argparse mutually-exclusive group per command parser.
-                _stream_group(parser).add_argument(
-                    "--stream-evidence", action="store_const", const=True,
-                    default=None, dest="stream_evidence", help=arg.help)
-            elif arg.name == "--no-stream-evidence":
-                _stream_group(parser).add_argument(
-                    "--no-stream-evidence", action="store_const", const=False,
-                    dest="stream_evidence", help=arg.help)
+            elif arg.name in _TRI_STATE_FLAGS:
+                # F1/F15/F324: tri-state AND mutually exclusive; each pair shares one group per parser.
+                dest, const = _TRI_STATE_FLAGS[arg.name]
+                _tri_state_group(parser, dest).add_argument(
+                    arg.name, action="store_const", const=const, default=None, dest=dest, help=arg.help)
             elif arg.name == "--repair-rounds":
                 parser.add_argument("--repair-rounds", type=int, default=None, dest="repair_rounds", help=arg.help)
             elif arg.name == "--user-requested":

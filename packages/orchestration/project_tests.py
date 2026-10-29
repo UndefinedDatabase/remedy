@@ -201,6 +201,25 @@ def find_node_bin(dirs: Sequence[Path]) -> Path | None:
     return None
 
 
+#: F322: the files that make a folder a Python project whose worktree source must come first.
+PYTHON_PROJECT_MARKERS: tuple[str, ...] = ("pyproject.toml", "setup.py", "setup.cfg")
+
+
+def worktree_python_path(cwd: Path) -> str:
+    """F322: the `PYTHONPATH` that makes a Python project's tests import the job's worktree *cwd*.
+
+    "" unless *cwd* is a job's worktree (`project_lookup_dirs` names a checkout beside it) of a
+    Python project. Otherwise its `src` folder, when it has one, then *cwd* itself: the checkout's
+    virtual environment holds the project as an editable install, which imports the CHECKOUT's
+    code, so a worktree's tests ran against the main checkout (jobs 92af245f83d246d3 and
+    4b90ef2ed0274960 of 2026-10-28).
+    """
+    if len(project_lookup_dirs(cwd)) < 2 or not any((cwd / name).is_file() for name in PYTHON_PROJECT_MARKERS):
+        return ""
+    parts = [str(cwd / "src")] if (cwd / "src").is_dir() else []
+    return os.pathsep.join([*parts, str(cwd)])
+
+
 def project_environment(cwd: Path) -> dict[str, str]:
     """The environment a project's own test command runs under.
 
@@ -227,6 +246,8 @@ def project_environment(cwd: Path) -> dict[str, str]:
     env = {"PATH": os.pathsep.join(path_parts)}
     if venv is not None:
         env["VIRTUAL_ENV"] = str(venv)
+        if python_path := worktree_python_path(cwd):
+            env["PYTHONPATH"] = python_path
     return env
 
 
@@ -341,6 +362,8 @@ def project_tool_environment(cwd: Path, path: str) -> dict[str, str]:
     env = {"PATH": os.pathsep.join([*front, path] if path else front)}
     if venv is not None:
         env["VIRTUAL_ENV"] = str(venv)
+        if python_path := worktree_python_path(cwd):
+            env["PYTHONPATH"] = python_path
     try:
         env.update(project_test_env(cwd, cwd, env["PATH"]))
     except ProjectTestConfigError:

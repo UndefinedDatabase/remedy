@@ -78,12 +78,19 @@ class DeliverablePlanError(ValueError):
 
 
 def extract_order_deliverables(order: str) -> list[str]:
-    """The order's path-like tokens in first-appearance order, deduplicated; else the order."""
-    urls = [m.span() for m in _URL_RE.finditer(order)]
+    """The order's path-like tokens in first-appearance order, deduplicated; else the order.
+
+    F320: only the order's work text is read (`order_material.order_work_text`): an attached
+    report's name, its pictures and the tool names of a diagnosis package are never deliverables.
+    """
+    from packages.orchestration.order_material import order_work_text
+
+    work = order_work_text(order)
+    urls = [m.span() for m in _URL_RE.finditer(work)]
     matches = sorted(
         (m.start(1), m.group(1))
         for regex in (_PATH_TOKEN_RE, _EXTENSIONLESS_TOKEN_RE)
-        for m in regex.finditer(order)
+        for m in regex.finditer(work)
     )
     found: list[str] = []
     for start, token in matches:
@@ -175,6 +182,41 @@ def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
         inputs["with_tests"] = True
     return TaskEntry(title=title, body=body, acceptance=accept, inputs=inputs,
                      files_hint=files if len(files) > 1 else [])
+
+
+def order_missing_deliverables(order: str, tracked_files: list[str]) -> list[str]:
+    """F320: the files *order* names that the repository does not hold and that it may not create.
+
+    A named file nothing tracks is one when the order forbids creating it
+    (`order_scope.order_forbids_new_file`) and no line of the order's own work text that names it
+    asks to create it. Such a deliverable cannot be delivered: the walk stops before planning
+    instead of building a job the reviewer must block (job f3ced4db of 2026-10-28). [] when the
+    repository has no tracked files (a new repository proves nothing).
+    """
+    from packages.orchestration.do_lane import _CREATES
+    from packages.orchestration.do_scope import resolve_order_path
+    from packages.orchestration.order_material import order_work_text
+    from packages.orchestration.order_scope import HEADER_CONSTRAINTS_MARKER, order_forbids_new_file
+
+    if not tracked_files:
+        return []
+    work = order_work_text(order).split(HEADER_CONSTRAINTS_MARKER, 1)[0].splitlines()
+    missing: list[str] = []
+    for path in explicit_order_paths(order):
+        if resolve_order_path(path, tracked_files) is not None or not order_forbids_new_file(order, path):
+            continue
+        if any(path in line and _CREATES.search(line) for line in work):
+            continue
+        missing.append(path)
+    return missing
+
+
+def missing_deliverables_refusal(missing: list[str]) -> str:
+    """The plain sentence a walk stops with when the order's deliverables do not exist (F320)."""
+    named = ", ".join(missing)
+    return (f"the order names {named} as its work, but the repository holds no such file and the order "
+            "forbids creating new files; nothing was planned or run. Name an existing file, or allow "
+            "the new file in the order.")
 
 
 def deterministic_job_plans(order: str) -> list[list[TaskEntry]]:

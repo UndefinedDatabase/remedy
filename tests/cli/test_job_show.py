@@ -278,6 +278,8 @@ class TestTheDefaultOutputOnlyGainsTheFindingsKey:
         assert data["schema_version"] == 1
         assert data["ok"] is True
         assert set(data) == {"schema_version", "ok", *old, "blocked_task_findings"}
+        # F325: `stop` also carries `text`, the sentence why the job stopped, "" for one that did not.
+        assert data["stop"] == {**old.pop("stop"), "text": ""}
         assert {key: data[key] for key in old} == old
         assert data["blocked_task_findings"] == []
         assert shown.err == ""

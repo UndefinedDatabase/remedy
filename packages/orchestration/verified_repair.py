@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import subprocess
 from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
@@ -85,8 +86,72 @@ def red_test_fingerprint(summary: str) -> str:
     return hashlib.sha256(_VOLATILE.sub("", head).encode()).hexdigest()[:16]
 
 
+#: F321: the finding severities a review passes with; such findings stay recorded for the person.
+REVIEW_PASSING_SEVERITIES: frozenset[str] = frozenset({"low"})
+#: F321: the severities a `blocked` verdict is repaired over instead of stopping the job.
+REVIEW_REPAIRABLE_SEVERITIES: frozenset[str] = frozenset({"low", "medium"})
+#: The decision reason of a review that passed with low findings only.
+REASON_ONLY_LOW_FINDINGS = "only_low_findings"
+
+
+def review_findings_all_low(findings: Sequence[Any]) -> bool:
+    """F321: True when *findings* (objects with a `severity`) are some and every one is `low`."""
+    severities = {str(getattr(f, "severity", "")).strip().lower() for f in findings}
+    return bool(severities) and severities <= REVIEW_PASSING_SEVERITIES
+
+
+def review_severity_verdict(verdict: str, finding_count: int,
+                            finding_severities: Sequence[str]) -> tuple[str, tuple[str, str] | None]:
+    """F320/F321 (operator order welt-2): the review's verdict read with its findings' severities.
+
+    Returns `(verdict, settled)`: *settled* is the `(repair_decision, reason)` that ends
+    `pingpong_loop.make_repair_decision` at once, else None and the verdict goes on. A review
+    whose findings are all `low` passes whatever its verdict, and a `blocked` verdict whose
+    findings are at most `medium` reads `needs_repair`, so it gets a repair round while rounds
+    remain: only a `high` or `blocker` finding stops a job by the reviewer's word alone. On
+    2026-10-28 job 4b90ef2ed0274960 stopped on one low finding with a repair round left.
+    """
+    severities = {str(severity).strip().lower() for severity in finding_severities}
+    if finding_count and severities and severities <= REVIEW_PASSING_SEVERITIES:
+        return verdict, ("pass_no_repair", REASON_ONLY_LOW_FINDINGS)
+    if verdict != "blocked":
+        return verdict, None
+    if finding_count and severities and severities <= REVIEW_REPAIRABLE_SEVERITIES:
+        return "needs_repair", None
+    return verdict, ("stop_blocked", "reviewer_blocked")
+
+
+#: F322: the id of the check Remedy runs itself in a round whose builder started no test run.
+ROUND_PROJECT_TESTS_CHECK_ID = "round_project_tests"
+
+
+def remedy_round_test_run(staging: Path, timeout_sec: int) -> tuple[bool | None, str] | None:
+    """F322: Remedy's own run of the project's test command in the job's worktree *staging*.
+
+    `(passed, summary)` when the command ran to an end, None when it was refused, found nothing
+    to run or timed out, so the builder's own reading stands. It runs as the job-end check does
+    (`dod_runners`' `project_tests` kind): the project's own environment, the worktree's source
+    first on `PYTHONPATH` (`project_tests.project_environment`), inside the tool sandbox.
+    Remedy deliberately runs the whole command, never a guessed subset of it.
+    """
+    from packages.orchestration.dod_runners import CHECK_TIMEOUT_DEFAULT_SEC, STATUS_FAILED, STATUS_PASSED, run_check
+    from packages.orchestration.dod_schema import DoDCheck
+
+    check = DoDCheck(id=ROUND_PROJECT_TESTS_CHECK_ID, kind="project_tests", source="standard", blocking=False,
+                     description="Remedy runs the project's tests in the worktree: the builder started none.")
+    try:
+        evidence = run_check(check, staging, timeout_sec=max(timeout_sec, CHECK_TIMEOUT_DEFAULT_SEC))
+    except (OSError, ValueError, subprocess.SubprocessError):   # it cannot start: the builder's reading stands
+        return None
+    if evidence.status not in (STATUS_PASSED, STATUS_FAILED) or evidence.exit_code is None:
+        return None
+    tail = " ".join(evidence.output_tail.strip().splitlines()[-5:])
+    return (evidence.status == STATUS_PASSED,
+            f"Remedy ran `{evidence.command}` in the worktree: exit={evidence.exit_code}" + (f" | {tail}" if tail else ""))
+
+
 def round_tests(reading: tuple[bool | None, str, str] | None, stream_dir: str | None, rd: Any, staging: Path,
-                result: Any) -> tuple[bool | None, str, Any]:
+                result: Any, *, timeout_sec: int = 0) -> tuple[bool | None, str, Any]:
     """The test phase of one round with the builder's own test runs (operator amendment
     amend1027-green-builds, Part B), read from its stream and recorded either way.
 
@@ -95,12 +160,20 @@ def round_tests(reading: tuple[bool | None, str, str] | None, stream_dir: str | 
     Testbefehl" (A4), else `tests_not_run` with its reason (B3). With one, the loop's own run
     *reading* `(passed, summary, tripped)` decides (B2); when it ran nothing the builder's run does,
     except after a sandbox refusal, which stops the run (R-1343).
+
+    F322 (operator order welt-2): a job's round whose real builder started no test run gets
+    Remedy's own run in the worktree (`remedy_round_test_run`), so the reviewer judges a real
+    run; on 2026-10-28 three jobs were blocked on "Still no test run against the staged worktree".
     """
     from packages.orchestration.builder_test_runs import round_test_reading
 
     builder = round_test_reading(stream_dir=stream_dir, round_num=rd.round_number, workspace=str(staging),
                                  job_id=result.job_id, run_id=result.run_id, task_id=result.task_id)
     if reading is None:
+        if builder[2] and result.job_id and getattr(result, "builder_provider", "") != "fake":
+            own = remedy_round_test_run(staging, timeout_sec)
+            if own is not None:
+                return own[0], f"{own[1]}\n{builder[1]}", False
         return builder
     passed, summary, tripped = reading
     if passed is None and tripped != "sandbox_unavailable" and builder[0] is not None:

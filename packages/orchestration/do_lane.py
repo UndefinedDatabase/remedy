@@ -161,7 +161,9 @@ def _order_targets(order: str, tracked_files: list[str], roles: dict[str, str] |
     A file in a test run ("run pytest tests/x.py") or in a header constraint is never a target, and a
     test file the order asks for beside its work is a companion, never a target of its own.
     """
-    scope = split_order_scope(order)
+    from packages.orchestration.order_material import order_work_text
+
+    scope = split_order_scope(order_work_text(order))     # F320: attachments are never targets
     named = explicit_order_paths(" ".join(scope.deliverables))
     # exec-1018 (R-1348): a file named only as context, or that the order forbids to change, is no
     # target; a file the order merely allows is one only when it names no file to change.

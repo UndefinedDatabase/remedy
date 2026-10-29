@@ -387,3 +387,24 @@ class TestTheWorkspacePlaceholderAndPath:
         assert changed_source_file(wt, command) == ""
         _config(wt, '[tests]\ncommand = ["true"]\n')                  # the job writes its own
         assert changed_source_file(wt, command) == ".remedy/config.toml"
+
+
+# ---------------------------------------------------------------------------
+# F322 — a Python project's tests import the job's worktree, never the checkout
+# ---------------------------------------------------------------------------
+
+def test_a_python_worktrees_source_comes_first_on_pythonpath(checkout: Path, worktree: Path):
+    # Jobs of 2026-10-28: the editable install made the worktree's pytest import the checkout.
+    _make_venv(checkout / ".venv")
+    (worktree / "pyproject.toml").write_text("[project]\nname = 'demo'\n")
+    (worktree / "src").mkdir()
+    want = os.pathsep.join([str(worktree / "src"), str(worktree)])
+    assert project_environment(worktree)["PYTHONPATH"] == want
+    assert project_tool_environment(worktree, "/usr/bin")["PYTHONPATH"] == want
+
+
+def test_the_checkout_itself_and_a_non_python_worktree_get_no_pythonpath(checkout: Path, worktree: Path):
+    _make_venv(checkout / ".venv")
+    (checkout / "pyproject.toml").write_text("[project]\nname = 'demo'\n")
+    assert "PYTHONPATH" not in project_environment(checkout)
+    assert "PYTHONPATH" not in project_environment(worktree)     # the worktree has no pyproject.toml

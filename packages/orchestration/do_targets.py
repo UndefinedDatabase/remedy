@@ -230,6 +230,16 @@ def _shape_job_orders(
     )
 
     order = ctx.order
+    if shape != DO_SHAPE_REPOSITORIES:
+        from packages.orchestration.do_lane import tracked_repo_files
+        from packages.orchestration.task_deliverables import (
+            DeliverablePlanError,
+            missing_deliverables_refusal,
+            order_missing_deliverables,
+        )
+
+        if missing := order_missing_deliverables(order, tracked_repo_files(str(ctx.repo_root))):
+            raise DeliverablePlanError(missing_deliverables_refusal(missing))
     milestones = list(ctx.mission_plan.milestones) if ctx.mission_plan is not None else []
     sole = str(milestones[0].id) if len(milestones) == 1 else None
     own = DoJobTarget(ctx.project, ctx.repo_root)
@@ -297,12 +307,18 @@ def do_job_title(job_order: str, order: str, *, project_slug: str, deliverables:
     return f"{cut}…"
 
 
-def name_do_job(job: Any, job_order: str, order: str, target: DoJobTarget, *, several: bool) -> None:
-    """Give a planned job of the walk its `do_job_title` and save it."""
+def name_do_job(job: Any, job_order: str, order: str, target: DoJobTarget, *, several: bool,
+                unattended: bool = False) -> None:
+    """Give a planned job of the walk its `do_job_title` and save it; an UNATTENDED walk's job
+    stores that it runs unattended for every later run (F324, `job_unattended`)."""
     from packages.orchestration.pingpong_job import save_job_plan
     from packages.orchestration.task_deliverables import task_deliverable
 
     job.job_title = do_job_title(job_order, order, project_slug=str(getattr(target.project, "slug", "")),
                                  deliverables=[d for d in map(task_deliverable, job.tasks) if d],
                                  several=several)
+    if unattended:
+        from packages.orchestration.order_jobs import JOB_UNATTENDED_KEY
+
+        job.metadata[JOB_UNATTENDED_KEY] = True
     save_job_plan(job)

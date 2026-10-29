@@ -69,13 +69,14 @@ from packages.orchestration.order_story import order_story_answer
 
 # DECISION F199 D3: the route table, its dataclass and its registry, lives in a module of its
 # own; this module imports the names it uses from it.
-from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES, PublicApiRoute
+from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES
 
 # DECISION F205 D6: the write routes' argument builders and refusals live in a module of
 # their own; this module imports the names it uses, and every other consumer imports from it
 # (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.public_api_writes import (
     PublicApiWriteRefusal,
+    _body_refusal,
     _client_write_refusal,
     _order_text_and_options,
     _runner_options,
@@ -110,8 +111,10 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: (DECISIONs amend1026 D2 to D5) to `1.30` for `GET /api/v1/projects`, `POST /api/v1/projects/{project}/ask`, `GET
 #: /api/v1/orders/{order}/review`, the execution offer's `autonomy.push_allowed` and both stories' `scope`, and
 #: operator amendment amend1027-green-builds to `1.31` for `GET /api/v1/jobs/{job}/evidence` and the story's
-#: `order_id`, `retries`, `scope.match` and `verification.tested_by`, and amend1027b-v1 to `1.32` (see the page).
-PUBLIC_API_VERSION = "1.32"
+#: `order_id`, `retries`, `scope.match` and `verification.tested_by`, and amend1027b-v1 to `1.32` (see the page),
+#: and operator order welt-2 (F323 to F325) to `1.33` for the bodies' `unattended` and `repair_rounds`, the
+#: apply answer's `released`, the story's `stop` and the order jobs' `stop_text` (see the page).
+PUBLIC_API_VERSION = "1.33"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -655,6 +658,10 @@ def _start_run_answer(
     route = next(r for r in PUBLIC_API_ROUTES if r.starts_run and _match_route_path(r.path, path) is not None)
     options = [*route.run_options, *(f"--{key.replace('_', '-')}={body[key]}" for key in _RUN_PROVIDER_KEYS
                                      if key in body)]
+    if "unattended" in body:    # F324: stored on the job for this and every later run
+        options.append("--unattended" if body["unattended"] else "--no-unattended")
+    if "repair_rounds" in body:
+        options.append(f"--repair-rounds={body['repair_rounds']}")
     try:
         record = start_run(job_id, options)
     except RunRefused as exc:
@@ -665,47 +672,11 @@ def _start_run_answer(
     return 202, build_ok(**run_record_payload(serve_paths(), record)), {}
 
 
-def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any] | None, str]:
-    """The checked JSON body of a write to ROUTE and an empty sentence, or None and why not.
-
-    A `string` value, or an item of a `strings` value, that holds a NUL character is refused
-    too: a child's arguments cannot hold one, and `subprocess.Popen` would raise out of the
-    route (R-1205).
-    """
-    try:
-        parsed = json.loads(raw_body.decode("utf-8")) if raw_body.strip() else {}
-    except (UnicodeDecodeError, ValueError):
-        return None, "the body is not valid JSON"
-    if not isinstance(parsed, dict):
-        return None, "the body must be a JSON object"
-    kinds = dict(route.body)
-    for key, value in parsed.items():
-        if key not in kinds:
-            takes = ", ".join(f"'{k}'" for k in kinds) or "none"
-            return None, f"'{key}' is not a key of this route's body; it takes {takes}"
-        if kinds[key] == "string":
-            valid = isinstance(value, str)
-            wanted = "a string"
-        elif kinds[key] == "flag":
-            valid = isinstance(value, bool)
-            wanted = "true or false"
-        elif kinds[key] == "integer":   # amend1026 C2: a whole number above zero, never a flag
-            valid, wanted = type(value) is int and value > 0, "a whole number above zero"
-        else:
-            valid = (isinstance(value, list) and all(isinstance(item, str) and item
-                                                     for item in value))
-            wanted = "a list of non-empty strings"
-        if not valid:
-            return None, f"'{key}' must be {wanted}"
-        if kinds[key] == "string":
-            texts = [value]
-        elif kinds[key] in ("flag", "integer"):
-            texts = []
-        else:
-            texts = value
-        if any("\x00" in text for text in texts):
-            return None, f"'{key}' must not hold a NUL character"
-    return parsed, ""
+def _order_start_keys(order_key: str | None, body: dict[str, Any]) -> dict[str, Any]:
+    """The keywords the order starter takes beside the text and the options, each only when given:
+    `order_key`, and since F324 `unattended=False` for an order that wants its questions."""
+    keys: dict[str, Any] = {} if order_key is None else {"order_key": order_key}
+    return keys if body.get("unattended", True) else {**keys, "unattended": False}
 
 
 def answer_public_api_post(
@@ -811,10 +782,7 @@ def answer_public_api_post(
                         "the same mission; nothing was run",
                         mission_id=mission.id), {}
             try:
-                if order_key is None:
-                    record = start_order(order_text, options)
-                else:
-                    record = start_order(order_text, options, order_key=order_key)
+                record = start_order(order_text, options, **_order_start_keys(order_key, checked))
             except OSError:
                 return 500, build_error(
                     "api_command_failed",
@@ -848,6 +816,8 @@ def answer_public_api_post(
                 f"the command for '{path}' printed no answer, or took longer than allowed"), {}
         from packages.orchestration.budget_stop import resume_after_budget_extend
         envelope = resume_after_budget_extend(route.twin, segments, envelope, start_run)  # DECISION F310 D5 (4)
+        from packages.orchestration.order_jobs import start_released_job
+        envelope = start_released_job(route.twin, segments, envelope, start_run)   # F323
         status = 200 if envelope.get("ok") else dict(route.refusals).get(
             envelope.get("error", ""), route.refusal_default or 500)
         headers = {"Deprecation": "true"} if route.deprecated else {}

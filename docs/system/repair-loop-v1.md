@@ -12,6 +12,17 @@
 > --repair-rounds <n>`. A repair attempt has no post-apply state either: the `applied`,
 > `tested_passed`, `tested_failed` and `evidence_incomplete` statuses nothing set went
 > with the module (R-0918).
+>
+> **Status (F321, 2026-10-29):** what a review's findings decide, in
+> `pingpong_loop.make_repair_decision`. A review whose findings are all `low` passes whatever its
+> verdict, and its findings stay on the record for the person (`only_low_findings`). A `blocked`
+> verdict whose findings are at most `medium` is repaired like a `needs_repair` while repair
+> rounds remain, and then ends as repair exhausted. Only a `high` or `blocker` finding, or a
+> `blocked` verdict without findings, stops a job by the reviewer's word alone. A job's repair
+> rounds come from its run (`remedy job run --repair-rounds`, the HTTP run's and retry's
+> `repair_rounds`), else its recorded configuration, else the config key `cycles.repair_rounds` (source `config`), else 2
+> (`execution_config.configured_repair_rounds`); a job that has not run yet records the rounds
+> it will run with.
 
 Turn a real test failure into a bounded, safe, approval-gated repair **proposal**.
 Repair Loop v1 never applies code, never runs tests, and never calls a provider.

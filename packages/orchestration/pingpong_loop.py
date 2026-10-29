@@ -74,7 +74,12 @@ from packages.orchestration.session_sent_index import (
 )
 from packages.orchestration.structured_log import bind_call_log_context
 from packages.orchestration.tier_escalation import TaskTierLadder
-from packages.orchestration.verified_repair import review_test_evidence, round_tests, with_test_failure_finding
+from packages.orchestration.verified_repair import (
+    review_severity_verdict,
+    review_test_evidence,
+    round_tests,
+    with_test_failure_finding,
+)
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -322,15 +327,11 @@ def make_repair_decision(
     repair_rounds_allowed: int,
     repair_rounds_used: int,
     is_repair: bool,
-    coherence_error: str | None,
+    coherence_error: str | None, finding_severities: tuple[str, ...] = (),   # F321: `review_severity_verdict`
 ) -> RepairDecision:
     """Deterministic repair decision. No provider call."""
-    rd = RepairDecision(
-        round=round_num,
-        reviewer_verdict=reviewer_verdict,
-        tests_passed=tests_passed,
-        finding_count=finding_count,
-    )
+    rd = RepairDecision(round=round_num, reviewer_verdict=reviewer_verdict, tests_passed=tests_passed,
+                        finding_count=finding_count)
 
     if coherence_error:
         rd.repair_decision = "block_inconsistent_review"
@@ -353,13 +354,12 @@ def make_repair_decision(
         return rd
 
     if reviewer_verdict == "pass":
-        rd.repair_decision = "pass_no_repair"
-        rd.reason = "reviewer_passed"
+        rd.repair_decision, rd.reason = "pass_no_repair", "reviewer_passed"
         return rd
 
-    if reviewer_verdict == "blocked":
-        rd.repair_decision = "stop_blocked"
-        rd.reason = "reviewer_blocked"
+    reviewer_verdict, settled = review_severity_verdict(reviewer_verdict, finding_count, finding_severities)
+    if settled:
+        rd.repair_decision, rd.reason = settled
         return rd
 
     if reviewer_verdict not in ("needs_repair", "fail"):
@@ -3354,8 +3354,8 @@ def run_pingpong(
                 rd.test_passed, rd.test_summary, rd.test_tripped_limit = round_tests(_run_test_command(
                     test_command, staging, timeout_sec=timeout_sec), stream_evidence_dir, rd, staging, result)
             else:
-                rd.test_passed, rd.test_summary, result.tests_not_run = round_tests(None, stream_evidence_dir, rd,
-                                                                                    staging, result)
+                rd.test_passed, rd.test_summary, result.tests_not_run = round_tests(
+                    None, stream_evidence_dir, rd, staging, result, timeout_sec=timeout_sec)
 
             # An explicit test command that failed stops the run at once when repair_rounds is 0, else
             # its failure is the reviewer's evidence. One the sandbox refused ran no test (R-1343): it
@@ -3771,7 +3771,7 @@ def run_pingpong(
                 repair_rounds_allowed=repair_rounds,
                 repair_rounds_used=result.repair_rounds_used,
                 is_repair=is_repair,
-                coherence_error=coherence_error,
+                coherence_error=coherence_error, finding_severities=tuple(str(f.severity) for f in reviewer_out.findings),
             ), rd, result.rounds, test_command)
             ladder.after_review(decision, result.rounds, rounds_left=max_rounds - round_num)
             if reviewer_out.verdict_normalized:

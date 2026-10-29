@@ -586,6 +586,25 @@ def test_a_second_trip_updates_the_open_burn_decision_in_place(tmp_path, monkeyp
     assert open_decisions[0]["impact"] == _expected_burn_impact(job.job_id)
 
 
+def test_an_unattended_trip_of_a_job_with_caps_keeps_running_and_records_its_assumption(
+        tmp_path, monkeypatch):
+    """F324: a job with caps is stopped by its caps; its trip no longer waits for a person."""
+    from packages.orchestration.escalation import open_task_decisions
+    from packages.orchestration.job_unattended import JOB_ASSUMPTIONS_KEY
+
+    def _capped(plan) -> None:
+        plan.budgets = {"max_total_tokens": 10_000_000}
+
+    job, counter = _run_unattended_spike(tmp_path, monkeypatch, prepare=_capped)
+
+    assert job.state != JOB_PAUSED and not job.pause
+    assert counter[0] == 4
+    assert open_task_decisions(job) == []
+    [assumption] = job.metadata[JOB_ASSUMPTIONS_KEY]
+    assert assumption["question"] == job_burn_sentence(job.burn_reading)
+    assert "caps" in assumption["assumed"]
+
+
 def test_an_unattended_trip_blocks_the_job_when_the_pause_request_fails(
         tmp_path, monkeypatch):
     from packages.orchestration import pause_control

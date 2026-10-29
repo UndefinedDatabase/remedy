@@ -501,7 +501,7 @@ def _cmd_job_run(
     repair_model: str | None = None, repair_effort: str | None = None,
     max_total_tokens: str | None = None, max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None, max_cost_usd: str | None = None,
-    deadline: str | None = None, retry: bool = False,
+    deadline: str | None = None, retry: bool = False, unattended: bool | None = None,
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
 
@@ -581,7 +581,7 @@ def _cmd_job_run(
     from packages.orchestration.pingpong_job import run_job
 
     # DECISION F307 D22: step (1) of this function's boundary, every refusal before anything runs.
-    _recorded = refuse_job_run_before_it_starts(job_id, json_output=json_output)
+    _recorded = refuse_job_run_before_it_starts(job_id, json_output=json_output, unattended=unattended)
     if retry and _recorded is not None:    # R-1331: the stuck tasks go back to pending first.
         retry_blocked_job_tasks(_recorded)
 
@@ -837,6 +837,9 @@ def _cmd_job_decline(job_id: str, *, reason: str = "", source: str = "cli",
                                  now=datetime.now(timezone.utc))
     if not already_declined:
         save_job_plan(job)
+        from packages.orchestration.order_jobs import settle_waiting_jobs
+
+        settle_waiting_jobs(job_id)     # F323: a job waiting for this result will never be released
     if json_output:
         emit_ok(job_id=job_id, reason=decline["reason"], source=decline["source"],
                 declined_at=decline["declined_at"], already_declined=already_declined)
@@ -947,6 +950,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
         retry=bool(getattr(args, "retry", False)),
+        unattended=getattr(args, "unattended", None),
     ),
     "job.apply": lambda args: _cmd_job_apply(
         args.job_id,

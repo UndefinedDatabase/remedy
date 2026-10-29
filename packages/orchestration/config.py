@@ -628,7 +628,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "the existing repair loop and obey the same fences, budgets and "
             "stop requests as any other provider work; 0 disables self-healing. "
             "A verify that failed for a non-test reason (missing command, bad "
-            "config) is classified and never repaired."
+            "config) is classified and never repaired. F321: also each job's rounds unless its run names them."
         ),
         value_type=int,
         default=2,

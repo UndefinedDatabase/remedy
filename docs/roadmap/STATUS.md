@@ -553,6 +553,15 @@ Registered, counted and tier-assigned like every other feature — deliberately 
 
 Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/roadmap/V1.md`) and moved every line Package 1 still had open here, unchanged and in their order, with their tier headings. Rule A5 does not apply to this package: no session, no loop helper and no `remedy roadmap next` selects a line from it. Improvements come from a report (over Universe) or from a failed run (the tile Selbstverbesserung), each as an order to the project remedy with claude-cli. When such an order needs a feature listed here, the operator moves its line back into Package 1, in a reviewed docs round.
 
+## Tier 2 — Remedy runs on its own (operator order welt-2, 2026-10-29)
+
+- [x] F320 — Attachments are never deliverables (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
+- [x] F321 — Low findings never block (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
+- [x] F322 — Builder tests in the worktree (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
+- [x] F323 — Waiting jobs follow their order (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
+- [x] F324 — Unattended jobs stay unattended (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
+- [x] F325 — Every stop says why (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
+
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
 - [ ] F316 — Findings paydown v11

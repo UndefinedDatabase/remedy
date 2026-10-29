@@ -270,7 +270,9 @@ packages.orchestration.job_run_ending
 packages.orchestration.job_run_finish
 packages.orchestration.job_runner
 packages.orchestration.job_stop_now
+packages.orchestration.job_stop_text
 packages.orchestration.job_tokens
+packages.orchestration.job_unattended
 packages.orchestration.lessons
 packages.orchestration.list_options
 packages.orchestration.llm_planner
@@ -304,6 +306,7 @@ packages.orchestration.order_file
 packages.orchestration.order_intent
 packages.orchestration.order_jobs
 packages.orchestration.order_ledger
+packages.orchestration.order_material
 packages.orchestration.order_review
 packages.orchestration.order_scope
 packages.orchestration.order_story

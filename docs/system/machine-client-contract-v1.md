@@ -356,7 +356,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.32`.
+Interface version: `1.33`.
 
 ### Envelope
 
@@ -619,6 +619,8 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--max-wall-clock-minutes` | yes | no | yes | no | Maximum wall-clock minutes (F018 budget override) |
 | `--max-cost-usd` | yes | no | yes | no | Maximum cost in USD (F104 budget override) |
 | `--deadline` | yes | no | yes | no | UTC deadline as ISO 8601 string (F018 budget override) |
+| `--unattended` | yes | no | no | no | Store on the job that it runs unattended (F324): its run approves the plan of tasks that waits, and only a question without a safe default waits; kept for every later run |
+| `--no-unattended` | yes | no | no | no | Store on the job that it asks its questions before a task runs (F324); kept for every later run |
 | `--retry` | yes | no | no | no | Put the tasks that ended blocked or failed back to pending first, so they run again; a plain run re-attempts none of them |
 | `--json` | yes | no | no | no | Output as JSON |
 
@@ -1041,7 +1043,7 @@ Answer keys: `answer`, `cancel`, `ended_at`, `exit_code`, `jobs`, `order_file`, 
 Keys under the answer keys: see below.
 
 - `cancel`: `reason`, `requested_at`, `source`
-- `jobs`: `blocking_criterion`, `executable`, `job_id`, `mission_id`, `phase`, `state`, `story`, `tasks`, `title`, `verification`, `waiting_reason`, `waits_for`
+- `jobs`: `blocking_criterion`, `executable`, `job_id`, `mission_id`, `phase`, `state`, `stop_text`, `story`, `tasks`, `title`, `verification`, `waiting_reason`, `waits_for`
   - `tasks`: `current`, `done`, `total`
 
 #### `remedy client run`
@@ -1071,7 +1073,7 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `order_id`, `retries`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
+Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `order_id`, `retries`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `stop`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
@@ -1093,6 +1095,7 @@ Keys under the answer keys: see below.
     - `args`: `*`
   - `tasks`: `files`, `rounds`, `status`, `title`
   - `tokens`: `in`, `out`
+- `stop`: `reason`, `text`
 - `verification`: `output`, `reason`, `reason_key`, `required`, `status`, `tested_by`
 
 #### `remedy client now`

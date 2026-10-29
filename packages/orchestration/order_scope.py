@@ -353,3 +353,20 @@ _NO_NEW_FILES = re.compile(
 def order_forbids_new_files(order: str) -> bool:
     """True when *order*'s words forbid new files or new documentation files (DECISION amend1023 D9)."""
     return _NO_NEW_FILES.search(order) is not None
+
+
+#: The suffixes a "no new documentation files" constraint covers (F320).
+ORDER_DOC_SUFFIXES: tuple[str, ...] = (".md", ".rst", ".txt", ".adoc")
+
+
+def order_forbids_new_file(order: str, path: str) -> bool:
+    """True when *order*'s words forbid creating *path*: every new file, or a new document when *path* is one.
+
+    F320: "Do not create new documentation files" forbids `notes.md`, never `src/new_tool.py`.
+    """
+    for match in _NO_NEW_FILES.finditer(order):
+        if not re.search(r"doc|doku", match.group(), re.IGNORECASE):
+            return True
+        if path.lower().endswith(ORDER_DOC_SUFFIXES):
+            return True
+    return False

@@ -226,6 +226,15 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
     }
 
 
+def with_job_stop(job: JobPlan, shown: dict[str, Any]) -> dict[str, Any]:
+    """F325: *shown*, `job show`'s record of JOB, whose `stop` carries `job_stop`'s `reason` and
+    `text`: why a blocked, stopped, cancelled or failed job stopped, the story's own sentence."""
+    from packages.orchestration.job_stop_text import job_stop
+
+    shown["stop"] = {**shown["stop"], **job_stop(job)}
+    return shown
+
+
 #: How many of one blocked task's last-round findings `job show` prints; `--full`
 #: prints every one (R-0806).
 BLOCKED_TASK_FINDINGS_CAP = 10

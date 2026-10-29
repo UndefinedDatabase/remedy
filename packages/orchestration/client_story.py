@@ -206,6 +206,12 @@ def _failure_reason(plan: Any, rounds: dict[str, int]) -> dict[str, Any]:
     return _word("unknown")
 
 
+#: F325: the closed reason `job_stop_text` names for a task that failed outside its review.
+def story_failure_key(plan: Any) -> str:
+    """The key of the story's closed reason for a blocked or failed job PLAN (`unknown` when none fits)."""
+    return str(_failure_reason(plan, {})["key"])
+
+
 def _sandbox_refused_a_check(plan: Any) -> bool:
     """True when the tool sandbox refused one of the job's DoD checks, which then ran nothing."""
     from packages.orchestration.dod_gate import load_gate_result
@@ -482,6 +488,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
     """The run story of the job PLAN, from its record and EVENTS (its run log, oldest first)."""
     from packages.orchestration.job_apply import job_result_decline
     from packages.orchestration.job_apply_pending import job_apply_pending_fields
+    from packages.orchestration.job_stop_text import job_stop
     from packages.orchestration.job_tokens import job_token_summary
 
     rounds, last = _task_events(events)
@@ -528,6 +535,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
                              [_task_files(task) for task in plan.tasks]),
         "order_id": job_order_id(plan),
         "retries": provider_retries(plan),
+        "stop": job_stop(plan),     # F325: why the job stopped, `reason` and `text`
     }
 
 

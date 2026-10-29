@@ -38,13 +38,14 @@ from packages.orchestration.execution_config import (
     ExecutionConfig,
     _export_execution_config,
     _import_execution_config,
+    record_unrun_repair_rounds,
     resolve_job_execution_config,
 )
 from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
 from packages.orchestration.job_run_finish import stamp_blocked_job_finish
 from packages.orchestration.structured_log import bind_call_log_context
 from packages.orchestration.tier_escalation import escalation_started_in
-from packages.orchestration.verified_repair import final_task_test_command
+from packages.orchestration.verified_repair import final_task_test_command, review_findings_all_low
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -510,7 +511,7 @@ def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
 
 def save_job_plan(job: JobPlan, root: Path | None = None) -> Path:
     """Public API to persist a JobPlan. Returns path to job.json."""
-    return _persist_job(job, root)
+    return _persist_job(record_unrun_repair_rounds(job), root)
 
 
 def load_job_plan(job_id: str, root: Path | None = None) -> JobPlan | None:
@@ -1878,12 +1879,10 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
             reasons.append("test_passed=False")
         if last_round.reviewer_output:
             ro = last_round.reviewer_output
-            if ro.verdict != "pass":
+            if ro.verdict != "pass" and not review_findings_all_low(ro.findings):   # F321: low ones pass
                 reasons.append(f"reviewer_verdict={ro.verdict}")
-            if ro.verdict == "pass" and ro.findings:
-                reasons.append(
-                    f"reviewer_pass_with_{len(ro.findings)}_findings"
-                )
+            if ro.verdict == "pass" and ro.findings and not review_findings_all_low(ro.findings):
+                reasons.append(f"reviewer_pass_with_{len(ro.findings)}_findings")
         else:
             reasons.append("missing_reviewer_output")
     else:

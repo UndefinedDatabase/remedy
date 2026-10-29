@@ -382,6 +382,8 @@ _ORDER_ID_RE = re.compile(r"^[0-9a-f]{16}$")
 #: The four options `OrderLauncher.start` always adds, after the caller's own
 #: (DECISION F253 D13 (2)).
 ORDER_RUN_ALWAYS_OPTIONS = ("--json", "--no-ui", "--run-unattended")
+#: F324: the one of them an order's `unattended: false` leaves out.
+ORDER_RUN_UNATTENDED_OPTION = "--run-unattended"
 
 #: An order key a client chooses: one to 64 letters, digits, `.`, `_` or `-`, beginning with a
 #: letter or a digit; read with `fullmatch`, so it can never name a path outside `order-keys/`
@@ -746,7 +748,7 @@ class OrderLauncher:
                            record.to_json())
 
     def start(self, order_text: str, options: Sequence[str],
-              order_key: str | None = None, client: str = "") -> OrderRecord:
+              order_key: str | None = None, client: str = "", unattended: bool = True) -> OrderRecord:
         """Write ORDER_TEXT to a new order's own folder and run it there; return its record.
 
         OPTIONS are the caller's own flags (`--no-llm`, `--builder-provider=fake`, ...); this
@@ -762,6 +764,8 @@ class OrderLauncher:
         of an order file a running mission records applies to it (DECISION F253 D22 (3), (5)).
         Without it, `order.md` is a plain file, as before. CLIENT, the name of the client whose
         token sent the order, is kept on the record for the order's story (DECISION amend1023 D11).
+        UNATTENDED False (F324, the body's `unattended: false`) leaves out `--run-unattended`, so
+        the order's jobs ask their questions; every other order runs unattended.
         """
         order_id = secrets.token_hex(8)
         self._paths.orders_dir.mkdir(parents=True, exist_ok=True)
@@ -778,7 +782,8 @@ class OrderLauncher:
         out_log = order_dir / "out.log"
         err_log = order_dir / "err.log"
         env = child_environment(self._paths)
-        argv = [*self._prefix, "do", "run", *options, *ORDER_RUN_ALWAYS_OPTIONS, "--", "order.md"]
+        always = [o for o in ORDER_RUN_ALWAYS_OPTIONS if unattended or o != ORDER_RUN_UNATTENDED_OPTION]
+        argv = [*self._prefix, "do", "run", *options, *always, "--", "order.md"]
         try:
             with open(out_log, "wb") as out, open(err_log, "wb") as err:
                 child = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=err,

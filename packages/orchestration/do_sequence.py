@@ -832,12 +832,12 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                                          force_mission=ctx.force_mission,
                                          projects=len(ctx.projects), bounded=lane.bounded,
                                          single_job=bool(lane.single_job), scope_decided=lane.scope_decided)
+        planned = _shape_job_orders(ctx, shape)     # F320: a `DeliverablePlanError` stops before planning
     except ValueError as exc:
         return DO_STEP_FAILED, str(exc)
     ctx.shape, ctx.shape_source = shape, source
 
     shaped_jobs: list[OrderJobPlan] = []
-    planned = _shape_job_orders(ctx, shape)
     for order, tasks, milestone_id, target in planned:
         try:
             shaped = plan_order_job(
@@ -859,7 +859,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         if lane.bounded and not ctx.no_llm:
             shaped.intake_fallback_reason = "bounded"
         job_id = str(shaped.job.job_id)
-        name_do_job(shaped.job, order, ctx.order, target, several=len(planned) > 1)
+        name_do_job(shaped.job, order, ctx.order, target, several=len(planned) > 1, unattended=ctx.run_unattended)
         # DECISION amend1011b D4: the job joins the mission of ITS repository, under this order.
         target_mission, target_order = ctx.project_missions[str(target.project.id)]
         mission = link_order_job(str(target.project.id), target_mission, target_order, job_id)
