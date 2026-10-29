@@ -1,22 +1,18 @@
-# Plan — operator order welt-2 (2026-10-29): Remedy runs on its own
+# Plan — operator order beweis (2026-10-29): Remedy proves it runs alone
 
 ## Goal
-decodeux: improvement jobs from remedy-chat must run unattended end to end and stop only with a
-plain reason. Six faults of the night 2026-10-28/29 become F320 to F325 (Package 3, Tier 2).
+decodeux's order beweis: the reruns of 2026-10-29 must run without a question to him. Five
+causes become F326 to F330 (Package 3, Tier 2), built on branch feature/beweis.
 
 ## Current Step
-Review round 1 (full lane: 9 failures, all caused by this branch) fixed:
-- `remedy do --repair-rounds` and an order's HTTP `repair_rounds` removed again (F280 deleted
-  the flag); run and retry keep `repair_rounds`.
-- The severity reading moved to `verified_repair.py`, the waiting-job settle into
-  `job_run_finish.stamp_blocked_job_finish`, the stop sentence into job metadata, and the
-  tri-state flags into one table, so every ratchet row holds or falls (rows lowered).
-- Two broad handlers narrowed (BLE001 back to its frozen count).
-- A released job starts with the roles of the job it waited for (`released_run_options`).
-- Import allowlist, the client answer `client-story-working`, generated pages updated.
+Registration of F326 to F330; then one closing commit per feature.
 
 ## Next Steps
-1. One full lane on the branch tip; the orchestrator merges welt2/remedycore and pushes.
+1. F326 the builder may run what the reviewer asks for.
+2. F327 no order budget for narration; three rounds kept free.
+3. F328 an unattended job raises its budget once (interface 1.34, body `auto_extend`).
+4. F329 Remedy's own test run narrows to the changed parts.
+5. F330 a task outside this repository ends an unattended job; time cap across a restart.
 
 ## Risks
-- Branch welt2/remedycore is merged and pushed by the orchestrator, not by this session.
+- The orchestrator merges feature/beweis, pushes and restarts the service, not this session.
