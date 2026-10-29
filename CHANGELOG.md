@@ -69,6 +69,10 @@ fails the gate rather than shipping an unexplained release.
   `not_in_this_repository` when the work does not belong here. An unattended job whose review
   blocked a task that way, with no file changed, ends `failed` with the stop reason
   `not_in_this_repository` and a sentence naming the repository and why, instead of waiting.
+- 2026-10-29, operator order beweis (F331, interface 1.34): no job stays running with nothing
+  running it. When the server starts, a job a dead order walk left `running` is resumed when it
+  runs unattended, its order is live and it is within its caps, and else ends `stopped` with the
+  stop reason `orphaned_after_restart` and a sentence why.
 
 ## [1.0.0] - 2026-10-27
 

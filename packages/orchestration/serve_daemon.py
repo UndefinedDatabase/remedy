@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from packages.orchestration.job_orphans import settle_orphaned_running_jobs
 from packages.orchestration.serve_paths import ServePaths, serve_paths, socket_path_problem
 from packages.orchestration.serve_runs import (
     CommandRunner,
@@ -39,7 +40,6 @@ from packages.orchestration.serve_runs import (
     RunLauncher,
     RunRefused,
     job_run_argv,
-    settle_orphaned_job_cancels,
 )
 
 #: `run_supervisor`'s own sentinel for `api_port`, distinguishing "the caller passed no
@@ -324,7 +324,7 @@ def run_supervisor(
         os.chmod(paths.socket, 0o600)
         _write_private(paths.pid_file, str(os.getpid()))
         launcher.resume_registered(job_is_running=job_is_running)
-        settle_orphaned_job_cancels(paths)
+        settle_orphaned_running_jobs(paths, launcher)     # R-1365's cancels first, then F331's orphans
         if resolved_api_port is not None:
             try:
                 api_server = ThreadingHTTPServer(

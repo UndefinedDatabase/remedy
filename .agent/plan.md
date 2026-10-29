@@ -5,7 +5,7 @@ decodeux's order beweis: the reruns of 2026-10-29 must run without a question to
 causes become F326 to F330 (Package 3, Tier 2), built on branch feature/beweis.
 
 ## Current Step
-F326 to F330 built; the targeted test run and the report are next.
+F326 to F331 built; F331 is the gap F330's time-cap check found.
 
 ## Next Steps
 1. F326 the builder may run what the reviewer asks for.

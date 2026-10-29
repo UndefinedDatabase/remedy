@@ -476,7 +476,8 @@
    "added": [
     "body key `auto_extend` (flag) of `POST /api/v1/orders`: `false` passes `remedy do --no-auto-extend`, so the order's jobs never raise a call or token cap by themselves (F328)",
     "story key `assumptions` in `GET /api/v1/jobs/{job}/story`, each with `at`, `question` and `assumed`: what an unattended job assumed instead of asking (F328)",
-    "stop reason `not_in_this_repository` in the story's `stop.reason`, `remedy job show --json`'s `stop.reason` and each order job's `stop_text`: an unattended job whose review says the work does not belong in its repository, with no file changed, ends `failed` (F330)"
+    "stop reason `not_in_this_repository` in the story's `stop.reason`, `remedy job show --json`'s `stop.reason` and each order job's `stop_text`: an unattended job whose review says the work does not belong in its repository, with no file changed, ends `failed` (F330)",
+    "stop reason `orphaned_after_restart`: a job an ended order walk left `running` is started again at the server's start when it runs unattended, its order is live and it is within its caps, and else ends `stopped` with this reason and a stop text (F331)"
    ],
    "value_changes": [
     {
@@ -490,6 +491,12 @@
      "case": "an unattended job whose review blocked a task with a finding of kind `not_in_this_repository` and that changed no file",
      "before": "`blocked`, waiting for a person",
      "after": "`failed` with the stop reason `not_in_this_repository` and a stop text naming the repository and why (F330)"
+    },
+    {
+     "field": "job.state",
+     "case": "a job an ended order walk left `running` with nothing running it, after the server starts",
+     "before": "`running` for good",
+     "after": "`running` again in a new run, or `stopped` with the stop reason `orphaned_after_restart` (F331)"
     }
    ]
   }

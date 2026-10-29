@@ -151,6 +151,10 @@ Additions only, so that an unattended order needs nobody:
   optional `kind`), while no task changed a file, ends `failed` at once instead of waiting
   `blocked` for a person; its `stop.reason` is `not_in_this_repository` and `stop.text` names the
   repository and why, so a client hands the task back. See "Orders".
+- A new stop reason, `orphaned_after_restart` (F331). When the server starts, a job an ended
+  order walk left `running` with nothing running it is started again when it runs unattended,
+  its order is live and it is within its caps; any other ends `stopped` with that reason and a
+  `stop.text` saying why, and `remedy job resume` continues it. See "Orders".
 - A `remedy do` answer's `order_budget` carries `uncounted_calls`, and each of its `calls` carries
   `counted` (F327): the study's narration runs on the local model and is never counted against
   the order's caps.
@@ -281,6 +285,15 @@ once: its stop reason is `not_in_this_repository` and its stop text (the story's
 order job's `stop_text`) names the repository by name and path, the task, and the review's reason.
 It never waits for a person, so a client hands the task back to whoever routes it. An attended
 job, and a job that changed a file, stay `blocked` on the plain review path.
+
+**A job nothing runs any more ends or runs again (F331, version 1.34).** An order's walk runs its
+jobs in its own process. When that process is gone (a crash, a restart) while a job of it reads
+`running`, the server settles the job when it starts: a job that runs unattended, whose order the
+server still holds with no cancel, and that has reached none of its caps and no passed deadline,
+starts again as `POST /api/v1/jobs/{job}/run` would start it. Any other ends `stopped` with the
+stop reason `orphaned_after_restart` and a stop text that says why it was not started again; it
+keeps its pending work for `remedy job resume`. A job no process of the server ever ran is left to
+the run in a terminal that may hold it.
 
 **An order's story (version 1.29).** `GET /api/v1/orders/{order}/story` tells the whole order in
 closed words, as `remedy client order-story <order> --json` does: `order_id`; `client`, the name of

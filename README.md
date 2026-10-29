@@ -36,7 +36,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-180 of 330 registered items accepted. Remedy is version 1: Package 1 of docs/roadmap/STATUS.md has no
+181 of 331 registered items accepted. Remedy is version 1: Package 1 of docs/roadmap/STATUS.md has no
 open line, so Rule A5 names no next item; the lines still open wait in Package 3 for a report.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
@@ -46,7 +46,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 63 | 64 |
+| 2 | Minimal Self-Build Runtime | 64 | 65 |
 | 3 | Full Token Economy & Autonomy | 16 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
@@ -399,7 +399,8 @@ F326 the builder may run what the reviewer asks for (check scripts, tsc, ruff, m
 F327 the planner spends no order budget on narration (the study's local narration is not counted, a studied project whose manifest changed is studied without it, the order's call cap keeps three rounds of builder and reviewer free, and a cap too small for that is said before planning and plans one job),
 F328 an unattended job raises its call or token cap once by itself and says so in its story (`auto_extend`, interface 1.34),
 F329 Remedy narrows its own test run to the changed parts and names the selection in the check's evidence,
-F330 an unattended job whose review says its work is not in this repository ends at once with the stop reason `not_in_this_repository` (interface 1.34).
+F330 an unattended job whose review says its work is not in this repository ends at once with the stop reason `not_in_this_repository` (interface 1.34),
+F331 a job a dead order walk left running is resumed or stopped (`orphaned_after_restart`) when the server starts.
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

@@ -152,3 +152,21 @@ def resume_after_budget_extend(
     else:
         return {**envelope, "resumed": run_record_payload(serve_paths(), record)}
     return {**envelope, "resumed": None, "resume_refused": refused}
+
+
+# WHY: F331 resumes a job a dead walk left `running` only while it is within its caps.
+def job_within_caps(job: Any, *, now: datetime | None = None) -> bool:
+    """True when none of JOB's four limits has been reached by its saved actuals and its deadline has
+    not passed; a job whose limits cannot be read is not within them."""
+    from packages.orchestration.budget_profiles import effective_job_budgets
+
+    now = now or datetime.now(timezone.utc)
+    try:
+        limits = effective_job_budgets(job)
+    except ValueError:
+        return False
+    if limits is None:
+        return True
+    if limits.deadline is not None and limits.deadline <= now:
+        return False
+    return not _exhausted_limits(job, limits, now)
