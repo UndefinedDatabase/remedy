@@ -48,7 +48,7 @@ ORDER_JOBS_KEY_TREE: dict[str, Any] = {key: {} for key in (
 ORDER_JOB_RELEASES_KEY = "released_job"
 #: F323: the stop reason token of a waiting job whose awaited job ended without a result that lands.
 ORDER_JOB_AWAITED_ENDED = "awaited_job_ended"
-#: F323: the sentence such a job carries (`JobPlan.stop_text`).
+#: F323: the sentence such a job carries (its metadata `job_stop_text.JOB_STOP_TEXT_KEY`).
 ORDER_JOB_AWAITED_ENDED_TEXT = ("This job waited for job {job}, which ended {ended}{why}, so its result "
                                 "will not be applied and this job did not run. Run it on the repository "
                                 "as it is (remedy job run {me}), or cancel it.")
@@ -84,6 +84,7 @@ def start_released_job(twin: str, segments: dict[str, str], envelope: dict[str, 
     released (`release_waiting_job`) and, when it runs unattended, started by the supervisor:
     nobody has to come back to start the rest of an order. A job that asks questions is released
     and left `ready` for its person. A start that is refused is named under `release_refused`.
+    The released job runs with the roles the job it waited for ran with (`released_run_options`).
     """
     if twin != "job.apply" or not envelope.get("ok") or not envelope.get("commit_sha") or start_run is None:
         return envelope
@@ -93,20 +94,37 @@ def start_released_job(twin: str, segments: dict[str, str], envelope: dict[str, 
     from packages.orchestration.serve_runs import RunRefused, run_record_payload
 
     try:
-        released = release_waiting_job(lookup_job_id(segments["job"]))
+        awaited_id = lookup_job_id(segments["job"])
     except JobIdError:
         return envelope
+    released = release_waiting_job(awaited_id)
     job = load_job_plan(released) if released else None
     if job is None or job.metadata.get(JOB_UNATTENDED_KEY) is not True:
         return envelope
     try:
-        record = start_run(released, ())
+        record = start_run(released, released_run_options(load_job_plan(awaited_id)))
     except RunRefused as exc:
         return {**envelope, "released": None, "release_refused": {"error": exc.token, "message": str(exc)}}
     except OSError:
         return {**envelope, "released": None, "release_refused": {
             "error": "api_command_failed", "message": f"job {released} could not be started; nothing runs"}}
     return {**envelope, "released": run_record_payload(serve_paths(), record)}
+
+
+#: F323: the awaited job's role choices a released job starts with, as `ExecutionConfig` field and
+#: `remedy job run` flag: the four `do_context._job_run_role_flags` names on a waiting job's Next line.
+RELEASED_RUN_ROLE_FLAGS: tuple[tuple[str, str], ...] = (
+    ("builder", "--builder-provider"), ("reviewer", "--reviewer-provider"),
+    ("builder_model", "--builder-model"), ("reviewer_model", "--reviewer-model"))
+
+
+def released_run_options(awaited: Any) -> tuple[str, ...]:
+    """F323: the `job run` flags of a released job: each role choice the job it waited for (AWAITED)
+    ran with that was named, not a default, so the rest of an order runs with its order's roles."""
+    ec = getattr(awaited, "execution_config", None)
+    named = {field: str(getattr(ec, field, None) or "") for field, _flag in RELEASED_RUN_ROLE_FLAGS
+             if getattr(ec, f"{field}_source", "default") not in ("default", "roles")}
+    return tuple(f"{flag}={named[field]}" for field, flag in RELEASED_RUN_ROLE_FLAGS if named.get(field))
 
 
 def awaited_job_end(job: Any) -> str:
@@ -150,13 +168,13 @@ def settle_waiting_jobs(job_id: str) -> list[str]:
     if (awaited is None or not ended or waiting is None
             or getattr(waiting.state, "value", "") not in ("planned", "pending")):
         return []
-    from packages.orchestration.job_stop_text import job_stop_text
+    from packages.orchestration.job_stop_text import JOB_STOP_TEXT_KEY, job_stop_text
 
     # F325: a job that recorded neither its own sentence nor a reason still says why it stopped.
-    why = awaited.stop_text or awaited.stop_reason or job_stop_text(awaited)
+    why = str(awaited.metadata.get(JOB_STOP_TEXT_KEY) or "") or awaited.stop_reason or job_stop_text(awaited)
     waiting.state = RunState.BLOCKED
     waiting.stop_reason = f"{ORDER_JOB_AWAITED_ENDED}:{job_id}"
-    waiting.stop_text = ORDER_JOB_AWAITED_ENDED_TEXT.format(
+    waiting.metadata[JOB_STOP_TEXT_KEY] = ORDER_JOB_AWAITED_ENDED_TEXT.format(
         job=job_id, ended=ended, why=f" ({why.rstrip('.')})" if why else "", me=waiting.job_id)
     waiting.stopped_at = datetime.now(timezone.utc).isoformat()
     save_job_plan(waiting)
@@ -171,6 +189,7 @@ def release_waiting_job(job_id: str) -> str:
     """
     from packages.core.models import RunState
     from packages.orchestration.job_apply import job_apply_landed
+    from packages.orchestration.job_stop_text import JOB_STOP_TEXT_KEY
     from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
     awaited = load_job_plan(job_id)
@@ -182,7 +201,8 @@ def release_waiting_job(job_id: str) -> str:
     state = getattr(waiting.state, "value", "")
     if state == "blocked" and waiting.stop_reason == f"{ORDER_JOB_AWAITED_ENDED}:{job_id}":
         waiting.state = RunState.PLANNED
-        waiting.stop_reason = waiting.stop_text = waiting.stopped_at = ""
+        waiting.stop_reason = waiting.stopped_at = ""
+        waiting.metadata.pop(JOB_STOP_TEXT_KEY, None)
         save_job_plan(waiting)
         state = "planned"
     return str(waiting.job_id) if state in ("planned", "pending") else ""

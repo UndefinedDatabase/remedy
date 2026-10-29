@@ -206,10 +206,6 @@ def _resolve_do_commit_flags(
     return mode, source
 
 
-#: F324: the most repair rounds an order may name for its jobs (`remedy do --repair-rounds`, the HTTP body).
-ORDER_REPAIR_ROUNDS_MAX = 5
-
-
 def _cmd_do_order(
     order: str,
     *,
@@ -219,7 +215,6 @@ def _cmd_do_order(
     json_output: bool = False,
     no_llm: bool = False,
     run_unattended: bool = False,
-    repair_rounds: int | None = None,
     builder_provider: str | None = None,
     reviewer_provider: str | None = None,
     builder_model: str | None = None,
@@ -329,7 +324,6 @@ def _cmd_do_order(
         contract_template=contract,
         no_ui=no_ui,
         run_unattended=run_unattended,
-        repair_rounds=repair_rounds,
         no_llm=no_llm,
         force_job=force_job,
         force_mission=force_mission,
@@ -393,7 +387,6 @@ def _cmd_do(
     deadline: str | None = None,
     no_llm: bool = False,
     run_unattended: bool = False,
-    repair_rounds: int | None = None,
     force_job: bool = False,
     force_mission: bool = False,
     step_by_step: bool = False,
@@ -414,9 +407,6 @@ def _cmd_do(
     exit 2 and that mission's id, unless `new_mission` asks for another (DECISION F304 D6).
     """
     from apps.cli.commands.do_rehearsal_refusals import refuse_rehearsal_conflicts
-    if repair_rounds is not None and not 0 <= repair_rounds <= ORDER_REPAIR_ROUNDS_MAX:   # F324
-        fail("invalid_argument", f"--repair-rounds must be a whole number from 0 to {ORDER_REPAIR_ROUNDS_MAX}, "
-             f"got {repair_rounds}; nothing was run", json_output=json_output, exit_code=2)
     refuse_rehearsal_conflicts(rehearse=rehearse, run_unattended=run_unattended, apply=apply, commit=commit, commit_auto=commit_auto,
                                commit_with_history=commit_with_history, push=push, json_output=json_output)
     # DECISION F295 D2: an order argument naming a `.md` file is read before any
@@ -476,7 +466,7 @@ def _cmd_do(
                  json_output=json_output, exit_code=2, mission_id=running.id)
     _cmd_do_order(goal, repo=repo, **order_source_kwargs,
                   json_output=json_output, no_llm=no_llm,
-                  run_unattended=run_unattended, repair_rounds=repair_rounds, builder_provider=builder_provider,
+                  run_unattended=run_unattended, builder_provider=builder_provider,
                   reviewer_provider=reviewer_provider, builder_model=builder_model,
                   reviewer_model=reviewer_model, planner_model=planner_model,
                   planner_provider=planner_provider,
@@ -495,7 +485,6 @@ def _cmd_do(
 def _cmd_job_run(
     job_id: str,
     *,
-    unattended: bool | None = None,
     max_rounds: int | None = None,
     repair_rounds: int | None = None,
     test_command: str | None = None,
@@ -512,7 +501,7 @@ def _cmd_job_run(
     repair_model: str | None = None, repair_effort: str | None = None,
     max_total_tokens: str | None = None, max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None, max_cost_usd: str | None = None,
-    deadline: str | None = None, retry: bool = False,
+    deadline: str | None = None, retry: bool = False, unattended: bool | None = None,
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
 
@@ -589,22 +578,10 @@ def _cmd_job_run(
     from packages.core.models import RunState
     from packages.orchestration.job_report import export_job_report
     from packages.orchestration.job_retry import retry_blocked_job_tasks
-
-    # F324: `--unattended`/`--no-unattended` store the choice on the job; an unattended job's run
-    # approves the plan it still waits on, as its walk would have, before any refusal reads it.
-    from packages.orchestration.job_unattended import approve_unattended_plan, set_job_unattended
-    from packages.orchestration.pingpong_job import load_job_plan as _load_job_plan
     from packages.orchestration.pingpong_job import run_job
-    from packages.orchestration.pingpong_job import save_job_plan as _save_job_plan
-
-    _stored = _load_job_plan(job_id)
-    if _stored is not None:
-        if set_job_unattended(_stored, unattended):
-            _save_job_plan(_stored)
-        approve_unattended_plan(_stored)
 
     # DECISION F307 D22: step (1) of this function's boundary, every refusal before anything runs.
-    _recorded = refuse_job_run_before_it_starts(job_id, json_output=json_output)
+    _recorded = refuse_job_run_before_it_starts(job_id, json_output=json_output, unattended=unattended)
     if retry and _recorded is not None:    # R-1331: the stuck tasks go back to pending first.
         retry_blocked_job_tasks(_recorded)
 
@@ -925,7 +902,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         deadline=getattr(args, "deadline", None),
         no_llm=getattr(args, "no_llm", False),
         run_unattended=bool(getattr(args, "run_unattended", False)),
-        repair_rounds=getattr(args, "repair_rounds", None),
         force_job=bool(getattr(args, "force_job", False)),
         force_mission=bool(getattr(args, "force_mission", False)),
         step_by_step=bool(getattr(args, "step_by_step", False)),

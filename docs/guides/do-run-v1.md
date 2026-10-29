@@ -434,8 +434,9 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
   Since F324 every job the walk makes stores that it runs unattended, so `remedy job run`, a
   retry and a resume of it run unattended too; `remedy job run --no-unattended` (or
   `--unattended`) switches the stored choice for this and every later run
-- `--repair-rounds N` — the repair rounds every job of this order records (0 to 5, F324); without
-  it a job takes the config key `cycles.repair_rounds`
+- Remedy deliberately offers no `--repair-rounds` on `remedy do` (F280 deleted it): every job of
+  an order takes the config key `cycles.repair_rounds`, and `remedy job run --repair-rounds N`
+  names them for one run
 - `--no-ui` — deprecated and inert: the old cockpit was deleted, so it opens nothing; still
   accepted so existing scripts keep working
 - `--max-total-tokens`, `--max-provider-calls`, `--max-wall-clock-minutes`,

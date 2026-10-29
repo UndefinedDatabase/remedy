@@ -38,13 +38,14 @@ from packages.orchestration.execution_config import (
     ExecutionConfig,
     _export_execution_config,
     _import_execution_config,
+    record_unrun_repair_rounds,
     resolve_job_execution_config,
 )
 from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
 from packages.orchestration.job_run_finish import stamp_blocked_job_finish
 from packages.orchestration.structured_log import bind_call_log_context
 from packages.orchestration.tier_escalation import escalation_started_in
-from packages.orchestration.verified_repair import final_task_test_command
+from packages.orchestration.verified_repair import final_task_test_command, review_findings_all_low
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -398,8 +399,6 @@ class JobPlan:
     # F011: the LAST stop episode. Older job files have none of this and load unchanged.
     stop_request_id: str = ""
     stop_reason: str = ""
-    #: F323/F325: the plain sentence a person reads for this stop; "" lets `job_stop_text` derive it.
-    stop_text: str = ""
     stop_source: str = ""
     stopped_at: str = ""
     stop_archive_ref: str = ""            # control-relative, never absolute
@@ -511,16 +510,8 @@ def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
 
 
 def save_job_plan(job: JobPlan, root: Path | None = None) -> Path:
-    """Public API to persist a JobPlan. Returns path to job.json.
-
-    F321: a job that has not run yet records the repair rounds it will run with
-    (`execution_config.configured_repair_rounds`), never 0 rounds with an empty source.
-    """
-    if not job.repair_rounds_source and job.execution_config is None:
-        from packages.orchestration.execution_config import configured_repair_rounds
-
-        job.repair_rounds_allowed, job.repair_rounds_source = configured_repair_rounds()
-    return _persist_job(job, root)
+    """Public API to persist a JobPlan. Returns path to job.json."""
+    return _persist_job(record_unrun_repair_rounds(job), root)
 
 
 def load_job_plan(job_id: str, root: Path | None = None) -> JobPlan | None:
@@ -782,7 +773,6 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "stop": {
             "request_id": job.stop_request_id,
             "reason": job.stop_reason,
-            "text": job.stop_text,
             "source": job.stop_source,
             "stopped_at": job.stopped_at,
             "archive_ref": job.stop_archive_ref,
@@ -915,7 +905,6 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         execution_config=_import_execution_config(data.get("execution_config")),
         stop_request_id=str((data.get("stop") or {}).get("request_id", "") or ""),
         stop_reason=str((data.get("stop") or {}).get("reason", "") or ""),
-        stop_text=str((data.get("stop") or {}).get("text", "") or ""),
         stop_source=str((data.get("stop") or {}).get("source", "") or ""),
         stopped_at=str((data.get("stop") or {}).get("stopped_at", "") or ""),
         stop_archive_ref=str((data.get("stop") or {}).get("archive_ref", "") or ""),
@@ -1890,17 +1879,10 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
             reasons.append("test_passed=False")
         if last_round.reviewer_output:
             ro = last_round.reviewer_output
-            # F321: the loop passed a review whose findings are all low; they stay on the record.
-            from packages.orchestration.pingpong_loop import REVIEW_PASSING_SEVERITIES
-
-            low_only = bool(ro.findings) and all(
-                str(f.severity).strip().lower() in REVIEW_PASSING_SEVERITIES for f in ro.findings)
-            if ro.verdict != "pass" and not low_only:
+            if ro.verdict != "pass" and not review_findings_all_low(ro.findings):   # F321: low ones pass
                 reasons.append(f"reviewer_verdict={ro.verdict}")
-            if ro.verdict == "pass" and ro.findings and not low_only:
-                reasons.append(
-                    f"reviewer_pass_with_{len(ro.findings)}_findings"
-                )
+            if ro.verdict == "pass" and ro.findings and not review_findings_all_low(ro.findings):
+                reasons.append(f"reviewer_pass_with_{len(ro.findings)}_findings")
         else:
             reasons.append("missing_reviewer_output")
     else:
@@ -2455,34 +2437,6 @@ def _writes_ownership_ledger(fn):
     return _wrapped
 
 
-def _settles_waiting_jobs(fn):
-    """Wrap `run_job` so every run ends by settling the jobs of its order that wait for it (F323).
-
-    A job that ends without a result that can land (blocked, stopped, failed, cancelled) ends
-    each job waiting for it `blocked`, with a sentence naming why (`order_jobs.settle_waiting_jobs`);
-    before, such a job stayed `waiting` forever (job 43e55dbbd5ba4e73 of 2026-10-28). A settle
-    that cannot read a record never fails the run it follows.
-    """
-
-    @functools.wraps(fn)
-    def _wrapped(job_id, *args, **kwargs):
-        try:
-            return fn(job_id, *args, **kwargs)
-        finally:
-            import logging
-
-            from packages.orchestration.order_jobs import settle_waiting_jobs
-
-            try:
-                settle_waiting_jobs(str(job_id))
-            except Exception:  # noqa: BLE001 — the run's own outcome stands; the view still names the wait
-                logging.getLogger(__name__).warning("settling the jobs waiting for %s failed", job_id,
-                                                    exc_info=True)
-
-    return _wrapped
-
-
-@_settles_waiting_jobs
 @_writes_ownership_ledger
 @bind_call_log_context(job_id="job_id")
 @stamp_blocked_job_finish
@@ -2582,11 +2536,6 @@ def run_job(
         job.budgets = budgets
         _persist_job(job)
 
-    # F321/F324: repair rounds the job's own record names (an order's or a run's `repair_rounds`)
-    # answer before the config key on the job's first run; a later run reads its persisted config.
-    if repair_rounds is None and job.execution_config is None and \
-            job.repair_rounds_source not in ("", "config", "default"):
-        repair_rounds, repair_rounds_source = job.repair_rounds_allowed, job.repair_rounds_source
     # Step 4869: Resolve each config field — explicit > persisted > default. F306 structure step
     # (2) for `run_job`: the resolution itself is `resolve_job_execution_config` in
     # execution_config.py, so the recorded answer and the running job can never drift apart.

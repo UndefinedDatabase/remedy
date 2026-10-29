@@ -1671,8 +1671,7 @@ def test_the_order_create_route_is_pinned_with_its_body_and_its_statuses():
         ("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
         ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
         ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
-        ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag"),
-        ("repair_rounds", "rounds"))
+        ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag"))
     assert route.refusals == ()
     assert route.refusal_default is None
     assert route.starts_order is True
@@ -3452,7 +3451,7 @@ def test_the_ask_route_is_pinned_with_its_body_and_its_statuses():
                               ("ask_provider_unavailable", 503), ("ask_failed", 503))
 
 
-# -- F324: a job started unattended stays unattended; an order names its repair rounds ------------
+# -- F324: a job started unattended stays unattended; a run or a retry names its repair rounds ------
 
 
 def test_an_order_runs_unattended_unless_its_body_says_false(registered_project_slug):
@@ -3463,20 +3462,26 @@ def test_an_order_runs_unattended_unless_its_body_says_false(registered_project_
         seen.append((args, kwargs))
         return _fixture_order_record()
 
-    assert _post_order({"order": text, "unattended": True, "repair_rounds": 3}, start)[0] == 202
-    assert seen[-1] == ((text, ["--repair-rounds=3", *_local_defaults()]), {})
+    assert _post_order({"order": text, "unattended": True}, start)[0] == 202
+    assert seen[-1] == ((text, _local_defaults()), {})
     assert _post_order({"order": text, "unattended": False}, start)[0] == 202
     assert seen[-1] == ((text, _local_defaults()), {"unattended": False})
 
 
 @pytest.mark.parametrize("rounds", [6, -1, True, 2.5, "2"])
-def test_repair_rounds_outside_zero_to_five_are_400_and_start_nothing(registered_project_slug, rounds):
-    calls, start = _recording_order_starter(_fixture_order_record())
-    status, answer, _headers = _post_order(
-        {"order": _order_text(registered_project_slug), "repair_rounds": rounds}, start)
+def test_repair_rounds_outside_zero_to_five_are_400_and_start_nothing(rounds):
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(full, {"repair_rounds": rounds}, start)
     assert (status, answer["error"]) == (400, "api_body_invalid")
     assert "'repair_rounds' must be a whole number from 0 to 5" in answer["message"]
     assert calls == []
+
+
+def test_an_order_names_no_repair_rounds():
+    """F324 with F280: `remedy do` takes no `--repair-rounds`, so neither does an order's body."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_CREATE_PATH)
+    assert "repair_rounds" not in dict(route.body)
 
 
 def test_a_run_or_retry_body_passes_unattended_and_repair_rounds_to_job_run():

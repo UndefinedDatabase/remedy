@@ -19,8 +19,8 @@
 > verdict whose findings are at most `medium` is repaired like a `needs_repair` while repair
 > rounds remain, and then ends as repair exhausted. Only a `high` or `blocker` finding, or a
 > `blocked` verdict without findings, stops a job by the reviewer's word alone. A job's repair
-> rounds come from its run (`--repair-rounds`, the HTTP `repair_rounds`), else its recorded
-> configuration, else the config key `cycles.repair_rounds` (source `config`), else 2
+> rounds come from its run (`remedy job run --repair-rounds`, the HTTP run's and retry's
+> `repair_rounds`), else its recorded configuration, else the config key `cycles.repair_rounds` (source `config`), else 2
 > (`execution_config.configured_repair_rounds`); a job that has not run yet records the rounds
 > it will run with.
 

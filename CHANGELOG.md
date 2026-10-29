@@ -20,7 +20,7 @@ fails the gate rather than shipping an unexplained release.
 - 2026-10-29, operator order welt-2 (F321): low findings never block a job. A review whose
   findings are all low passes, a blocked verdict with medium findings at most gets a repair round
   while rounds remain, and only high or blocker findings stop a job by the reviewer's word. The
-  config key `cycles.repair_rounds` now names every job's repair rounds when nothing else does,
+  config key `cycles.repair_rounds` now names every job's repair rounds unless its run names them,
   and a job that has not run yet shows the rounds it will run with instead of 0.
 - 2026-10-29, operator order welt-2 (F322): a job's tests run against its own worktree. A Python
   project's worktree comes first on `PYTHONPATH` for the builder and for every check, so the
@@ -34,8 +34,8 @@ fails the gate rather than shipping an unexplained release.
 - 2026-10-29, operator order welt-2 (F324): a job started unattended stays unattended. Every job
   of an order stores the choice, so a later `remedy job run`, a retry over HTTP or a resume no
   longer stops at the plan approval or at a burn trip of a job with caps; `remedy job run
-  --unattended`/`--no-unattended`, `remedy do --repair-rounds` and the HTTP bodies' `unattended`
-  and `repair_rounds` (interface 1.33) name it. An order's `unattended: false` asks again.
+  --unattended`/`--no-unattended` and the HTTP bodies' `unattended` (interface 1.33) name it, and
+  the run and retry bodies take `repair_rounds`. An order's `unattended: false` asks again.
 - 2026-10-29, operator order welt-2 (F325): every stop says why. A blocked, stopped, cancelled or
   failed job carries one sentence: the story's `stop` (`reason` and `text`), each order job's
   `stop_text` and `remedy job show --json`'s `stop.text`. A job its review blocked names the

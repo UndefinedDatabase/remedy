@@ -672,6 +672,13 @@ def _start_run_answer(
     return 202, build_ok(**run_record_payload(serve_paths(), record)), {}
 
 
+def _order_start_keys(order_key: str | None, body: dict[str, Any]) -> dict[str, Any]:
+    """The keywords the order starter takes beside the text and the options, each only when given:
+    `order_key`, and since F324 `unattended=False` for an order that wants its questions."""
+    keys: dict[str, Any] = {} if order_key is None else {"order_key": order_key}
+    return keys if body.get("unattended", True) else {**keys, "unattended": False}
+
+
 def answer_public_api_post(
     path: str, raw_body: bytes,
     run_command: Callable[[str, list[str]], dict[str, Any] | None],
@@ -774,13 +781,8 @@ def answer_public_api_post(
                         "the order with new_mission true to run it again as one more order of "
                         "the same mission; nothing was run",
                         mission_id=mission.id), {}
-            # F324: only an order that wants its questions says so; the key is passed only then.
-            asking = {} if checked.get("unattended", True) else {"unattended": False}
             try:
-                if order_key is None:
-                    record = start_order(order_text, options, **asking)
-                else:
-                    record = start_order(order_text, options, order_key=order_key, **asking)
+                record = start_order(order_text, options, **_order_start_keys(order_key, checked))
             except OSError:
                 return 500, build_error(
                     "api_command_failed",

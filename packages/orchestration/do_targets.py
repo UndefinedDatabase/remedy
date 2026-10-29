@@ -307,12 +307,18 @@ def do_job_title(job_order: str, order: str, *, project_slug: str, deliverables:
     return f"{cut}…"
 
 
-def name_do_job(job: Any, job_order: str, order: str, target: DoJobTarget, *, several: bool) -> None:
-    """Give a planned job of the walk its `do_job_title` and save it."""
+def name_do_job(job: Any, job_order: str, order: str, target: DoJobTarget, *, several: bool,
+                unattended: bool = False) -> None:
+    """Give a planned job of the walk its `do_job_title` and save it; an UNATTENDED walk's job
+    stores that it runs unattended for every later run (F324, `job_unattended`)."""
     from packages.orchestration.pingpong_job import save_job_plan
     from packages.orchestration.task_deliverables import task_deliverable
 
     job.job_title = do_job_title(job_order, order, project_slug=str(getattr(target.project, "slug", "")),
                                  deliverables=[d for d in map(task_deliverable, job.tasks) if d],
                                  several=several)
+    if unattended:
+        from packages.orchestration.order_jobs import JOB_UNATTENDED_KEY
+
+        job.metadata[JOB_UNATTENDED_KEY] = True
     save_job_plan(job)

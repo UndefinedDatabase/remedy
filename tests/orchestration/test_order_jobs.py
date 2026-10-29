@@ -204,8 +204,8 @@ def test_a_job_waiting_for_a_blocked_job_ends_blocked_with_a_sentence(data_root)
     waiting = load_job_plan(str(second.job_id))
     assert waiting.state.value == "blocked"
     assert waiting.stop_reason == f"awaited_job_ended:{first.job_id}"
-    assert waiting.stop_text.startswith(f"This job waited for job {first.job_id}, which ended blocked (reviewer_blocked)")
-    assert f"remedy job run {second.job_id}" in waiting.stop_text
+    assert waiting.metadata["stop_text"].startswith(f"This job waited for job {first.job_id}, which ended blocked (reviewer_blocked)")
+    assert f"remedy job run {second.job_id}" in waiting.metadata["stop_text"]
     assert load_job_plan(str(third.job_id)).stop_reason == f"awaited_job_ended:{second.job_id}"
 
 
@@ -222,12 +222,19 @@ def test_the_view_says_nothing_releases_a_job_whose_predecessor_blocked(data_roo
 
 
 def test_run_job_settles_the_jobs_that_wait_for_it(data_root, monkeypatch):
-    from packages.orchestration import pingpong_job
+    from packages.orchestration.job_run_finish import stamp_blocked_job_finish
 
     first, second = _chain("blocked", "planned")
-    wrapped = pingpong_job._settles_waiting_jobs(lambda job_id, **_: load_job_plan(job_id))
+    wrapped = stamp_blocked_job_finish(lambda job_id, **_: load_job_plan(job_id))
     wrapped(str(first.job_id))
     assert load_job_plan(str(second.job_id)).state.value == "blocked"
+
+    def raises(job_id, **_):
+        raise RuntimeError("the run broke")
+    third, fourth = _chain("failed", "planned")
+    with pytest.raises(RuntimeError):
+        stamp_blocked_job_finish(raises)(str(third.job_id))     # a run that raised settles too
+    assert load_job_plan(str(fourth.job_id)).state.value == "blocked"
 
 
 def test_an_applied_commit_releases_and_starts_an_unattended_waiting_job(data_root, monkeypatch):
@@ -239,19 +246,26 @@ def test_an_applied_commit_releases_and_starts_an_unattended_waiting_job(data_ro
     waiting = load_job_plan(str(second.job_id))
     waiting.metadata[OJ.JOB_UNATTENDED_KEY] = True
     save_job_plan(waiting)
+    from packages.orchestration.execution_config import ExecutionConfig
+
     landed = load_job_plan(str(first.job_id))
     landed.state = RunState.COMPLETED
+    landed.execution_config = ExecutionConfig(builder="fake", builder_source="cli", reviewer="claude_cli",
+                                              reviewer_source="default", reviewer_model="opus",
+                                              reviewer_model_source="cli")
     save_job_plan(landed)
     monkeypatch.setattr(JA, "job_apply_landed", lambda job_id: job_id == str(first.job_id))
     import packages.orchestration.serve_runs as SR
     monkeypatch.setattr(SR, "run_record_payload", lambda paths, record: {"job_id": record})
     started = []
 
-    answer = OJ.start_released_job("job.apply", {"job": str(first.job_id)},
-                                   {"ok": True, "commit_sha": "abc"}, lambda job, opts: started.append(job) or job)
+    answer = OJ.start_released_job("job.apply", {"job": str(first.job_id)}, {"ok": True, "commit_sha": "abc"},
+                                   lambda job, opts: started.append((job, tuple(opts))) or job)
 
-    assert started == [str(second.job_id)] and answer["released"] == {"job_id": str(second.job_id)}
+    # The released job runs with the roles its order named for the job before it, never a default.
+    assert started == [(str(second.job_id), ("--builder-provider=fake", "--reviewer-model=opus"))]
+    assert answer["released"] == {"job_id": str(second.job_id)}
     released = load_job_plan(str(second.job_id))
-    assert released.state.value == "planned" and released.stop_reason == "" and released.stop_text == ""
+    assert released.state.value == "planned" and released.stop_reason == "" and "stop_text" not in released.metadata
     assert OJ.start_released_job("job.apply", {"job": str(first.job_id)}, {"ok": True, "commit_sha": ""},
                                  lambda job, opts: started.append(job)) == {"ok": True, "commit_sha": ""}

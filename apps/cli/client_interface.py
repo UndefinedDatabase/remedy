@@ -100,7 +100,7 @@ from packages.orchestration.project_ask import PROJECT_ASK_ANSWER_KEYS, PROJECT_
 #: amend1027-green-builds to `1.31` (the story's `order_id`, `retries`, `scope.match`, `verification.tested_by`),
 #: amend1027b-v1 to `1.32` (`scope.match` null when nothing was compared, `scope.match_text`, `scope.tasks`,
 #: `scope.tasks_text`, and the 16-character `order_id` of every job, `order_batch_id` in the digest), and
-#: operator order welt-2 (F323 to F325) to `1.33` (`job run --unattended`/`--no-unattended`, `do --repair-rounds`,
+#: operator order welt-2 (F323 to F325) to `1.33` (`job run --unattended`/`--no-unattended`,
 #: `job apply`'s `released`/`release_refused`, `job show`'s `stop.text`, the story's `stop`, order jobs' `stop_text`).
 CLIENT_INTERFACE_VERSION = "1.33"
 

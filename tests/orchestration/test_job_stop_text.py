@@ -92,7 +92,7 @@ def test_every_stopped_state_carries_a_sentence(tmp_path: Path) -> None:
         assert job_stop_text(job), state
     job.state, job.stop_reason = RunState.STOPPED, "operator_stop"
     assert job_stop_text(job) == "The job stopped: operator stop."
-    job.stop_text = "Stopped by the order's cancel."
+    job.metadata["stop_text"] = "Stopped by the order's cancel."
     assert job_stop_text(job) == "Stopped by the order's cancel."
     failed = parse_job_file("# Job: Demo\n\n## Task 1: Fix README\nFix README.\n\nAcceptance:\n- fixed\n", str(repo))
     failed.state, failed.tasks[0].status, failed.tasks[0].test_passed = RunState.FAILED, TASK_FAILED, False

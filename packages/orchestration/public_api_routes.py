@@ -387,8 +387,7 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         body=(("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
               ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
               ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
-              ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag"),
-              ("repair_rounds", "rounds")),
+              ("capture_review", "flag"), ("planner_provider", "string"), ("unattended", "flag")),
         starts_order=True,
         description=(
             "Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do "
@@ -419,9 +418,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "repository's one mission, and the record's `order_file` then names the key's file. "
             "Since 1.33 (F324) every job of an order stores that it runs unattended, so its later "
             "runs, retries and resumes run unattended too, unless the body's `unattended` is `false`, "
-            "which leaves out `--run-unattended` so the jobs ask their questions; `repair_rounds`, a "
-            "whole number from 0 to 5, passes `--repair-rounds` and every job of the order records "
-            "these rounds, any other value answering 400 `api_body_invalid`."
+            "which leaves out `--run-unattended` so the jobs ask their questions. An order's jobs take "
+            "their repair rounds from the config key `cycles.repair_rounds`; `remedy do` deliberately "
+            "names none (F280)."
         ),
     ),
     PublicApiRoute(

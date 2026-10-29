@@ -8,13 +8,10 @@ import pytest
 
 from packages.orchestration.execution_config import configured_repair_rounds, resolve_job_execution_config
 from packages.orchestration.pingpong_job import validate_job_task_result
-from packages.orchestration.pingpong_loop import (
-    REASON_ONLY_LOW_FINDINGS,
-    make_repair_decision,
-    run_pingpong,
-)
+from packages.orchestration.pingpong_loop import make_repair_decision, run_pingpong
 from packages.orchestration.pingpong_provider import ReviewerOutput, ReviewFinding
 from packages.orchestration.pingpong_provider_fake import FakeProvider
+from packages.orchestration.verified_repair import REASON_ONLY_LOW_FINDINGS
 
 
 @pytest.fixture(autouse=True)

@@ -816,7 +816,6 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     Beside that merge, the contract binds the job to its repository and
     grants it (DECISION F269 D7).
     """
-    from packages.orchestration.job_unattended import record_walk_job_choices
     from packages.orchestration.mission_contract import (
         grant_contract_job_repository,
         merge_contract_slice_into_dod,
@@ -826,7 +825,6 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.repo_mission import link_order_job
     from packages.orchestration.scope_decision import record_scope_decision
     from packages.orchestration.scope_question import ScopeQuestionRaised
-    from packages.orchestration.task_deliverables import DeliverablePlanError
 
     lane = settle_do_lane(ctx)
     try:
@@ -834,15 +832,12 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                                          force_mission=ctx.force_mission,
                                          projects=len(ctx.projects), bounded=lane.bounded,
                                          single_job=bool(lane.single_job), scope_decided=lane.scope_decided)
+        planned = _shape_job_orders(ctx, shape)     # F320: a `DeliverablePlanError` stops before planning
     except ValueError as exc:
         return DO_STEP_FAILED, str(exc)
     ctx.shape, ctx.shape_source = shape, source
 
     shaped_jobs: list[OrderJobPlan] = []
-    try:
-        planned = _shape_job_orders(ctx, shape)
-    except DeliverablePlanError as exc:     # F320: a deliverable that cannot exist stops before planning
-        return DO_STEP_FAILED, str(exc)
     for order, tasks, milestone_id, target in planned:
         try:
             shaped = plan_order_job(
@@ -864,8 +859,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         if lane.bounded and not ctx.no_llm:
             shaped.intake_fallback_reason = "bounded"
         job_id = str(shaped.job.job_id)
-        record_walk_job_choices(shaped.job, unattended=ctx.run_unattended, repair_rounds=ctx.repair_rounds)
-        name_do_job(shaped.job, order, ctx.order, target, several=len(planned) > 1)
+        name_do_job(shaped.job, order, ctx.order, target, several=len(planned) > 1, unattended=ctx.run_unattended)
         # DECISION amend1011b D4: the job joins the mission of ITS repository, under this order.
         target_mission, target_order = ctx.project_missions[str(target.project.id)]
         mission = link_order_job(str(target.project.id), target_mission, target_order, job_id)

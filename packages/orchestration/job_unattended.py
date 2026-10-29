@@ -1,10 +1,11 @@
 """F324 — a job started unattended stays unattended, through run, resume, retry and continue.
 
 decodeux, 2026-10-29: "das soll absolut autonom laufen und mich nicht wegen jedem scheiss immer
-fragen und blockieren in remedy-chat". Before, only the walk of `remedy do --run-unattended` knew
+fragen und blockieren in remedy-chat". Before, only the walk of `remedy do run --run-unattended` knew
 it ran unattended: the plan's approval audit recorded it, and a later `remedy job run`, a retry
 over HTTP or a resume knew nothing of it. Now the choice is stored on the job
-(`order_jobs.JOB_UNATTENDED_KEY` in its metadata) and every run reads it there:
+(`order_jobs.JOB_UNATTENDED_KEY` in its metadata, written by `do_targets.name_do_job` for an
+unattended walk's jobs) and every run reads it there:
 
 - a plan that waits for its approval is approved by the run itself, with the audit naming the
   unattended mode (`approve_unattended_plan`);
@@ -23,8 +24,6 @@ from typing import Any
 
 from packages.orchestration.order_jobs import JOB_UNATTENDED_KEY
 
-#: The repair-rounds source a walk's own `--repair-rounds` (an order's `repair_rounds`) records.
-ORDER_REPAIR_ROUNDS_SOURCE = "order"
 #: The job metadata key of the assumptions an unattended job made instead of asking.
 JOB_ASSUMPTIONS_KEY = "unattended_assumptions"
 #: The reason the audit of a plan an unattended run approved carries.
@@ -37,15 +36,17 @@ def job_runs_unattended(job: Any) -> bool | None:
     return value if isinstance(value, bool) else None
 
 
-def record_walk_job_choices(job: Any, *, unattended: bool, repair_rounds: int | None) -> None:
-    """Store on a job a walk planned whether it runs unattended and the walk's repair rounds.
+def prepare_unattended_run(job_id: str, unattended: bool | None) -> None:
+    """Before `remedy job run` refuses anything: store *unattended* on the job when it is given, and
+    approve the plan an unattended job still waits on. A job with no record is left alone."""
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
-    The caller saves the job (`do_targets.name_do_job` does, right after).
-    """
-    if unattended:
-        job.metadata[JOB_UNATTENDED_KEY] = True
-    if repair_rounds is not None:
-        job.repair_rounds_allowed, job.repair_rounds_source = int(repair_rounds), ORDER_REPAIR_ROUNDS_SOURCE
+    job = load_job_plan(job_id)
+    if job is None:
+        return
+    if set_job_unattended(job, unattended):
+        save_job_plan(job)
+    approve_unattended_plan(job)
 
 
 def set_job_unattended(job: Any, unattended: bool | None) -> bool:

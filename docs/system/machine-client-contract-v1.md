@@ -473,7 +473,6 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--planner-model` | yes | no | yes | no | Model for every planner call of the plan and shape steps (default: the planner's configured model) |
 | `--planner-provider` | yes | no | yes | no | Which service plans: ollama or claude-cli (default: the planner of the repository's [roles] table, else planner.provider, else claude-cli) |
 | `--run-unattended` | yes | no | no | no | Run a generated plan of tasks without interactive confirmation and use the documented default for every open planning question, audited; it never implies --apply, a commit, a push, a merge or a deployment |
-| `--repair-rounds` | yes | no | yes | no | Repair rounds each task's run gets, recorded on every job of this order file (F324, 0 to 5; default: the config key cycles.repair_rounds) |
 | `--no-ui` | yes | no | no | no | Deprecated and inert: the old cockpit was deleted, so there is nothing to open; kept so existing scripts keep working |
 | `--max-total-tokens` | yes | no | yes | no | Maximum total tokens for this job (F018 budget) |
 | `--max-provider-calls` | yes | no | yes | no | Maximum provider calls for this job (F018 budget) |

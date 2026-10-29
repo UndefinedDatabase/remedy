@@ -6,8 +6,8 @@ angehalten, teilweise ohne gründe". Every blocked job of the night of 2026-10-2
 staged_blocked; reviewer_verdict=blocked`) and in the reviewer's findings of the task's run record,
 and no answer a client reads said it.
 
-`job_stop` is the one reading of why a job stopped: the job's own `stop_text` when a step wrote one
-(F323's waiting jobs), else a sentence derived from its record, in this order: the task that ended
+`job_stop` is the one reading of why a job stopped: the sentence a step wrote into the job's
+metadata under `JOB_STOP_TEXT_KEY` (F323's waiting jobs), else a sentence derived from its record, in this order: the task that ended
 blocked or failed (the review's verdict with its findings by severity and the first finding, a
 failed test run, the story's own closed reason for the run's error), the job's `stop_reason`, its pause reason, its
 `error`. It feeds the story's `stop`, each order job's `stop_text` and `remedy job show --json`'s
@@ -21,6 +21,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
+#: F323/F325: the job metadata key holding the sentence a step wrote for this stop; none lets
+#: `job_stop` derive one. Metadata, so the job record's own `stop` block keeps its shape.
+JOB_STOP_TEXT_KEY = "stop_text"
 #: The job states whose stop always carries a sentence; a paused job carries one when it has a reason.
 JOB_STOP_STATES: tuple[str, ...] = ("blocked", "stopped", "cancelled", "failed")
 #: The stop reason token of a task the review blocked, when the job recorded none of its own.
@@ -111,7 +114,7 @@ def job_stop(job: Any) -> dict[str, str]:
     """Why JOB stopped: `reason`, a token or "", and `text`, one sentence or "" for a job that did not stop."""
     state = _state_word(job)
     reason = str(getattr(job, "stop_reason", "") or "")
-    text = str(getattr(job, "stop_text", "") or "")
+    text = str((getattr(job, "metadata", None) or {}).get(JOB_STOP_TEXT_KEY) or "")
     pause = getattr(job, "pause", None) or {}
     if state == "paused" and not text and isinstance(pause, dict) and pause.get("reason"):
         return {"reason": reason or str(pause.get("source") or ""), "text": f"The job paused: {pause['reason']}."}

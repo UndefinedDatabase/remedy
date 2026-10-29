@@ -35,15 +35,20 @@ def refuse_unapproved_job_run(job: Any, job_id: str, *, json_output: bool) -> No
 
 # WHY: the refusals of `_cmd_job_run` before anything runs, moved verbatim as step (1) of its
 # boundary, so that function keeps the flags, the run and the answer (DECISION F307 D22).
-def refuse_job_run_before_it_starts(job_id: str, *, json_output: bool) -> Any:
+def refuse_job_run_before_it_starts(job_id: str, *, json_output: bool, unattended: bool | None = None) -> Any:
     """The job's record, or None when this data root holds none, once no refusal applies.
+
+    F324: first `--unattended`/`--no-unattended` (UNATTENDED) is stored on the job, and an
+    unattended job's plan that still waits is approved, as its walk would have, before any refusal.
 
     Fails `job_not_resumable` for a job whose recorded worktree cannot be continued and for a
     cancelled job, and `plan_awaiting_approval` or `plan_rejected` for a plan not approved; a
     rehearsal's staleness warning goes to standard error.
     """
+    from packages.orchestration.job_unattended import prepare_unattended_run
     from packages.orchestration.pingpong_job import job_resume_refusal, load_job_plan
 
+    prepare_unattended_run(job_id, unattended)
     # R-0913: a job whose recorded worktree cannot be continued is refused with
     # resume_job_plan's own words, before anything runs or the record is touched.
     _recorded = load_job_plan(job_id)

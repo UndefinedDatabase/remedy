@@ -9,12 +9,11 @@ import pytest
 from packages.orchestration.job_burn import job_approved_unattended
 from packages.orchestration.job_plan import AUTO_APPROVAL_MODE
 from packages.orchestration.job_unattended import (
-    ORDER_REPAIR_ROUNDS_SOURCE,
     UNATTENDED_RUN_APPROVAL_REASON,
     approve_unattended_plan,
     job_has_caps,
     job_runs_unattended,
-    record_walk_job_choices,
+    prepare_unattended_run,
     set_job_unattended,
 )
 from packages.orchestration.order_jobs import JOB_UNATTENDED_KEY
@@ -33,15 +32,16 @@ def _bare_job(**metadata):
                            budgets=None, task_plan=None)
 
 
-def test_a_walk_stores_its_unattended_choice_and_its_repair_rounds_on_the_job() -> None:
-    job = _bare_job()
-    record_walk_job_choices(job, unattended=True, repair_rounds=4)
-    assert job.metadata[JOB_UNATTENDED_KEY] is True and job_runs_unattended(job) is True
-    assert (job.repair_rounds_allowed, job.repair_rounds_source) == (4, ORDER_REPAIR_ROUNDS_SOURCE)
-    attended = _bare_job()
-    record_walk_job_choices(attended, unattended=False, repair_rounds=None)
-    assert job_runs_unattended(attended) is None
-    assert (attended.repair_rounds_allowed, attended.repair_rounds_source) == (2, "default")
+def test_a_walk_stores_its_unattended_choice_on_the_job(tmp_path: Path) -> None:
+    from packages.orchestration.do_targets import DoJobTarget, name_do_job
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    unattended, attended = _saved_job(tmp_path, "approved", None), _saved_job(tmp_path, "approved", None)
+    target = DoJobTarget(project=SimpleNamespace(slug="demo"), repo=str(tmp_path / "repo"))
+    name_do_job(unattended, "1", "Fix README.", target, several=False, unattended=True)
+    name_do_job(attended, "1", "Fix README.", target, several=False)
+    assert job_runs_unattended(load_job_plan(str(unattended.job_id))) is True
+    assert job_runs_unattended(load_job_plan(str(attended.job_id))) is None
 
 
 def test_a_run_switches_the_stored_choice_only_when_it_names_one() -> None:
@@ -92,13 +92,26 @@ def test_an_asking_or_rejected_job_is_never_approved_by_its_run(tmp_path: Path) 
     assert approve_unattended_plan(_saved_job(tmp_path, "rejected", True)) is False
 
 
+def test_job_run_stores_its_choice_and_approves_before_its_refusals(tmp_path: Path) -> None:
+    from packages.orchestration.job_plan import task_plan_blocks_execution
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job = _saved_job(tmp_path, "pending", None)
+    prepare_unattended_run(str(job.job_id), None)
+    assert task_plan_blocks_execution(load_job_plan(str(job.job_id))) == "pending"   # nothing named
+    prepare_unattended_run(str(job.job_id), True)
+    loaded = load_job_plan(str(job.job_id))
+    assert job_runs_unattended(loaded) is True and task_plan_blocks_execution(loaded) is None
+    prepare_unattended_run("no-such-job", True)                                        # left alone
+
+
 def test_job_caps_are_the_jobs_own_limits() -> None:
     assert job_has_caps(SimpleNamespace(budgets=None)) is False
     assert job_has_caps(SimpleNamespace(budgets={"max_total_tokens": None})) is False
     assert job_has_caps(SimpleNamespace(budgets={"max_cost_usd": 1.5})) is True
 
 
-def test_job_run_takes_unattended_or_no_unattended_and_do_takes_repair_rounds() -> None:
+def test_job_run_takes_unattended_or_no_unattended() -> None:
     from apps.cli.grouped import build_parser
 
     parser = build_parser()
@@ -107,4 +120,5 @@ def test_job_run_takes_unattended_or_no_unattended_and_do_takes_repair_rounds() 
     assert parser.parse_args(["job", "run", "j1", "--no-unattended"]).unattended is False
     with pytest.raises(SystemExit):
         parser.parse_args(["job", "run", "j1", "--unattended", "--no-unattended"])
-    assert parser.parse_args(["do", "run", "--repair-rounds", "3", "--", "order.md"]).repair_rounds == 3
+    with pytest.raises(SystemExit):
+        parser.parse_args(["do", "run", "--repair-rounds", "3", "--", "order.md"])   # F280 deleted it

@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import subprocess
 from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
@@ -85,6 +86,41 @@ def red_test_fingerprint(summary: str) -> str:
     return hashlib.sha256(_VOLATILE.sub("", head).encode()).hexdigest()[:16]
 
 
+#: F321: the finding severities a review passes with; such findings stay recorded for the person.
+REVIEW_PASSING_SEVERITIES: frozenset[str] = frozenset({"low"})
+#: F321: the severities a `blocked` verdict is repaired over instead of stopping the job.
+REVIEW_REPAIRABLE_SEVERITIES: frozenset[str] = frozenset({"low", "medium"})
+#: The decision reason of a review that passed with low findings only.
+REASON_ONLY_LOW_FINDINGS = "only_low_findings"
+
+
+def review_findings_all_low(findings: Sequence[Any]) -> bool:
+    """F321: True when *findings* (objects with a `severity`) are some and every one is `low`."""
+    severities = {str(getattr(f, "severity", "")).strip().lower() for f in findings}
+    return bool(severities) and severities <= REVIEW_PASSING_SEVERITIES
+
+
+def review_severity_verdict(verdict: str, finding_count: int,
+                            finding_severities: Sequence[str]) -> tuple[str, tuple[str, str] | None]:
+    """F320/F321 (operator order welt-2): the review's verdict read with its findings' severities.
+
+    Returns `(verdict, settled)`: *settled* is the `(repair_decision, reason)` that ends
+    `pingpong_loop.make_repair_decision` at once, else None and the verdict goes on. A review
+    whose findings are all `low` passes whatever its verdict, and a `blocked` verdict whose
+    findings are at most `medium` reads `needs_repair`, so it gets a repair round while rounds
+    remain: only a `high` or `blocker` finding stops a job by the reviewer's word alone. On
+    2026-10-28 job 4b90ef2ed0274960 stopped on one low finding with a repair round left.
+    """
+    severities = {str(severity).strip().lower() for severity in finding_severities}
+    if finding_count and severities and severities <= REVIEW_PASSING_SEVERITIES:
+        return verdict, ("pass_no_repair", REASON_ONLY_LOW_FINDINGS)
+    if verdict != "blocked":
+        return verdict, None
+    if finding_count and severities and severities <= REVIEW_REPAIRABLE_SEVERITIES:
+        return "needs_repair", None
+    return verdict, ("stop_blocked", "reviewer_blocked")
+
+
 #: F322: the id of the check Remedy runs itself in a round whose builder started no test run.
 ROUND_PROJECT_TESTS_CHECK_ID = "round_project_tests"
 
@@ -105,7 +141,7 @@ def remedy_round_test_run(staging: Path, timeout_sec: int) -> tuple[bool | None,
                      description="Remedy runs the project's tests in the worktree: the builder started none.")
     try:
         evidence = run_check(check, staging, timeout_sec=max(timeout_sec, CHECK_TIMEOUT_DEFAULT_SEC))
-    except Exception:  # noqa: BLE001 — a check that cannot start leaves the builder's reading standing
+    except (OSError, ValueError, subprocess.SubprocessError):   # it cannot start: the builder's reading stands
         return None
     if evidence.status not in (STATUS_PASSED, STATUS_FAILED) or evidence.exit_code is None:
         return None

@@ -349,7 +349,7 @@ with the code that calls it.
 | 209 | `packages/orchestration/proof_chain.py` | `build_proof_chain` |
 | 206 | `apps/cli/commands/runtime_cmd.py` | `_serve_supervisor` |
 | 183 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
-| 203 | `apps/cli/grouped.py` | `_add_command_args` |
+| 197 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
 | 161 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
@@ -373,7 +373,7 @@ with the code that calls it.
 | 159 | `packages/orchestration/run_manifest.py` | `validate_input_snapshot` |
 | 159 | `packages/orchestration/self_use_runner.py` | `run_next_self_use_item` |
 | 158 | `packages/orchestration/file_provenance.py` | `build_file_provenance` |
-| 151 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
+| 150 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
 | 155 | `packages/orchestration/budget_decision.py` | `answer_budget_decision` |
 | 155 | `packages/orchestration/task_injection.py` | `answer_injection_shortfall` |
 | 152 | `scripts/build_observability_index.py` | `build_observability_index` |
@@ -470,7 +470,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 4868 | `packages/orchestration/pingpong_job.py` |
+| 4867 | `packages/orchestration/pingpong_job.py` |
 | 4909 | `packages/orchestration/pingpong_loop.py` |
 | 1824 | `packages/orchestration/serve_http_handler.py` |
 | 3495 | `scripts/build_review_manifest.py` |

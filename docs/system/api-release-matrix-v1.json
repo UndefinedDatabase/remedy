@@ -450,8 +450,8 @@
    "pr": null,
    "branch": "welt2/remedycore",
    "added": [
-    "body keys `unattended` (flag) and `repair_rounds` (0 to 5) of `POST /api/v1/orders`, `POST /api/v1/jobs/{job}/run` and `POST /api/v1/jobs/{job}/retry`: a job stores whether it runs unattended, and every job of an order records its repair rounds (F324)",
-    "apply answer keys `released` and `release_refused`: the job that waited for the applied job, released and started (F323)",
+    "body key `unattended` (flag) of `POST /api/v1/orders`, `POST /api/v1/jobs/{job}/run` and `POST /api/v1/jobs/{job}/retry`, and `repair_rounds` (0 to 5) of the run and the retry route: a job stores whether it runs unattended (F324)",
+    "apply answer keys `released` and `release_refused`: the run of the job that waited for the applied job, released and started with the applied job's roles (F323)",
     "story key `stop` in `GET /api/v1/jobs/{job}/story` with `reason` and `text`, each order job's `stop_text` and `remedy job show --json`'s `stop.text`: one sentence why a blocked, stopped, cancelled or failed job stopped (F325)"
    ],
    "value_changes": [

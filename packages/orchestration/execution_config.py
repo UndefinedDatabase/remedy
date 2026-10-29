@@ -318,6 +318,17 @@ def configured_repair_rounds(config: Any = None) -> tuple[int, str]:
     return rounds, ("config" if named else "default")
 
 
+def record_unrun_repair_rounds(job: Any) -> Any:
+    """F321: *job*, which when it has not run yet records the repair rounds it will run with.
+
+    `pingpong_job.save_job_plan` passes every job through here, so a job that never ran shows
+    `configured_repair_rounds`, never 0 rounds with an empty source. A job that ran keeps its own.
+    """
+    if not job.repair_rounds_source and job.execution_config is None:
+        job.repair_rounds_allowed, job.repair_rounds_source = configured_repair_rounds()
+    return job
+
+
 # F306, the structure ledger's step (2) for `run_job`: `run_job` no longer resolves its own
 # configuration inline — this is the single function that does, so the recorded answer and the
 # running job can never drift apart.

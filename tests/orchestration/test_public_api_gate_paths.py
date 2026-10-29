@@ -21,8 +21,8 @@ while the first one's mission has not ended (R-1207, R-1210).
 A test waits for the end of each run it starts (R-1208, DECISION F253 D20): the digest can read a
 job `completed` and waiting for its apply a moment before the run that finished it has ended, so a
 client that applies at the first such reading may apply while the run is still writing. After
-every `start_run` a test calls `Supervisor.ended_run`, which polls `GET /api/v1/jobs/{job}/run`
-until its `state` is not `running`, and only then reads the digest or applies. R-1208 was raised
+every run that starts (since 1.33 the apply of an order's job starts the job waiting for it, F323)
+a test calls `Supervisor.ended_run`, which polls `GET /api/v1/jobs/{job}/run` until its `state` is not `running`, and only then reads the digest or applies. R-1208 was raised
 by one failure of the order of two jobs in five runs whose output was not kept, so every assertion
 on an HTTP answer here carries that answer as its message: a failing step shows what the server said.
 """
@@ -181,12 +181,6 @@ class Supervisor:
 
         return _poll(f"job {job_id} to complete", read,
                      lambda job: job["state"] == "completed" and job["waits_for_apply"] is True)
-
-    def start_run(self, job_id: str) -> dict:
-        status, record = self.post(f"/api/v1/jobs/{job_id}/run", RUN_BODY)
-        assert status == 202, record
-        assert record["job_id"] == job_id, record
-        return record
 
     def ended_run(self, job_id: str) -> dict:
         """Poll the run of JOB_ID until it is no longer running, and hold it to a clean end."""
@@ -361,10 +355,11 @@ def test_an_order_of_two_jobs_is_driven_to_its_end_from_the_answers_alone_over_h
     assert ended["answer"]["waiting_job_ids"] == [second], ended
 
     # The first job ran. Each later job runs on what the one before it committed, so the client
-    # applies and commits the first, runs the second and waits for the end of that run, and
-    # applies and commits that one too.
+    # applies and commits the first; since 1.33 (F323) that apply starts the second, which runs
+    # unattended like its order, and names its run under `released`. The client waits for the end
+    # of that run, and applies and commits that one too.
     applied_first = supervisor.apply(first, commit_auto=True)
-    supervisor.start_run(second)
+    assert applied_first["released"]["job_id"] == second, applied_first
     supervisor.ended_run(second)
     supervisor.completed_job(second)
     applied_second = supervisor.apply(second, commit_auto=True)
