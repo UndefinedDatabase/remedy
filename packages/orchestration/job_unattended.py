@@ -13,9 +13,10 @@ unattended walk's jobs) and every run reads it there:
   instead of pausing with a question that has no default (`job_burn.record_burn_trip`);
 - an order over HTTP runs unattended unless its body says `unattended: false`.
 
-Only a question without a safe default waits, and it says why in one sentence. Remedy
-deliberately never lifts a cap for an unattended job: a cap that is reached stops the job with
-its reason.
+Only a question without a safe default waits, and it says why in one sentence. Since the
+operator order beweis (F328, `budget_auto_extend`) an unattended job that reaches its call or
+token cap raises it once by itself to the doubled value and keeps that as an assumption; at the
+second cap it stops with its reason and the budget question, and its time cap always stops it.
 """
 from __future__ import annotations
 

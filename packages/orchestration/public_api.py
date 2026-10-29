@@ -113,8 +113,10 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: operator amendment amend1027-green-builds to `1.31` for `GET /api/v1/jobs/{job}/evidence` and the story's
 #: `order_id`, `retries`, `scope.match` and `verification.tested_by`, and amend1027b-v1 to `1.32` (see the page),
 #: and operator order welt-2 (F323 to F325) to `1.33` for the bodies' `unattended` and `repair_rounds`, the
-#: apply answer's `released`, the story's `stop` and the order jobs' `stop_text` (see the page).
-PUBLIC_API_VERSION = "1.33"
+#: apply answer's `released`, the story's `stop` and the order jobs' `stop_text` (see the page), and operator
+#: order beweis (F327 to F330) to `1.34` for the order body's `auto_extend`, the story's `assumptions` and the
+#: stop reason `not_in_this_repository` (see the page).
+PUBLIC_API_VERSION = "1.34"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.

@@ -396,7 +396,8 @@ F323 waiting jobs follow their order (a job waiting for one that ended blocked, 
 F324 a job started unattended stays unattended (stored on the job; HTTP `unattended`, and `repair_rounds` on run and retry, interface 1.33),
 F325 every stop says why (the story's `stop`, each order job's `stop_text`, `job show`'s `stop.text`),
 F326 the builder may run what the reviewer asks for (check scripts, tsc, ruff, mypy and pyright; a finding that only says a command outside that list did not run reads low),
-F327 the planner spends no order budget on narration (the study's local narration is not counted, a studied project whose manifest changed is studied without it, the order's call cap keeps three rounds of builder and reviewer free, and a cap too small for that is said before planning and plans one job).
+F327 the planner spends no order budget on narration (the study's local narration is not counted, a studied project whose manifest changed is studied without it, the order's call cap keeps three rounds of builder and reviewer free, and a cap too small for that is said before planning and plans one job),
+F328 an unattended job raises its call or token cap once by itself and says so in its story (`auto_extend`, interface 1.34).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

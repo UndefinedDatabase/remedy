@@ -264,6 +264,7 @@ def _order_text_and_options(body: dict[str, Any],
                                    order_file.max_wall_clock_minutes)):
         raise PublicApiWriteRefusal(400, "order_file_no_cost_cap", order_no_cap_message("order"))
     options = [f"--{flag.replace('_', '-')}" for flag in _ORDER_CREATE_FLAGS if body.get(flag)]
+    options += ["--no-auto-extend"] if body.get("auto_extend", True) is False else []    # F328, interface 1.34
     options += [f"--{key.replace('_', '-')}={body[key]}" for key in _ORDER_CREATE_STRINGS
                 if key in body]
     lead = projects[0]

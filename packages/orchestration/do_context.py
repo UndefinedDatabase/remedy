@@ -93,6 +93,8 @@ class DoContext:
     #: `--run-unattended`: run a generated plan of tasks without confirmation; every open
     #: question takes its documented default. Never implies apply, commit or push.
     run_unattended: bool = False
+    #: F328 (operator order beweis): False stores `auto_extend: false` on the walk's jobs.
+    auto_extend: bool = True
     no_llm: bool = False
     force_job: bool = False
     force_mission: bool = False

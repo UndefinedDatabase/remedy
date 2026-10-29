@@ -53,6 +53,12 @@ fails the gate rather than shipping an unexplained release.
   scope decision and the mission plan before they eat into three full rounds of builder and
   reviewer; a call cap too small for those rounds is said in one sentence at the study step, and
   the walk plans one job instead of failing.
+- 2026-10-29, operator order beweis (F328, interface 1.34): an unattended job that reaches its call
+  or token cap raises it once by itself to the doubled value, as the budget answer `extend` would,
+  saves that and keeps the assumption „Remedy hat das Budget einmal selbst erhöht, weil niemand da
+  war“ in its story's new `assumptions`; at the second cap it stops with the budget question, and its
+  time cap always stops it. `POST /api/v1/orders` takes `auto_extend` (`false` passes the new
+  `remedy do --no-auto-extend`).
 
 ## [1.0.0] - 2026-10-27
 
