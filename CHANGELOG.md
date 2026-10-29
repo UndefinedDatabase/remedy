@@ -22,6 +22,11 @@ fails the gate rather than shipping an unexplained release.
   while rounds remain, and only high or blocker findings stop a job by the reviewer's word. The
   config key `cycles.repair_rounds` now names every job's repair rounds when nothing else does,
   and a job that has not run yet shows the rounds it will run with instead of 0.
+- 2026-10-29, operator order welt-2 (F322): a job's tests run against its own worktree. A Python
+  project's worktree comes first on `PYTHONPATH` for the builder and for every check, so the
+  tests no longer import the main checkout through its editable install, and when the builder
+  started no test run Remedy runs the project's test command itself in the worktree before the
+  review.
 
 ## [1.0.0] - 2026-10-27
 

@@ -557,7 +557,7 @@ Operator amendment amend1027b-v1 (2026-10-27) closed Remedy as version 1 (`docs/
 
 - [x] F320 — Attachments are never deliverables (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
 - [x] F321 — Low findings never block (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
-- [ ] F322 — Builder tests in the worktree
+- [x] F322 — Builder tests in the worktree (built 2026-10-29 by the operator order welt-2 · branch welt2/remedycore)
 - [ ] F323 — Waiting jobs follow their order
 - [ ] F324 — Unattended jobs stay unattended
 - [ ] F325 — Every stop says why

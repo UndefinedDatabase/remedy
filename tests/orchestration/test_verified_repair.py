@@ -188,3 +188,43 @@ def test_a_non_blocking_test_check_is_no_reason_to_test_in_the_loop(tmp_path, mo
     job = _job(tmp_path, monkeypatch, ["running"], [{**TESTS_BLOCKING, "blocking": False}])
 
     assert final_task_test_command(job, job.tasks[0], "") == ""
+
+
+# F322: a job round whose builder started no test run gets Remedy's own run in the worktree.
+
+def _f322_evidence(status: str, exit_code):
+    from packages.orchestration.dod_runners import CheckEvidence
+
+    return CheckEvidence(check_id="round_project_tests", kind="project_tests", source="standard",
+                         blocking=False, status=status, reason="", command="python3 -m pytest tests -q",
+                         argv=("python3", "-m", "pytest", "tests", "-q"), cwd=".", exit_code=exit_code,
+                         duration_ms=5, output_tail="3 passed in 0.1s\n")
+
+
+def _f322_round_tests(monkeypatch, tmp_path, evidence, *, builder="claude-cli"):
+    from packages.orchestration import builder_test_runs, dod_runners
+    from packages.orchestration.verified_repair import round_tests
+
+    monkeypatch.setattr(builder_test_runs, "round_test_reading",
+                        lambda **_: (None, "tests_not_run: der Bauer hat keinen Testlauf gestartet", True))
+    ran = []
+    monkeypatch.setattr(dod_runners, "run_check", lambda check, root, **kw: ran.append(root) or evidence)
+    result = SimpleNamespace(job_id="j1", run_id="r1", task_id="t1", builder_provider=builder)
+    return round_tests(None, None, SimpleNamespace(round_number=1), tmp_path, result, timeout_sec=60), ran
+
+
+def test_remedy_runs_the_tests_itself_when_the_builder_ran_none(monkeypatch, tmp_path):
+    (passed, summary, not_run), ran = _f322_round_tests(monkeypatch, tmp_path, _f322_evidence("passed", 0))
+    assert ran == [tmp_path]
+    assert passed is True and not_run is False
+    assert summary.startswith("Remedy ran `python3 -m pytest tests -q` in the worktree: exit=0")
+
+
+def test_a_refused_own_run_leaves_the_builders_reading(monkeypatch, tmp_path):
+    (passed, summary, not_run), _ = _f322_round_tests(monkeypatch, tmp_path, _f322_evidence("refused", None))
+    assert (passed, not_run) == (None, True) and summary.startswith("tests_not_run")
+
+
+def test_a_fake_builder_gets_no_own_run(monkeypatch, tmp_path):
+    (_, _, not_run), ran = _f322_round_tests(monkeypatch, tmp_path, _f322_evidence("passed", 0), builder="fake")
+    assert ran == [] and not_run is True

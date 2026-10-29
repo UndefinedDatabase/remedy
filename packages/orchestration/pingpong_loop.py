@@ -3378,8 +3378,8 @@ def run_pingpong(
                 rd.test_passed, rd.test_summary, rd.test_tripped_limit = round_tests(_run_test_command(
                     test_command, staging, timeout_sec=timeout_sec), stream_evidence_dir, rd, staging, result)
             else:
-                rd.test_passed, rd.test_summary, result.tests_not_run = round_tests(None, stream_evidence_dir, rd,
-                                                                                    staging, result)
+                rd.test_passed, rd.test_summary, result.tests_not_run = round_tests(
+                    None, stream_evidence_dir, rd, staging, result, timeout_sec=timeout_sec)
 
             # An explicit test command that failed stops the run at once when repair_rounds is 0, else
             # its failure is the reviewer's evidence. One the sandbox refused ran no test (R-1343): it

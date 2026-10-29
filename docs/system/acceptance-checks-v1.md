@@ -57,6 +57,17 @@ where a job could plant its own (R-1236):
   its `bin` folder goes first on the check's `PATH`, `VIRTUAL_ENV` names it, and its
   `bin/python` is the interpreter of the third source;
 - a `node_modules/.bin` folder goes on `PATH` after it.
+- F322 (2026-10-29): when the virtual environment is found and the worktree is a Python project
+  (a `pyproject.toml`, `setup.py` or `setup.cfg`), `PYTHONPATH` names the worktree's `src` folder,
+  when it has one, then the worktree itself. The checkout's environment holds the project as an
+  editable install, which imports the checkout's code; without this a worktree's tests tested
+  the checkout. The builder's tools get the same `PYTHONPATH`
+  (`project_tests.project_tool_environment`).
+
+A round of a job whose builder started no test run, in a project that names a test command, gets
+Remedy's own run of that command in the worktree, the way this check runs it
+(`verified_repair.remedy_round_test_run`), so the reviewer judges a real run. A run that is
+refused or times out leaves the round `tests_not_run` with the builder's reason.
 
 With neither, the check runs with Remedy's own environment and interpreter, as every check did
 before. Remedy's own repository has no `.remedy/config.toml`, no `package.json` at its root and no
