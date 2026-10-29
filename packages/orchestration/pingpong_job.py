@@ -398,6 +398,8 @@ class JobPlan:
     # F011: the LAST stop episode. Older job files have none of this and load unchanged.
     stop_request_id: str = ""
     stop_reason: str = ""
+    #: F323/F325: the plain sentence a person reads for this stop; "" lets `job_stop_text` derive it.
+    stop_text: str = ""
     stop_source: str = ""
     stopped_at: str = ""
     stop_archive_ref: str = ""            # control-relative, never absolute
@@ -780,6 +782,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "stop": {
             "request_id": job.stop_request_id,
             "reason": job.stop_reason,
+            "text": job.stop_text,
             "source": job.stop_source,
             "stopped_at": job.stopped_at,
             "archive_ref": job.stop_archive_ref,
@@ -912,6 +915,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         execution_config=_import_execution_config(data.get("execution_config")),
         stop_request_id=str((data.get("stop") or {}).get("request_id", "") or ""),
         stop_reason=str((data.get("stop") or {}).get("reason", "") or ""),
+        stop_text=str((data.get("stop") or {}).get("text", "") or ""),
         stop_source=str((data.get("stop") or {}).get("source", "") or ""),
         stopped_at=str((data.get("stop") or {}).get("stopped_at", "") or ""),
         stop_archive_ref=str((data.get("stop") or {}).get("archive_ref", "") or ""),
@@ -2451,6 +2455,34 @@ def _writes_ownership_ledger(fn):
     return _wrapped
 
 
+def _settles_waiting_jobs(fn):
+    """Wrap `run_job` so every run ends by settling the jobs of its order that wait for it (F323).
+
+    A job that ends without a result that can land (blocked, stopped, failed, cancelled) ends
+    each job waiting for it `blocked`, with a sentence naming why (`order_jobs.settle_waiting_jobs`);
+    before, such a job stayed `waiting` forever (job 43e55dbbd5ba4e73 of 2026-10-28). A settle
+    that cannot read a record never fails the run it follows.
+    """
+
+    @functools.wraps(fn)
+    def _wrapped(job_id, *args, **kwargs):
+        try:
+            return fn(job_id, *args, **kwargs)
+        finally:
+            import logging
+
+            from packages.orchestration.order_jobs import settle_waiting_jobs
+
+            try:
+                settle_waiting_jobs(str(job_id))
+            except Exception:  # noqa: BLE001 — the run's own outcome stands; the view still names the wait
+                logging.getLogger(__name__).warning("settling the jobs waiting for %s failed", job_id,
+                                                    exc_info=True)
+
+    return _wrapped
+
+
+@_settles_waiting_jobs
 @_writes_ownership_ledger
 @bind_call_log_context(job_id="job_id")
 @stamp_blocked_job_finish

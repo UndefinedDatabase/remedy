@@ -206,6 +206,9 @@ def _settle_now(job: Any, request: JobCancelRequest) -> None:
 
     _mark_cancelled(job, request)
     save_job_plan(job)
+    from packages.orchestration.order_jobs import settle_waiting_jobs
+
+    settle_waiting_jobs(str(job.job_id))    # F323: a job waiting for a cancelled one ends blocked
     try:
         pending = stop_requested(str(job.job_id))
         if pending is not None:

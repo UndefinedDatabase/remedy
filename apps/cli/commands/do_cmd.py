@@ -837,6 +837,9 @@ def _cmd_job_decline(job_id: str, *, reason: str = "", source: str = "cli",
                                  now=datetime.now(timezone.utc))
     if not already_declined:
         save_job_plan(job)
+        from packages.orchestration.order_jobs import settle_waiting_jobs
+
+        settle_waiting_jobs(job_id)     # F323: a job waiting for this result will never be released
     if json_output:
         emit_ok(job_id=job_id, reason=decline["reason"], source=decline["source"],
                 declined_at=decline["declined_at"], already_declined=already_declined)

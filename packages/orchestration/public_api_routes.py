@@ -322,7 +322,10 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "`commit_with_history`, `push` and `skip_blocked` set to `true` as its option; a job "
             "id prefix is accepted; `--repo`, `--test-command` and `--dry-run` are not offered "
             "over HTTP, and a job whose record names no repository is refused with 409 "
-            "`api_job_repository_unknown` before any command runs."
+            "`api_job_repository_unknown` before any command runs. Since 1.33 an apply that landed "
+            "a commit releases the job of the same order that waited for it, and starts it when it "
+            "runs unattended: the answer names that run under `released`, or why it could not "
+            "start under `release_refused`."
         ),
     ),
     PublicApiRoute(

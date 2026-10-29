@@ -848,6 +848,8 @@ def answer_public_api_post(
                 f"the command for '{path}' printed no answer, or took longer than allowed"), {}
         from packages.orchestration.budget_stop import resume_after_budget_extend
         envelope = resume_after_budget_extend(route.twin, segments, envelope, start_run)  # DECISION F310 D5 (4)
+        from packages.orchestration.order_jobs import start_released_job
+        envelope = start_released_job(route.twin, segments, envelope, start_run)   # F323
         status = 200 if envelope.get("ok") else dict(route.refusals).get(
             envelope.get("error", ""), route.refusal_default or 500)
         headers = {"Deprecation": "true"} if route.deprecated else {}

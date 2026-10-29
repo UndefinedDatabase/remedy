@@ -44,8 +44,19 @@ ORDER_JOBS_KEY_TREE: dict[str, Any] = {key: {} for key in (
     "story", "blocking_criterion", "mission_id")} | {"tasks": {"total": {}, "done": {}, "current": {}}}
 
 
+#: F323: the job metadata key naming, on the awaited job, the job that waits for it.
+ORDER_JOB_RELEASES_KEY = "released_job"
+#: F323: the stop reason token of a waiting job whose awaited job ended without a result that lands.
+ORDER_JOB_AWAITED_ENDED = "awaited_job_ended"
+#: F323: the sentence such a job carries (`JobPlan.stop_text`).
+ORDER_JOB_AWAITED_ENDED_TEXT = ("This job waited for job {job}, which ended {ended}{why}, so its result "
+                                "will not be applied and this job did not run. Run it on the repository "
+                                "as it is (remedy job run {me}), or cancel it.")
+
+
 def record_job_waits(job_ids: list[str], waiting_ids: list[str]) -> None:
-    """Name, on each waiting job, the job of the same order before it, which it waits for."""
+    """Name, on each waiting job, the job of the same order before it, which it waits for, and on
+    that job the one it releases (F323)."""
     from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
     for position, job_id in enumerate(job_ids):
@@ -55,6 +66,122 @@ def record_job_waits(job_ids: list[str], waiting_ids: list[str]) -> None:
         if job is not None:
             job.metadata[ORDER_JOB_WAITS_KEY] = job_ids[position - 1]
             save_job_plan(job)
+        before = load_job_plan(job_ids[position - 1])
+        if before is not None:
+            before.metadata[ORDER_JOB_RELEASES_KEY] = job_id
+            save_job_plan(before)
+
+
+#: F323/F324: the job metadata key that says a job runs unattended (`job_unattended`).
+JOB_UNATTENDED_KEY = "unattended"
+
+
+def start_released_job(twin: str, segments: dict[str, str], envelope: dict[str, Any],
+                       start_run: Any) -> dict[str, Any]:
+    """F323: ENVELOPE of an HTTP apply, with the waiting job it started under `released`.
+
+    After an apply over HTTP that landed a commit, the job of the same order that waited for it is
+    released (`release_waiting_job`) and, when it runs unattended, started by the supervisor:
+    nobody has to come back to start the rest of an order. A job that asks questions is released
+    and left `ready` for its person. A start that is refused is named under `release_refused`.
+    """
+    if twin != "job.apply" or not envelope.get("ok") or not envelope.get("commit_sha") or start_run is None:
+        return envelope
+    from packages.orchestration.data_paths import JobIdError, lookup_job_id
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import RunRefused, run_record_payload
+
+    try:
+        released = release_waiting_job(lookup_job_id(segments["job"]))
+    except JobIdError:
+        return envelope
+    job = load_job_plan(released) if released else None
+    if job is None or job.metadata.get(JOB_UNATTENDED_KEY) is not True:
+        return envelope
+    try:
+        record = start_run(released, ())
+    except RunRefused as exc:
+        return {**envelope, "released": None, "release_refused": {"error": exc.token, "message": str(exc)}}
+    except OSError:
+        return {**envelope, "released": None, "release_refused": {
+            "error": "api_command_failed", "message": f"job {released} could not be started; nothing runs"}}
+    return {**envelope, "released": run_record_payload(serve_paths(), record)}
+
+
+def awaited_job_end(job: Any) -> str:
+    """F323: how *job* ended without a result that will land, in one word, or "" while it still may.
+
+    `blocked`, `stopped`, `failed` and `cancelled` by its state, `declined` by its result's
+    decline; "" for a job that is planned, running, finished awaiting its apply, or applied.
+    """
+    from packages.orchestration.job_apply import job_result_decline
+
+    state = getattr(getattr(job, "state", None), "value", "")
+    if state in ("blocked", "stopped", "failed", "cancelled"):
+        return state
+    return "declined" if state == "completed" and job_result_decline(job) is not None else ""
+
+
+def _waiting_job(job_id: str, awaited: str) -> Any:
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job = load_job_plan(job_id) if job_id else None
+    if job is None or str(job.metadata.get(ORDER_JOB_WAITS_KEY) or "") != awaited:
+        return None
+    return job
+
+
+def settle_waiting_jobs(job_id: str) -> list[str]:
+    """F323: end `blocked` every job waiting for *job_id* once it ended without a result that lands.
+
+    The waiting job's stop reason reads `awaited_job_ended:<job>` and its `stop_text` says which
+    job it waited for, how that one ended and why, and what the person may do. A job waiting for
+    the job just blocked is settled too, down the order's chain. Returns the jobs it blocked.
+    """
+    from datetime import datetime, timezone
+
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+    awaited = load_job_plan(job_id)
+    ended = awaited_job_end(awaited) if awaited is not None else ""
+    waiting = _waiting_job(str(awaited.metadata.get(ORDER_JOB_RELEASES_KEY) or "") if awaited else "", job_id)
+    if not ended or waiting is None or getattr(waiting.state, "value", "") not in ("planned", "pending"):
+        return []
+    why = awaited.stop_text or awaited.stop_reason
+    waiting.state = RunState.BLOCKED
+    waiting.stop_reason = f"{ORDER_JOB_AWAITED_ENDED}:{job_id}"
+    waiting.stop_text = ORDER_JOB_AWAITED_ENDED_TEXT.format(
+        job=job_id, ended=ended, why=f" ({why.rstrip('.')})" if why else "", me=waiting.job_id)
+    waiting.stopped_at = datetime.now(timezone.utc).isoformat()
+    save_job_plan(waiting)
+    return [str(waiting.job_id), *settle_waiting_jobs(str(waiting.job_id))]
+
+
+def release_waiting_job(job_id: str) -> str:
+    """F323: the job that waited for *job_id*, ready to run now that its result was applied, or "".
+
+    A waiting job blocked by `settle_waiting_jobs` (the awaited job was stopped or blocked and
+    later finished and landed after all) is planned again, its stop cleared. The caller starts it.
+    """
+    from packages.core.models import RunState
+    from packages.orchestration.job_apply import job_apply_landed
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+    awaited = load_job_plan(job_id)
+    if awaited is None or not job_apply_landed(job_id):
+        return ""
+    waiting = _waiting_job(str(awaited.metadata.get(ORDER_JOB_RELEASES_KEY) or ""), job_id)
+    if waiting is None:
+        return ""
+    state = getattr(waiting.state, "value", "")
+    if state == "blocked" and waiting.stop_reason == f"{ORDER_JOB_AWAITED_ENDED}:{job_id}":
+        waiting.state = RunState.PLANNED
+        waiting.stop_reason = waiting.stop_text = waiting.stopped_at = ""
+        save_job_plan(waiting)
+        state = "planned"
+    return str(waiting.job_id) if state in ("planned", "pending") else ""
 
 
 def order_file_job_ids(source_path: str, *, since: str = "") -> list[str]:
@@ -206,13 +333,10 @@ def job_blocking_criterion(job: Any) -> str | None:
 
 def _wait_reason(waits_for: str) -> str:
     """Why a job waits for *waits_for*: its apply, or nothing any more when that job ended without one."""
-    from packages.orchestration.job_apply import job_result_decline
     from packages.orchestration.pingpong_job import load_job_plan
 
     before = load_job_plan(waits_for)
-    state = getattr(getattr(before, "state", None), "value", "")
-    ended = ("cancelled" if state == "cancelled" else "failed" if state == "failed" else
-             "declined" if before is not None and job_result_decline(before) is not None else "")
+    ended = awaited_job_end(before) if before is not None else ""     # F323: blocked and stopped too
     return (ORDER_JOB_ORPHANED_REASON.format(job=waits_for, ended=ended) if ended
             else ORDER_JOB_WAIT_REASON.format(job=waits_for))
 
