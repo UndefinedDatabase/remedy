@@ -16,7 +16,7 @@ from typing import Any
 CLIENT_STORY_ANSWER_KEYS: tuple[str, ...] = (
     "changes", "dirty_start", "end", "ended_at", "job_id", "matches", "next", "note_open", "numbers",
     "order", "order_id", "retries", "scope", "scope_findings",
-    "started_at", "state", "state_detail", "steps", "updated_at", "verification",
+    "started_at", "state", "state_detail", "steps", "stop", "updated_at", "verification",
 )
 
 #: A job's verification as `order_verification.job_verification` answers it (exec-1017 D2): the
@@ -48,6 +48,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
     "scope": {"single_job": {}, "files": {}, "reason": {}, "decided": {}, "files_expected": {},
               "files_touched": {}, "match": {}, "match_text": {}, "tasks": {}, "tasks_text": {}},
     "retries": {"task_id": {}, "role": {}, "attempt": {}, "reason": {}},
+    "stop": {"reason": {}, "text": {}},
 }
 
 #: The keys of the interface's `story` key, `client_story_words.story_words()`; under `phrases`

@@ -41,7 +41,7 @@ ORDER_JOB_PHASES = ("running", "waiting", "ready", "needs_plan_approval", "await
 #: `blocking_criterion` and `mission_id` since 1.29 (DECISION amend1023 D11).
 ORDER_JOBS_KEY_TREE: dict[str, Any] = {key: {} for key in (
     "job_id", "title", "state", "phase", "executable", "waits_for", "waiting_reason", "verification",
-    "story", "blocking_criterion", "mission_id")} | {"tasks": {"total": {}, "done": {}, "current": {}}}
+    "story", "blocking_criterion", "mission_id", "stop_text")} | {"tasks": {"total": {}, "done": {}, "current": {}}}
 
 
 #: F323: the job metadata key naming, on the awaited job, the job that waits for it.
@@ -149,7 +149,10 @@ def settle_waiting_jobs(job_id: str) -> list[str]:
     waiting = _waiting_job(str(awaited.metadata.get(ORDER_JOB_RELEASES_KEY) or "") if awaited else "", job_id)
     if not ended or waiting is None or getattr(waiting.state, "value", "") not in ("planned", "pending"):
         return []
-    why = awaited.stop_text or awaited.stop_reason
+    from packages.orchestration.job_stop_text import job_stop_text
+
+    # F325: a job that recorded neither its own sentence nor a reason still says why it stopped.
+    why = awaited.stop_text or awaited.stop_reason or job_stop_text(awaited)
     waiting.state = RunState.BLOCKED
     waiting.stop_reason = f"{ORDER_JOB_AWAITED_ENDED}:{job_id}"
     waiting.stop_text = ORDER_JOB_AWAITED_ENDED_TEXT.format(
@@ -344,6 +347,7 @@ def _wait_reason(waits_for: str) -> str:
 def _job_entry(job: Any) -> dict[str, Any]:
     from packages.orchestration.job_apply import job_apply_landed, job_result_decline
     from packages.orchestration.job_plan import task_plan_blocks_execution
+    from packages.orchestration.job_stop_text import job_stop_text
     from packages.orchestration.order_verification import job_verification
     from packages.orchestration.pingpong_job import TASK_DONE_STATUSES, TASK_RUNNING
 
@@ -380,4 +384,6 @@ def _job_entry(job: Any) -> dict[str, Any]:
         "verification": job_verification(job)["status"],
         "story": f"/api/v1/jobs/{job.job_id}/story",
         "blocking_criterion": job_blocking_criterion(job) if phase in ("blocked", "failed") else None,
+        # F325: why a blocked, stopped, cancelled or failed job stopped, the story's `stop.text`.
+        "stop_text": job_stop_text(job) if phase in ("blocked", "failed", "stopped", "cancelled") else "",
     }

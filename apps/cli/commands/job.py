@@ -212,6 +212,10 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False, tour: bool = False,
         # R-0902: a record that exists and cannot be read is named, like a missing one, never a traceback.
         fail("job_store_error", str(exc), json_output=json_output)
     shown = _export_job(job)
+    # F325: `stop.text` says why a blocked, stopped, cancelled or failed job stopped, the story's sentence.
+    from packages.orchestration.job_stop_text import job_stop
+
+    shown["stop"] = {**shown["stop"], **job_stop(job)}
     # R-0806: why a task blocked is readable here, without evidence JSON; appended, so no key moves.
     shown["blocked_task_findings"] = collect_blocked_task_findings(job, full=full)
     section_text: list[str] = []

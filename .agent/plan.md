@@ -5,11 +5,10 @@ decodeux: improvement jobs from remedy-chat must run unattended end to end and s
 plain reason. Six faults of the night 2026-10-28/29 become F320 to F325 (Package 3, Tier 2).
 
 ## Current Step
-F325 every stop says why (story `stop`, order view `stop_text`, `job show` `stop.text`).
+Run only the added and changed tests once; ruff on touched files; fix and run again.
 
 ## Next Steps
-1. Run only the added and changed tests once; ruff on touched files.
-2. Hand the commit hashes of contract 1.33 to the orchestrator.
+1. Hand the commit hashes of contract 1.33 to the orchestrator.
 
 ## Risks
 - Branch welt2/remedycore is merged and pushed by the orchestrator, not by this session.

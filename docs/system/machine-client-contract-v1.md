@@ -1044,7 +1044,7 @@ Answer keys: `answer`, `cancel`, `ended_at`, `exit_code`, `jobs`, `order_file`, 
 Keys under the answer keys: see below.
 
 - `cancel`: `reason`, `requested_at`, `source`
-- `jobs`: `blocking_criterion`, `executable`, `job_id`, `mission_id`, `phase`, `state`, `story`, `tasks`, `title`, `verification`, `waiting_reason`, `waits_for`
+- `jobs`: `blocking_criterion`, `executable`, `job_id`, `mission_id`, `phase`, `state`, `stop_text`, `story`, `tasks`, `title`, `verification`, `waiting_reason`, `waits_for`
   - `tasks`: `current`, `done`, `total`
 
 #### `remedy client run`
@@ -1074,7 +1074,7 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `order_id`, `retries`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
+Answer keys: `changes`, `dirty_start`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `order_id`, `retries`, `scope`, `scope_findings`, `started_at`, `state`, `state_detail`, `steps`, `stop`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
@@ -1096,6 +1096,7 @@ Keys under the answer keys: see below.
     - `args`: `*`
   - `tasks`: `files`, `rounds`, `status`, `title`
   - `tokens`: `in`, `out`
+- `stop`: `reason`, `text`
 - `verification`: `output`, `reason`, `reason_key`, `required`, `status`, `tested_by`
 
 #### `remedy client now`

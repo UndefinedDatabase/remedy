@@ -36,6 +36,10 @@ fails the gate rather than shipping an unexplained release.
   longer stops at the plan approval or at a burn trip of a job with caps; `remedy job run
   --unattended`/`--no-unattended`, `remedy do --repair-rounds` and the HTTP bodies' `unattended`
   and `repair_rounds` (interface 1.33) name it. An order's `unattended: false` asks again.
+- 2026-10-29, operator order welt-2 (F325): every stop says why. A blocked, stopped, cancelled or
+  failed job carries one sentence: the story's `stop` (`reason` and `text`), each order job's
+  `stop_text` and `remedy job show --json`'s `stop.text`. A job its review blocked names the
+  verdict, its findings by severity and the first finding, where its `stop.reason` was empty.
 
 ## [1.0.0] - 2026-10-27
 
