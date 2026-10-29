@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0.0",
+  "job_id": "3f80bd014da944e2",
+  "commands": [
+    {
+      "command_id": "task_test_command",
+      "argv_safe": null,
+      "task_id": "d683a4014c3d4cb1",
+      "run_id": "7988a1d7243f4233",
+      "round": 1,
+      "exit_code": null,
+      "stderr_ref": "",
+      "started_at": null,
+      "finished_at": null,
+      "source": "task_runs/d683a4014c3d4cb1 run record round 1"
+    },
+    {
+      "command_id": "task_test_command",
+      "argv_safe": null,
+      "task_id": "66a9a58984184f39",
+      "run_id": "9c967e43aa464a1a",
+      "round": 1,
+      "exit_code": null,
+      "stderr_ref": "",
+      "started_at": null,
+      "finished_at": null,
+      "source": "task_runs/66a9a58984184f39 run record round 1"
+    }
+  ],
+  "final_audit": {
+    "status": "BLOCKED",
+    "source": "final_verifier_report.json"
+  },
+  "target_repo_mutated": false,
+  "target_guard": {
+    "target_mutated": false,
+    "target_content_mutated": false,
+    "target_operational_artifacts_changed": false,
+    "target_noise_changed": false,
+    "changed_target_files": [],
+    "ignored_operational_artifacts": [],
+    "ignored_target_noise_files": []
+  }
+}

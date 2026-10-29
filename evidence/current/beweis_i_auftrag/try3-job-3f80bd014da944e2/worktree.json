@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0.0",
+  "job_id": "3f80bd014da944e2",
+  "isolation_mode": "worktree",
+  "branch": "remedy/job-3f80bd014da944e2",
+  "path": ".remedy-wt/job-3f80bd014da944e2",
+  "base_commit": "3f51639d0d2814b348d35b8820a96451261e787c",
+  "head": "e86a4fd54a2abff4495a8cdd49d4adf830cdb65e",
+  "cleanup_status": "retained",
+  "cleanup_error": "",
+  "result_diff": {
+    "path": "result.diff",
+    "sha256": "41cc612a46ea3aaff76db93e0387938eda160b09b31b40cdc727bb06db9a2533",
+    "size_bytes": 10101
+  },
+  "result_diff_error": "",
+  "auto_merged": false,
+  "handoff_coverage": {
+    "verdict": "",
+    "root_changed_files": [],
+    "reviewed_task_files": [],
+    "unexpected_root_files": [],
+    "missing_root_files": []
+  }
+}

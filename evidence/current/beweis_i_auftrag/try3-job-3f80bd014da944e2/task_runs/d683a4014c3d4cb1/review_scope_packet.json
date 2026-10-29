@@ -1,0 +1,130 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "d683a4014c3d4cb1",
+  "task_title": "Replace hand-built (i) with InfoButton in Memory.tsx: Remove the local info/setInfo state, Sheet import, and hand-built (i) button element from Memory.tsx, and render the shared InfoButton component in their place, with an aria-label key that matches the naming pattern used by every other InfoButton in the app.",
+  "changed_files": [
+    "src/screens/KnowledgeNet.tsx",
+    "src/screens/Memory.tsx",
+    "src/screens/net/NetHeader.tsx",
+    "src/styles/knowledge-net.css"
+  ],
+  "changed_line_ranges": {
+    "src/screens/KnowledgeNet.tsx": [
+      [
+        15,
+        21
+      ],
+      [
+        157,
+        166
+      ],
+      [
+        244,
+        250
+      ]
+    ],
+    "src/screens/Memory.tsx": [
+      [
+        26,
+        32
+      ],
+      [
+        52,
+        58
+      ],
+      [
+        282,
+        287
+      ],
+      [
+        346,
+        353
+      ],
+      [
+        377,
+        385
+      ]
+    ],
+    "src/screens/net/NetHeader.tsx": [
+      [
+        5,
+        17
+      ],
+      [
+        19,
+        25
+      ],
+      [
+        30,
+        36
+      ],
+      [
+        49,
+        55
+      ],
+      [
+        64,
+        70
+      ]
+    ],
+    "src/styles/knowledge-net.css": [
+      [
+        231,
+        242
+      ]
+    ]
+  },
+  "changed_symbols": {
+    "src/screens/KnowledgeNet.tsx": [
+      "KnowledgeNet"
+    ],
+    "src/screens/Memory.tsx": [
+      "infoButton"
+    ],
+    "src/screens/net/NetHeader.tsx": [
+      "NetHeader",
+      "others"
+    ],
+    "src/styles/knowledge-net.css": []
+  },
+  "risk_tags": {
+    "src/screens/KnowledgeNet.tsx": [
+      "new_function"
+    ],
+    "src/screens/Memory.tsx": [
+      "new_function"
+    ],
+    "src/screens/net/NetHeader.tsx": [
+      "new_function"
+    ],
+    "src/styles/knowledge-net.css": []
+  },
+  "prompt_hashes": [
+    "9ce4d4894ec3d0d60fea9eb1f0775e40f8875e0571df61c275cf4916c15c0015",
+    "d1bbfdc4f85ca351b5e42c8f94b41225857e138e8dd8a5ec72c3721a8f70b02f"
+  ],
+  "worker_prompt_refs": [
+    "task_runs/d683a4014c3d4cb1/prompt_trace.jsonl"
+  ],
+  "reviewer_prompt_refs": [
+    "task_runs/d683a4014c3d4cb1/prompt_trace.jsonl"
+  ],
+  "evidence_refs": [
+    "task_runs/d683a4014c3d4cb1/safe.diff",
+    "task_runs/d683a4014c3d4cb1/tests.txt",
+    "task_runs/d683a4014c3d4cb1/review.json",
+    "task_runs/d683a4014c3d4cb1/repair_loop.json"
+  ],
+  "related_tests": [],
+  "test_results": {
+    "ran": false,
+    "passed": 0,
+    "failed": 0,
+    "summary": "tests not run"
+  },
+  "open_findings": [],
+  "repair_rounds": 0,
+  "estimated_review_tokens": 3607,
+  "recommended_scope": "cross_file",
+  "scope_reason": "4 files changed with import/call relationships."
+}

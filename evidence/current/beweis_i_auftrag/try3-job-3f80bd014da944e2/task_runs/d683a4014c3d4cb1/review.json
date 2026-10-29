@@ -1,0 +1,15 @@
+{
+  "total_reviews": 1,
+  "final_verdict": "pass",
+  "reviews": [
+    {
+      "round": 1,
+      "kind": "initial",
+      "verdict": "pass",
+      "confidence": "high",
+      "summary": "Memory.tsx now imports InfoButton, the import that was named as the Sheet import (actually InfoSheet) is gone, and the info/setInfo state, the hand-built button, the InfoSheet element and the onInfo handler are all removed. It renders exactly one <InfoButton> element (const infoButton). At any time it appears in only one place: the bar on wide windows, the net header or the list search on the phone. InfoButton supplies aria-haspopup=\"dialog\" and aria-label={T.info.open(title)}, which is the same pattern every other InfoButton in the app uses. The testIds stay as they were: memory-info for the button and memory-info-sheet for the sheet, which the existing e2e tests rely on. Three files the order didn't name also changed: KnowledgeNet and NetHeader now take an `info` node in place of `onInfo`, and the CSS selector was changed to match. These changes were needed so the phone's (i) can sit in the net header. They are consistent, NetHeader's duplicate hand-built button was removed, and no dead code or new files are left. npm test exited 0.",
+      "finding_count": 0,
+      "findings": []
+    }
+  ]
+}

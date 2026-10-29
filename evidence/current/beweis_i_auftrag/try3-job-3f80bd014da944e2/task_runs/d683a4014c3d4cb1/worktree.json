@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "d683a4014c3d4cb1",
+  "run_id": "7988a1d7243f4233",
+  "isolation_mode": "worktree",
+  "branch": "remedy/job-3f80bd014da944e2",
+  "worktree_path": ".remedy-wt/job-3f80bd014da944e2",
+  "base_commit": "3f51639d0d2814b348d35b8820a96451261e787c",
+  "worktree_head": "3f51639d0d2814b348d35b8820a96451261e787c",
+  "cleanup_status": "job_owned",
+  "cleanup_error": "",
+  "result_diff": {
+    "path": "result.diff",
+    "sha256": "41cc612a46ea3aaff76db93e0387938eda160b09b31b40cdc727bb06db9a2533",
+    "size_bytes": 10101
+  },
+  "result_diff_error": "",
+  "auto_merged": false
+}

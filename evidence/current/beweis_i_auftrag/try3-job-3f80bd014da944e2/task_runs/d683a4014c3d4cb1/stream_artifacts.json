@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "d683a4014c3d4cb1",
+  "artifacts": {
+    "task_runs/d683a4014c3d4cb1/streams/builder/round-01/attempt-01/raw_stream.jsonl": {
+      "sha256": "37e2ee0b414906c4063e038f7aebb986b3a42c55a7f6cb2b1072236f41e66af0",
+      "size_bytes": 421629
+    },
+    "task_runs/d683a4014c3d4cb1/streams/builder/round-01/attempt-01/run_events.jsonl": {
+      "sha256": "d9044c6945fc365f668e1cbff2b488447a92d03a975feb354e54d73c316cda9a",
+      "size_bytes": 31373
+    },
+    "task_runs/d683a4014c3d4cb1/streams/reviewer/round-01/attempt-01/raw_stream.jsonl": {
+      "sha256": "2d575ea49f0b846ab16bab8d6df41dcbf2c1da8c413fcf8aa2620b3789081705",
+      "size_bytes": 53187
+    },
+    "task_runs/d683a4014c3d4cb1/streams/reviewer/round-01/attempt-01/run_events.jsonl": {
+      "sha256": "48eb33900154579e58239ed1cb880acb80c7c54b68a8aefbbdcd31174a9dc51f",
+      "size_bytes": 7631
+    }
+  }
+}

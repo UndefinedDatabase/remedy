@@ -1,0 +1,34 @@
+{
+  "job_id": "3f80bd014da944e2",
+  "events": [
+    {
+      "event": "job_planned",
+      "timestamp": "2026-10-29T20:47:39.512179+00:00",
+      "detail": "Job 3f80bd014da944e2 planned with 2 tasks"
+    },
+    {
+      "event": "task_completed",
+      "timestamp": "unavailable",
+      "detail": "d683a4014c3d4cb1: Replace hand-built (i) with InfoButton in Memory.tsx: Remove the local info/setInfo state, Sheet import, and hand-built (i) button element from Memory.tsx, and render the shared InfoButton component in their place, with an aria-label key that matches the naming pattern used by every other InfoButton in the app. \u2014 applied_to_job_workspace (run: 7988a1d7243f4233)",
+      "run_id": "7988a1d7243f4233"
+    },
+    {
+      "event": "sequencing_proof",
+      "timestamp": "unavailable",
+      "detail": "66a9a58984184f39 started after d683a4014c3d4cb1 applied"
+    },
+    {
+      "event": "task_completed",
+      "timestamp": "unavailable",
+      "detail": "66a9a58984184f39: Remove onInfo wiring from NetHeader.tsx + Run full test suite and confirm green: Delete the onInfo prop from NetHeader's props interface and remove any forwarding or usage of that prop inside NetHeader.tsx so no info-related wiring survives there.; Execute the project's standard test command to verify that all unit tests (including text-golden) and e2e tests (including memory-net-592.spec.ts) pass after the changes made in T001\u2013T003. \u2014 blocked (run: 9c967e43aa464a1a)",
+      "run_id": "9c967e43aa464a1a"
+    },
+    {
+      "event": "job_final",
+      "timestamp": "2026-10-29T20:50:53.343469+00:00",
+      "detail": "Job blocked"
+    }
+  ],
+  "sequencing_valid": true,
+  "timestamps_available": true
+}

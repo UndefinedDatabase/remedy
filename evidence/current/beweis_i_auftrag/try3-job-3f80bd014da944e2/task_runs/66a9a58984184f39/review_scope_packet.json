@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "66a9a58984184f39",
+  "task_title": "Remove onInfo wiring from NetHeader.tsx + Run full test suite and confirm green: Delete the onInfo prop from NetHeader's props interface and remove any forwarding or usage of that prop inside NetHeader.tsx so no info-related wiring survives there.; Execute the project's standard test command to verify that all unit tests (including text-golden) and e2e tests (including memory-net-592.spec.ts) pass after the changes made in T001\u2013T003.",
+  "changed_files": [],
+  "changed_line_ranges": {},
+  "changed_symbols": {},
+  "risk_tags": {},
+  "prompt_hashes": [
+    "a0f7f4d790d3b66c61a8f3469513e816c9d2a154f367bb20ae21b27b9f9048f2",
+    "6fd180a224c56b0226c0a27b9c239114065dbeaf6a0f745a6694264951997818"
+  ],
+  "worker_prompt_refs": [
+    "task_runs/66a9a58984184f39/prompt_trace.jsonl"
+  ],
+  "reviewer_prompt_refs": [
+    "task_runs/66a9a58984184f39/prompt_trace.jsonl"
+  ],
+  "evidence_refs": [
+    "task_runs/66a9a58984184f39/tests.txt",
+    "task_runs/66a9a58984184f39/review.json",
+    "task_runs/66a9a58984184f39/repair_loop.json"
+  ],
+  "related_tests": [],
+  "test_results": {
+    "ran": true,
+    "passed": 0,
+    "failed": 0,
+    "summary": "passed: ctr-C001"
+  },
+  "open_findings": [
+    {
+      "id": "R1",
+      "severity": "low",
+      "file": "src/screens/net/NetHeader.tsx",
+      "summary": "The builder did not run the full unit and e2e suite itself because Bash was denied. Only the harness check ctr-C001 confirms it is green, so memory-net-592.spec.ts and the text-golden tests passing comes from the harness, not from the builder.",
+      "kind": "verification_gap"
+    }
+  ],
+  "repair_rounds": 0,
+  "estimated_review_tokens": 679,
+  "recommended_scope": "hunk_only",
+  "scope_reason": "Single file changed, 1 hunk, no cross-file dependencies detected."
+}

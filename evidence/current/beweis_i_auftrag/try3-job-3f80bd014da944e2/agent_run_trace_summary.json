@@ -1,0 +1,38 @@
+{
+  "total_events": 105,
+  "event_counts": {
+    "job_planned": 1,
+    "task_started": 2,
+    "tool_use": 42,
+    "tool_result": 42,
+    "provider_result": 4,
+    "builder_prompt_created": 2,
+    "builder_output_received": 2,
+    "reviewer_prompt_created": 2,
+    "reviewer_output_received": 2,
+    "task_gate_evaluated": 2,
+    "task_workspace_applied": 1,
+    "review_finding_opened": 1,
+    "job_evidence_exported": 1,
+    "final_audit_completed": 1
+  },
+  "tasks_traced": [
+    "66a9a58984184f39",
+    "d683a4014c3d4cb1"
+  ],
+  "providers": [
+    "claude-cli"
+  ],
+  "max_round": 1,
+  "has_builder_events": true,
+  "has_reviewer_events": true,
+  "has_repair_events": false,
+  "has_final_audit": true,
+  "trace_sources": [
+    "normalized_raw_stream",
+    "reconstructed_legacy_evidence"
+  ],
+  "source_limitations": [
+    "Events reconstructed from persisted run data, not captured live."
+  ]
+}

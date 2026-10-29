@@ -1,0 +1,19 @@
+{
+  "task_id": "d683a4014c3d4cb1",
+  "builder_role": "builder",
+  "builder_provider": "claude-cli",
+  "builder_model_configured": "",
+  "builder_identity": "claude-cli:",
+  "reviewer_role": "reviewer",
+  "reviewer_provider": "claude-cli",
+  "reviewer_model_configured": "",
+  "reviewer_identity": "claude-cli:",
+  "sticky_across_rounds": true,
+  "rounds": 0,
+  "repair_rounds": 0,
+  "reviewer_findings_by_round": [],
+  "repaired_findings_by_round": [],
+  "unresolved_findings": 0,
+  "same_builder_used_for_repairs": true,
+  "same_reviewer_used_for_re_review": true
+}

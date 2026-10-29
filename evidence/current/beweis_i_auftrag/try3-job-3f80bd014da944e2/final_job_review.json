@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0.0",
+  "job_id": "3f80bd014da944e2",
+  "job_goal": "Verbesserungsaufgabe beweis (universe)",
+  "verdict": "NEEDS_REPAIR",
+  "findings": [
+    {
+      "id": "F-TASK-002",
+      "severity": "repairable",
+      "category": "task_verdict",
+      "message": "Task 66a9a58984184f39 did not pass (verdict=needs_repair).",
+      "task_id": "66a9a58984184f39"
+    }
+  ],
+  "task_count": 2,
+  "tasks_reviewed": 2,
+  "scope_check": {
+    "expected_changed_files": [],
+    "actual_changed_files": [],
+    "changed_files_match": null,
+    "in_scope": null
+  },
+  "acceptance_criteria_check": {
+    "total": 0,
+    "unmet": 0,
+    "all_met": true
+  },
+  "changed_files_match": null
+}

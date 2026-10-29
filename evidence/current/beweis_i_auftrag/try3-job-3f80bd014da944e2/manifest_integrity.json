@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "ok": true,
+  "failures": [],
+  "notes": [
+    "legacy pre-F012 job: no run manifest (uncovered, not corrupt)"
+  ]
+}

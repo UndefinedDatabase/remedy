@@ -1,0 +1,27 @@
+{
+  "strategy": "task_bounded_sequential_job",
+  "previous_task_summary_limit": 5,
+  "full_job_history_in_prompt": false,
+  "full_repo_in_prompt": false,
+  "builder_context_note": "One entry per task and round. builder_tokens_used is what the builder call of that round reported. The runner records the builder's input and cache-read tokens per task run, not per round, so task_builder_input_tokens and task_builder_cache_read_tokens are that task run's builder totals, repeated on each of its rounds, and null where the provider reported none.",
+  "builder_context": [
+    {
+      "task_id": "d683a4014c3d4cb1",
+      "run_id": "7988a1d7243f4233",
+      "round": 1,
+      "kind": "initial",
+      "builder_tokens_used": 9244,
+      "task_builder_input_tokens": 20,
+      "task_builder_cache_read_tokens": 242488
+    },
+    {
+      "task_id": "66a9a58984184f39",
+      "run_id": "9c967e43aa464a1a",
+      "round": 1,
+      "kind": "initial",
+      "builder_tokens_used": 1544,
+      "task_builder_input_tokens": 10,
+      "task_builder_cache_read_tokens": 67909
+    }
+  ]
+}

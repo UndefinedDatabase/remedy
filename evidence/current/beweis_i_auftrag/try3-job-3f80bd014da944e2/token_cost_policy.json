@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0.0",
+  "job_id": "3f80bd014da944e2",
+  "step_range": "",
+  "per_role_model_policy": {
+    "builder": "",
+    "reviewer": ""
+  },
+  "context_budget_policy": {
+    "builder": null,
+    "reviewer": null
+  },
+  "max_prompt_chars_per_role": {
+    "builder": null,
+    "reviewer": null
+  },
+  "max_rounds": 3,
+  "repair_budget": 2,
+  "actual_available_by_role": {
+    "builder": false,
+    "reviewer": false
+  },
+  "estimated_tokens_by_role": {
+    "builder": 0,
+    "reviewer": 0
+  },
+  "provider_call_count_by_role": {
+    "builder": 2,
+    "reviewer": 2
+  },
+  "cost_risk_findings": [
+    {
+      "code": "ESTIMATE_MISSING",
+      "severity": "warning",
+      "role": "builder",
+      "message": "Role 'builder' made 2 provider call(s) but recorded no estimated token usage."
+    },
+    {
+      "code": "ESTIMATE_MISSING",
+      "severity": "warning",
+      "role": "reviewer",
+      "message": "Role 'reviewer' made 2 provider call(s) but recorded no estimated token usage."
+    }
+  ],
+  "recommendations": [
+    "Record estimated token usage for every role that issues provider calls.",
+    "Actual token usage is unavailable for this run; treat all token figures as low-confidence estimates."
+  ]
+}

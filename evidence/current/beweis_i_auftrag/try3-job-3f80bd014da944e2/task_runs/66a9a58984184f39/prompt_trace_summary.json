@@ -1,0 +1,31 @@
+{
+  "total_prompts": 2,
+  "builder_prompts": 1,
+  "reviewer_prompts": 1,
+  "total_prompt_chars": 12741,
+  "total_prompt_tokens_estimated": 3184,
+  "providers": [
+    "claude-cli"
+  ],
+  "rounds": 1,
+  "per_role_model_summary": {
+    "builder": {
+      "configured_provider": "claude-cli",
+      "configured_model": "",
+      "actual_provider": "claude-cli",
+      "actual_model": "",
+      "model_resolution_source": "default",
+      "actual_model_verified": false,
+      "prompt_count": 1
+    },
+    "reviewer": {
+      "configured_provider": "claude-cli",
+      "configured_model": "",
+      "actual_provider": "claude-cli",
+      "actual_model": "",
+      "model_resolution_source": "default",
+      "actual_model_verified": false,
+      "prompt_count": 1
+    }
+  }
+}

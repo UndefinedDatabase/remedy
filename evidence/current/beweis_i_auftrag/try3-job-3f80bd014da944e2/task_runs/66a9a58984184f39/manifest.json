@@ -1,0 +1,35 @@
+{
+  "bundle_version": "0.1.0",
+  "run_id": "9c967e43aa464a1a",
+  "goal": "Remove onInfo wiring from NetHeader.tsx + Run full test suite and confirm green: Delete the onInfo prop from NetHeader's props interface and remove any forwarding or usage of that prop inside NetHeader.tsx so no info-related wiring survives there.; Execute the project's standard test command to verify that all unit tests (including text-golden) and e2e tests (including memory-net-592.spec.ts) pass after the changes made in T001\u2013T003.",
+  "final_status": "staged_review_passed",
+  "repo_identity": "[local]",
+  "mode": "staged",
+  "started_at": "2026-10-29T20:49:50.381734+00:00",
+  "finished_at": "2026-10-29T20:50:52.766938+00:00",
+  "task_input": {
+    "kind": "job_task",
+    "title": "Remove onInfo wiring from NetHeader.tsx + Run full test suite and confirm green: Delete the onInfo prop from NetHeader's props interface and remove any forwarding or usage of that prop inside NetHeader.tsx so no info-related wiring survives there.; Execute the project's standard test command to verify that all unit tests (including text-golden) and e2e tests (including memory-net-592.spec.ts) pass after the changes made in T001\u2013T003.",
+    "sha256": "72cdded00809ad2332b8d27eeb86d0e16926325dfbd090b74e96e46905ea9b41",
+    "bytes": 1680,
+    "chars": 1674,
+    "tokens_estimated": 418,
+    "excerpt": "# Job: Verbesserungsaufgabe beweis (universe)\n\n## Previous tasks\n- d683a4014c3d4cb1: Replace hand-built (i) with InfoButton in Memory.tsx: Remove the local info/setInfo state, Sheet import, and hand-b"
+  },
+  "sections": {
+    "manifest.json": "present",
+    "summary.md": "present",
+    "safe.diff": "unavailable: no diff produced",
+    "tests.txt": "present",
+    "review.json": "present",
+    "repair_loop.json": "present",
+    "token_accounting.json": "present",
+    "provider_evidence.json": "present"
+  },
+  "apply_readiness": {
+    "review_passed": true,
+    "last_test_passed": true,
+    "ready": true,
+    "proof_summary": "ready to apply: review passed, tests passed"
+  }
+}

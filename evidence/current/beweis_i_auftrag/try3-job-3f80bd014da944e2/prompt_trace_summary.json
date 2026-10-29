@@ -1,0 +1,47 @@
+{
+  "total_builder_prompts": 2,
+  "total_reviewer_prompts": 2,
+  "total_prompts": 4,
+  "total_prompt_chars": 36250,
+  "total_prompt_tokens_estimated": 9060,
+  "per_role_model_summary": {
+    "unknown": {
+      "configured_provider": null,
+      "configured_model": null,
+      "actual_provider": null,
+      "actual_model": null,
+      "actual_model_verified": false,
+      "task_count": 2
+    }
+  },
+  "task_traces": [
+    {
+      "task_id": "d683a4014c3d4cb1",
+      "run_id": "7988a1d7243f4233",
+      "prompt_trace_available": true,
+      "builder_prompts": 1,
+      "reviewer_prompts": 1,
+      "role": "unknown",
+      "configured_provider": null,
+      "configured_model": null,
+      "actual_provider": null,
+      "actual_model": null,
+      "model_resolution_source": "unknown",
+      "actual_model_verified": false
+    },
+    {
+      "task_id": "66a9a58984184f39",
+      "run_id": "9c967e43aa464a1a",
+      "prompt_trace_available": true,
+      "builder_prompts": 1,
+      "reviewer_prompts": 1,
+      "role": "unknown",
+      "configured_provider": null,
+      "configured_model": null,
+      "actual_provider": null,
+      "actual_model": null,
+      "model_resolution_source": "unknown",
+      "actual_model_verified": false
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "bundle_version": "0.1.0",
+  "run_id": "7988a1d7243f4233",
+  "goal": "Replace hand-built (i) with InfoButton in Memory.tsx: Remove the local info/setInfo state, Sheet import, and hand-built (i) button element from Memory.tsx, and render the shared InfoButton component in their place, with an aria-label key that matches the naming pattern used by every other InfoButton in the app.",
+  "final_status": "staged_review_passed",
+  "repo_identity": "[local]",
+  "mode": "staged",
+  "started_at": "2026-10-29T20:47:41.760358+00:00",
+  "finished_at": "2026-10-29T20:49:48.928154+00:00",
+  "task_input": {
+    "kind": "job_task",
+    "title": "Replace hand-built (i) with InfoButton in Memory.tsx: Remove the local info/setInfo state, Sheet import, and hand-built (i) button element from Memory.tsx, and render the shared InfoButton component in their place, with an aria-label key that matches the naming pattern used by every other InfoButton in the app.",
+    "sha256": "6a1eed35112342b17847cab20c2c4369b2817c9ab8fbcad3c0687a1ef9be23c6",
+    "bytes": 979,
+    "chars": 977,
+    "tokens_estimated": 244,
+    "excerpt": "# Job: Verbesserungsaufgabe beweis (universe)\n\n## Current task: d683a4014c3d4cb1 \u2014 Replace hand-built (i) with InfoButton in Memory.tsx: Remove the local info/setInfo state, Sheet import, and hand-bui"
+  },
+  "sections": {
+    "manifest.json": "present",
+    "summary.md": "present",
+    "safe.diff": "present",
+    "tests.txt": "present",
+    "review.json": "present",
+    "repair_loop.json": "present",
+    "token_accounting.json": "present",
+    "provider_evidence.json": "present"
+  },
+  "apply_readiness": {
+    "review_passed": true,
+    "last_test_passed": true,
+    "ready": true,
+    "proof_summary": "ready to apply: review passed, tests passed"
+  }
+}

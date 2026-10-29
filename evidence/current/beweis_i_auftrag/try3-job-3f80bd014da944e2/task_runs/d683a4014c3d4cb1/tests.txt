@@ -1,0 +1,3 @@
+=== Round 1: passed ===
+Remedy ran `npm test` in the worktree: exit=0 | [90mstderr[2m | tests/unit/tier9-now.test.tsx [22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.  [90mstderr[2m | tests/unit/tier9-luna-place.test.tsx [22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+tests_not_run: der Bauer hat keinen Testlauf gestartet

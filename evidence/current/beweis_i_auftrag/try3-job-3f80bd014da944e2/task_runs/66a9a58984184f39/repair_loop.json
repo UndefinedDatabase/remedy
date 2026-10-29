@@ -1,0 +1,28 @@
+{
+  "enabled": true,
+  "repair_rounds_allowed": 2,
+  "repair_rounds_used": 0,
+  "repair_rounds_source": "default",
+  "status": "not_needed",
+  "open_findings": [],
+  "resolved_findings": [],
+  "final_reviewer_verdict": "needs_repair",
+  "verdict_normalized": true,
+  "original_reviewer_verdict": "pass",
+  "normalization_notes": [
+    "reviewer verdict normalized pass->needs_repair: 1 finding(s) reported with a pass verdict were routed to review/repair instead of passing"
+  ],
+  "decisions": [
+    {
+      "round": 1,
+      "reviewer_verdict": "needs_repair",
+      "tests_passed": true,
+      "finding_count": 1,
+      "repair_decision": "pass_no_repair",
+      "reason": "only_low_findings",
+      "normalization_note": "reviewer verdict normalized pass->needs_repair: 1 finding(s) reported with a pass verdict were routed to review/repair instead of passing"
+    }
+  ],
+  "final_adjudication": null,
+  "finding_status_map": []
+}
