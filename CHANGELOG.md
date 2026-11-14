@@ -11,6 +11,8 @@ fails the gate rather than shipping an unexplained release.
 
 ## [Unreleased]
 
+- 2026-11-14: Remedy ist eingefroren; es wird nichts mehr gebaut, siehe [FROZEN.md](docs/roadmap/FROZEN.md).
+
 ### Fixed
 - 2026-10-29, operator order welt-2 (F320): an order's attachments and evidence are never
   deliverables. The report a client links ("Verknüpfte Berichte:"), its pictures and the tool names

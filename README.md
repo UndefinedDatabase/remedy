@@ -1,5 +1,7 @@
 # Remedy
 
+Remedy ist seit dem 14. November 2026 eingefroren; es wird nichts mehr gebaut, und der Code bleibt als Archiv lesbar. Mehr steht in [FROZEN.md](docs/roadmap/FROZEN.md).
+
 ## Stand: Version 1
 
 Remedy ist seit dem 27. Oktober 2026 als Version 1 abgeschlossen. Es nimmt Aufträge über die
