@@ -14,6 +14,7 @@
 | orchestrator protocol | [orchestrator_protocol.md](agents/orchestrator_protocol.md) | agents |
 | closure protocol | [STATUS_closure_protocol.md](roadmap/STATUS_closure_protocol.md) | roadmap |
 | version 1 | [V1.md](roadmap/V1.md) | roadmap |
+| frozen | [FROZEN.md](roadmap/FROZEN.md) | roadmap |
 | planner prompt | [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | agents |
 | split workflow | [split_workflow.md](agents/split_workflow.md) | agents |
 | self-drive | [self_drive_protocol.md](agents/self_drive_protocol.md) | agents |
@@ -314,6 +315,7 @@ plan and [STATUS.md](roadmap/STATUS.md) for execution-order truth.
 Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md`.
 Target design annexes live in `docs/roadmap/design/` (currently: [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) for F038, [luna-control-plane-v1.md](roadmap/design/luna-control-plane-v1.md) for the Luna gates of amend1006, and [face-v1.md](roadmap/design/face-v1.md) for amend1015's face migration: Remedy is a backend with a CLI and a public API, its face is the universe's edition `remedy`).
 Closure process: [STATUS_closure_protocol.md](roadmap/STATUS_closure_protocol.md) — the only path from `[~]` to `[x]`.
+Frozen: [FROZEN.md](roadmap/FROZEN.md) — built — Remedy was frozen on 2026-11-14; nothing is built any more and the code stays as a readable archive.
 Version 1: [V1.md](roadmap/V1.md) — built — what Remedy v1 can and deliberately cannot do, and how improvements come after it (reports and failed runs, Package 3 of STATUS.md).
 
 ## UI Reference (`docs/ui/`)
